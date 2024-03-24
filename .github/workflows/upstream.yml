@@ -1,5 +1,5 @@
 #
-# 这是免费软件，使用 MIT 许可证。
+# This is free software, lisence use MIT.
 # 
 # 
 # <https://github.com/kiddin9/openwrt-packages>
@@ -26,7 +26,7 @@ on:
 
 jobs:
   merge:
-    if: github.event.repository.owner == 'mgz0227' || !github.event.sender || github.event.sender.login == 'mgz0227'
+    if: github.event.repository.owner.id == github.event.sender.id || ! github.event.sender.id || github.event.sender.id == '119362912'
     runs-on: Ubuntu-22.04
 
     steps:
@@ -37,7 +37,7 @@ jobs:
 
     - uses: de-vri-es/setup-git-credentials@v2
       with:
-        credentials: https://mgz0227:${{ secrets.TOKEN_MGZ0227 }}@github.com/
+        credentials: https://kiddin9:${{ secrets.TOKEN_MGZ0227 }}@github.com/
     
     - name: Set git identity
       run : |
@@ -54,7 +54,7 @@ jobs:
         function git_clone() {
           git clone --depth 1 $1 $2
           if [ "$?" != 0 ]; then
-            echo "在 $1 上出错"
+            echo "error on $1"
             pid="$( ps -q $$ )"
             kill $pid
           fi
@@ -63,7 +63,7 @@ jobs:
           branch="$1" rurl="$2" localdir="$3" && shift 3
           git clone -b $branch --depth 1 --filter=blob:none --sparse $rurl $localdir
           if [ "$?" != 0 ]; then
-            echo "在 $rurl 上出错"
+            echo "error on $rurl"
             pid="$( ps -q $$ )"
             kill $pid
           fi
@@ -232,7 +232,6 @@ jobs:
         git_clone https://github.com/JiaY-shi/fancontrol fanc && mvdir fanc
         ) &
         (
-        svn export https://github.com/Ysurac/openmptcprouter-feeds/tree/develop/luci-app-iperf
         svn export https://github.com/QiuSimons/OpenWrt-Add/tree/master/luci-app-irqbalance
         #svn export https://github.com/xiaoxifu64/immortalwrt/tree/master/package/rooter/ext-rooter-basic
         #svn export https://github.com/openwrt/luci/branches/openwrt-22.03/applications/luci-app-wireguard
@@ -264,7 +263,7 @@ jobs:
         git_sparse_clone openwrt-23.05 "https://github.com/immortalwrt/packages" "immpkgs" net/mwol net/n2n net/dae \
         net/sub-web net/dnsproxy net/haproxy net/v2raya net/cdnspeedtest net/keepalived net/microsocks \
         net/go-nats net/go-wol net/simple-torrent net/bitsrunlogin-go net/transfer net/cloudreve net/daed \
-        net/subconverter net/ngrokc net/oscam net/njitclient net/scutclient net/gost net/ua2f net/gowebdav net/qBittorrent-Enhanced-Edition \
+        net/subconverter net/ngrokc net/oscam net/njitclient net/scutclient net/gost net/ua2f net/dufs net/qBittorrent-Enhanced-Edition \
         net/tinyportmapper net/tinyfecvpn net/nexttrace net/pcap-dnsproxy net/rustdesk-server net/tuic-server net/speedtest-go \
         net/dns-forwarder net/ipset-lists net/ShadowVPN net/adguardhome net/cloudflared net/nps net/naiveproxy \
         libs/jpcre2 libs/wxbase libs/rapidjson libs/libcron libs/quickjspp libs/toml11 libs/libtorrent-rasterbar \
@@ -274,21 +273,20 @@ jobs:
         ) &
         (
         git_sparse_clone develop "https://github.com/Ysurac/openmptcprouter-feeds" "openmptcp" luci-app-snmpd \
-        luci-app-packet-capture luci-app-mail msmtp
+        luci-app-packet-capture luci-app-mail msmtp luci-app-iperf atinout
         git_sparse_clone master "https://github.com/xiaoqingfengATGH/feeds-xiaoqingfeng" "xiaoqingfeng" homeredirect luci-app-homeredirect
         git_sparse_clone master "https://github.com/immortalwrt/immortalwrt" "immortal" \
-        package/kernel/r8168 package/kernel/r8125 package/kernel/rtl8821cu package/kernel/rtl8189es package/emortal/autocore package/emortal/automount \
+        package/kernel/r8168 package/kernel/r8125 package/kernel/rtl8188eu package/kernel/rtl8192eu package/kernel/rtl8812au-ac package/kernel/rtl8189es package/emortal/autocore package/emortal/automount \
         package/network/utils/fullconenat package/network/utils/fullconenat-nft package/network/utils/nftables \
         package/utils/mhz package/libs/libnftnl package/firmware/wireless-regdb
         ) &
         (
         git_sparse_clone master "https://github.com/x-wrt/com.x-wrt" "x-wrt" luci-app-macvlan luci-app-xwan
-        git_sparse_clone master "https://github.com/sbwml/openwrt_pkgs" "openwrt_pkgs" luci-app-gowebdav luci-app-socat
         ) &
         git_sparse_clone master "https://github.com/coolsnowwolf/luci" "leluci" applications libs/luci-lib-fs
         mv -f applications luciapp
         rm -rf luciapp/{luci-app-qbittorrent,luci-app-cpufreq,luci-app-e2guardian,luci-app-aliyundrive-fuse}
-        git_sparse_clone openwrt-23.05 "https://github.com/immortalwrt/luci" "immluci" applications protocols/luci-proto-minieap
+        git_sparse_clone master "https://github.com/immortalwrt/luci" "immluci" applications protocols/luci-proto-minieap
         mv -n applications/* luciapp/; rm -rf applications
 
         for ipk in $(ls -d luciapp/!(luci-app-rclone|luci-app-mwan3)/); do
@@ -318,12 +316,12 @@ jobs:
 
 
     - name: SSH connection to Actions
-      uses: kiddin9/debugger-action@master
+      uses: mgz0227/debugger-action@master
       if: github.event.inputs.ssh == 'true'
 
     - name: Apply patches
       run: |
-        find ".github/diy/patches" -type f -name '*.patch' -print0 | sort -z | xargs -I % -t -0 -n 1 sh -c "cat '%'  | patch -d './' -p1 -E --forward --no-backup-if-mismatch" || (curl -k --data chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" --data "text=❌ 软件包更新失败 😂 https://github.com/kiddin9/openwrt-packages/actions" "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage";exit 1)
+        find ".github/diy/patches" -type f -name '*.patch' -print0 | sort -z | xargs -I % -t -0 -n 1 sh -c "cat '%'  | patch -d './' -p1 -E --forward --no-backup-if-mismatch" || (curl -k --data chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" --data "text=❌ 软件包更新失败 😂 https://github.com/mgz0227/OP-Packages/actions" "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage";exit 1)
 
     - name: Modify
       run: |
