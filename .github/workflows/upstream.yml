@@ -26,7 +26,7 @@ on:
 
 jobs:
   merge:
-    if: github.event.repository.owner.id == github.event.sender.id || ! github.event.sender.id || github.event.sender.id == '119362912'
+    if: github.event.repository.owner.id == github.event.sender.id || ! github.event.sender.id || github.event.sender.id == 'mgz0227'
     runs-on: Ubuntu-22.04
 
     steps:
@@ -37,7 +37,7 @@ jobs:
 
     - uses: de-vri-es/setup-git-credentials@v2
       with:
-        credentials: https://kiddin9:${{ secrets.TOKEN_MGZ0227 }}@github.com/
+        credentials: https://mgz0227:${{ secrets.TOKEN_MGZ0227 }}@github.com/
     
     - name: Set git identity
       run : |
