@@ -91,7 +91,7 @@ jobs:
         }
         (
         git_clone https://github.com/kiddin9/my-packages && mvdir my-packages
-        git_clone https://github.com/kiddin9/openwrt-bypass && mvdir openwrt-bypass
+        #git_clone https://github.com/kiddin9/openwrt-bypass && mvdir openwrt-bypass
         git_clone https://github.com/kiddin9/luci-app-dnsfilter
         git_clone https://github.com/kiddin9/aria2
         git_clone https://github.com/kiddin9/luci-app-baidupcs-web
@@ -232,12 +232,12 @@ jobs:
         git_clone https://github.com/JiaY-shi/fancontrol fanc && mvdir fanc
         ) &
         (
-        #svn export https://github.com/Ysurac/openmptcprouter-feeds/trunk/luci-app-iperf
-        #svn export https://github.com/QiuSimons/OpenWrt-Add/trunk/luci-app-irqbalance
-        #svn export https://github.com/xiaoxifu64/immortalwrt/trunk/package/rooter/ext-rooter-basic
+        svn export https://github.com/Ysurac/openmptcprouter-feeds/tree/develop/luci-app-iperf
+        svn export https://github.com/QiuSimons/OpenWrt-Add/tree/master/luci-app-irqbalance
+        #svn export https://github.com/xiaoxifu64/immortalwrt/tree/master/package/rooter/ext-rooter-basic
         #svn export https://github.com/openwrt/luci/branches/openwrt-22.03/applications/luci-app-wireguard
-        #svn export https://github.com/lucikap/Brukamen/trunk/luci-app-ua2f
-        svn export https://github.com/HiGarfield/lede-17.01.4-Mod/trunk/package/extra/luci-app-openvpn-server
+        svn export https://github.com/lucikap/Brukamen/tree/main/luci-app-ua2f
+        svn export https://github.com/HiGarfield/lede-17.01.4-Mod/tree/master/package/extra/luci-app-openvpn-server
         ) &
         (
         git_sparse_clone master "https://github.com/coolsnowwolf/packages" "leanpkg" net/miniupnpd net/mwan3 multimedia/UnblockNeteaseMusic-Go \
