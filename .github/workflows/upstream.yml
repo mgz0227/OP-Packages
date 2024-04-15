@@ -12,8 +12,6 @@ on:
       - '.github/workflows/upstream.yml'
       - '.gitignore'
       - '.github/diy/**'
-  schedule:
-    - cron: 0 */12 * * *
   workflow_dispatch:
     inputs:
       ssh:
