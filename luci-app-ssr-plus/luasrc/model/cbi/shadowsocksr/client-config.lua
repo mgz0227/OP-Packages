@@ -117,7 +117,8 @@ local securitys = {
 local tls_flows = {
 	-- tls
 	"xtls-rprx-vision",
-	"xtls-rprx-vision-udp443"
+	"xtls-rprx-vision-udp443",
+	"none"
 }
 
 m = Map("shadowsocksr", translate("Edit ShadowSocksR Server"))
@@ -218,7 +219,7 @@ o:depends("type", "ss")
 o:depends("type", "v2ray")
 o:depends("type", "trojan")
 o:depends("type", "naiveproxy")
-o:depends({type = "hysteria",port_hopping = false})
+o:depends("type", "hysteria")
 o:depends("type", "tuic")
 o:depends("type", "shadowtls")
 o:depends("type", "socks5")
@@ -322,33 +323,39 @@ o = s:option(Value, "hy2_auth", translate("Users Authentication"))
 o:depends("type", "hysteria")
 o.rmempty = false
 
-o = s:option(ListValue, "transport_protocol", translate("Protocol"))
-o:depends("type", "hysteria")
-o:value("udp", translate("udp"))
-o.default = "udp"
-o.rmempty = true
-
-o = s:option(Flag, "port_hopping", translate("Enable Port Hopping"))
+o = s:option(Flag, "flag_port_hopping", translate("Enable Port Hopping"))
 o:depends("type", "hysteria")
 o.rmempty = true
 o.default = "0"
 
+o = s:option(Value, "port_range", translate("Port Range"))
+o:depends({type = "hysteria", flag_port_hopping = true})
+o.datatype = "portrange"
+o.rmempty = true
+
+o = s:option(Flag, "flag_transport", translate("Enable Transport Protocol Settings"))
+o:depends("type", "hysteria")
+o.rmempty = true
+o.default = "0"
+
+o = s:option(ListValue, "transport_protocol", translate("Transport Protocol"))
+o:depends({type = "hysteria", flag_transport = true})
+o:value("udp", translate("UDP"))
+o.default = "udp"
+o.rmempty = true
+
 o = s:option(Value, "hopinterval", translate("Port Hopping Interval(Unit:Second)"))
-o:depends({type = "hysteria", port_hopping = true})
+o:depends({type = "hysteria", flag_transport = true, flag_port_hopping = true})
 o.datatype = "uinteger"
 o.rmempty = true
 o.default = "30"
 
-o = s:option(Value, "port_range", translate("Port Range"))
-o:depends({type = "hysteria", port_hopping = true})
-o.rmempty = false
-
-o = s:option(Flag, "lazy_mode", translate("Enable Lazy Mode"))
+o = s:option(Flag, "flag_obfs", translate("Enable Obfuscation"))
 o:depends("type", "hysteria")
 o.rmempty = true
 o.default = "0"
 
-o = s:option(Flag, "flag_obfs", translate("Enable Obfuscation"))
+o = s:option(Flag, "lazy_mode", translate("Enable Lazy Mode"))
 o:depends("type", "hysteria")
 o.rmempty = true
 o.default = "0"
@@ -367,6 +374,11 @@ o = s:option(Flag, "flag_quicparam", translate("Hysterir QUIC parameters"))
 o:depends("type", "hysteria")
 o.rmempty = true
 o.default = "0"
+
+o = s:option(Flag, "disablepathmtudiscovery", translate("Disable QUIC path MTU discovery"))
+o:depends({type = "hysteria",flag_quicparam = "1"})
+o.rmempty = true
+o.default = false
 
 --[[Hysteria2 QUIC parameters setting]]
 o = s:option(Value, "initstreamreceivewindow", translate("QUIC initStreamReceiveWindow"))
@@ -400,15 +412,12 @@ o.datatype = "uinteger"
 o.default = "30"
 
 o = s:option(Value, "keepaliveperiod", translate("The keep-alive period.(Unit:second)"))
+o.description = translate("Default value 0 indicatesno heartbeat.")
 o:depends({type = "hysteria", flag_quicparam = "1"})
+o:depends({type = "v2ray", v2ray_protocol = "wireguard"})
 o.rmempty = true
 o.datatype = "uinteger"
 o.default = "10"
-
-o = s:option(Flag, "disablepathmtudiscovery", translate("Disable Path MTU discovery"))
-o:depends({type = "hysteria", flag_quicparam = "1"})
-o.rmempty = true
-o.default = false
 
 
 --[[ Shadow-TLS Options ]]
@@ -559,6 +568,7 @@ o.rmempty = true
 
 -- Tuic settings for the local inbound socks5 server
 o = s:option(Flag, "tuic_dual_stack", translate("Dual-stack Listening Socket"))
+o.description = translate("If this option is not set, the socket behavior is platform dependent.")
 o:depends("type", "tuic")
 o.default = "0"
 o.rmempty = true
@@ -568,6 +578,13 @@ o:depends("type", "tuic")
 o.datatype = "uinteger"
 o.default = 1500
 o.rmempty = true
+
+-- AlterId
+o = s:option(Value, "alter_id", translate("AlterId"))
+o.datatype = "port"
+o.default = 16
+o.rmempty = true
+o:depends({type = "v2ray", v2ray_protocol = "vmess"})
 
 -- VmessId
 o = s:option(Value, "vmess_id", translate("Vmess/VLESS ID (UUID)"))
@@ -604,6 +621,8 @@ o = s:option(ListValue, "transport", translate("Transport"))
 o:value("tcp", "TCP")
 o:value("kcp", "mKCP")
 o:value("ws", "WebSocket")
+o:value("httpupgrade", "HTTPUpgrade")
+o:value("splithttp", "SplitHTTP")
 o:value("h2", "HTTP/2")
 o:value("quic", "QUIC")
 o:value("grpc", "gRPC")
@@ -659,6 +678,30 @@ if is_finded("v2ray") then
 	o:value("Sec-WebSocket-Protocol")
 	o.rmempty = true
 end
+
+-- [[ httpupgrade部分 ]]--
+
+-- httpupgrade域名
+o = s:option(Value, "httpupgrade_host", translate("Httpupgrade Host"))
+o:depends({transport = "httpupgrade", tls = false})
+o.rmempty = true
+
+-- httpupgrade路径
+o = s:option(Value, "httpupgrade_path", translate("Httpupgrade Path"))
+o:depends("transport", "httpupgrade")
+o.rmempty = true
+
+-- [[ splithttp部分 ]]--
+
+-- splithttp域名
+o = s:option(Value, "splithttp_host", translate("Splithttp Host"))
+o:depends({transport = "splithttp", tls = false})
+o.rmempty = true
+
+-- splithttp路径
+o = s:option(Value, "splithttp_path", translate("Splithttp Path"))
+o:depends("transport", "splithttp")
+o.rmempty = true
 
 -- [[ H2部分 ]]--
 
@@ -804,8 +847,19 @@ o:depends("transport", "kcp")
 o.rmempty = true
 
 -- [[ WireGuard 部分 ]]--
+o = s:option(Flag, "kernelmode", translate("Enabled Kernel virtual NIC TUN(optional)"))
+o.description = translate("Virtual NIC TUN of Linux kernel can be used only when system supports and have root permission. If used, IPv6 routing table 1023 is occupied.")
+o:depends({type = "v2ray", v2ray_protocol = "wireguard"})
+o.default = "0"
+o.rmempty = true
+
 o = s:option(DynamicList, "local_addresses", translate("Local addresses"))
 o.datatype = "cidr"
+o:depends({type = "v2ray", v2ray_protocol = "wireguard"})
+o.rmempty = true
+
+o = s:option(DynamicList, "reserved", translate("Reserved bytes(optional)"))
+o.description = translate("Wireguard reserved bytes.")
 o:depends({type = "v2ray", v2ray_protocol = "wireguard"})
 o.rmempty = true
 
@@ -821,6 +875,13 @@ o.rmempty = true
 o = s:option(Value, "preshared_key", translate("Pre-shared key"))
 o:depends({type = "v2ray", v2ray_protocol = "wireguard"})
 o.password = true
+o.rmempty = true
+
+o = s:option(DynamicList, "allowedips", translate("allowedIPs(optional)"))
+o.description = translate("Wireguard allows only traffic from specific source IP.")
+o.datatype = "cidr"
+o:depends({type = "v2ray", v2ray_protocol = "wireguard"})
+o.default = "0.0.0.0/0"
 o.rmempty = true
 
 -- [[ TLS ]]--
@@ -861,7 +922,7 @@ if is_finded("xray") then
 	o:depends({type = "v2ray", v2ray_protocol = "vless", reality = true})
 
 	-- [[ XTLS ]]--
-	o = s:option(Value, "tls_flow", translate("Flow"))
+	o = s:option(ListValue, "tls_flow", translate("Flow"))
 	for _, v in ipairs(tls_flows) do
 		o:value(v, translate(v))
 	end
@@ -871,7 +932,7 @@ if is_finded("xray") then
 
 	-- [[ uTLS ]]--
 	o = s:option(Value, "fingerprint", translate("Finger Print"))
-	o:value("", translate("disable"))
+	o.default = "chrome"
 	o:value("chrome", translate("chrome"))
 	o:value("firefox", translate("firefox"))
 	o:value("safari", translate("safari"))
@@ -882,6 +943,7 @@ if is_finded("xray") then
 	o:value("qq", translate("qq"))
 	o:value("random", translate("random"))
 	o:value("randomized", translate("randomized"))
+	o:value("", translate("disable"))
 	o:depends({type = "v2ray", tls = true})
 	o:depends({type = "v2ray", reality = true})
 end
@@ -893,9 +955,8 @@ o:depends("reality", true)
 o.rmempty = true
 
 o = s:option(DynamicList, "tls_alpn", translate("TLS ALPN"))
-o:depends("tls", true)
 o:depends("type", "tuic")
-o:depends("type", "hysteria")
+o.default = "h3"
 o.rmempty = true
 
 -- [[ allowInsecure ]]--
@@ -910,9 +971,11 @@ o = s:option(Value, "pinsha256", translate("Certificate fingerprint"))
 o:depends({type = "hysteria", insecure = true })
 o.rmempty = true
 
+
 -- [[ Mux ]]--
 o = s:option(Flag, "mux", translate("Mux"))
 o.rmempty = false
+o.default = false
 o:depends({type = "v2ray", v2ray_protocol = "vless"})
 o:depends({type = "v2ray", v2ray_protocol = "vmess"})
 o:depends({type = "v2ray", v2ray_protocol = "trojan"})
@@ -920,12 +983,58 @@ o:depends({type = "v2ray", v2ray_protocol = "shadowsocks"})
 o:depends({type = "v2ray", v2ray_protocol = "socks"})
 o:depends({type = "v2ray", v2ray_protocol = "http"})
 
-o = s:option(Value, "concurrency", translate("Concurrency"))
-o.datatype = "uinteger"
+-- [[ TCP 最大并发连接数 ]]--
+o = s:option(ListValue, "concurrency", translate("concurrency"))
 o.rmempty = true
-o.default = "4"
-o:depends("mux", "1")
-o:depends("type", "naiveproxy")
+o.default = "-1"
+o:value("-1", translate("disable"))
+o:value("8", translate("8"))
+o:depends("mux", true)
+
+-- [[ UDP 最大并发连接数 ]]--
+o = s:option(ListValue, "xudpConcurrency", translate("xudpConcurrency"))
+o.rmempty = true
+o.default = "16"
+o:value("-1", translate("disable"))
+o:value("16", translate("16"))
+o:depends("mux", true)
+
+-- [[ 对被代理的 UDP/443 流量处理方式 ]]--
+o = s:option(ListValue, "xudpProxyUDP443", translate("xudpProxyUDP443"))
+o.rmempty = true
+o.default = "reject"
+o:value("reject", translate("reject"))
+o:value("allow", translate("allow"))
+o:value("skip", translate("skip"))
+o:depends("mux", true)
+
+
+-- [[ MPTCP ]]--
+o = s:option(Flag, "mptcp", translate("MPTCP"))
+o.rmempty = false
+o.default = false
+o:depends({type = "v2ray", v2ray_protocol = "vless"})
+o:depends({type = "v2ray", v2ray_protocol = "vmess"})
+o:depends({type = "v2ray", v2ray_protocol = "trojan"})
+o:depends({type = "v2ray", v2ray_protocol = "shadowsocks"})
+o:depends({type = "v2ray", v2ray_protocol = "socks"})
+o:depends({type = "v2ray", v2ray_protocol = "http"})
+
+-- [[ custom_tcpcongestion 连接服务器节点的 TCP 拥塞控制算法 ]]--
+o = s:option(ListValue, "custom_tcpcongestion", translate("custom_tcpcongestion"))
+o.rmempty = true
+o.default = ""
+o:value("", translate("comment_tcpcongestion_disable"))
+o:value("bbr", translate("BBR"))
+o:value("cubic", translate("CUBIC"))
+o:value("reno", translate("Reno"))
+o:depends({type = "v2ray", v2ray_protocol = "vless"})
+o:depends({type = "v2ray", v2ray_protocol = "vmess"})
+o:depends({type = "v2ray", v2ray_protocol = "trojan"})
+o:depends({type = "v2ray", v2ray_protocol = "shadowsocks"})
+o:depends({type = "v2ray", v2ray_protocol = "socks"})
+o:depends({type = "v2ray", v2ray_protocol = "http"})
+
 
 -- [[ Cert ]]--
 o = s:option(Flag, "certificate", translate("Self-signed Certificate"))
@@ -1003,7 +1112,7 @@ if is_finded("kcptun-client") then
 	o:depends("type", "ss")
 
 	o = s:option(Value, "kcp_port", translate("KcpTun Port"))
-	o.datatype = "port"
+	o.datatype = "portrange"
 	o.default = 4000
 	o:depends("type", "ssr")
 	o:depends("type", "ss")

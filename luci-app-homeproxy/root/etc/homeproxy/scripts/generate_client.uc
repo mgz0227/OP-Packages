@@ -51,7 +51,7 @@ const dns_port = uci.get(uciconfig, uciinfra, 'dns_port') || '5333';
 
 let main_node, main_udp_node, dedicated_udp_node, default_outbound, sniff_override = '1',
     dns_server, dns_default_strategy, dns_default_server, dns_disable_cache, dns_disable_cache_expire,
-    dns_independent_cache, direct_domain_list;
+    dns_independent_cache, dns_client_subnet, direct_domain_list, proxy_domain_list;
 
 if (routing_mode !== 'custom') {
 	main_node = uci.get(uciconfig, ucimain, 'main_node') || 'nil';
@@ -65,6 +65,10 @@ if (routing_mode !== 'custom') {
 	direct_domain_list = trim(readfile(HP_DIR + '/resources/direct_list.txt'));
 	if (direct_domain_list)
 		direct_domain_list = split(direct_domain_list, /[\r\n]/);
+
+	proxy_domain_list = trim(readfile(HP_DIR + '/resources/proxy_list.txt'));
+	if (proxy_domain_list)
+		proxy_domain_list = split(proxy_domain_list, /[\r\n]/);
 } else {
 	/* DNS settings */
 	dns_default_strategy = uci.get(uciconfig, ucidnssetting, 'default_strategy');
@@ -72,6 +76,7 @@ if (routing_mode !== 'custom') {
 	dns_disable_cache = uci.get(uciconfig, ucidnssetting, 'disable_cache');
 	dns_disable_cache_expire = uci.get(uciconfig, ucidnssetting, 'disable_cache_expire');
 	dns_independent_cache = uci.get(uciconfig, ucidnssetting, 'independent_cache');
+	dns_client_subnet = uci.get(uciconfig, ucidnssetting, 'client_subnet');
 
 	/* Routing settings */
 	default_outbound = uci.get(uciconfig, uciroutingsetting, 'default_outbound') || 'nil';
@@ -81,6 +86,9 @@ if (routing_mode !== 'custom') {
 const proxy_mode = uci.get(uciconfig, ucimain, 'proxy_mode') || 'redirect_tproxy',
       ipv6_support = uci.get(uciconfig, ucimain, 'ipv6_support') || '0',
       default_interface = uci.get(uciconfig, ucicontrol, 'bind_interface');
+
+const cache_file_store_rdrc = uci.get(uciconfig, uciexp, 'cache_file_store_rdrc'),
+      cache_file_rdrc_timeout = uci.get(uciconfig, uciexp, 'cache_file_rdrc_timeout');
 
 const mixed_port = uci.get(uciconfig, uciinfra, 'mixed_port') || '5330';
 let self_mark, redirect_port, tproxy_port,
@@ -98,9 +106,10 @@ if (match(proxy_mode), /tun/) {
 	tun_addr4 = uci.get(uciconfig, uciinfra, 'tun_addr4') || '172.19.0.1/30';
 	tun_addr6 = uci.get(uciconfig, uciinfra, 'tun_addr6') || 'fdfe:dcba:9876::1/126';
 	tun_mtu = uci.get(uciconfig, uciinfra, 'tun_mtu') || '9000';
-	tun_gso = uci.get(uciconfig, uciinfra, 'tun_gso') || '0';
+	tun_gso = '0';
 	tcpip_stack = 'system';
 	if (routing_mode === 'custom') {
+		tun_gso = uci.get(uciconfig, uciroutingsetting, 'tun_gso') || '0';
 		tcpip_stack = uci.get(uciconfig, uciroutingsetting, 'tcpip_stack') || 'system';
 		endpoint_independent_nat = uci.get(uciconfig, uciroutingsetting, 'endpoint_independent_nat');
 	}
@@ -344,7 +353,8 @@ config.dns = {
 	strategy: dns_default_strategy,
 	disable_cache: (dns_disable_cache === '1'),
 	disable_expire: (dns_disable_cache_expire === '1'),
-	independent_cache: (dns_independent_cache === '1')
+	independent_cache: (dns_independent_cache === '1'),
+	client_subnet: dns_client_subnet
 };
 
 if (!isEmpty(main_node)) {
@@ -369,6 +379,14 @@ if (!isEmpty(main_node)) {
 		push(config.dns.rules, {
 			domain_keyword: direct_domain_list,
 			server: 'default-dns'
+		});
+
+	/* Filter out SVCB/HTTPS queries for "exquisite" Apple devices */
+	if (routing_mode === 'gfwlist' || proxy_domain_list)
+		push(config.dns.rules, {
+			domain_keyword: (routing_mode !== 'gfwlist') ? proxy_domain_list : null,
+			query_type: [64, 65],
+			server: 'block-dns'
 		});
 
 	if (isEmpty(config.dns.rules))
@@ -401,7 +419,8 @@ if (!isEmpty(main_node)) {
 			address_resolver: get_resolver(cfg.address_resolver),
 			address_strategy: cfg.address_strategy,
 			strategy: cfg.resolve_strategy,
-			detour: get_outbound(cfg.outbound)
+			detour: get_outbound(cfg.outbound),
+			client_subnet: cfg.client_subnet
 		});
 	});
 
@@ -423,17 +442,21 @@ if (!isEmpty(main_node)) {
 			port_range: cfg.port_range,
 			source_ip_cidr: cfg.source_ip_cidr,
 			source_ip_is_private: (cfg.source_ip_is_private === '1') || null,
+			ip_cidr: cfg.ip_cidr,
+			ip_is_private: (cfg.ip_is_private === '1') || null,
 			source_port: parse_port(cfg.source_port),
 			source_port_range: cfg.source_port_range,
 			process_name: cfg.process_name,
 			process_path: cfg.process_path,
 			user: cfg.user,
 			rule_set: get_ruleset(cfg.rule_set),
+			rule_set_ipcidr_match_source: (cfg.rule_set_ipcidr_match_source === '1') || null,
 			invert: (cfg.invert === '1') || null,
 			outbound: get_outbound(cfg.outbound),
 			server: get_resolver(cfg.server),
 			disable_cache: (cfg.dns_disable_cache === '1') || null,
-			rewrite_ttl: strToInt(cfg.rewrite_ttl)
+			rewrite_ttl: strToInt(cfg.rewrite_ttl),
+			client_subnet: cfg.client_subnet
 		});
 	});
 
@@ -638,7 +661,9 @@ if (routing_mode === 'custom') {
 	config.experimental = {
 		cache_file: {
 			enabled: true,
-			path: HP_DIR + '/cache.db'
+			path: HP_DIR + '/cache.db',
+			store_rdrc: (cache_file_store_rdrc === '1') || null,
+			rdrc_timeout: cache_file_rdrc_timeout
 		}
 	};
 }

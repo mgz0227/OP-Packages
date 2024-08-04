@@ -57,6 +57,11 @@ return view.extend({
 		};
 
 		o = s.option(form.Flag, 'drop_invalid', _('Drop invalid packets'));
+		if (L.hasSystemFeature('fullcone')) {
+			o = s.option(form.Flag, 'fullcone', _('Enable FullCone NAT'));
+			if (fw4)
+				o = s.option(form.Flag, 'fullcone6', _('Enable FullCone NAT6'));
+		}
 
 		var p = [
 			s.option(form.ListValue, 'input', _('Input')),
@@ -68,11 +73,6 @@ return view.extend({
 			p[i].value('REJECT', _('reject'));
 			p[i].value('DROP', _('drop'));
 			p[i].value('ACCEPT', _('accept'));
-		}
-
-		if (L.hasSystemFeature('fullconenat')) {
-		o = s.option(form.Flag, 'fullcone', _('FullCone NAT'), _('Using FullCone NAT can improve gaming performance effectively'));
-		o = s.option(form.Flag, 'fullcone6', _('Enable FullCone NAT6'));
 		}
 
 		/* Netfilter flow offload support */
@@ -149,7 +149,7 @@ return view.extend({
 		var p = [
 			s.taboption('general', form.ListValue, 'input', _('Input')),
 			s.taboption('general', form.ListValue, 'output', _('Output')),
-			s.taboption('general', form.ListValue, 'forward', _('Forward'))
+			s.taboption('general', form.ListValue, 'forward', _('Intra zone forward'))
 		];
 
 		for (var i = 0; i < p.length; i++) {

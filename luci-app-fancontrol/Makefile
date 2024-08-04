@@ -7,7 +7,7 @@
 include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=LuCI support for Fan Controller
-LUCI_DEPENDS:=+luci +fancontrol
+LUCI_DEPENDS:=+luci +fancontrol +kmod-hwmon-pwmfan
 LUCI_PKGARCH:=all
 
 PKG_NAME:=luci-app-fancontrol

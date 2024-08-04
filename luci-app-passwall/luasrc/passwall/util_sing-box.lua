@@ -1159,6 +1159,7 @@ function gen_config(var)
 							geosite = {},
 						}
 						string.gsub(e.domain_list, '[^' .. "\r\n" .. ']+', function(w)
+							if w:find("#") == 1 then return end
 							if w:find("geosite:") == 1 then
 								table.insert(domain_table.geosite, w:sub(1 + #"geosite:"))
 							elseif w:find("regexp:") == 1 then
@@ -1166,8 +1167,7 @@ function gen_config(var)
 							elseif w:find("full:") == 1 then
 								table.insert(domain_table.domain, w:sub(1 + #"full:"))
 							elseif w:find("domain:") == 1 then
-								table.insert(domain_table.domain, w:sub(1 + #"domain:"))
-								table.insert(domain_table.domain_suffix, "." .. w:sub(1 + #"domain:"))
+								table.insert(domain_table.domain_suffix, w:sub(1 + #"domain:"))
 							else
 								table.insert(domain_table.domain_keyword, w)
 							end
@@ -1187,6 +1187,7 @@ function gen_config(var)
 						local ip_cidr = {}
 						local geoip = {}
 						string.gsub(e.ip_list, '[^' .. "\r\n" .. ']+', function(w)
+							if w:find("#") == 1 then return end
 							if w:find("geoip:") == 1 then
 								table.insert(geoip, w:sub(1 + #"geoip:"))
 							else

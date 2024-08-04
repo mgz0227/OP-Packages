@@ -36,6 +36,20 @@ tolog() {
     [[ -n "${2}" && "${2}" -eq "1" ]] && clean_running && exit 1
 }
 
+# Get the partition name of the root file system
+get_root_partition_name() {
+    local paths=("/" "/overlay" "/rom")
+    local partition_name
+
+    for path in "${paths[@]}"; do
+        partition_name=$(df "${path}" | awk 'NR==2 {print $1}' | awk -F '/' '{print $3}')
+        [[ -n "${partition_name}" ]] && break
+    done
+
+    [[ -z "${partition_name}" ]] && tolog "Cannot find the root partition!" "1"
+    echo "${partition_name}"
+}
+
 # Check running scripts, prohibit running concurrently
 this_running_log="2@Kernel update in progress, try again later!"
 running_script="$(cat ${RUNNING_LOG} 2>/dev/null | xargs)"
@@ -50,13 +64,7 @@ else
 fi
 
 # Find the partition where root is located
-ROOT_PTNAME="$(df / | tail -n1 | awk '{print $1}' | awk -F '/' '{print $3}')"
-if [[ -z "${ROOT_PTNAME}" ]]; then
-    ROOT_PTNAME="$(df /overlay | tail -n1 | awk '{print $1}' | awk -F '/' '{print $3}')"
-    if [[ -z "${ROOT_PTNAME}" ]]; then
-        tolog "Cannot find the partition corresponding to the root file system!" "1"
-    fi
-fi
+ROOT_PTNAME="$(get_root_partition_name)"
 
 # Find the disk where the partition is located, only supports mmcblk?p? sd?? hd?? vd?? and other formats
 case "${ROOT_PTNAME}" in
@@ -122,14 +130,24 @@ else
         kernel_tag="stable"
     fi
 fi
+
+# Remove the kernel_ prefix
 kernel_tag="${kernel_tag/kernel_/}"
+# If the kernel tag is a number, it is converted to a stable branch
+[[ "${kernel_tag}" =~ ^[1-9]+ ]] && kernel_tag="stable"
 
 # Step 2: Check if there is the latest kernel version
 check_kernel() {
     # 02. Query local version information
     tolog "02. Start checking the kernel version."
+
     # 02.01 Query the current version
-    current_kernel_v=$(uname -r 2>/dev/null | grep -oE '^[1-9]\.[0-9]{1,2}\.[0-9]+')
+    if [[ "${kernel_tag}" == "rk3588" || "${kernel_tag}" == "rk35xx" ]]; then
+        current_kernel_v=$(uname -r 2>/dev/null)
+    else
+        current_kernel_v=$(uname -r 2>/dev/null | grep -oE '^[1-9]\.[0-9]{1,2}\.[0-9]+')
+    fi
+    [[ -n "${current_kernel_v}" ]] || tolog "02.01 The current kernel version is not detected." "1"
     tolog "02.01 current version: ${current_kernel_v}"
     sleep 2
 
@@ -155,7 +173,7 @@ check_kernel() {
     latest_version="$(
         curl -fsSL -m 10 \
             ${kernel_api}/releases/expanded_assets/kernel_${kernel_tag} |
-            grep -oE "${main_line_version}.[0-9]+.tar.gz" | sed 's/.tar.gz//' |
+            grep -oE "${main_line_version}.[0-9]+.*.tar.gz" | sed 's/.tar.gz//' |
             sort -urV | head -n 1
     )"
     [[ -n "${latest_version}" ]] || tolog "02.03 No kernel available, please use another kernel branch." "1"

@@ -1,0 +1,34 @@
+--- a/dockerd/files/etc/sysctl.d/sysctl-br-netfilter-ip.conf
++++ b/dockerd/files/etc/sysctl.d/sysctl-br-netfilter-ip.conf
+@@ -2,6 +2,6 @@
+ # /etc/sysctl.conf can be used to customize sysctl settings
+ 
+ # enable bridge firewalling for docker
+-net.bridge.bridge-nf-call-ip6tables=1
+-net.bridge.bridge-nf-call-iptables=1
++# net.bridge.bridge-nf-call-ip6tables=1
++# net.bridge.bridge-nf-call-iptables=1
+
+--- a/dockerd/files/dockerd.init
++++ b/dockerd/files/dockerd.init
+@@ -91,6 +91,9 @@ uciadd() {
+ 		uci_quiet set firewall.@zone[-1].output="ACCEPT"
+ 		uci_quiet set firewall.@zone[-1].forward="ACCEPT"
+ 		uci_quiet set firewall.@zone[-1].name="${zone}"
++		uci_quiet set firewall.dockerd=forwarding
++		uci_quiet set firewall.@forwarding[-1].src="${zone}"
++		uci_quiet set firewall.@forwarding[-1].dest='wan'
+ 		uci_quiet commit firewall
+ 	fi
+ 
+
+--- a/dockerd/files/etc/config/dockerd
++++ b/dockerd/files/etc/config/dockerd
+@@ -34,5 +34,5 @@ config globals 'globals'
+ # then docker restarted to load in new changes.
+ config firewall 'firewall'
+ 	option device 'docker0'
+-	list blocked_interfaces 'wan'
++#	list blocked_interfaces 'wan'
+ #	option extra_iptables_args '--match conntrack ! --ctstate RELATED,ESTABLISHED' # allow outbound connections
+ 

@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=modeminfo
-PKG_VERSION:=0.4.0
-PKG_RELEASE:=51
+PKG_VERSION:=0.4.2
+PKG_RELEASE:=69
 PKG_MAINTAINER:=Konstantine Shevlakov <shevlakov@132lan.ru>
 
 include $(INCLUDE_DIR)/package.mk
@@ -73,7 +73,7 @@ define Package/$(PKG_NAME)/install
 	$(CP) ./root/usr/share/modeminfo/mccmnc.dat  $(1)/usr/share/modeminfo/
 	$(CP) ./root/usr/share/modeminfo/scripts/*.gcom  $(1)/usr/share/modeminfo/scripts/
 	$(CP) ./root/usr/share/modeminfo/scripts/ch_to_band  $(1)/usr/share/modeminfo/scripts/
-	$(CP) ./root/usr/share/modeminfo/scripts/family.at  $(1)/usr/share/modeminfo/scripts/
+	$(CP) ./root/usr/share/modeminfo/modem.list  $(1)/usr/share/modeminfo/
 	$(CP) ./root/usr/share/modeminfo/scripts/modeminfo  $(1)/usr/share/modeminfo/scripts/
 	$(CP) ./root/usr/share/modeminfo/scripts/GENERIC* $(1)/usr/share/modeminfo/scripts/
 	$(CP) ./root/etc/config/* $(1)/etc/config
@@ -106,6 +106,7 @@ $(eval $(call SerialPlugin,gosun,+kmod-usb-serial-option,Gosuncnwelink GM510,GOS
 $(eval $(call SerialPlugin,tw,+kmod-usb-serial-option,ThinkWill ML7820+,THINKWILL))
 $(eval $(call SerialPlugin,yuge,+kmod-usb-serial-option,Yuge CLM920,YUGE))
 $(eval $(call SerialPlugin,zte,+kmod-usb-serial-option,ZTE MF823/MF823D,ZTE))
-$(eval $(call SerialPlugin,fm350,+kmod-usb-acm,FIBOCOM FM350,FIBOCOMFM350))
+$(eval $(call SerialPlugin,fm350,+kmod-usb-acm,FIBOCOM FM350,FM350))
+$(eval $(call SerialPlugin,thales,+kmod-usb-serial-option,Thales MV31-W T99W175,THALES))
 $(eval $(call BuildPackage,$(PKG_NAME)-qmi))
-#$(eval $(call BuildPackage,$(PKG_NAME)-telegram))
+$(eval $(call BuildPackage,$(PKG_NAME)-telegram))

@@ -34,6 +34,8 @@ local trojan_type_default = uci:get(appname, "@global_subscribe[0]", "trojan_typ
 local vmess_type_default = uci:get(appname, "@global_subscribe[0]", "vmess_type") or "xray"
 local vless_type_default = uci:get(appname, "@global_subscribe[0]", "vless_type") or "xray"
 local hysteria2_type_default = uci:get(appname, "@global_subscribe[0]", "hysteria2_type") or "hysteria2"
+local domain_strategy_default = uci:get(appname, "@global_subscribe[0]", "domain_strategy") or ""
+local domain_strategy_node = ""
 -- 判断是否过滤节点关键字
 local filter_keyword_mode_default = uci:get(appname, "@global_subscribe[0]", "filter_keyword_mode") or "0"
 local filter_keyword_discard_list_default = uci:get(appname, "@global_subscribe[0]", "filter_discard_list") or {}
@@ -227,9 +229,8 @@ do
 	end)
 
 	uci:foreach(appname, "nodes", function(node)
+		local node_id = node[".name"]
 		if node.protocol and node.protocol == '_shunt' then
-			local node_id = node[".name"]
-
 			local rules = {}
 			uci:foreach(appname, "shunt_rules", function(e)
 				if e[".name"] and e.remarks then
@@ -262,7 +263,6 @@ do
 				end
 			end
 		elseif node.protocol and node.protocol == '_balancing' then
-			local node_id = node[".name"]
 			local nodes = {}
 			local new_nodes = {}
 			if node.balancing_node then
@@ -274,7 +274,7 @@ do
 						remarks = node,
 						set = function(o, server)
 							for kk, vv in pairs(CONFIG) do
-								if (vv.remarks == "负载均衡节点列表" .. node_id) then
+								if (vv.remarks == "Xray负载均衡节点[" .. node_id .. "]列表") then
 									table.insert(vv.new_nodes, server)
 								end
 							end
@@ -283,13 +283,12 @@ do
 				end
 			end
 			CONFIG[#CONFIG + 1] = {
-				remarks = "负载均衡节点列表" .. node_id,
+				remarks = "Xray负载均衡节点[" .. node_id .. "]列表",
 				nodes = nodes,
 				new_nodes = new_nodes,
 				set = function(o)
 					for kk, vv in pairs(CONFIG) do
-						if (vv.remarks == "负载均衡节点列表" .. node_id) then
-							--log("刷新负载均衡节点列表")
+						if (vv.remarks == "Xray负载均衡节点[" .. node_id .. "]列表") then
 							uci:foreach(appname, "nodes", function(node2)
 								if node2[".name"] == node[".name"] then
 									local section = uci:section(appname, "nodes", node_id)
@@ -300,6 +299,42 @@ do
 					end
 				end
 			}
+
+			--后备节点
+			local currentNode = uci:get_all(appname, node_id) or nil
+			if currentNode and currentNode.fallback_node then
+				CONFIG[#CONFIG + 1] = {
+					log = true,
+					id = node_id,
+					remarks = "Xray负载均衡节点[" .. node_id .. "]后备节点",
+					currentNode = uci:get_all(appname, currentNode.fallback_node) or nil,
+					set = function(o, server)
+						uci:set(appname, node_id, "fallback_node", server)
+						o.newNodeId = server
+					end,
+					delete = function(o)
+						uci:delete(appname, node_id, "fallback_node")
+					end
+				}
+			end
+		else
+			--落地节点
+			local currentNode = uci:get_all(appname, node_id) or nil
+			if currentNode and currentNode.to_node then
+				CONFIG[#CONFIG + 1] = {
+					log = true,
+					id = node_id,
+					remarks = "节点[" .. node_id .. "]落地节点",
+					currentNode = uci:get_all(appname, currentNode.to_node) or nil,
+					set = function(o, server)
+						uci:set(appname, node_id, "to_node", server)
+						o.newNodeId = server
+					end,
+					delete = function(o)
+						uci:delete(appname, node_id, "to_node")
+					end
+				}
+			end
 		end
 	end)
 
@@ -601,7 +636,9 @@ local function processData(szType, content, add_mode, add_from)
 			local params = {}
 			for _, v in pairs(split(query[2], '&')) do
 				local t = split(v, '=')
-				params[string.lower(t[1])] = UrlDecode(t[2])
+				if #t > 1 then
+					params[string.lower(t[1])] = UrlDecode(t[2])
+				end
 			end
 			-- [2001:4860:4860::8888]:443
 			-- 8.8.8.8:443
@@ -785,7 +822,7 @@ local function processData(szType, content, add_mode, add_from)
 		end
 		result.remarks = UrlDecode(alias)
 		
-		local dat = split(content, '%?')
+		local dat = split(content:gsub("/%?", "?"), '%?')
 		local host_port = dat[1]
 		local params = {}
 		for _, v in pairs(split(dat[2], '&')) do
@@ -845,7 +882,9 @@ local function processData(szType, content, add_mode, add_from)
 		local params = {}
 		for _, v in pairs(split(query[2], '&')) do
 			local t = split(v, '=')
-			params[string.lower(t[1])] = UrlDecode(t[2])
+			if #t > 1 then
+				params[string.lower(t[1])] = UrlDecode(t[2])
+			end
 		end
 		-- [2001:4860:4860::8888]:443
 		-- 8.8.8.8:443
@@ -1087,6 +1126,10 @@ local function update_node(manual)
 			local cfgid = uci:section(appname, "nodes", api.gen_short_uuid())
 			for kkk, vvv in pairs(vv) do
 				uci:set(appname, cfgid, kkk, vvv)
+				-- sing-box 域名解析策略
+				if kkk == "type" and vvv == "sing-box" then
+					uci:set(appname, cfgid, "domain_strategy", domain_strategy_node)
+				end
 			end
 		end
 	end
@@ -1127,6 +1170,13 @@ local function update_node(manual)
 
 		uci:commit(appname)
 	end
+
+	if arg[3] == "cron" then
+		if not nixio.fs.access("/var/lock/" .. appname .. ".lock") then
+			luci.sys.call("touch /tmp/lock/" .. appname .. "_cron.lock")
+		end
+	end
+
 	luci.sys.call("/etc/init.d/" .. appname .. " restart > /dev/null 2>&1 &")
 end
 
@@ -1193,7 +1243,8 @@ local function parse_link(raw, add_mode, add_from)
 							tinsert(node_list, result)
 						end
 					end
-				end, function ()
+				end, function (err)
+					--log(err)
 					log(v, "解析错误，跳过此节点。")
 				end
 			)
@@ -1271,6 +1322,12 @@ local execute = function()
 			local hysteria2_type = value.hysteria2_type or "global"
 			if hysteria2_type ~= "global" then
 				hysteria2_type_default = hysteria2_type
+			end
+			local domain_strategy = value.domain_strategy or "global"
+			if domain_strategy ~= "global" then
+				domain_strategy_node = domain_strategy
+			else
+				domain_strategy_node = domain_strategy_default
 			end
 			local ua = value.user_agent
 			log('正在订阅:【' .. remark .. '】' .. url)

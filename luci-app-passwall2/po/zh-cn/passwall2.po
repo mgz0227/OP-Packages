@@ -343,6 +343,9 @@ msgstr "负载均衡"
 msgid "Balancing Strategy"
 msgstr "负载均衡策略"
 
+msgid "Fallback Node"
+msgstr "后备节点"
+
 msgid "Use Custome Probe URL"
 msgstr "使用自定义探测网址"
 
@@ -637,12 +640,6 @@ msgstr "劫持ICMPv6 (IPv6 PING)"
 msgid "Sniffing"
 msgstr "流量嗅探"
 
-msgid "When using the shunt, must be enabled, otherwise the shunt will invalid."
-msgstr "使用分流时，必须启用，否则分流将无效。"
-
-msgid "Sniffing Route Only"
-msgstr "流量嗅探只供路由使用"
-
 msgid "TCP Proxy Way"
 msgstr "TCP代理方式"
 
@@ -772,23 +769,44 @@ msgstr "手动更新"
 msgid "Enable auto update rules"
 msgstr "开启自动更新规则"
 
-msgid "Week update rules"
-msgstr "更新时间星期"
+msgid "Update Time(every day)"
+msgstr "更新时间(每天)"
 
-msgid "Day update rules"
-msgstr "更新时间小时"
+msgid "Update Interval(hour)"
+msgstr "更新间隔(小时)"
+
+msgid "Update Mode"
+msgstr "更新模式"
+
+msgid "Loop Mode"
+msgstr "循环"
 
 msgid "Every day"
 msgstr "每天"
 
-msgid "day"
-msgstr "日"
+msgid "Every Monday"
+msgstr "每周一"
 
-msgid "Week"
-msgstr "周"
+msgid "Every Tuesday"
+msgstr "每周二"
 
-msgid "oclock"
-msgstr "点"
+msgid "Every Wednesday"
+msgstr "每周三"
+
+msgid "Every Thursday"
+msgstr "每周四"
+
+msgid "Every Friday"
+msgstr "每周五"
+
+msgid "Every Saturday"
+msgstr "每周六"
+
+msgid "Every Sunday"
+msgstr "每周日"
+
+msgid "hour"
+msgstr "小时"
 
 msgid "Location of V2ray/Xray asset"
 msgstr "V2ray/Xray 资源文件目录"
@@ -1003,8 +1021,8 @@ msgstr "完整匹配: 由'full:'开始，余下部分是一个域名。当此域
 msgid "Pre-defined domain list: Begining with 'geosite:' and the rest is a name, such as geosite:google or geosite:cn."
 msgstr "预定义域名列表：由'geosite:'开头，余下部分是一个名称，如geosite:google或者geosite:cn。"
 
-msgid "Domains from file: Such as 'ext:file:tag'. The value must begin with ext: (lowercase), and followed by filename and tag. The file is placed in resource directory, and has the same format of geosite.dat. The tag must exist in the file."
-msgstr "从文件中加载域名: 形如'ext:file:tag'，必须以ext:（小写）开头，后面跟文件名和标签，文件存放在资源目录中，文件格式与geosite.dat相同，标签必须在文件中存在。"
+msgid "Annotation: Begining with #"
+msgstr "注释: 由 # 开头"
 
 msgid "IP: such as '127.0.0.1'."
 msgstr "IP: 形如'127.0.0.1'。"
@@ -1014,9 +1032,6 @@ msgstr "CIDR: 形如'10.0.0.0/8'."
 
 msgid "GeoIP: such as 'geoip:cn'. It begins with geoip: (lower case) and followed by two letter of country code."
 msgstr "GeoIP: 形如'geoip:cn'，必须以geoip:（小写）开头，后面跟双字符国家代码，支持几乎所有可以上网的国家。"
-
-msgid "IPs from file: Such as 'ext:file:tag'. The value must begin with ext: (lowercase), and followed by filename and tag. The file is placed in resource directory, and has the same format of geoip.dat. The tag must exist in the file."
-msgstr "从文件中加载 IP: 形如'ext:file:tag'，必须以ext:（小写）开头，后面跟文件名和标签，文件存放在资源目录中，文件格式与geoip.dat相同标签必须在文件中存在。"
 
 msgid "Clear logs"
 msgstr "清空日志"
@@ -1083,6 +1098,12 @@ msgstr "额外的对称加密密钥"
 
 msgid "Local Address"
 msgstr "本地地址"
+
+msgid "System interface"
+msgstr "系统接口"
+
+msgid "System interface name"
+msgstr "系统接口名称"
 
 msgid "Decimal numbers separated by \",\" or Base64-encoded strings."
 msgstr "用“,”隔开的十进制数字或 Base64 编码字符串。"
@@ -1237,8 +1258,8 @@ msgstr "接口"
 msgid "Bind Local"
 msgstr "本机监听"
 
-msgid "When selected, it can only be accessed locally, It is recommended to turn on when using reverse proxies or be fallback."
-msgstr "当勾选时，只能由本机访问此端口，当想被反向代理或被回落时建议勾选此项。"
+msgid "When selected, it can only be accessed localhost."
+msgstr "当勾选时，只能本机访问。"
 
 msgid "Accept LAN Access"
 msgstr "接受局域网访问"
@@ -1288,8 +1309,8 @@ msgstr "日志"
 msgid "Log"
 msgstr "日志"
 
-msgid "Close Node Log"
-msgstr "关闭节点日志"
+msgid "Enable Node Log"
+msgstr "启用节点日志"
 
 msgid "Log Level"
 msgstr "日志等级"
@@ -1384,11 +1405,11 @@ msgstr "无子连接时的健康检查"
 msgid "Initial Windows Size"
 msgstr "初始窗口大小"
 
-msgid "No Sniffing Lists"
-msgstr "不进行流量嗅探的域名列表"
+msgid "Excluded Domains"
+msgstr "排除域名"
 
-msgid "Hosts added into No Sniffing Lists will not resolve again on server."
-msgstr "加入的域名不会再次在服务器解析。"
+msgid "If the traffic sniffing result is in this list, the destination address will not be overridden."
+msgstr "如果流量嗅探结果在此列表中，则不会覆盖目标地址。"
 
 msgid "Buffer Size"
 msgstr "缓冲区大小"

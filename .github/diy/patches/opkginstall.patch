@@ -82,27 +82,65 @@
  				'data-package': name,
  				'class': 'btn cbi-button-action',
  				'click': handleOpkg,
-@@ -986,6 +997,10 @@ function handleOpkg(ev)
+@@ -1000,7 +1011,8 @@ function handleOpkg(ev)
  
- 		var argv = [ cmd, '--force-removal-of-dependent-packages' ];
+ 		fs.exec_direct('/usr/libexec/opkg-call', argv, 'json').then(function(res) {
+ 			dlg.removeChild(dlg.lastChild);
+-
++			var showModalFlag = (cmd !== 'update' && pkg) || res.stderr;
++			if (showModalFlag) {
+ 			if (res.stdout)
+ 				dlg.appendChild(E('pre', [ res.stdout ]));
  
-+		argv.push('--force-checksum');
-+		
-+		argv.push('--force-depends');
+@@ -1028,6 +1040,10 @@ function handleOpkg(ev)
+ 							resolveFn(res);
+ 					}, this, res)
+ 				}, _('Dismiss'))));
++			} else {
++				ui.hideModal();
++				updateLists();
++			}
+ 		}).catch(function(err) {
+ 			ui.addNotification(null, E('p', _('Unable to execute <em>opkg %s</em> command: %s').format(cmd, err)));
+ 			ui.hideModal();
+@@ -1122,6 +1138,36 @@ return view.extend({
+ 	},
+ 
+ 	render: function(listData) {
++		var checkUpdateNeeded = function() {
++            return Promise.all([
++                L.resolveDefault(fs.stat('/tmp/opkg-lists'), null),
++                L.resolveDefault(fs.read('/tmp/resolv.conf.d/resolv.conf.auto'), '')
++            ]).then(function(results) {
++                var stat = results[0];
++                var resolvContent = results[1];
 +
- 		if (rem && rem.checked)
- 			argv.push('--autoremove');
++                // 检查 /tmp/opkg-lists 的更新时间
++                var needTimeUpdate = false;
++                if (!stat) {
++                    needTimeUpdate = true; // 如果文件夹不存在，需要更新
++                } else {
++                    var currentTime = Math.floor(Date.now() / 1000);
++                    var lastUpdateTime = stat.mtime;
++                    var timeDifference = currentTime - lastUpdateTime;
++                    needTimeUpdate = timeDifference > 3600; // 如果超过1小时，需要更新
++                }
++
++                // 检查 resolv.conf.auto 文件内容
++                var hasResolvContent = resolvContent && resolvContent.trim().length > 0;
++
++                // 只有当需要时间更新且 resolv.conf.auto 不为空时，才返回 true
++                return needTimeUpdate && hasResolvContent;
++            }).catch(function(error) {
++                console.error('Error checking update status:', error);
++                return false; // 如果出错，不执行更新
++            });
++        };
++
+ 		var query = decodeURIComponent(L.toArray(location.search.match(/\bquery=([^=]+)\b/))[1] || '');
  
-@@ -1088,7 +1103,7 @@ function updateLists(data)
- 
- 	return (data ? Promise.resolve(data) : downloadLists()).then(function(data) {
- 		var pg = document.querySelector('.cbi-progressbar'),
--			mount = L.toArray(data[0].filter(function(m) { return m.mount == '/' || m.mount == '/overlay' }))
-+		    mount = L.toArray(data[0].filter(function(m) { return m.mount == '/' || m.mount == '/overlay' }))
- 				.sort(function(a, b) { return a.mount > b.mount })[0] || { size: 0, free: 0 };
- 
- 		pg.firstElementChild.style.width = Math.floor(mount.size ? (100 / mount.size) * (mount.size - mount.free) : 100) + '%';
-@@ -1138,7 +1153,7 @@ return view.extend({
+ 		var view = E([], [
+@@ -1138,7 +1184,7 @@ return view.extend({
  				E('div', {}, [
  					E('label', {}, _('Filter') + ':'),
  					E('span', { 'class': 'control-group' }, [
@@ -111,7 +149,7 @@
  						E('button', { 'class': 'btn cbi-button', 'click': handleReset }, [ _('Clear') ])
  					])
  				]),
-@@ -1155,6 +1170,7 @@ return view.extend({
+@@ -1155,6 +1201,7 @@ return view.extend({
  					E('label', {}, _('Actions') + ':'), ' ',
  					E('span', { 'class': 'control-group' }, [
  						E('button', { 'class': 'btn cbi-button-positive', 'data-command': 'update', 'click': handleOpkg, 'disabled': isReadonlyView }, [ _('Update lists…') ]), ' ',
@@ -119,10 +157,29 @@
  						E('button', { 'class': 'btn cbi-button-action', 'click': handleUpload, 'disabled': isReadonlyView }, [ _('Upload Package…') ]), ' ',
  						E('button', { 'class': 'btn cbi-button-neutral', 'click': handleConfig }, [ _('Configure opkg…') ])
  					])
+@@ -1240,7 +1287,17 @@ return view.extend({
+ 		]);
+ 
+ 		requestAnimationFrame(function() {
+-			updateLists(listData)
++			updateLists(listData);
++            checkUpdateNeeded().then(function(needUpdate) {
++                if (needUpdate) {
++					setTimeout(function() {
++                    var updateButton = document.querySelector('button[data-command="update"]');
++                    if (updateButton) {
++                        updateButton.click();
++                    }
++					}, 10)
++                }
++            });
+ 		});
+ 
+ 		return view;
 
 --- a/luci-app-opkg/root/usr/libexec/opkg-call
 +++ b/luci-app-opkg/root/usr/libexec/opkg-call
-@@ -13,13 +13,13 @@ case "$action" in
+@@ -13,7 +13,7 @@ case "$action" in
  		lists_dir=$(sed -rne 's#^lists_dir \S+ (\S+)#\1#p' /etc/opkg.conf /etc/opkg/*.conf 2>/dev/null | tail -n 1)
  		find "${lists_dir:-/usr/lib/opkg/lists}" -type f '!' -name '*.sig' | xargs -r gzip -cd
  	;;
@@ -131,13 +188,6 @@
  		(
  			opkg="opkg"
  
- 			while [ -n "$1" ]; do
- 				case "$1" in
--					--autoremove|--force-overwrite|--force-removal-of-dependent-packages)
-+					--autoremove|--force-overwrite|--force-removal-of-dependent-packages|--force-checksum|--force-depends)
- 						opkg="$opkg $1"
- 						shift
- 					;;
 @@ -33,10 +33,45 @@ case "$action" in
  			done
  
@@ -199,7 +249,15 @@
 
 --- a/luci-app-opkg/root/usr/share/rpcd/acl.d/luci-app-opkg.json
 +++ b/luci-app-opkg/root/usr/share/rpcd/acl.d/luci-app-opkg.json
-@@ -20,6 +20,8 @@
+@@ -9,6 +9,7 @@
+ 				"/usr/libexec/opkg-call list-installed": [ "exec" ],
+ 				"/usr/libexec/opkg-call list-available": [ "exec" ],
+ 				"/etc/opkg.conf": [ "read" ],
++				"/tmp/resolv.conf.d/resolv.conf.auto": [ "read" ],
+ 				"/etc/opkg/*.conf": [ "read" ]
+ 			},
+ 			"ubus": {
+@@ -20,6 +21,8 @@
  				"/usr/libexec/opkg-call install *": [ "exec" ],
  				"/usr/libexec/opkg-call remove *": [ "exec" ],
  				"/usr/libexec/opkg-call update *": [ "exec" ],

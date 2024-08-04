@@ -7,8 +7,8 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=r8125
-PKG_VERSION:=9.012.04-1
-PKG_RELEASE:=33
+PKG_VERSION:=9.013.02-2
+PKG_RELEASE:=39
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/awesometic/realtek-r8125-dkms/tar.gz/$(PKG_VERSION)?
@@ -18,12 +18,13 @@ PKG_BUILD_DIR:=$(KERNEL_BUILD_DIR)/realtek-$(PKG_NAME)-dkms-$(PKG_VERSION)
 PKG_LICENSE:=GPL-2.0-only
 PKG_LICENSE_FILE:=LICENSE
 
+PKG_BUILD_PARALLEL:=1
+
 include $(INCLUDE_DIR)/package.mk
 
 define KernelPackage/r8125
   TITLE:=Driver for Realtek r8125 chipsets
   SUBMENU:=Network Devices
-  VERSION:=$(LINUX_VERSION)+$(PKG_VERSION)-$(BOARD)-$(PKG_RELEASE)
   DEPENDS:=@PCI_SUPPORT
   FILES:= $(PKG_BUILD_DIR)/src/r8125.ko
   AUTOLOAD:=$(call AutoProbe,r8125)
@@ -34,7 +35,11 @@ define KernelPackage/r8125/description
 endef
 
 define Build/Compile
-	+$(KERNEL_MAKE) M=$(PKG_BUILD_DIR)/src modules
+	+$(KERNEL_MAKE) $(PKG_JOBS) \
+		M=$(PKG_BUILD_DIR)/src \
+		CONFIG_ASPM=n \
+		ENABLE_RSS_SUPPORT=y \
+		modules
 endef
 
 $(eval $(call KernelPackage,r8125))

@@ -313,9 +313,9 @@ function display(pattern)
 		currentDisplayRows.push([
 			name,
 			ver,
-			[ pkg.size || 0,
-			   pkg.size ? '%1024mB'.format(pkg.size)
-			         : (altsize ? '~%1024mB'.format(altsize) : '-') ],
+			[ pkg.size || altsize || 0,
+			  pkg.size ? '%1024mB'.format(pkg.size)
+			           : (altsize ? '~%1024mB'.format(altsize) : '-') ],
 			desc,
 			btn
 		]);
@@ -997,10 +997,6 @@ function handleOpkg(ev)
 
 		var argv = [ cmd, '--force-removal-of-dependent-packages' ];
 
-		argv.push('--force-checksum');
-		
-		argv.push('--force-depends');
-
 		if (rem && rem.checked)
 			argv.push('--autoremove');
 
@@ -1015,7 +1011,8 @@ function handleOpkg(ev)
 
 		fs.exec_direct('/usr/libexec/opkg-call', argv, 'json').then(function(res) {
 			dlg.removeChild(dlg.lastChild);
-
+			var showModalFlag = (cmd !== 'update' && pkg) || res.stderr;
+			if (showModalFlag) {
 			if (res.stdout)
 				dlg.appendChild(E('pre', [ res.stdout ]));
 
@@ -1043,6 +1040,10 @@ function handleOpkg(ev)
 							resolveFn(res);
 					}, this, res)
 				}, _('Dismiss'))));
+			} else {
+				ui.hideModal();
+				updateLists();
+			}
 		}).catch(function(err) {
 			ui.addNotification(null, E('p', _('Unable to execute <em>opkg %s</em> command: %s').format(cmd, err)));
 			ui.hideModal();
@@ -1103,7 +1104,7 @@ function updateLists(data)
 
 	return (data ? Promise.resolve(data) : downloadLists()).then(function(data) {
 		var pg = document.querySelector('.cbi-progressbar'),
-		    mount = L.toArray(data[0].filter(function(m) { return m.mount == '/' || m.mount == '/overlay' }))
+			mount = L.toArray(data[0].filter(function(m) { return m.mount == '/' || m.mount == '/overlay' }))
 				.sort(function(a, b) { return a.mount > b.mount })[0] || { size: 0, free: 0 };
 
 		pg.firstElementChild.style.width = Math.floor(mount.size ? (100 / mount.size) * (mount.size - mount.free) : 100) + '%';
@@ -1137,6 +1138,36 @@ return view.extend({
 	},
 
 	render: function(listData) {
+		var checkUpdateNeeded = function() {
+            return Promise.all([
+                L.resolveDefault(fs.stat('/tmp/opkg-lists'), null),
+                L.resolveDefault(fs.read('/tmp/resolv.conf.d/resolv.conf.auto'), '')
+            ]).then(function(results) {
+                var stat = results[0];
+                var resolvContent = results[1];
+
+                // 检查 /tmp/opkg-lists 的更新时间
+                var needTimeUpdate = false;
+                if (!stat) {
+                    needTimeUpdate = true; // 如果文件夹不存在，需要更新
+                } else {
+                    var currentTime = Math.floor(Date.now() / 1000);
+                    var lastUpdateTime = stat.mtime;
+                    var timeDifference = currentTime - lastUpdateTime;
+                    needTimeUpdate = timeDifference > 3600; // 如果超过1小时，需要更新
+                }
+
+                // 检查 resolv.conf.auto 文件内容
+                var hasResolvContent = resolvContent && resolvContent.trim().length > 0;
+
+                // 只有当需要时间更新且 resolv.conf.auto 不为空时，才返回 true
+                return needTimeUpdate && hasResolvContent;
+            }).catch(function(error) {
+                console.error('Error checking update status:', error);
+                return false; // 如果出错，不执行更新
+            });
+        };
+
 		var query = decodeURIComponent(L.toArray(location.search.match(/\bquery=([^=]+)\b/))[1] || '');
 
 		var view = E([], [
@@ -1256,7 +1287,17 @@ return view.extend({
 		]);
 
 		requestAnimationFrame(function() {
-			updateLists(listData)
+			updateLists(listData);
+            checkUpdateNeeded().then(function(needUpdate) {
+                if (needUpdate) {
+					setTimeout(function() {
+                    var updateButton = document.querySelector('button[data-command="update"]');
+                    if (updateButton) {
+                        updateButton.click();
+                    }
+					}, 10)
+                }
+            });
 		});
 
 		return view;

@@ -710,10 +710,12 @@ add_firewall_rule() {
 		nft "flush chain inet fw4 PSW2_ICMP_REDIRECT"
 		nft "add rule inet fw4 PSW2_ICMP_REDIRECT ip daddr @$NFTSET_LANLIST counter return"
 		nft "add rule inet fw4 PSW2_ICMP_REDIRECT ip daddr @$NFTSET_VPSLIST counter return"
+		[ "${WRITE_IPSET_DIRECT}" = "1" ] && nft "add rule inet fw4 PSW2_ICMP_REDIRECT ip daddr @$nftset_global_whitelist counter return"
 
 		[ "$accept_icmpv6" = "1" ] && {
 			nft "add rule inet fw4 PSW2_ICMP_REDIRECT ip6 daddr @$NFTSET_LANLIST6 counter return"
 			nft "add rule inet fw4 PSW2_ICMP_REDIRECT ip6 daddr @$NFTSET_VPSLIST6 counter return"
+			[ "${WRITE_IPSET_DIRECT}" = "1" ] && nft "add rule inet fw4 PSW2_ICMP_REDIRECT ip6 daddr @$nftset_global_whitelist6 counter return"
 		}
 
 		nft "add rule inet fw4 dstnat meta l4proto {icmp,icmpv6} counter jump PSW2_ICMP_REDIRECT"
@@ -722,7 +724,8 @@ add_firewall_rule() {
 
 	WAN_IP=$(get_wan_ip)
 	if [ -n "${WAN_IP}" ]; then
-		[ -n "${is_tproxy}" ] && nft "add rule inet fw4 PSW2_MANGLE ip daddr ${WAN_IP} counter return comment \"WAN_IP_RETURN\"" || nft "add rule inet fw4 PSW2_NAT ip daddr ${WAN_IP} counter return comment \"WAN_IP_RETURN\""
+		nft "add rule inet fw4 PSW2_MANGLE ip daddr ${WAN_IP} counter return comment \"WAN_IP_RETURN\""
+		[ -z "${is_tproxy}" ] && nft "add rule inet fw4 PSW2_NAT ip daddr ${WAN_IP} counter return comment \"WAN_IP_RETURN\""
 	fi
 	unset WAN_IP
 
@@ -818,7 +821,7 @@ add_firewall_rule() {
 
 			[ "$accept_icmpv6" = "1" ] && {
 				nft "add rule inet fw4 PSW2_ICMP_REDIRECT oif lo meta l4proto icmpv6 ip6 daddr $FAKE_IP_6 counter redirect"
-				nft "add rule inet fw4 PSW2_ICMP_REDIRECT oif lo meta l4proto counter redirect"
+				nft "add rule inet fw4 PSW2_ICMP_REDIRECT oif lo meta l4proto icmpv6 counter redirect"
 				nft "add rule inet fw4 PSW2_ICMP_REDIRECT oif lo meta l4proto icmpv6 counter return"
 			}
 
@@ -918,14 +921,19 @@ del_firewall_rule() {
 	destroy_nftset $NFTSET_LANLIST6
 	destroy_nftset $NFTSET_VPSLIST6
 
-	$DIR/app.sh echolog "删除相关防火墙规则完成。"
+	$DIR/app.sh echolog "删除nftables防火墙规则完成。"
 }
 
 flush_nftset() {
-	del_firewall_rule
+	$DIR/app.sh echolog "清空 NFTSET。"
 	for _name in $(nft -a list sets | grep -E "passwall2" | awk -F 'set ' '{print $2}' | awk '{print $1}'); do
 		destroy_nftset ${_name}
 	done
+}
+
+flush_nftset_reload() {
+	del_firewall_rule
+	flush_nftset
 	rm -rf /tmp/singbox_passwall2_*
 	/etc/init.d/passwall2 reload
 }
@@ -1030,6 +1038,9 @@ insert_rule_after)
 	;;
 flush_nftset)
 	flush_nftset
+	;;
+flush_nftset_reload)
+	flush_nftset_reload
 	;;
 get_wan_ip)
 	get_wan_ip

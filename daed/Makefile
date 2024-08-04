@@ -5,12 +5,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=daed
-PKG_RELEASE:=46
+PKG_VERSION=0.6.0
+PKG_RELEASE:=64
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/daeuniverse/daed.git
-PKG_SOURCE_DATE:=2023-11-03
-PKG_SOURCE_VERSION:=7cfcd3821ffee542c3442b7d00db373cccf50e48
+PKG_SOURCE_VERSION:=991f627644642c6bdbcbef548474d27a9b679627
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=AGPL-3.0-only MIT
@@ -28,7 +28,7 @@ GO_PKG_LDFLAGS:= \
 GO_PKG_LDFLAGS_X= \
 	$(GO_PKG)/db.AppName=$(PKG_NAME) \
 	$(GO_PKG)/db.AppVersion=$(PKG_VERSION)
-GO_PKG_TAGS:=embedallowed
+GO_PKG_TAGS:=embedallowed,trace
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/bpf.mk
@@ -48,7 +48,8 @@ define Package/daed
   TITLE:=A Modern Dashboard For dae
   # You need enable KERNEL_DEBUG_INFO_BTF and KERNEL_BPF_EVENTS
   DEPENDS:=$(GO_ARCH_DEPENDS) $(BPF_DEPENDS) \
-    +ca-bundle +kmod-sched-core +kmod-sched-bpf +kmod-xdp-sockets-diag
+    +ca-bundle +kmod-sched-core +kmod-sched-bpf +kmod-xdp-sockets-diag \
+    +kmod-veth
 endef
 
 define Package/daed-geoip
@@ -77,7 +78,8 @@ endef
 
 WEB_FILE:=$(PKG_NAME)-web-$(PKG_VERSION).zip
 define Download/daed-web
-	URL:=@IMMORTALWRT
+	URL:=https://github.com/daeuniverse/daed/releases/download/v$(PKG_VERSION)
+	URL_FILE:=web.zip
 	FILE:=$(WEB_FILE)
 	HASH:=skip
 endef
@@ -86,14 +88,14 @@ define Build/Prepare
 	$(call Build/Prepare/Default)
 
 	( \
-		mkdir -p $(PKG_BUILD_DIR)/webrender/web ; \
-		unzip -q -d $(PKG_BUILD_DIR)/webrender/web $(DL_DIR)/$(WEB_FILE) ; \
+		mkdir -p $(PKG_BUILD_DIR)/webrender ; \
+		unzip -q -d $(PKG_BUILD_DIR)/webrender/ $(DL_DIR)/$(WEB_FILE) ; \
 		find $(PKG_BUILD_DIR)/webrender/web -type f -size +4k ! -name "*.gz" ! -name "*.woff"  ! -name "*.woff2" -exec sh -c '\
 			gzip -9 -k "{}"; \
-			if [ "$$$$(stat -c %s {})" -lt "$$$$(stat -c %s {}.gz)" ]; then \
-				rm {}.gz; \
+			if [ "$$$$(stat -c %s "{}")" -lt "$$$$(stat -c %s "{}.gz")" ]; then \
+				rm "{}.gz"; \
 			else \
-				rm {}; \
+				rm "{}"; \
 			fi' \
 		";" ; \
 	)
@@ -112,19 +114,20 @@ endif
 define Build/Compile
 	( \
 		pushd $(PKG_BUILD_DIR) ; \
+		export \
 		$(GO_GENERAL_BUILD_CONFIG_VARS) \
 		$(GO_PKG_BUILD_CONFIG_VARS) \
-		$(GO_PKG_BUILD_VARS) \
+		$(GO_PKG_BUILD_VARS); \
 		go generate ./... ; \
 		cd dae-core ; \
-		$(GO_GENERAL_BUILD_CONFIG_VARS) \
-		$(GO_PKG_BUILD_CONFIG_VARS) \
-		$(GO_PKG_BUILD_VARS) \
+		export \
 		BPF_CLANG="$(CLANG)" \
 		BPF_STRIP_FLAG="-strip=$(LLVM_STRIP)" \
 		BPF_CFLAGS="$(DAE_CFLAGS)" \
 		BPF_TARGET="bpfel,bpfeb" \
+		BPF_TRACE_TARGET="$(GO_ARCH)" ; \
 		go generate control/control.go ; \
+		go generate trace/trace.go ; \
 		popd ; \
 		$(call GoPackage/Build/Compile) ; \
 	)

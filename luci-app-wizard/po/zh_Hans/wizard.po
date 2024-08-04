@@ -55,3 +55,18 @@ msgstr "持久化登录"
 msgid "Keep the background login state to avoid the need to log in again every time the browser is closed"
 msgstr "保持后台登录状态,避免每次关闭浏览器后都需要重新登录"
 
+msgid "Home"
+msgstr "首页"
+
+msgid "Shortcuts"
+msgstr "快捷访问"
+
+msgid "Shortcut"
+msgstr "快捷方式"
+
+msgid "Target URL"
+msgstr "目标URL"
+
+msgid "Please enter a valid URL starting with http:// or https://"
+msgstr "URL需以http:// 或 https://开头"
+

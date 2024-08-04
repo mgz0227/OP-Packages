@@ -11,7 +11,6 @@ local port_validate = function(self, value, t)
 end
 
 m = Map(appname)
-api.set_apply_on_parse(m)
 
 -- [[ Delay Settings ]]--
 s = m:section(TypedSection, "global_delay", translate("Delay Settings"))
@@ -158,7 +157,7 @@ if has_xray then
 
 	o = s_xray:option(Flag, "fragment", translate("Fragment"), translate("TCP fragments, which can deceive the censorship system in some cases, such as bypassing SNI blacklists."))
 	o.default = 0
-	
+
 	o = s_xray:option(ListValue, "fragment_packets", translate("Fragment Packets"), translate("\"1-3\" is for segmentation at TCP layer, applying to the beginning 1 to 3 data writes by the client. \"tlshello\" is for TLS client hello packet fragmentation."))
 	o.default = "tlshello"
 	o:value("tlshello", "tlshello")
@@ -166,41 +165,28 @@ if has_xray then
 	o:value("1-3", "1-3")
 	o:value("1-5", "1-5")
 	o:depends("fragment", true)
-	
+
 	o = s_xray:option(Value, "fragment_length", translate("Fragment Length"), translate("Fragmented packet length (byte)"))
 	o.default = "100-200"
 	o:depends("fragment", true)
-	
+
 	o = s_xray:option(Value, "fragment_interval", translate("Fragment Interval"), translate("Fragmentation interval (ms)"))
 	o.default = "10-20"
 	o:depends("fragment", true)
-	
-	o = s_xray:option(Flag, "sniffing", translate("Sniffing"), translate("When using the shunt, must be enabled, otherwise the shunt will invalid."))
-	o.default = 1
-	o.rmempty = false
 
-	if has_xray then
-		o = s_xray:option(Flag, "route_only", translate("Sniffing Route Only"))
-		o.default = 0
-		o:depends("sniffing", true)
+	o = s_xray:option(Flag, "sniffing_override_dest", translate("Override the connection destination address"), translate("Override the connection destination address with the sniffed domain."))
+	o.default = 0
 
-		local domains_excluded = string.format("/usr/share/%s/rules/domains_excluded", appname)
-		o = s_xray:option(TextValue, "no_sniffing_hosts", translate("No Sniffing Lists"), translate("Hosts added into No Sniffing Lists will not resolve again on server."))
-		o.rows = 15
-		o.wrap = "off"
-		o.cfgvalue = function(self, section) return fs.readfile(domains_excluded) or "" end
-		o.write = function(self, section, value) fs.writefile(domains_excluded, value:gsub("\r\n", "\n")) end
-		o.remove = function(self, section)
-			local route_only_value = s_xray.fields["route_only"] and s_xray.fields["route_only"]:formvalue(section) or nil
-			if not route_only_value or route_only_value == "0" then
-				fs.writefile(domains_excluded, "")
-			end
-		end
-		o:depends({sniffing = true, route_only = false})
+	local domains_excluded = string.format("/usr/share/%s/rules/domains_excluded", appname)
+	o = s_xray:option(TextValue, "excluded_domains", translate("Excluded Domains"), translate("If the traffic sniffing result is in this list, the destination address will not be overridden."))
+	o.rows = 15
+	o.wrap = "off"
+	o.cfgvalue = function(self, section) return fs.readfile(domains_excluded) or "" end
+	o.write = function(self, section, value) fs.writefile(domains_excluded, value:gsub("\r\n", "\n")) end
+	o:depends({sniffing_override_dest = true})
 
-		o = s_xray:option(Value, "buffer_size", translate("Buffer Size"), translate("Buffer size for every connection (kB)"))
-		o.datatype = "uinteger"
-	end
+	o = s_xray:option(Value, "buffer_size", translate("Buffer Size"), translate("Buffer size for every connection (kB)"))
+	o.datatype = "uinteger"
 end
 
 if has_singbox then
@@ -217,8 +203,10 @@ if has_singbox then
 	o.rmempty = false
 
 	o = s:option(Value, "geoip_url", translate("Custom geoip URL"))
-	o.default = "https://github.com/SagerNet/sing-geoip/releases/latest/download/geoip.db"
-	o:value("https://github.com/SagerNet/sing-geoip/releases/latest/download/geoip.db")
+	o.default = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.db"
+	o:value("https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.db")
+	o:value("https://github.com/1715173329/sing-geoip/releases/latest/download/geoip.db")
+	o:value("https://github.com/lyc8503/sing-box-rules/releases/latest/download/geoip.db")
 	o.rmempty = false
 
 	o = s:option(Value, "geosite_path", translate("Custom geosite Path"))
@@ -226,8 +214,10 @@ if has_singbox then
 	o.rmempty = false
 
 	o = s:option(Value, "geosite_url", translate("Custom geosite URL"))
-	o.default = "https://github.com/SagerNet/sing-geosite/releases/latest/download/geosite.db"
-	o:value("https://github.com/SagerNet/sing-geosite/releases/latest/download/geosite.db")
+	o.default = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.db"
+	o:value("https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.db")
+	o:value("https://github.com/1715173329/sing-geosite/releases/latest/download/geosite.db")
+	o:value("https://github.com/lyc8503/sing-box-rules/releases/latest/download/geosite.db")
 	o.rmempty = false
 
 	o = s:option(Button, "_remove_resource", translate("Remove resource files"))

@@ -6,7 +6,7 @@
 include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=Cloudreve for LuCI
-LUCI_DEPENDS:=@(aarch64||arm||i386||i686||x86_64) +cloudreve
+LUCI_DEPENDS:=+cloudreve
 LUCI_PKGARCH:=all
 
 PKG_NAME:=luci-app-cloudreve

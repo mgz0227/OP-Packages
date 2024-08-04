@@ -1,0 +1,26 @@
+--- a/wifi-scripts/files/sbin/wifi
++++ b/wifi-scripts/files/sbin/wifi
+@@ -177,6 +177,12 @@ wifi_detect_notice() {
+ wifi_config() {
+ 	[ -e /tmp/.config_pending ] && return
+ 	ucode /usr/share/hostap/wifi-detect.uc
++	c=0
++	while ! cat /etc/board.json | grep -q "wlan"; do
++		[ $c -eq 3 ] && break || let c++
++		sleep 1s
++		ucode /usr/share/hostap/wifi-detect.uc
++	done
+ 	[ ! -f /etc/config/wireless ] && touch /etc/config/wireless
+ 	ucode /lib/wifi/mac80211.uc | uci -q batch
+ 
+
+--- a/wifi-scripts/files/lib/wifi/mac80211.uc
++++ b/wifi-scripts/files/lib/wifi/mac80211.uc
+@@ -77,7 +77,6 @@ set ${s}.${id}
+ set ${s}.band='${lc(band_name)}'
+ set ${s}.channel='${channel}'
+ set ${s}.htmode='${htmode}'
+-set ${s}.disabled='1'
+ 
+ set ${si}=wifi-iface
+ set ${si}.device='${name}'

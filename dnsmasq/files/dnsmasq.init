@@ -414,21 +414,6 @@ dhcp_this_host_add() {
 	local mode="$3"
 	local routerstub routername ifdashname
 	local lanaddr lanaddr6 lanaddrs6 ulaprefix
-	
-	network_get_ipaddr lanaddr "lan"
-	if [ -n $lanaddr ]; then
- 	lanaddr="$(echo "$lanaddr" | sed -e "s/\/24//")"
-	echo "
-	$lanaddr op" >/tmp/hosts/shortcuts
-	if [ -f /etc/nginx/conf.d/shortcuts.conf ]; then
-	if [[ "$lanaddr" != "`grep "set \$ip" /etc/nginx/conf.d/shortcuts.conf | head -n1 | cut -f 3 -d " " | sed -e 's/;//'`" ]]; then
-		sed -i "/set \$ip/c\set \$ip $lanaddr;" /etc/nginx/conf.d/shortcuts.conf
-		/etc/init.d/nginx reload
-	fi
-	cat /etc/nginx/conf.d/shortcuts.conf | tr "\n" "\r" |grep -oE 'server_name [a-z.-]*;[^;]*set \$ip [0-9.]*;' | sed -e 's/server_name \(.*\);.*location.*set $ip \(.*\);/\2 \1/' >>/tmp/hosts/shortcuts
-	cat /etc/nginx/conf.d/shortcuts.conf | tr "\n" "\r" |grep -oE 'server_name [a-z.-]*;[^;]*return 301 \$scheme://op' | sed -e 's/server_name \(.*\?\);.*/\1/' | sed -e "s/^/$lanaddr /">>/tmp/hosts/shortcuts
-	fi
-	fi
 
 	if [ "$mode" -gt 0 ] ; then
 		ifdashname="${ifname//./-}"
@@ -1235,10 +1220,16 @@ dnsmasq_start()
 	config_get_bool dns_redirect "$cfg" dns_redirect 0
 	config_get dns_port "$cfg" port 53
 	if [ "$dns_redirect" = 1 ]; then
+	if [ -n "$(command -v nft)" ]; then
+		nft add table inet dnsmasq
+		nft add chain inet dnsmasq prerouting "{ type nat hook prerouting priority -105; policy accept; }"
+		nft add rule inet dnsmasq prerouting "meta nfproto { ipv4, ipv6 } udp dport 53 counter redirect to :$dns_port comment \"DNSMASQ HIJACK\""
+	else
 		iptables -t nat -A PREROUTING -m comment --comment "DNSMASQ" -p udp --dport 53 -j REDIRECT --to-ports $dns_port
 		iptables -t nat -A PREROUTING -m comment --comment "DNSMASQ" -p tcp --dport 53 -j REDIRECT --to-ports $dns_port
 		[ -n "$(command -v ip6tables)" ] && ip6tables -t nat -A PREROUTING -m comment --comment "DNSMASQ" -p udp --dport 53 -j REDIRECT --to-ports $dns_port
 		[ -n "$(command -v ip6tables)" ] && ip6tables -t nat -A PREROUTING -m comment --comment "DNSMASQ" -p tcp --dport 53 -j REDIRECT --to-ports $dns_port
+	fi
 	fi
 }
 
@@ -1264,6 +1255,12 @@ iptables_clear()
 	iptables -t nat -D PREROUTING -m comment --comment "DNSMASQ" -p tcp --dport 53 -j REDIRECT --to-ports $dns_port 2>"/dev/null"
 	[ -n "$(command -v ip6tables)" ] && ip6tables -t nat -D PREROUTING -m comment --comment "DNSMASQ" -p udp --dport 53 -j REDIRECT --to-ports $dns_port 2>"/dev/null"
 	[ -n "$(command -v ip6tables)" ] && ip6tables -t nat -D PREROUTING -m comment --comment "DNSMASQ" -p tcp --dport 53 -j REDIRECT --to-ports $dns_port 2>"/dev/null"
+}
+
+nftables_clear()
+{
+	! nft --check list table inet dnsmasq > "/dev/null" 2>&1 || \
+		nft delete table inet dnsmasq
 }
 
 add_interface_trigger()
@@ -1336,7 +1333,7 @@ start_service() {
 }
 
 reload_service() {
-	iptables_clear
+	[ -n "$(command -v nft)" ] && nftables_clear || iptables_clear
 	rc_procd start_service "$@"
 	procd_send_signal dnsmasq "$@"
 }
@@ -1363,5 +1360,5 @@ stop_service() {
 	else
 		config_foreach dnsmasq_stop dnsmasq
 	fi
-	iptables_clear
+	[ -n "$(command -v nft)" ] && nftables_clear || iptables_clear
 }

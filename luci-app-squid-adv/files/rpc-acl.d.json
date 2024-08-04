@@ -1,0 +1,20 @@
+{
+	"luci-app-squid-adv": {
+		"description": "Grant permissions for the Squid LuCI app",
+		"read": {
+			"ubus": {
+				"luci.squid-adv": [
+					"reconfigure",
+				]
+			},
+			"uci": [
+				"squid",
+			],
+		},
+		"write": {
+			"uci": [
+				"squid",
+			]
+		}
+	}
+}

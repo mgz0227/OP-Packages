@@ -52,7 +52,7 @@ local doh_validate = function(self, value, t)
 		for i = 1, #val do
 			local v = val[i]
 			if v then
-				if not datatypes.ipmask4(v) then
+				if not datatypes.ipmask4(v) and not datatypes.ipmask6(v) then
 					flag = 1
 				end
 			end
@@ -238,6 +238,10 @@ node_socks_port = s:taboption("Main", Value, "node_socks_port", translate("Node"
 node_socks_port.default = 1070
 node_socks_port.datatype = "port"
 
+node_socks_bind_local = s:taboption("Main", Flag, "node_socks_bind_local", translate("Node") .. " Socks " .. translate("Bind Local"), translate("When selected, it can only be accessed localhost."))
+node_socks_bind_local.default = "1"
+node_socks_bind_local:depends({ node = "nil", ["!reverse"] = true })
+
 s:tab("DNS", translate("DNS"))
 
 o = s:taboption("DNS", ListValue, "remote_dns_protocol", translate("Remote DNS Protocol"))
@@ -254,6 +258,7 @@ o:value("1.1.1.2", "1.1.1.2 (CloudFlare-Security)")
 o:value("8.8.4.4", "8.8.4.4 (Google)")
 o:value("8.8.8.8", "8.8.8.8 (Google)")
 o:value("9.9.9.9", "9.9.9.9 (Quad9-Recommended)")
+o:value("149.112.112.112", "149.112.112.112 (Quad9-Recommended)")
 o:value("208.67.220.220", "208.67.220.220 (OpenDNS)")
 o:value("208.67.222.222", "208.67.222.222 (OpenDNS)")
 o:depends("remote_dns_protocol", "tcp")
@@ -266,7 +271,8 @@ o:value("https://1.1.1.1/dns-query", "CloudFlare")
 o:value("https://1.1.1.2/dns-query", "CloudFlare-Security")
 o:value("https://8.8.4.4/dns-query", "Google 8844")
 o:value("https://8.8.8.8/dns-query", "Google 8888")
-o:value("https://9.9.9.9/dns-query", "Quad9-Recommended")
+o:value("https://9.9.9.9/dns-query", "Quad9-Recommended 9.9.9.9")
+o:value("https://149.112.112.112/dns-query", "Quad9-Recommended 149.112.112.112")
 o:value("https://208.67.222.222/dns-query", "OpenDNS")
 o:value("https://dns.adguard.com/dns-query,176.103.130.130", "AdGuard")
 o:value("https://doh.libredns.gr/dns-query,116.202.176.26", "LibreDNS")
@@ -316,7 +322,7 @@ o.rmempty = false
 o = s:taboption("DNS", Button, "clear_ipset", translate("Clear IPSet"), translate("Try this feature if the rule modification does not take effect."))
 o.inputstyle = "remove"
 function o.write(e, e)
-	luci.sys.call("[ -n \"$(nft list sets 2>/dev/null | grep \"passwall2_\")\" ] && sh /usr/share/" .. appname .. "/nftables.sh flush_nftset || sh /usr/share/" .. appname .. "/iptables.sh flush_ipset > /dev/null 2>&1 &")
+	luci.sys.call('[ -n "$(nft list sets 2>/dev/null | grep \"passwall2_\")" ] && sh /usr/share/passwall2/nftables.sh flush_nftset_reload || sh /usr/share/passwall2/iptables.sh flush_ipset_reload > /dev/null 2>&1 &')
 	luci.http.redirect(api.url("log"))
 end
 
@@ -329,7 +335,8 @@ for k, v in pairs(nodes_table) do
 end
 
 s:tab("log", translate("Log"))
-o = s:taboption("log", Flag, "close_log", translate("Close Node Log"))
+o = s:taboption("log", Flag, "log_node", translate("Enable Node Log"))
+o.default = "1"
 o.rmempty = false
 
 loglevel = s:taboption("log", ListValue, "loglevel", translate("Log Level"))
@@ -404,5 +411,6 @@ for k, v in pairs(nodes_table) do
 end
 
 m:append(Template(appname .. "/global/footer"))
+m:append(Template(appname .. "/global/status_bottom"))
 
 return m

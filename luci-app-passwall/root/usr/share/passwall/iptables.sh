@@ -135,7 +135,9 @@ REDIRECT() {
 get_jump_ipt() {
 	case "$1" in
 	direct)
-		echo "-j RETURN"
+		local mark="-m mark ! --mark 1"
+		s="${mark} -j RETURN"
+		echo $s
 		;;
 	proxy)
 		if [ -n "$2" ] && [ -n "$(echo $2 | grep "^-")" ]; then
@@ -178,9 +180,9 @@ get_wan6_ip() {
 }
 
 load_acl() {
+	([ "$ENABLED_ACLS" == 1 ] || ([ "$ENABLED_DEFAULT_ACL" == 1 ] && [ "$CLIENT_PROXY" == 1 ])) && echolog "  - 访问控制："
 	[ "$ENABLED_ACLS" == 1 ] && {
 		acl_app
-		echolog "访问控制："
 		for sid in $(ls -F ${TMP_ACL_PATH} | grep '/$' | awk -F '/' '{print $1}' | grep -v 'default'); do
 			eval $(uci -q show "${CONFIG}.${sid}" | cut -d'.' -sf 3-)
 
@@ -218,6 +220,13 @@ load_acl() {
 			[ "${use_global_config}" = "1" ] && {
 				tcp_node_remark=$(config_n_get $TCP_NODE remarks)
 				udp_node_remark=$(config_n_get $UDP_NODE remarks)
+				use_direct_list=${USE_DIRECT_LIST}
+				use_proxy_list=${USE_PROXY_LIST}
+				use_block_list=${USE_BLOCK_LIST}
+				use_gfw_list=${USE_GFW_LIST}
+				chn_list=${CHN_LIST}
+				tcp_proxy_mode=${TCP_PROXY_MODE}
+				udp_proxy_mode=${UDP_PROXY_MODE}
 			}
 
 			for i in $(cat ${TMP_ACL_PATH}/${sid}/rule_list); do
@@ -248,11 +257,11 @@ load_acl() {
 					if [ "$tcp_no_redir_ports" != "1:65535" ]; then
 						$ip6t_m -A PSW $(comment "$remarks") ${_ipt_source} -p tcp -m multiport --dport $tcp_no_redir_ports -j RETURN 2>/dev/null
 						$ipt_tmp -A PSW $(comment "$remarks") ${_ipt_source} -p tcp -m multiport --dport $tcp_no_redir_ports -j RETURN
-						echolog "  - ${msg}不代理 TCP 端口[${tcp_no_redir_ports}]"
+						echolog "     - ${msg}不代理 TCP 端口[${tcp_no_redir_ports}]"
 					else
 						#结束时会return，无需加多余的规则。
 						unset tcp_port
-						echolog "  - ${msg}不代理所有 TCP 端口"
+						echolog "     - ${msg}不代理所有 TCP 端口"
 					fi
 				}
 				
@@ -260,11 +269,11 @@ load_acl() {
 					if [ "$udp_no_redir_ports" != "1:65535" ]; then
 						$ip6t_m -A PSW $(comment "$remarks") ${_ipt_source} -p udp -m multiport --dport $udp_no_redir_ports -j RETURN 2>/dev/null
 						$ipt_m -A PSW $(comment "$remarks") ${_ipt_source} -p udp -m multiport --dport $udp_no_redir_ports -j RETURN
-						echolog "  - ${msg}不代理 UDP 端口[${udp_no_redir_ports}]"
+						echolog "     - ${msg}不代理 UDP 端口[${udp_no_redir_ports}]"
 					else
 						#结束时会return，无需加多余的规则。
 						unset udp_port
-						echolog "  - ${msg}不代理所有 UDP 端口"
+						echolog "     - ${msg}不代理所有 UDP 端口"
 					fi
 				}
 				
@@ -291,7 +300,7 @@ load_acl() {
 						[ "${use_gfw_list}" = "1" ] && $ipt_m -A PSW $(comment "$remarks") -p tcp ${_ipt_source} $(factor $tcp_proxy_drop_ports "-m multiport --dport") $(dst $IPSET_GFW) -j DROP
 						[ "${chn_list}" != "0" ] && $ipt_m -A PSW $(comment "$remarks") -p tcp ${_ipt_source} $(factor $tcp_proxy_drop_ports "-m multiport --dport") $(dst $IPSET_CHN) $(get_jump_ipt ${chn_list} "-j DROP")
 						[ "${tcp_proxy_mode}" != "disable" ] && $ipt_m -A PSW $(comment "$remarks") -p tcp ${_ipt_source} $(factor $tcp_proxy_drop_ports "-m multiport --dport") -j DROP
-						echolog "  - ${msg}屏蔽代理 TCP 端口[${tcp_proxy_drop_ports}]"
+						echolog "     - ${msg}屏蔽代理 TCP 端口[${tcp_proxy_drop_ports}]"
 					}
 
 					[ "$udp_proxy_drop_ports" != "disable" ] && {
@@ -308,7 +317,7 @@ load_acl() {
 						[ "${use_gfw_list}" = "1" ] && $ipt_m -A PSW $(comment "$remarks") -p udp ${_ipt_source} $(factor $udp_proxy_drop_ports "-m multiport --dport") $(dst $IPSET_GFW) -j DROP
 						[ "${chn_list}" != "0" ] && $ipt_m -A PSW $(comment "$remarks") -p udp ${_ipt_source} $(factor $udp_proxy_drop_ports "-m multiport --dport") $(dst $IPSET_CHN) $(get_jump_ipt ${chn_list} "-j DROP")
 						[ "${udp_proxy_mode}" != "disable" ] && $ipt_m -A PSW $(comment "$remarks") -p udp ${_ipt_source} $(factor $udp_proxy_drop_ports "-m multiport --dport") -j DROP
-						echolog "  - ${msg}屏蔽代理 UDP 端口[${udp_proxy_drop_ports}]"
+						echolog "     - ${msg}屏蔽代理 UDP 端口[${udp_proxy_drop_ports}]"
 					}
 				}
 				
@@ -367,7 +376,7 @@ load_acl() {
 					else
 						msg2="${msg}不代理 TCP"
 					fi
-					echolog "  - ${msg2}"
+					echolog "     - ${msg2}"
 				}
 
 				$ip6t_m -A PSW $(comment "$remarks") ${_ipt_source} -p tcp -j RETURN 2>/dev/null
@@ -397,7 +406,7 @@ load_acl() {
 					else
 						msg2="${msg}不代理 UDP"
 					fi
-					echolog "  - ${msg2}"
+					echolog "     - ${msg2}"
 				}
 				$ip6t_m -A PSW $(comment "$remarks") ${_ipt_source} -p udp -j RETURN 2>/dev/null
 				$ipt_m -A PSW $(comment "$remarks") ${_ipt_source} -p udp -j RETURN
@@ -417,10 +426,10 @@ load_acl() {
 			$ip6t_m -A PSW $(comment "默认") -p tcp -m multiport --dport $TCP_NO_REDIR_PORTS -j RETURN
 			$ipt_tmp -A PSW $(comment "默认") -p tcp -m multiport --dport $TCP_NO_REDIR_PORTS -j RETURN
 			if [ "$TCP_NO_REDIR_PORTS" != "1:65535" ]; then
-				echolog "  - ${msg}不代理 TCP 端口[${TCP_NO_REDIR_PORTS}]"
+				echolog "     - ${msg}不代理 TCP 端口[${TCP_NO_REDIR_PORTS}]"
 			else
 				unset TCP_PROXY_MODE
-				echolog "  - ${msg}不代理所有 TCP 端口"
+				echolog "     - ${msg}不代理所有 TCP 端口"
 			fi
 		}
 		
@@ -428,10 +437,10 @@ load_acl() {
 			$ip6t_m -A PSW $(comment "默认") -p udp -m multiport --dport $UDP_NO_REDIR_PORTS -j RETURN
 			$ipt_m -A PSW $(comment "默认") -p udp -m multiport --dport $UDP_NO_REDIR_PORTS -j RETURN
 			if [ "$UDP_NO_REDIR_PORTS" != "1:65535" ]; then
-				echolog "  - ${msg}不代理 UDP 端口[${UDP_NO_REDIR_PORTS}]"
+				echolog "     - ${msg}不代理 UDP 端口[${UDP_NO_REDIR_PORTS}]"
 			else
 				unset UDP_PROXY_MODE
-				echolog "  - ${msg}不代理所有 UDP 端口"
+				echolog "     - ${msg}不代理所有 UDP 端口"
 			fi
 		}
 
@@ -458,7 +467,7 @@ load_acl() {
 				[ "${USE_GFW_LIST}" = "1" ] && $ipt_m -A PSW $(comment "默认") -p tcp $(factor $TCP_PROXY_DROP_PORTS "-m multiport --dport") $(dst $IPSET_GFW) -j DROP
 				[ "${CHN_LIST}" != "0" ] && $ipt_m -A PSW $(comment "默认") -p tcp $(factor $TCP_PROXY_DROP_PORTS "-m multiport --dport") $(dst $IPSET_CHN) $(get_jump_ipt ${CHN_LIST} "-j DROP")
 				[ "${TCP_PROXY_MODE}" != "disable" ] && $ipt_m -A PSW $(comment "默认") -p tcp $(factor $TCP_PROXY_DROP_PORTS "-m multiport --dport") -j DROP
-				echolog "  - ${msg}屏蔽代理 TCP 端口[${TCP_PROXY_DROP_PORTS}]"
+				echolog "     - ${msg}屏蔽代理 TCP 端口[${TCP_PROXY_DROP_PORTS}]"
 			}
 			
 			[ "$UDP_PROXY_DROP_PORTS" != "disable" ] && {
@@ -475,7 +484,7 @@ load_acl() {
 				[ "${USE_GFW_LIST}" = "1" ] && $ipt_m -A PSW $(comment "默认") -p udp $(factor $UDP_PROXY_DROP_PORTS "-m multiport --dport") $(dst $IPSET_GFW) -j DROP
 				[ "${CHN_LIST}" != "0" ] && $ipt_m -A PSW $(comment "默认") -p udp $(factor $UDP_PROXY_DROP_PORTS "-m multiport --dport") $(dst $IPSET_CHN) $(get_jump_ipt ${CHN_LIST} "-j DROP")
 				[ "${UDP_PROXY_MODE}" != "disable" ] && $ipt_m -A PSW $(comment "默认") -p udp $(factor $UDP_PROXY_DROP_PORTS "-m multiport --dport") -j DROP
-				echolog "  - ${msg}屏蔽代理 UDP 端口[${UDP_PROXY_DROP_PORTS}]"
+				echolog "     - ${msg}屏蔽代理 UDP 端口[${UDP_PROXY_DROP_PORTS}]"
 			}
 		}
 
@@ -532,7 +541,7 @@ load_acl() {
 					$ip6t_m -A PSW $(comment "默认") -p tcp $(REDIRECT $TCP_REDIR_PORT TPROXY)
 				}
 
-				echolog "  - ${msg2}"
+				echolog "     - ${msg2}"
 			}
 		fi
 		$ipt_n -A PSW $(comment "默认") -p tcp -j RETURN
@@ -561,7 +570,7 @@ load_acl() {
 					$ip6t_m -A PSW $(comment "默认") -p udp $(REDIRECT $UDP_REDIR_PORT TPROXY)
 				}
 
-				echolog "  - ${msg2}"
+				echolog "     - ${msg2}"
 				udp_flag=1
 			}
 		fi
@@ -575,13 +584,13 @@ filter_haproxy() {
 		local ip=$(get_host_ip ipv4 $(echo $item | awk -F ":" '{print $1}') 1)
 		ipset -q add $IPSET_VPSLIST $ip
 	done
-	echolog "加入负载均衡的节点到ipset[$IPSET_VPSLIST]直连完成"
+	echolog "  - [$?]加入负载均衡的节点到ipset[$IPSET_VPSLIST]"
 }
 
 filter_vpsip() {
 	uci show $CONFIG | grep ".address=" | cut -d "'" -f 2 | grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | sed -e "/^$/d" | sed -e "s/^/add $IPSET_VPSLIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
 	uci show $CONFIG | grep ".address=" | cut -d "'" -f 2 | grep -E "([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4}" | sed -e "/^$/d" | sed -e "s/^/add $IPSET_VPSLIST6 &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
-	echolog "加入所有节点到ipset[$IPSET_VPSLIST]直连完成"
+	echolog "  - [$?]加入所有节点到ipset[$IPSET_VPSLIST]"
 }
 
 filter_node() {
@@ -1102,17 +1111,30 @@ add_firewall_rule() {
 		$ip6t_m -I OUTPUT $(comment "mangle-OUTPUT-PSW") -o lo -j RETURN
 		insert_rule_before "$ip6t_m" "OUTPUT" "mwan3" "$(comment mangle-OUTPUT-PSW) -m mark --mark 1 -j RETURN"
 
-		$ipt_m -A PSW -p udp --dport 53 -j RETURN
-		$ip6t_m -A PSW -p udp --dport 53 -j RETURN
+		[ $(config_t_get global dns_redirect "0") = "1" ] && {
+			$ipt_m -A PSW -p udp --dport 53 -j RETURN
+			$ipt_m -A PSW -p tcp --dport 53 -j RETURN
+			$ip6t_m -A PSW -p udp --dport 53 -j RETURN
+			$ip6t_m -A PSW -p tcp --dport 53 -j RETURN
+			$ipt_n -I PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 53 -m comment --comment "PSW_DNS_Hijack" 2>/dev/null
+			$ipt_n -I PREROUTING -p tcp --dport 53 -j REDIRECT --to-ports 53 -m comment --comment "PSW_DNS_Hijack" 2>/dev/null
+			$ip6t_n -I PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 53 -m comment --comment "PSW_DNS_Hijack" 2>/dev/null
+			$ip6t_n -I PREROUTING -p tcp --dport 53 -j REDIRECT --to-ports 53 -m comment --comment "PSW_DNS_Hijack" 2>/dev/null
+			echolog "  - 开启 DNS 重定向"
+		}
+
 	}
 
 	#  加载ACLS
 	load_acl
-		
+
 	for iface in $(ls ${TMP_IFACE_PATH}); do
 		$ipt_n -I PSW_OUTPUT -o $iface -j RETURN
 		$ipt_m -I PSW_OUTPUT -o $iface -j RETURN
 	done
+
+	$ipt_n -I PREROUTING $(comment "PSW") -m mark --mark 1 -j RETURN
+	$ip6t_n -I PREROUTING $(comment "PSW") -m mark --mark 1 -j RETURN
 
 	[ -n "${is_tproxy}" -o -n "${udp_flag}" ] && {
 		bridge_nf_ipt=$(sysctl -e -n net.bridge.bridge-nf-call-iptables)
@@ -1165,14 +1187,19 @@ del_firewall_rule() {
 	destroy_ipset $IPSET_BLOCKLIST6
 	destroy_ipset $IPSET_WHITELIST6
 
-	$DIR/app.sh echolog "删除相关防火墙规则完成。"
+	$DIR/app.sh echolog "删除iptables防火墙规则完成。"
 }
 
 flush_ipset() {
-	del_firewall_rule
+	$DIR/app.sh echolog "清空 IPSET。"
 	for _name in $(ipset list | grep "Name: " | grep "passwall_" | awk '{print $2}'); do
 		destroy_ipset ${_name}
 	done
+}
+
+flush_ipset_reload() {
+	del_firewall_rule
+	flush_ipset
 	rm -rf /tmp/singbox_passwall*
 	rm -rf /tmp/etc/passwall_tmp/dnsmasq*
 	/etc/init.d/passwall reload
@@ -1295,6 +1322,9 @@ insert_rule_after)
 	;;
 flush_ipset)
 	flush_ipset
+	;;
+flush_ipset_reload)
+	flush_ipset_reload
 	;;
 get_ipt_bin)
 	get_ipt_bin

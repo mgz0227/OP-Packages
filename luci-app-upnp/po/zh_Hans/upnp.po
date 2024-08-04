@@ -238,3 +238,9 @@ msgstr "使用 STUN"
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:140
 msgid "Value in KByte/s, informational only"
 msgstr "单位为 KByte/s，仅供参考"
+
+msgid "Force Forwarding"
+msgstr "强制转发"
+
+msgid "Force forwarding even there is no public IP (please try STUN first)"
+msgstr "就算没有公网IP也进行转发（请先尝试STUN）"

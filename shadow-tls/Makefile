@@ -4,8 +4,8 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/package.mk
 
 PKG_NAME:=shadow-tls
-PKG_VERSION:=0.2.23
-PKG_RELEASE:=5
+PKG_VERSION:=0.2.25
+PKG_RELEASE:=6
 
 PKG_LICENSE_FILES:=LICENSE
 PKG_MAINTAINER:=FluffyTigerFear
@@ -15,14 +15,16 @@ ifeq ($(ARCH),aarch64)
 	RELEASE_ARCH:=$(RELEASE_HEAD)-aarch64-$(RELEASE_FOOT)
 	PKG_HASH:=skip
 else ifeq ($(ARCH),arm)
-	ARM_CPU_FEATURES:=$(word 2,$(subst +,$(space),$(call qstrip,$(CONFIG_CPU_TYPE))))
-	ifeq ($(ARM_CPU_FEATURES),)
-		RELEASE_ARCH:=$(RELEASE_HEAD)-armv7-$(RELEASE_FOOT)eabi
-		PKG_HASH:=skip
-	else
-		RELEASE_ARCH:=$(RELEASE_HEAD)-armv7-$(RELEASE_FOOT)eabihf
-		PKG_HASH:=skip
-	endif
+    ifeq ($(CONFIG_CPU_TYPE),cortex-a7)
+        RELEASE_ARCH:=$(RELEASE_HEAD)-armv7-$(RELEASE_FOOT)eabihf
+        PKG_HASH:=skip
+    else ifeq ($(CONFIG_CPU_TYPE),cortex-a9)
+        RELEASE_ARCH:=$(RELEASE_HEAD)-armv7-$(RELEASE_FOOT)eabihf
+        PKG_HASH:=skip
+    else
+        RELEASE_ARCH:=$(RELEASE_HEAD)-arm-$(RELEASE_FOOT)eabi
+        PKG_HASH:=skip
+    endif
 else ifeq ($(ARCH),x86_64)
 	RELEASE_ARCH:=$(RELEASE_HEAD)-x86_64-$(RELEASE_FOOT)
 	PKG_HASH:=skip

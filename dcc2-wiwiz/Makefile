@@ -1,15 +1,8 @@
-#
-# Copyright (C) 2018 Jianhui Zhao
-#
-# This is free software, licensed under the GNU General Public License v2.
-# See /LICENSE for more information.
-#
-
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=dcc2-wiwiz
 PKG_VERSION:=8.0.0
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(BUILD_VARIANT)/$(PKG_NAME)-$(PKG_VERSION)
 CMAKE_INSTALL:=1

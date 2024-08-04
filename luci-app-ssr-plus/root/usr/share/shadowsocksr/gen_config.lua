@@ -23,6 +23,7 @@ function vmess_vless()
 				users = {
 					{
 						id = server.vmess_id,
+						alterId = (server.v2ray_protocol == "vmess" or not server.v2ray_protocol) and tonumber(server.alter_id) or nil,
 						security = (server.v2ray_protocol == "vmess" or not server.v2ray_protocol) and server.security or nil,
 						encryption = (server.v2ray_protocol == "vless") and server.vless_encryption or nil,
 						flow = ((server.tls == '1') or (server.reality == '1')) and server.tls_flow or nil
@@ -71,9 +72,13 @@ function wireguard()
 			{
 				publicKey = server.peer_pubkey,
 				preSharedKey = server.preshared_key,
-				endpoint = server.server .. ":" .. server.server_port
+				endpoint = server.server .. ":" .. server.server_port,
+				keepAlive = tonumber(server.keepaliveperiod),
+				allowedIPs = (server.allowedips) or nil,
 			}
 		},
+		kernelMode = (server.kernelmode == "1") and true or false,
+		reserved = {server.reserved} or nil,
 		mtu = tonumber(server.mtu)
 	}
 end
@@ -125,7 +130,37 @@ local Xray = {
 		port = tonumber(local_port),
 		protocol = "dokodemo-door",
 		settings = {network = proto, followRedirect = true},
-		sniffing = {enabled = true, destOverride = {"http", "tls"}}
+		sniffing = {
+			enabled = true,
+			destOverride = {"http", "tls", "quic"},
+			domainsExcluded = {
+				"courier.push.apple.com",
+				"rbsxbxp-mim.vivox.com",
+				"rbsxbxp.www.vivox.com",
+				"rbsxbxp-ws.vivox.com",
+				"rbspsxp.www.vivox.com",
+				"rbspsxp-mim.vivox.com",
+				"rbspsxp-ws.vivox.com",
+				"rbswxp.www.vivox.com",
+				"rbswxp-mim.vivox.com",
+				"disp-rbspsp-5-1.vivox.com",
+				"disp-rbsxbp-5-1.vivox.com",
+				"proxy.rbsxbp.vivox.com",
+				"proxy.rbspsp.vivox.com",
+				"proxy.rbswp.vivox.com",
+				"rbswp.vivox.com",
+				"rbsxbp.vivox.com",
+				"rbspsp.vivox.com",
+				"rbspsp.www.vivox.com",
+				"rbswp.www.vivox.com",
+				"rbsxbp.www.vivox.com",
+				"rbsxbxp.vivox.com",
+				"rbspsxp.vivox.com",
+				"rbswxp.vivox.com",
+				"Mijia Cloud",
+				"dlg.io.mi.com"
+			}
+		}
 	} or nil,
 	-- 开启 socks 代理
 	inboundDetour = (proto:find("tcp") and socks_port ~= "0") and {
@@ -141,7 +176,7 @@ local Xray = {
 		protocol = server.v2ray_protocol,
 		settings = outbound_settings,
 		-- 底层传输配置
-		streamSettings = {
+		streamSettings = (server.v2ray_protocol ~= "wireguard") and {
 			network = server.transport or "tcp",
 			security = (server.tls == '1') and "tls" or (server.reality == '1') and "reality" or nil,
 			tlsSettings = (server.tls == '1') and {
@@ -153,10 +188,9 @@ local Xray = {
 				certificates = server.certificate and {
 					usage = "verify",
 					certificateFile = server.certpath
-				} or nil
+				} or nil,
 			} or nil,
 			realitySettings = (server.reality == '1') and {
-				show = false,
 				publicKey = server.reality_publickey,
 				shortId = server.reality_shortid,
 				spiderX = server.reality_spiderx,
@@ -175,6 +209,7 @@ local Xray = {
 				}
 			} or nil,
 			kcpSettings = (server.transport == "kcp") and {
+				-- kcp
 				mtu = tonumber(server.mtu),
 				tti = tonumber(server.tti),
 				uplinkCapacity = tonumber(server.uplink_capacity),
@@ -194,6 +229,16 @@ local Xray = {
 				path = server.ws_path,
 				maxEarlyData = tonumber(server.ws_ed) or nil,
 				earlyDataHeaderName = server.ws_ed_header or nil
+			} or nil,
+			httpupgradeSettings = (server.transport == "httpupgrade") and {
+				-- httpupgrade
+				host = (server.httpupgrade_host or server.tls_host) or nil,
+                                path = server.httpupgrade_path or ""
+			} or nil,
+			splithttpSettings = (server.transport == "splithttp") and {
+				-- splithttp
+				host = (server.splithttp_host or server.tls_host) or nil,
+                                path = server.splithttp_path or ""
 			} or nil,
 			httpSettings = (server.transport == "h2") and {
 				-- h2
@@ -216,14 +261,21 @@ local Xray = {
 				health_check_timeout = tonumber(server.health_check_timeout) or nil,
 				permit_without_stream = (server.permit_without_stream == "1") and true or nil,
 				initial_windows_size = tonumber(server.initial_windows_size) or nil
-			} or nil
-		},
-		mux = (server.mux == "1" and server.transport ~= "grpc") and {
+			} or nil,
+			sockopt = {
+				tcpMptcp = (server.mptcp == "1") and true or false, -- MPTCP
+				tcpNoDelay = (server.mptcp == "1") and true or false, -- MPTCP
+				tcpcongestion = server.custom_tcpcongestion -- 连接服务器节点的 TCP 拥塞控制算法
+			}
+		} or nil,
+		mux = (server.v2ray_protocol ~= "wireguard") and {
 			-- mux
-			enabled = true,
-			concurrency = tonumber(server.concurrency)
+			enabled = (server.mux == "1") and true or false, -- Mux
+			concurrency = tonumber(server.concurrency), -- TCP 最大并发连接数
+			xudpConcurrency = tonumber(server.xudpConcurrency), -- UDP 最大并发连接数
+			xudpProxyUDP443 = server.xudpProxyUDP443 -- 对被代理的 UDP/443 流量处理方式
 		} or nil
-	} or nil
+	}
 }
 local cipher = "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA:AES128-SHA:AES256-SHA:DES-CBC3-SHA"
 local cipher13 = "TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_256_GCM_SHA384"
@@ -278,8 +330,8 @@ local ss = {
 	reuse_port = true
 }
 local hysteria = {
-	server = server.server_port and (server.server .. ":" .. server.server_port) or (server.server .. ":" .. server.port_range),
-	bandwidth = {
+	server = (server.server_port and (server.port_range and (server.server .. ":" .. server.server_port .. "," .. server.port_range) or server.server .. ":" .. server.server_port) or (server.port_range and server.server .. ":" .. server.port_range or server.server .. ":443")),
+	bandwidth = (server.uplink_capacity or server.downlink_capacity) and {
 	up = tonumber(server.uplink_capacity) and tonumber(server.uplink_capacity) .. " mbps" or nil,
 	down = tonumber(server.downlink_capacity) and tonumber(server.downlink_capacity) .. " mbps" or nil 
 	},
@@ -287,17 +339,17 @@ local hysteria = {
 		listen = "0.0.0.0:" .. tonumber(socks_port),
 		disable_udp = false
 	} or nil,
-	transport = {
-		type = server.transport_protocol,
-		udp = { 
-			hopInterval = tonumber(server.hopinterval) and tonumber(server.hopinterval) .. "s" or nil
-		}
-	},
+	transport = (server.transport_protocol) and {
+		type = (server.transport_protocol) or udp,
+		udp = (server.port_range and (server.hopinterval) and {
+                        hopInterval = (server.port_range and (tonumber(server.hopinterval) .. "s") or nil)
+                } or nil)
+        } or nil,
 --[[			
 	tcpTProxy = (proto:find("tcp") and local_port ~= "0") and {
-	listen = "0.0.0.0:" .. tonumber(local_port)
-} or nil,
-]]
+					listen = "0.0.0.0:" .. tonumber(local_port)
+	} or nil,
+]]--
 	tcpRedirect = (proto:find("tcp") and local_port ~= "0") and {
 					listen = "0.0.0.0:" .. tonumber(local_port)
 	} or nil,
@@ -315,11 +367,12 @@ local hysteria = {
 		maxConnReceiveWindow = (server.maxconnreceivewindow and server.maxconnreceivewindow or nil),
 		maxIdleTimeout = (tonumber(server.maxidletimeout) and tonumber(server.maxidletimeout) .. "s" or nil),
 		keepAlivePeriod = (tonumber(server.keepaliveperiod) and tonumber(server.keepaliveperiod) .. "s" or nil),
-		disable_mtu_discovery = (server.disablepathmtudiscovery == "1") and true or false
+		disablePathMTUDiscovery = (server.disablepathmtudiscovery == "1") and true or false
 	} or nil,
 	auth = server.hy2_auth,
 	tls = (server.tls_host) and {
 		sni = server.tls_host,
+		--alpn = server.tls_alpn or nil,
 		insecure = (server.insecure == "1") and true or false,
 		pinSHA256 = (server.insecure == "1") and server.pinsha256 or nil
 	} or {
@@ -349,7 +402,7 @@ local chain_sslocal = {
 			mode = (proto:find("tcp,udp") and "tcp_and_udp") or proto .. "_only",
 			protocol = "redir",
 			tcp_redir = "redirect",
-		--tcp_redir = "tproxy",
+			--tcp_redir = "tproxy",
 			udp_redir = "tproxy"
 		},
 		socks_port ~= "0" and {
@@ -428,8 +481,8 @@ local tuic = {
 			receive_window = tonumber(server.receive_window)
 		},
 		["local"] = {
-			server = tonumber(socks_port) and (server.tuic_dual_stack == "1" and "[::1]:" or "127.0.0.1:")  .. (socks_port == "0" and local_port or tonumber(socks_port)),
-			dual_stack = (server.tuic_dual_stack == "1") and true or false,
+			server = tonumber(socks_port) and "[::]:" .. (socks_port == "0" and local_port or tonumber(socks_port)),
+			dual_stack = (server.tuic_dual_stack == "1") and true  or nil,
 			max_packet_size = tonumber(server.tuic_max_package_size)
 		}
 }

@@ -178,6 +178,9 @@ return view.extend({
 		o.datatype    = 'port'
 		o.placeholder = '0-65535'
 
+		s.taboption('advanced', form.Flag, 'force_forwarding', _('Force Forwarding'),
+			_('Force forwarding even there is no public IP (please try STUN first)'))
+
 		s = m.section(form.GridSection, 'perm_rule', _('MiniUPnP ACLs'),
 			_('ACLs specify which external ports may be redirected to which internal addresses and ports'))
 

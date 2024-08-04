@@ -5,12 +5,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gn
-PKG_RELEASE:=15
+PKG_RELEASE:=29
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://gn.googlesource.com/gn.git
-PKG_SOURCE_DATE:=2024-01-24
-PKG_SOURCE_VERSION:=a2e2717ea670249a34b0de4b3e54f268d320bdfa
+PKG_SOURCE_DATE:=2024-05-13
+PKG_SOURCE_VERSION:=df98b86690c83b81aedc909ded18857296406159
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=BSD 3-Clause
@@ -19,17 +19,6 @@ PKG_MAINTAINER:=Tianling Shen <cnsztl@immortalwrt.org>
 
 PKG_HOST_ONLY:=1
 HOST_BUILD_PARALLEL:=1
-
-ifeq ($(strip $(NINJA)),)
-ifneq ($(wildcard $(TOPDIR)/feeds/packages/devel/ninja/ninja.mk),)
-HOST_BUILD_DEPENDS:=ninja/host
-NINJA = \
-	MAKEFLAGS="$(MAKE_JOBSERVER)" \
-	$(STAGING_DIR_HOSTPKG)/bin/ninja \
-		$(if $(findstring c,$(OPENWRT_VERBOSE)),-v) \
-		$(if $(MAKE_JOBSERVER),,-j1)
-endif
-endif
 
 include $(INCLUDE_DIR)/host-build.mk
 include $(INCLUDE_DIR)/package.mk

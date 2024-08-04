@@ -13,7 +13,6 @@ local port_validate = function(self, value, t)
 end
 
 m = Map(appname)
-api.set_apply_on_parse(m)
 
 local nodes_table = {}
 for k, e in ipairs(api.get_valid_nodes()) do
@@ -260,6 +259,12 @@ o = s:option(DummyValue, "switch_mode", " ")
 o.template = appname .. "/global/proxy"
 o:depends({ tcp_node = "",  ['!reverse'] = true })
 
+---- DNS
+o = s:option(ListValue, "dns_shunt", "DNS " .. translate("Shunt"))
+o:depends({ tcp_node = "",  ['!reverse'] = true })
+o:value("dnsmasq", "Dnsmasq")
+o:value("chinadns-ng", "Dnsmasq + ChinaDNS-NG")
+
 o = s:option(Flag, "filter_proxy_ipv6", translate("Filter Proxy Host IPv6"), translate("Experimental feature."))
 o.default = "0"
 o:depends({ tcp_node = "",  ['!reverse'] = true })
@@ -311,6 +316,7 @@ o:value("1.1.1.2", "1.1.1.2 (CloudFlare-Security)")
 o:value("8.8.4.4", "8.8.4.4 (Google)")
 o:value("8.8.8.8", "8.8.8.8 (Google)")
 o:value("9.9.9.9", "9.9.9.9 (Quad9-Recommended)")
+o:value("149.112.112.112", "149.112.112.112 (Quad9-Recommended)")
 o:value("208.67.220.220", "208.67.220.220 (OpenDNS)")
 o:value("208.67.222.222", "208.67.222.222 (OpenDNS)")
 o:depends({dns_mode = "dns2socks"})
@@ -324,7 +330,8 @@ if has_singbox or has_xray then
 	o:value("https://1.1.1.2/dns-query", "CloudFlare-Security")
 	o:value("https://8.8.4.4/dns-query", "Google 8844")
 	o:value("https://8.8.8.8/dns-query", "Google 8888")
-	o:value("https://9.9.9.9/dns-query", "Quad9-Recommended")
+	o:value("https://9.9.9.9/dns-query", "Quad9-Recommended 9.9.9.9")
+	o:value("https://149.112.112.112/dns-query", "Quad9-Recommended 149.112.112.112")
 	o:value("https://208.67.222.222/dns-query", "OpenDNS")
 	o:value("https://dns.adguard.com/dns-query,176.103.130.130", "AdGuard")
 	o:value("https://doh.libredns.gr/dns-query,116.202.176.26", "LibreDNS")
@@ -362,38 +369,28 @@ if has_singbox or has_xray then
 	end
 end
 
-if api.is_finded("chinadns-ng") then
-	o = s:option(Flag, "chinadns_ng", translate("ChinaDNS-NG"), translate("The effect is better, but will increase the memory."))
-	o.default = "0"
-	o:depends({ use_gfw_list = true })
-	o:depends({ chn_list = "direct" })
-
-	o = s:option(ListValue, "chinadns_ng_default_tag", translate("ChinaDNS-NG Domain Default Tag"))
-	o.default = "smart"
-	o:value("smart", translate("Smart DNS"))
-	o:value("gfw", translate("Remote DNS"))
-	o:value("chn", translate("Direct DNS"))
-	o.description = "<ul>"
-			.. "<li>" .. translate("Forward to both remote and direct DNS, if the direct DNS resolution result is a mainland China ip, then use the direct result, otherwise use the remote result") .. "</li>"
-			.. "<li>" .. translate("Remote DNS can avoid more DNS leaks, but some domestic domain names maybe to proxy!") .. "</li>"
-			.. "<li>" .. translate("Direct DNS Internet experience may be better, but DNS will be leaked!") .. "</li>"
-			.. "</ul>"
-	o:depends("chinadns_ng", true)
-end
+o = s:option(ListValue, "chinadns_ng_default_tag", translate("ChinaDNS-NG Domain Default Tag"))
+o.default = "none"
+o:value("none", translate("Default"))
+o:value("gfw", translate("Remote DNS"))
+o:value("chn", translate("Direct DNS"))
+o.description = "<ul>"
+		.. "<li>" .. translate("When not matching any domain name list:") .. "</li>"
+		.. "<li>" .. translate("Default: Forward to both direct and remote DNS, if the direct DNS resolution result is a mainland China ip, then use the direct result, otherwise use the remote result.") .. "</li>"
+		.. "<li>" .. translate("Remote DNS: Can avoid more DNS leaks, but some domestic domain names maybe to proxy!") .. "</li>"
+		.. "<li>" .. translate("Direct DNS: Internet experience may be better, but DNS will be leaked!") .. "</li>"
+		.. "</ul>"
+o:depends({dns_shunt = "chinadns-ng", tcp_proxy_mode = "proxy", chn_list = "direct"})
 
 o = s:option(ListValue, "use_default_dns", translate("Default DNS"))
 o.default = "direct"
 o:value("remote", translate("Remote DNS"))
 o:value("direct", translate("Direct DNS"))
-o.description = translate("The default DNS used when not in the domain name rules list.")
-.. "<ul>"
-.. "<li>" .. translate("Remote DNS can avoid more DNS leaks, but some domestic domain names maybe to proxy!") .. "</li>"
-.. "<li>" .. translate("Direct DNS Internet experience may be better, but DNS will be leaked!") .. "</li>"
-.. "</ul>"
-local _depends = {tcp_proxy_mode = "proxy"}
-if api.is_finded("chinadns-ng") then
-	_depends["chinadns_ng"] = false
-end
-o:depends(_depends)
+o.description = "<ul>"
+		.. "<li>" .. translate("When not matching any domain name list:") .. "</li>"
+		.. "<li>" .. translate("Remote DNS: Can avoid more DNS leaks, but some domestic domain names maybe to proxy!") .. "</li>"
+		.. "<li>" .. translate("Direct DNS: Internet experience may be better, but DNS will be leaked!") .. "</li>"
+		.. "</ul>"
+o:depends({dns_shunt = "dnsmasq", tcp_proxy_mode = "proxy", chn_list = "direct"})
 
 return m

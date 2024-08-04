@@ -8,13 +8,22 @@
 'require fs';
 
 return view.extend({
-	load: function() {
-		return Promise.all([
+	load: async function () {
+		const promises = await Promise.all([
 			fs.exec('/etc/init.d/wizard', ['reconfig']),
 			uci.changes(),
-			uci.load('wireless'),
-			uci.load('wizard')
+			L.resolveDefault(uci.load('wireless')),
+			uci.load('wizard'),
+			L.resolveDefault(fs.stat('/www/luci-static/istorex/style.css'), null),
+			L.resolveDefault(fs.stat('/www/luci-static/routerdog/style.css'), null),
+			L.resolveDefault(fs.stat('/usr/sbin/nginx'), null)
 		]);
+	const data = {
+			istorex: promises[4],
+			routerdog: promises[5],
+			nginx: promises[6]
+		};
+	return data;
 	},
 
 	render: function(data) {
@@ -90,6 +99,20 @@ return view.extend({
 		o = s.taboption('firmware', form.Flag, 'cookie_p', _('Persistent cookies'),
 			_('Keep the background login state to avoid the need to log in again every time the browser is closed'));
 		o.default = o.enabled;
+		
+		if (data.istorex || data.routerdog){
+		o = s.taboption('firmware', form.ListValue, 'landing_page', _('主题模式'));
+		o.value('default', _('默认'));
+		if (data.routerdog){
+		o.value('routerdog', _('路由狗(专业NAS模式)'));
+		}
+		if (data.istorex){
+		o.value('nas', _('NAS模式'));
+		o.value('next-nas', _('NEXT-NAS模式'));
+		o.value('router', _('路由模式'));
+		}
+		o.default = 'default';
+		}
 
 		if (has_wifi) {
 			s.tab('wifisetup', _('Wireless Settings'), _('Set the router\'s wireless name and password. For more advanced settings, please go to the Network-Wireless page.'));
@@ -99,6 +122,33 @@ return view.extend({
 			o = s.taboption("wifisetup", form.Value, "wifi_key", _("Key"));
 			o.datatype = 'wpakey';
 			o.password = true;
+		}
+
+		if (data.nginx) {
+		s.tab('shortcuts', _('Shortcuts'), _('比如设置google.com的快捷方式为字母g,则在此路由器网络的任何浏览器中输入g/即可访问google.com'));
+
+		o = s.taboption('shortcuts', form.SectionValue, 'shortcuts', form.GridSection, 'shortcuts', null,
+			_('Shortcuts'));
+
+		s = o.subsection;
+		s.addremove = true;
+		s.anonymous = true;
+
+		o = s.option(form.Value, 'shortcut', _('Shortcut'));
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'to_url', _('Target URL'));
+		o.rmempty = false;
+		o.placeholder = 'https://example.com';
+		o.validate = function(section_id, value) {
+		if (value.match(/^https?:\/\/.+/i)) {
+			return true;
+		}
+    return _('Please enter a valid URL starting with http:// or https://');
+};
+
+		o = s.option(form.Value, 'comments', _('Comments'));
+		o.optional  = true;
 		}
 
 		setTimeout("document.getElementsByClassName('cbi-button-apply')[0].children[3].children[0].value='1'", 1000)

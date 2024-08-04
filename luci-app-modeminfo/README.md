@@ -12,7 +12,7 @@ Supported devices:
    
  - STYX MG8224
 
- - Huawei E3372 (LTE)/ME909
+ - Huawei E3372 (LTE)/MU709/ME909
 
  - Sierra Wireless EM7455
 
@@ -24,7 +24,7 @@ Supported devices:
  
  - MikroTik R11e-LTE/R11e-LTE6
 
- - Fibocom NL668/NL678/L850/L860
+ - Fibocom NL668/NL678/L850/L860/FM150/FM190/FM350
 
  - Gosuncnwelink GM510
 
@@ -44,12 +44,13 @@ Supported devices:
 |modeminfo-qmi |Qualcomm MSM Interface support |
 |modeminfo-serial-quectel |Quectel modems support |
 |modeminfo-serial-telit |Telit LN940 (HP LT4220) modem support |
-|modeminfo-serial-huawei |Huawei ME909/E3372(stick mode, LTE only) modems support|
+|modeminfo-serial-huawei |Huawei MU709/ME909/E3372(stick mode, LTE only) modems support|
 |modeminfo-serial-sierra |Sierra EM7455 modem support |
 |modeminfo-serial-simcom |SimCOM Quaclomm chip modems support |
 |modeminfo-serial-simcom-a7xxx |SimCOM ASR chip modems support |
 |modeminfo-serial-dell |Dell DW5821e modem support |
-|modeminfo-serial-fibocom |Fibocom LN668/NL678 modems support |
+|modeminfo-serial-fibocom |Fibocom LN668/NL678/FM150/FM190 modems support |
+|modeminfo-serial-fm350 |Fibocom FM350 modem support |
 |modeminfo-serial-xmm |Fibocom L850/L860 modems support |
 |modeminfo-serial-mikrotik |MikroTik R11e-LTE/R11e-LTE6 modems support |
 |modeminfo-serial-gosun |Gosuncnwelink GM510 support |

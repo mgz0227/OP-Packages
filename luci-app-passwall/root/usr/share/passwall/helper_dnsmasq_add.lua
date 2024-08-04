@@ -149,8 +149,9 @@ local function check_excluded_domain(domain)
 end
 
 local cache_text = ""
+local nodes_address_md5 = luci.sys.exec("echo -n $(uci show passwall | grep '\\.address') | md5sum")
 local new_rules = luci.sys.exec("echo -n $(find /usr/share/passwall/rules -type f | xargs md5sum)")
-local new_text = TMP_DNSMASQ_PATH .. DNSMASQ_CONF_FILE .. DEFAULT_DNS .. LOCAL_DNS .. TUN_DNS .. REMOTE_FAKEDNS .. USE_DEFAULT_DNS .. CHINADNS_DNS .. USE_DIRECT_LIST .. USE_PROXY_LIST .. USE_BLOCK_LIST .. USE_GFW_LIST .. CHN_LIST .. DEFAULT_PROXY_MODE .. NO_PROXY_IPV6 .. new_rules .. NFTFLAG
+local new_text = TMP_DNSMASQ_PATH .. DNSMASQ_CONF_FILE .. DEFAULT_DNS .. LOCAL_DNS .. TUN_DNS .. REMOTE_FAKEDNS .. USE_DEFAULT_DNS .. CHINADNS_DNS .. USE_DIRECT_LIST .. USE_PROXY_LIST .. USE_BLOCK_LIST .. USE_GFW_LIST .. CHN_LIST .. DEFAULT_PROXY_MODE .. NO_PROXY_IPV6 .. nodes_address_md5 .. new_rules .. NFTFLAG
 if fs.access(CACHE_TEXT_FILE) then
 	for line in io.lines(CACHE_TEXT_FILE) do
 		cache_text = line
@@ -160,8 +161,6 @@ end
 if cache_text ~= new_text then
 	api.remove(CACHE_DNS_PATH .. "*")
 end
-
-local only_global
 
 local dnsmasq_default_dns
 if USE_DEFAULT_DNS ~= "nil" then
@@ -174,15 +173,16 @@ if USE_DEFAULT_DNS ~= "nil" then
 	if USE_DEFAULT_DNS == "remote" and CHN_LIST == "direct" then
 		dnsmasq_default_dns = TUN_DNS
 	end
-	if USE_DEFAULT_DNS == "chinadns_ng" and CHINADNS_DNS ~= "0" and (CHN_LIST == "direct" or USE_GFW_LIST == "1") then
-		dnsmasq_default_dns = CHINADNS_DNS
-	end
 end
 
+local only_global
 if DEFAULT_PROXY_MODE == "proxy" and CHN_LIST == "0" and USE_GFW_LIST == "0" then
 	--没有启用中国列表和GFW列表时
 	dnsmasq_default_dns = TUN_DNS
 	only_global = 1
+end
+if USE_DEFAULT_DNS == "chinadns_ng" and CHINADNS_DNS ~= "0" then
+	dnsmasq_default_dns = CHINADNS_DNS
 end
 
 local setflag_4= (NFTFLAG == "1") and "4#inet#fw4#" or ""
@@ -202,51 +202,73 @@ if not fs.access(CACHE_DNS_PATH) then
 	end
 
 	--始终用国内DNS解析节点域名
-	uci:foreach(appname, "nodes", function(t)
-		local address = t.address
-		if datatypes.hostname(address) then
-			set_domain_dns(address, LOCAL_DNS)
-			set_domain_ipset(address, setflag_4 .. "passwall_vpslist," .. setflag_6 .. "passwall_vpslist6")
+	if true then
+		if USE_DEFAULT_DNS == "chinadns_ng" and CHINADNS_DNS ~= "0" then
+		else
+			uci:foreach(appname, "nodes", function(t)
+				local address = t.address
+				if address == "engage.cloudflareclient.com" then return end
+				if datatypes.hostname(address) then
+					set_domain_dns(address, LOCAL_DNS)
+					set_domain_ipset(address, setflag_4 .. "passwall_vpslist," .. setflag_6 .. "passwall_vpslist6")
+				end
+			end)
 		end
-	end)
-	log(string.format("  - 节点列表中的域名(vpslist)：%s", LOCAL_DNS or "默认"))
-
-	--直连（白名单）列表
-	if USE_DIRECT_LIST == "1" then
-		--始终用国内DNS解析直连（白名单）列表
-		for line in io.lines("/usr/share/passwall/rules/direct_host") do
-			if line ~= "" and not line:find("#") then
-				add_excluded_domain(line)
-				set_domain_dns(line, LOCAL_DNS)
-				set_domain_ipset(line, setflag_4 .. "passwall_whitelist," .. setflag_6 .. "passwall_whitelist6")
-			end
-		end
-		log(string.format("  - 域名白名单(whitelist)：%s", LOCAL_DNS or "默认"))
+		log(string.format("  - 节点列表中的域名(vpslist)：%s", LOCAL_DNS or "默认"))
 	end
 
 	local fwd_dns
 	local ipset_flag
 	local no_ipv6
 
+	--直连（白名单）列表
+	if USE_DIRECT_LIST == "1" then
+		if fs.access("/usr/share/passwall/rules/direct_host") then
+			fwd_dns = LOCAL_DNS
+			if USE_DEFAULT_DNS == "chinadns_ng" and CHINADNS_DNS ~= "0" then
+				fwd_dns = nil
+			end
+			if fwd_dns then
+				--始终用国内DNS解析直连（白名单）列表
+				for line in io.lines("/usr/share/passwall/rules/direct_host") do
+					if line ~= "" and not line:find("#") then
+						add_excluded_domain(line)
+						set_domain_dns(line, fwd_dns)
+						set_domain_ipset(line, setflag_4 .. "passwall_whitelist," .. setflag_6 .. "passwall_whitelist6")
+					end
+				end
+			end
+			log(string.format("  - 域名白名单(whitelist)：%s", fwd_dns or "默认"))
+		end
+	end
+
 	--代理（黑名单）列表
 	if USE_PROXY_LIST == "1" then
-		--始终使用远程DNS解析代理（黑名单）列表
-		for line in io.lines("/usr/share/passwall/rules/proxy_host") do
-			if line ~= "" and not line:find("#") then
-				add_excluded_domain(line)
-				local ipset_flag = setflag_4 .. "passwall_blacklist," .. setflag_6 .. "passwall_blacklist6"
-				if NO_PROXY_IPV6 == "1" then
-					set_domain_address(line, "::")
-					ipset_flag = setflag_4 .. "passwall_blacklist"
-				end
-				if REMOTE_FAKEDNS == "1" then
-					ipset_flag = nil
-				end
-				set_domain_dns(line, TUN_DNS)
-				set_domain_ipset(line, ipset_flag)
+		if fs.access("/usr/share/passwall/rules/proxy_host") then
+			fwd_dns = TUN_DNS
+			if USE_DEFAULT_DNS == "chinadns_ng" and CHINADNS_DNS ~= "0" then
+				fwd_dns = nil
 			end
+			if fwd_dns then
+				--始终使用远程DNS解析代理（黑名单）列表
+				for line in io.lines("/usr/share/passwall/rules/proxy_host") do
+					if line ~= "" and not line:find("#") then
+						add_excluded_domain(line)
+						local ipset_flag = setflag_4 .. "passwall_blacklist," .. setflag_6 .. "passwall_blacklist6"
+						if NO_PROXY_IPV6 == "1" then
+							set_domain_address(line, "::")
+							ipset_flag = setflag_4 .. "passwall_blacklist"
+						end
+						if REMOTE_FAKEDNS == "1" then
+							ipset_flag = nil
+						end
+						set_domain_dns(line, fwd_dns)
+						set_domain_ipset(line, ipset_flag)
+					end
+				end
+			end
+			log(string.format("  - 代理域名表(blacklist)：%s", fwd_dns or "默认"))
 		end
-		log(string.format("  - 代理域名表(blacklist)：%s", TUN_DNS or "默认"))
 	end
 
 	--GFW列表
@@ -255,7 +277,8 @@ if not fs.access(CACHE_DNS_PATH) then
 			fwd_dns = TUN_DNS
 			if USE_DEFAULT_DNS == "chinadns_ng" and CHINADNS_DNS ~= "0" then
 				fwd_dns = nil
-			else
+			end
+			if fwd_dns then
 				local ipset_flag = setflag_4 .. "passwall_gfwlist," .. setflag_6 .. "passwall_gfwlist6"
 				if NO_PROXY_IPV6 == "1" then
 					ipset_flag = setflag_4 .. "passwall_gfwlist"
@@ -269,7 +292,11 @@ if not fs.access(CACHE_DNS_PATH) then
 						if NO_PROXY_IPV6 == "1" then
 							set_domain_address(line, "::")
 						end
-						set_domain_dns(line, fwd_dns)
+						if dnsmasq_default_dns == fwd_dns then
+							fwd_dns = nil
+						else
+							set_domain_dns(line, fwd_dns)
+						end
 						set_domain_ipset(line, ipset_flag)
 					end
 				end
@@ -281,13 +308,17 @@ if not fs.access(CACHE_DNS_PATH) then
 	--中国列表
 	if CHN_LIST ~= "0" then
 		if fs.access("/usr/share/passwall/rules/chnlist") then
-			fwd_dns = LOCAL_DNS
+			fwd_dns = nil
+			if CHN_LIST == "direct" then
+				fwd_dns = LOCAL_DNS
+			end
 			if CHN_LIST == "proxy" then
 				fwd_dns = TUN_DNS
 			end
-			if CHN_LIST == "direct" and USE_DEFAULT_DNS == "chinadns_ng" and CHINADNS_DNS ~= "0" then
+			if USE_DEFAULT_DNS == "chinadns_ng" and CHINADNS_DNS ~= "0" then
 				fwd_dns = nil
-			else
+			end
+			if fwd_dns then
 				local ipset_flag = setflag_4 .. "passwall_chnroute," .. setflag_6 .. "passwall_chnroute6"
 				if CHN_LIST == "proxy" then
 					if NO_PROXY_IPV6 == "1" then
@@ -303,7 +334,11 @@ if not fs.access(CACHE_DNS_PATH) then
 						if CHN_LIST == "proxy" and NO_PROXY_IPV6 == "1" then
 							set_domain_address(line, "::")
 						end
-						set_domain_dns(line, fwd_dns)
+						if dnsmasq_default_dns == fwd_dns then
+							fwd_dns = nil
+						else
+							set_domain_dns(line, fwd_dns)
+						end
 						set_domain_ipset(line, ipset_flag)
 					end
 				end
@@ -376,38 +411,40 @@ if not fs.access(CACHE_DNS_PATH) then
 		}
 	end
 
-	local address_out = io.open(CACHE_DNS_PATH .. "/000-address.conf", "a")
-	local server_out = io.open(CACHE_DNS_PATH .. "/001-server.conf", "a")
-	local ipset_out = io.open(CACHE_DNS_PATH .. "/ipset.conf", "a")
-	local set_name = "ipset"
-	if NFTFLAG == "1" then
-		set_name = "nftset"
+	if list1 and next(list1) then
+		local address_out = io.open(CACHE_DNS_PATH .. "/000-address.conf", "a")
+		local server_out = io.open(CACHE_DNS_PATH .. "/001-server.conf", "a")
+		local ipset_out = io.open(CACHE_DNS_PATH .. "/ipset.conf", "a")
+		local set_name = "ipset"
+		if NFTFLAG == "1" then
+			set_name = "nftset"
+		end
+		for key, value in pairs(list1) do
+			if value.address then
+				local domain = "." .. key
+				if key == "#" then
+					domain = key
+				end
+				address_out:write(string.format("address=/%s/%s\n", domain, value.address))
+			end
+			if value.dns and #value.dns > 0 then
+				for i, dns in ipairs(value.dns) do
+					server_out:write(string.format("server=/.%s/%s\n", key, dns))
+				end
+			end
+			if value.ipsets and #value.ipsets > 0 then
+				local ipsets_str = ""
+				for i, ipset in ipairs(value.ipsets) do
+					ipsets_str = ipsets_str .. ipset .. ","
+				end
+				ipsets_str = ipsets_str:sub(1, #ipsets_str - 1)
+				ipset_out:write(string.format("%s=/.%s/%s\n", set_name, key, ipsets_str))
+			end
+		end
+		address_out:close()
+		server_out:close()
+		ipset_out:close()
 	end
-	for key, value in pairs(list1) do
-		if value.address then
-			local domain = "." .. key
-			if key == "#" then
-				domain = key
-			end
-			address_out:write(string.format("address=/%s/%s\n", domain, value.address))
-		end
-		if value.dns and #value.dns > 0 then
-			for i, dns in ipairs(value.dns) do
-				server_out:write(string.format("server=/.%s/%s\n", key, dns))
-			end
-		end
-		if value.ipsets and #value.ipsets > 0 then
-			local ipsets_str = ""
-			for i, ipset in ipairs(value.ipsets) do
-				ipsets_str = ipsets_str .. ipset .. ","
-			end
-			ipsets_str = ipsets_str:sub(1, #ipsets_str - 1)
-			ipset_out:write(string.format("%s=/.%s/%s\n", set_name, key, ipsets_str))
-		end
-	end
-	address_out:close()
-	server_out:close()
-	ipset_out:close()
 
 	local f_out = io.open(CACHE_TEXT_FILE, "a")
 	f_out:write(new_text)
@@ -432,7 +469,7 @@ if DNSMASQ_CONF_FILE ~= "nil" then
 		conf_out:write("no-poll\n")
 		conf_out:write("no-resolv\n")
 		conf_out:close()
-		log(string.format("  - 以上所列以外及默认：%s", dnsmasq_default_dns))
+		log(string.format("  - 默认：%s", dnsmasq_default_dns))
 
 		if FLAG == "default" then
 			local f_out = io.open("/tmp/etc/passwall/default_DNS", "a")

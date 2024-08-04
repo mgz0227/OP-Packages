@@ -20,7 +20,6 @@
 return view.extend({
 
 	load: function(data) {
-		L.resolveDefault(fs.exec_direct('/usr/share/modeminfo/scripts/rmtmp'));
 		return L.resolveDefault(fs.exec_direct('/usr/bin/modeminfo'));
 	},
 
@@ -57,7 +56,7 @@ return view.extend({
 					var pg = document.querySelector('#sinr'+i)
 					var vn = parseInt(v) || 0;
 					var mn = parseInt(m) || 100;
-					var pc = Math.floor(100-(100*(1-((mn - vn)/(mn - 40)))));
+					var pc = Math.floor(100-(100*(1-((mn - vn)/(mn - 30)))));
 					pg.firstElementChild.style.width = pc + '%';
 					pg.style.width = '%d%%';
 					pg.firstElementChild.style.animationDirection = "reverse";
@@ -68,6 +67,16 @@ return view.extend({
 					var vn = parseInt(v) || 0;
 					var mn = parseInt(m) || 100;
 					var pc = Math.floor(115-(100/mn)*vn);
+					pg.firstElementChild.style.width = pc + '%';
+					pg.style.width = '%d%%';
+					pg.firstElementChild.style.animationDirection = "reverse";
+					pg.setAttribute('title', '%s'.format(v));
+				}
+				function ecio_bar(v,m) {
+					var pg = document.querySelector('#sinr'+i)
+					var vn = parseInt(v) || 0
+					var mn = parseInt(m) || 100
+					var pc = Math.floor(100-(100/mn)*vn);
 					pg.firstElementChild.style.width = pc + '%';
 					pg.style.width = '%d%%';
 					pg.firstElementChild.style.animationDirection = "reverse";
@@ -392,7 +401,7 @@ return view.extend({
 							sinr_bar(json.modem[i].sinr + " dB", sinr_min);
 						} else {
 							var sinr_min = -24;
-							sinr_bar(json.modem[i].sinr + " dB", sinr_min);
+							ecio_bar(json.modem[i].sinr + " dB", sinr_min);
 						}
 					}
 				}
@@ -455,11 +464,12 @@ return view.extend({
 			let snrname = 'snrname'+i;
 			let rsrp = 'rsrp'+i;
 			let rsrq = 'rsrq'+i;
+			let m = i+1;
 			//s.tab("modem" + i, vendors[i]);
 			//o = json.modem.length > 1 ? s.taboption('modem'+i, form.HiddenValue, 'generic') : s.option(form.HiddenValue, 'generic');
 
 			if ( json.modem.length > 1 ) {
-				s.tab("modem" + i, _('Modem')+' '+i);
+				s.tab("modem" + i, _('Modem')+' '+m);
 				o = s.taboption('modem'+i, form.HiddenValue, 'generic');
 			} else {
 				o = s.option(form.HiddenValue, 'generic');

@@ -140,7 +140,7 @@ log-emerg td {
 }
 .log-side-block {
 	position: fixed;
-	z-index: 1 !important;
+	z-index: 200 !important;
 	opacity: 0.7;
 	right: 1px;
 	top: 40vh;
@@ -170,6 +170,13 @@ return baseclass.extend({
 		 * @property {string} title
 		 */
 		title            : null,
+
+		/**
+		 * Enable auto refresh log.
+		 *
+		 * @property {bool} autoRefresh
+		 */
+		autoRefresh      : false,
 
 		pollInterval     : L.env.pollinterval,
 
@@ -443,7 +450,7 @@ return baseclass.extend({
 		 * @param {string} logdata
 		 * @param {number} tail
 		 * @returns {Array<number, string|null, string|null, string|null, string|null, string|null>}
-		 * Returns an array of values: [ #, Timestamp, Host, Level, Facility, Message ].
+		 * Returns an array of values: [ #, Timestamp, Host, Facility, Level, Message ].
 		 */
 		parseLogData(logdata, tail) {
 			throw new Error('parseLogData must be overridden by a subclass');
@@ -885,7 +892,7 @@ return baseclass.extend({
 
 		load() {
 			this.restoreSettingsFromLocalStorage();
-			if(typeof(this.getLogHash) != 'function') {
+			if(!this.autoRefresh || typeof(this.getLogHash) != 'function') {
 				this.isAutorefresh    = false;
 				this.autoRefreshValue = false;
 			};
@@ -1026,13 +1033,7 @@ return baseclass.extend({
 					if(this.fastTailValue > 0) {
 						this.fastTailValue += this.fastTailIncrement;
 					};
-					return this.reloadLog(this.fastTailValue)/*.then(() => {
-						if(this.logSortingValue == 'desc') {
-							this.scrollToBottom();
-						} else {
-							this.scrollToTop();
-						};
-					});*/
+					return this.reloadLog(this.fastTailValue);
 				}),
 			}, `+${this.fastTailIncrement}`);
 

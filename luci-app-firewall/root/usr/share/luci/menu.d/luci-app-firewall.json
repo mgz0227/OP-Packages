@@ -65,5 +65,8 @@
 			"type": "view",
 			"path": "firewall/custom"
 		},
+		"depends": {
+			"fs": { "/usr/share/fw3/helpers.conf": "file" }
+		}
 	}
 }

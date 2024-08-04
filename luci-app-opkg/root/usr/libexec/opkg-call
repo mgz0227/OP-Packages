@@ -19,7 +19,7 @@ case "$action" in
 
 			while [ -n "$1" ]; do
 				case "$1" in
-					--autoremove|--force-overwrite|--force-removal-of-dependent-packages|--force-checksum|--force-depends)
+					--autoremove|--force-overwrite|--force-removal-of-dependent-packages)
 						opkg="$opkg $1"
 						shift
 					;;

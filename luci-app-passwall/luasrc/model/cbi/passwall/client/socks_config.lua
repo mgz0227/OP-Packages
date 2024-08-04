@@ -5,7 +5,6 @@ local has_singbox = api.finded_com("singbox")
 local has_xray = api.finded_com("xray")
 
 m = Map(appname)
-api.set_apply_on_parse(m)
 
 local nodes_table = {}
 for k, e in ipairs(api.get_valid_nodes()) do
@@ -41,6 +40,9 @@ socks_node = s:option(ListValue, "node", translate("Node"))
 if auto_switch_tip then
 	socks_node.description = auto_switch_tip
 end
+
+o = s:option(Flag, "bind_local", translate("Bind Local"), translate("When selected, it can only be accessed localhost."))
+o.default = "0"
 
 local n = 1
 uci:foreach(appname, "socks", function(s)

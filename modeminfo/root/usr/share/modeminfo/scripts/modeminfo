@@ -1,5 +1,5 @@
 # (c) 2010-2016 Cezary Jackiewicz <cezary@eko.one.pl>
-# (c) 2020-2022 modified by Konstantine Shevlyakov  <shevlakov@132lan.ru>
+# (c) 2020-2024 modified by Konstantine Shevlyakov  <shevlakov@132lan.ru>
 # (c) 2021 modified by Vladislav Kadulin  <spanky@yandex.ru>
 
 
@@ -31,50 +31,22 @@ function get_port() {
 }
 
 function modem_family() {
-	if [ ! -f /tmp/modem${s}device ]; then
-		F=$(atinout $RES/scripts/family.at $DEVPORT - | grep -vi "ready")
-		if (echo "${F}" | grep -i que >/dev/null); then
-			FAMILY=QUECTEL
-		elif (echo "${F}" | grep -i sie >/dev/null); then
-			FAMILY=SIERRA
-		elif (echo "${F}" | grep -i dell >/dev/null); then
-			FAMILY=DELL
-		elif (echo "${F}" | grep -i sty >/dev/null); then
-			FAMILY=STYX
-		elif (echo "${F}" | grep -i meig >/dev/null); then
-			FAMILY=MEIGLINK
-		elif (echo "${F}" | grep -i mik >/dev/null); then
-			FAMILY=MIKROTIK
-		elif (echo "${F}" | grep -i fm350 >/dev/null); then
-		    FAMILY=FIBOCOMFM350
-		elif (echo "${F}" | grep -i xmm >/dev/null); then
-			FAMILY=INTEL
-		elif (echo "${F}" | grep -i sim >/dev/null); then
-			FAMILY=SIMCOM
-		elif (echo "${F}" | grep -i fib >/dev/null); then
-			FAMILY=FIBOCOM
-		elif (echo "${F}" | grep -i qua >/dev/null); then
-			FAMILY=QUALCOMM
-		elif (echo "${F}" | grep -i hua >/dev/null); then
-			FAMILY=HUAWEI
-		elif (echo "${F}" | grep -i gos >/dev/null); then
-			FAMILY=GOSUN
-		elif (echo "${F}" | grep -i tw >/dev/null); then
-			FAMILY=THINKWILL
-		elif (echo "${F}" | grep -i yug >/dev/null); then
-			FAMILY=YUGE
-		elif (echo "${F}" | grep -i zte >/dev/null); then
-			FAMILY=ZTE
-		elif (echo "${F}" | grep -i '^incorp' >/dev/null); then
-			FAMILY=A7XXX
-		else
-			FAMILY=GENERIC
-		fi
-		echo $FAMILY > /tmp/modem${s}device
-		uci -q set modeminfo.@modeminfo[${s}].family=$FAMILY
-		uci commit
-	else
-		FAMILY=$(cat /tmp/modem${s}device)
+	comport=$(uci -q get modeminfo.@modeminfo[${s}].device | awk -F [\/] '{print $NF}')
+	case $comport in
+		*ttyUSB*|*ttyHS*)
+			VID=$(cat $(readlink -f /sys/class/tty/$comport/device/../../idVendor))
+			PID=$(cat $(readlink -f /sys/class/tty/$comport/device/../../idProduct))
+		;;
+		*ttyACM*)
+			VID=$(cat $(readlink -f /sys/class/tty/$comport/device/../idVendor))
+			PID=$(cat $(readlink -f /sys/class/tty/$comport/device/../idProduct))
+		;;
+		*) exit 0 ;;
+	esac
+	VIDPID=${VID}${PID}
+	FAMILY=$(awk -F [\;] '/'$VIDPID'/{print toupper($2)}' $RES/modem.list)
+	if [ ! $FAMILY ]; then
+		FAMILY=GENERIC
 	fi
 }
 

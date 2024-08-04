@@ -1,0 +1,79 @@
+name: Compile .ipk File of CQUST.net
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'luci-app-cqustdotnet/Makefile'
+
+jobs:
+  Get-Versions:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+      current_version: ${{ steps.version.outputs.current_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 2
+
+      - name: Get Versions
+        id: version
+        run: |
+          echo "new_version=$(grep -oP '(?<=PKG_VERSION:=)[^"]+' luci-app-cqustdotnet/Makefile)" >> $GITHUB_OUTPUT
+          echo "New version: $(grep -oP '(?<=PKG_VERSION:=)[^"]+' luci-app-cqustdotnet/Makefile)"
+          git reset --hard HEAD~1
+          echo "current_version=$(grep -oP '(?<=PKG_VERSION:=)[^"]+' luci-app-cqustdotnet/Makefile)" >> $GITHUB_OUTPUT
+          echo "Current version: $(grep -oP '(?<=PKG_VERSION:=)[^"]+' luci-app-cqustdotnet/Makefile)"
+
+  Compile:
+    runs-on: ubuntu-latest
+    needs: Get-Versions
+    if: ${{ needs.Get-Versions.outputs.new_version != needs.Get-Versions.outputs.current_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Prepare Dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install curl git tar
+
+      - name: Setup OpenWrt SDK Cache
+        id: cache-sdk
+        uses: actions/cache@v3
+        with:
+          path: SDK.tar.bz2
+          key: ${{ runner.os }}-sdk
+
+      - name: Download OpenWrt SDK
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: curl -SLk --connect-timeout 30 --retry 2 "https://archive.openwrt.org/snapshots/trunk/ar71xx/generic/OpenWrt-SDK-ar71xx-generic_gcc-5.3.0_musl-1.1.16.Linux-x86_64.tar.bz2" -o "./SDK.tar.bz2"
+
+      - name: Extract OpenWrt SDK
+        run: |
+          tar xjf SDK.tar.bz2
+          mv "OpenWrt-SDK-ar71xx-generic_gcc-5.3.0_musl-1.1.16.Linux-x86_64" "SDK"
+
+      - name: Copy CQUST.net Source Codes
+        run: |
+          mkdir -p SDK/package/luci-app-cqustdotnet
+          cp -rf "luci-app-cqustdotnet" "SDK/package/luci-app-cqustdotnet"
+
+      - name: Compile CQUST.net IPK
+        run: |
+          cd SDK
+          make package/luci-app-cqustdotnet/compile V=99
+
+      - name: Upload IPK
+        uses: actions/upload-artifact@v3
+        with:
+          name: luci-app-cqustdotnet_${{ needs.Get-Versions.outputs.new_version }}-beta_all.ipk
+          path: SDK/bin/ar71xx/packages/base/luci-app-cqustdotnet_*.ipk

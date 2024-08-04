@@ -32,135 +32,18 @@
 +LUCI_DEPENDS:=+ksmbd-server +autoshare-ksmbd
  
  include ../../luci.mk
- 
---- a/firewall/Makefile
-+++ b/firewall/Makefile
-@@ -28,9 +28,8 @@ define Package/firewall
-   SECTION:=net
-   CATEGORY:=Base system
-   TITLE:=OpenWrt C Firewall
--  DEPENDS:=+libubox +libubus +libuci +libip4tc +IPV6:libip6tc +libiptext +IPV6:libiptext6 +libxtables +kmod-ipt-core +kmod-ipt-conntrack +IPV6:kmod-nf-conntrack6 +kmod-ipt-nat
-+  DEPENDS:=+libubox +libubus +libuci +libip4tc +IPV6:libip6tc +libiptext +IPV6:libiptext6 +libxtables +kmod-ipt-core +kmod-ipt-conntrack +IPV6:kmod-nf-conntrack6 +kmod-ipt-nat +kmod-ipt-nat6 +iptables-mod-fullconenat +ip6tables-mod-fullconenat +iptables +ip6tables +kmod-ipt-offload +miniupnpd-iptables
-   PROVIDES:=uci-firewall
--  CONFLICTS:=firewall4
- endef
- 
- define Package/firewall/description
 
---- a/firewall4/Makefile
-+++ b/firewall4/Makefile
-@@ -25,7 +25,8 @@ define Package/firewall4
- 	+kmod-nft-core +kmod-nft-fib +kmod-nft-offload \
- 	+kmod-nft-nat +kmod-nft-nat6 \
- 	+nftables-json \
--	+ucode +ucode-mod-fs +ucode-mod-ubus +ucode-mod-uci
-+	+ucode +ucode-mod-fs +ucode-mod-ubus +ucode-mod-uci \
-+	+kmod-nft-fullcone +iptables-nft +ip6tables-nft +arptables-nft +ebtables-nft +xtables-nft +miniupnpd-nftables
-   EXTRA_DEPENDS:=ucode (>= 2022-03-22)
-   PROVIDES:=uci-firewall
- endef
-
---- a/luci-app-passwall2/Makefile
-+++ b/luci-app-passwall2/Makefile
-@@ -31,8 +31,23 @@ LUCI_PKGARCH:=all
- LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
- 	+ip-full +libuci-lua +lua +luci-compat +luci-lib-jsonc +resolveip +tcping \
- 	+xray-core +v2ray-geoip +v2ray-geosite \
--	+unzip \
--	+PACKAGE_$(PKG_NAME)_INCLUDE_IPv6_Nat:ip6tables-mod-nat
-+	+unzip +ipset +iptables-mod-iprange +iptables-mod-socket +iptables-mod-tproxy +iptables-mod-conntrack-extra +kmod-ipt-nat \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy:haproxy \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_Hysteria:hysteria \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_IPv6_Nat:ip6tables-mod-nat \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy:naiveproxy \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Client:shadowsocks-libev-ss-local \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Client:shadowsocks-libev-ss-redir \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Server:shadowsocks-libev-ss-server \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Client:shadowsocks-rust-sslocal \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server:shadowsocks-rust-ssserver \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client:shadowsocksr-libev-ssr-local \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client:shadowsocksr-libev-ssr-redir \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server:shadowsocksr-libev-ssr-server \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs:simple-obfs \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_SingBox:sing-box \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client:tuic-client \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Plugin:v2ray-plugin
+--- a/luci-app-ua2f/Makefile
++++ b/luci-app-ua2f/Makefile
+@@ -2,7 +2,7 @@
+ include $(TOPDIR)/rules.mk
  
- define Package/$(PKG_NAME)/config
- menu "Configuration"
-@@ -40,17 +55,6 @@ menu "Configuration"
- 
- config PACKAGE_$(PKG_NAME)_Iptables_Transparent_Proxy
- 	bool "Iptables Transparent Proxy"
--	select PACKAGE_dnsmasq-full
--	select PACKAGE_dnsmasq_full_ipset
--	select PACKAGE_ipset
--	select PACKAGE_iptables
--	select PACKAGE_iptables-nft
--	select PACKAGE_iptables-zz-legacy
--	select PACKAGE_iptables-mod-conntrack-extra
--	select PACKAGE_iptables-mod-iprange
--	select PACKAGE_iptables-mod-socket
--	select PACKAGE_iptables-mod-tproxy
--	select PACKAGE_kmod-ipt-nat
- 	default y if ! PACKAGE_firewall4
- 
- config PACKAGE_$(PKG_NAME)_Nftables_Transparent_Proxy
-@@ -65,7 +69,6 @@ config PACKAGE_$(PKG_NAME)_Nftables_Transparent_Proxy
- 
- config PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy
- 	bool "Include Haproxy"
--	select PACKAGE_haproxy
- 	default y if aarch64||arm||i386||x86_64
- 
- config PACKAGE_$(PKG_NAME)_INCLUDE_Hysteria
-@@ -86,8 +89,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy
- 
- config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Client
- 	bool "Include Shadowsocks Libev Client"
--	select PACKAGE_shadowsocks-libev-ss-local
--	select PACKAGE_shadowsocks-libev-ss-redir
- 	default y
- 
- config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Server
-@@ -98,7 +99,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Server
- config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Client
- 	bool "Include Shadowsocks Rust Client"
- 	depends on aarch64||arm||i386||mips||mipsel||x86_64
--	select PACKAGE_shadowsocks-rust-sslocal
- 	default y if aarch64
- 
- config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server
-@@ -109,8 +109,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server
- 
- config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client
- 	bool "Include ShadowsocksR Libev Client"
--	select PACKAGE_shadowsocksr-libev-ssr-local
--	select PACKAGE_shadowsocksr-libev-ssr-redir
- 	default y
- 
- config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server
-@@ -120,12 +118,10 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server
- 
- config PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs
- 	bool "Include Simple-Obfs (Shadowsocks Plugin)"
--	select PACKAGE_simple-obfs
- 	default y
- 
- config PACKAGE_$(PKG_NAME)_INCLUDE_SingBox
- 	bool "Include Sing-Box"
--	select PACKAGE_sing-box
- 	default y if aarch64||arm||i386||x86_64
- 
- config PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client
-@@ -136,7 +132,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client
- 
- config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Plugin
- 	bool "Include V2ray-Plugin (Shadowsocks Plugin)"
--	select PACKAGE_v2ray-plugin
- 	default y if aarch64||arm||i386||x86_64
- 
- endmenu
+ LUCI_TITLE:=ua2f for luci
+-LUCI_DEPENDS:=
++LUCI_DEPENDS:=+ua2f
+ LUCI_PKGARCH:=all
+ PKG_VERSION:=5.2
+ PKG_RELEASE:=5
 
 --- a/msmtp/Makefile
 +++ b/msmtp/Makefile
@@ -176,18 +59,6 @@
  
  define Package/luci-app-homeassistant/conffiles
  /etc/config/homeassistant
-
---- a/luci-app-unblockneteasemusic/Makefile
-+++ b/luci-app-unblockneteasemusic/Makefile
-@@ -5,7 +5,7 @@
- include $(TOPDIR)/rules.mk
- 
- LUCI_TITLE:=LuCI support for UnblockNeteaseMusic (JavaScript)
--LUCI_DEPENDS:=+dnsmasq-full +firewall4 +node \
-+LUCI_DEPENDS:=+dnsmasq-full +UnblockNeteaseMusic +node \
- 	@(PACKAGE_libustream-mbedtls||PACKAGE_libustream-openssl||PACKAGE_libustream-wolfssl)
- LUCI_PKGARCH:=all
- 
 
 --- a/k3screenctrl/Makefile
 +++ b/k3screenctrl/Makefile
@@ -265,29 +136,6 @@
  
  include $(INCLUDE_DIR)/package.mk
 
---- a/luci-app-upnp/Makefile
-+++ b/luci-app-upnp/Makefile
-@@ -7,7 +7,7 @@
- include $(TOPDIR)/rules.mk
- 
- LUCI_TITLE:=Universal Plug & Play configuration module
--LUCI_DEPENDS:=+miniupnpd +rpcd-mod-ucode
-+LUCI_DEPENDS:=+rpcd-mod-ucode
- 
- include ../../luci.mk
- 
-
---- a/luci-app-openclash/Makefile
-+++ b/luci-app-openclash/Makefile
-@@ -32,7 +32,7 @@ define Package/$(PKG_NAME)
- 	TITLE:=LuCI support for clash
- 	PKGARCH:=all
- 	DEPENDS:=+dnsmasq-full +coreutils +coreutils-nohup +bash +curl +ca-certificates +ipset +ip-full \
--	+libcap +libcap-bin +ruby +ruby-yaml +kmod-tun +unzip
-+	+libcap +libcap-bin +ruby +ruby-yaml +kmod-tun +unzip +kmod-inet-diag +kmod-ipt-nat +iptables-mod-tproxy +iptables-mod-extra
- 	MAINTAINER:=vernesong
- endef
-
 --- a/wifidog-wiwiz/Makefile
 +++ b/wifidog-wiwiz/Makefile
 @@ -21,7 +21,7 @@ define Package/wifidog-wiwiz
@@ -311,3 +159,25 @@
  	+PACKAGE_$(PKG_NAME)_INCLUDE_rclone-webui:rclone-webui-react \
  	+PACKAGE_$(PKG_NAME)_INCLUDE_rclone-ng:rclone-ng
 
+--- a/luci-app-advancedplus/Makefile
++++ b/luci-app-advancedplus/Makefile
+@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
+ NAME:=advancedplus
+ PKG_NAME:=luci-app-$(NAME)
+ LUCI_TITLE:=LuCI support for Kucat theme setting by sirpdboy
+-LUCI_DEPENDS:=+luci-compat +curl +wget +libustream-openssl
++LUCI_DEPENDS:=+luci-compat +curl
+ LUCI_PKGARCH:=all
+ 
+ PKG_VERSION:=1.8.0
+
+--- a/luci-app-einat/Makefile
++++ b/luci-app-einat/Makefile
+@@ -9,7 +9,7 @@ LUCI_NAME:=luci-app-einat
+ 
+ LUCI_TITLE:=LuCI Support for einat
+ LUCI_PKGARCH:=all
+-LUCI_DEPENDS:=
++LUCI_DEPENDS:=+einat-ebpf
+ 
+ LUCI_DESCRIPTION:=eBPF-based Endpoint-Independent NAT

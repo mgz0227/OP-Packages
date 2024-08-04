@@ -1,0 +1,11 @@
+{
+	"luci-app-virtualhere": {
+		"description": "Grant UCI access for luci-app-virtualhere",
+		"read": {
+			"uci": [ "vhusbd" ]
+		},
+		"write": {
+			"uci": [ "vhusbd" ]
+		}
+	}
+}
