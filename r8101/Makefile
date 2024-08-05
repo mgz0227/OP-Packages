@@ -8,7 +8,7 @@ include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=r8101
 PKG_VERSION:=1.038.02
-PKG_RELEASE:=
+PKG_RELEASE:=11
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/sbwml/package_kernel_r8101

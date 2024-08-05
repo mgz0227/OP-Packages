@@ -1140,7 +1140,7 @@ return view.extend({
 	render: function(listData) {
 		var checkUpdateNeeded = function() {
             return Promise.all([
-                L.resolveDefault(fs.stat('/tmp/opkg-lists'), null),
+                L.resolveDefault(fs.stat('/tmp/opkg-lists/openwrt_base'), null),
                 L.resolveDefault(fs.read('/tmp/resolv.conf.d/resolv.conf.auto'), '')
             ]).then(function(results) {
                 var stat = results[0];
@@ -1154,7 +1154,7 @@ return view.extend({
                     var currentTime = Math.floor(Date.now() / 1000);
                     var lastUpdateTime = stat.mtime;
                     var timeDifference = currentTime - lastUpdateTime;
-                    needTimeUpdate = timeDifference > 3600; // 如果超过1小时，需要更新
+                    needTimeUpdate = timeDifference > 21600; // 如果超过1小时，需要更新
                 }
 
                 // 检查 resolv.conf.auto 文件内容

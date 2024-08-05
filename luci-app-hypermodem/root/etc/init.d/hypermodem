@@ -118,5 +118,5 @@ start_service() {
 
 stop_service()
 {
-	killall quectel-CM >/dev/null 2>&1
+	killall -3 quectel-CM >/dev/null 2>&1
 }

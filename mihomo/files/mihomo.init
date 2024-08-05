@@ -221,7 +221,7 @@ start_service() {
 	log "Start Core"
 	procd_open_instance core
 
-	procd_set_param command /bin/sh -c "$PROG -d $RUN_DIR >> $RUN_CORE_LOG_PATH 2>&1"
+	procd_set_param command "$PROG" -d $RUN_DIR >> $RUN_CORE_LOG_PATH 2>&1
 	procd_set_param file "$RUN_PROFILE_PATH"
 	procd_set_param reload_signal HUP
 	procd_set_param respawn

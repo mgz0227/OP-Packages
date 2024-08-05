@@ -4,7 +4,6 @@
 /luci-app-godproxy/rulesupdate.log
 /qt5
 /luci-app-advancedsetting
-/luci-app-softether
 /luci-app-cifsd
 /luci-app-smstool*
 /luci-app-mosquitto
@@ -12,7 +11,6 @@
 /luci-app-babeld
 /luci-app-siitwizard
 /luci-app-ttyd
-/luci-app-k3screenctrl
 /luci-app-serverchan
 /luci-app-eqos
 /luci-app-webdav

@@ -93,9 +93,9 @@ start_et() {
                 chmod +x "$easytierbin"
                 ver="$($easytierbin -h | grep version | awk -F ':' {'print $2'})"
                 [ ! -z "$ver" ] && echo "$(date '+%Y-%m-%d %H:%M:%S') easytier : ${easytierbin}当前版本号-${ver} " >>/tmp/easytier.log
-                killall easytier_check >/dev/null 2>&1
-                killall easytier-core >/dev/null 2>&1
-                killall -9 easytier-core >/dev/null 2>&1
+                killall -3 easytier_check >/dev/null 2>&1
+                killall -3 easytier-core >/dev/null 2>&1
+                killall -3 easytier-core >/dev/null 2>&1
 		local network_name network_secret mode ipaddr peeradd external_node rpc_portal listenermode
 		local listeners desvice_name instance_name vpn_portal mtu default_protocol disable_encryption
 		local multi_thread disable_ipv6 latency_first exit_node exit_nodes log check checkip proxy_network
@@ -275,9 +275,9 @@ start_service() {
 }
 
 stop_service() {
-                killall easytier_check >/dev/null 2>&1
-                killall easytier-core >/dev/null 2>&1
-                killall -9 easytier-core >/dev/null 2>&1
+                killall -3 easytier_check >/dev/null 2>&1
+                killall -3 easytier-core >/dev/null 2>&1
+                killall -3 easytier-core >/dev/null 2>&1
                 uci -q delete network.EasyTier >/dev/null 2>&1
                 uci -q delete firewall.easytierzone >/dev/null 2>&1
 	        uci -q delete firewall.easytierfwlan >/dev/null 2>&1
