@@ -39,6 +39,9 @@ define Package/luci-app-squid-adv/install
 	$(INSTALL_DIR) $(1)/usr/libexec/rpcd/
 	$(INSTALL_BIN) ./files/luci.squid-adv $(1)/usr/libexec/rpcd/
 
+	$(INSTALL_DIR) $(1)/etc/uci-defaults/
+	$(INSTALL_BIN) ./files/squid.uci-defaults $(1)/etc/uci-defaults/99-luci-app-squid-adv
+
 	$(INSTALL_DIR) $(1)/usr/share/luci/menu.d/
 	$(INSTALL_DATA) ./files/luci-menu.d.json $(1)/usr/share/luci/menu.d/luci-app-squid-adv.json
 
