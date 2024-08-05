@@ -37,7 +37,7 @@ jobs:
 
     - uses: de-vri-es/setup-git-credentials@v2
       with:
-        credentials: https://kiddin9:${{ secrets.TOKEN_KIDDIN9 }}@github.com/
+        credentials: https://mgz0227:${{ secrets.TOKEN_MGZ0227 }}@github.com/
     
     - name: Set git identity
       run : |
