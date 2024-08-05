@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=nps
 PKG_VERSION:=0.26.18
-PKG_RELEASE:=
+PKG_RELEASE:=6
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/yisier/nps/tar.gz/v$(PKG_VERSION)?

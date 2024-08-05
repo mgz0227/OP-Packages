@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=v2dat
 PKG_SOURCE_DATE:=2022-12-15
 PKG_SOURCE_VERSION:=null
-PKG_RELEASE:=
+PKG_RELEASE:=5
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_SOURCE_DATE).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/urlesistiana/v2dat/tar.gz/$(PKG_SOURCE_VERSION)?
