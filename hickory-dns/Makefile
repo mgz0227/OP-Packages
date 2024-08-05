@@ -6,7 +6,7 @@ PKG_RELEASE:=9
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/hickory-dns/hickory-dns.git
-PKG_SOURCE_VERSION:=1c7ec9e3ab88015d76a1d89cd61a497f3f6e39d1
+PKG_SOURCE_VERSION:=null
 PKG_BUILD_DEPENDS:=rust/host
 PKG_BUILD_PARALLEL:=1
 

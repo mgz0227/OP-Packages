@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=leigod-acc
 PKG_VERSION:=1.3.0.30
-PKG_RELEASE:=3
+PKG_RELEASE:=9
 
 include $(INCLUDE_DIR)/package.mk
 
