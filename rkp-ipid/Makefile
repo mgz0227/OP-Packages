@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
  
 PKG_NAME:=rkp-ipid
-PKG_RELEASE:=5
+PKG_RELEASE:=
  
 include $(INCLUDE_DIR)/package.mk
 
