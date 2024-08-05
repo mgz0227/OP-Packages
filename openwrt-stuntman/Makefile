@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=stuntman
 PKG_VERSION:=1.2.16
-PKG_RELEASE:=
+PKG_RELEASE:=5
 
 PKG_MAINTAINER:=muink <hukk1996@gmail.com>
 PKG_LICENSE:=Apache-2.0
