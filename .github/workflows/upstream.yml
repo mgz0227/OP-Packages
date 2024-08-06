@@ -177,7 +177,7 @@ jobs:
         git_clone https://github.com/peter-tank/luci-app-dnscrypt-proxy2
         git_clone https://github.com/NateLol/luci-app-oled
         git_clone https://github.com/sundaqiang/openwrt-packages && mv -n openwrt-packages/luci-* ./; rm -rf openwrt-packages
-        git_clone https://github.com/vernesong/OpenClash -b dev --depth 1 && mvdir -n OpenClash/luci-app-openclash ./ &&rm -rf OpenClash
+        git_clone -b dev --depth 1 https://github.com/vernesong/OpenClash && mvdir -n OpenClash/luci-app-openclash ./ &&rm -rf OpenClash
         git_clone https://github.com/pymumu/luci-app-smartdns
         git_clone https://github.com/CHN-beta/rkp-ipid
         git_clone https://github.com/Erope/openwrt_nezha nezha && mvdir nezha
