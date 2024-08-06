@@ -316,6 +316,7 @@ return view.extend({
 		};
 
 		o = s.option(form.Value, 'target', _('Target'));
+		o.placeholder = 'x86/64';
 		o.rmempty = false;
 		o.validate = function(section, value) {
 			if (value == null || value == '' || value == 'ignore')
@@ -326,21 +327,6 @@ return view.extend({
 		if (targetslist.length) {
 			for (var i = 0; i < targetslist.length; i++)
 				o.value(targetslist[i]);
-		};
-
-		o = s.option(form.Value, 'subtarget', _('SubTarget'));
-		o.value('32');
-		o.value('64');
-		o.value('generic');
-		o.value('legacy');
-		o.value('nand');
-		o.value('mikrotik');
-		o.value('armv8');
-		o.rmempty = false;
-		o.validate = function(section, value) {
-			if (value == null || value == '' || value == 'ignore')
-				return _('Expecting: non-empty value');
-			return true;
 		};
 
 		o = s.option(form.Flag, 'extra', _('Supplementary Files'));

@@ -15,7 +15,7 @@ start_vntcli() {
                    clibin=/tmp/vnt-cli
                 fi
                 echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : vnt-cli_${cpucore}开始启动" >>/tmp/vnt-cli.log
-                [ -z "`opkg list-installed | grep kmod-tun`" ] && echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : 未安装kmod-tun模块，开始安装..." >>/tmp/vnt-cli.log && opkg update && opkg install kmod-tun
+                [ -z "`opkg list-installed | grep kmod-tun`" ] && echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : 未安装kmod-tun模块，	请确定安装好kmod-tun " >>/tmp/vnt-cli.log 
                 path=$(dirname "$clibin")
                 if [ -f /tmp/vnt-cli ] && [ "${path:0:4}" != "/tmp" ] ;then
                    chmod +x /tmp/vnt-cli
@@ -53,8 +53,8 @@ start_vntcli() {
                 pgrep -f vnt_check | xargs kill -9 >/dev/null 2>&1
                 ps | grep 'vnt-cli' | grep -v grep | awk '{print $1}' | xargs kill >/dev/null 2>&1
                 ps | grep 'vnt-cli' | grep -v grep | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1
-		local token mode ipaddr mtu desvice_id localadd log comp
-		local peeradd desvice_name vntshost stunhost checkip mapping
+		local token mode ipaddr mtu desvice_id localadd log comp local_ipv4
+		local peeradd desvice_name vntshost stunhost checkip mapping disable_stats
 		local punch client_port par key forward serverw vntdns allow_wg
 		local finger relay first_latency tunname tunmode passmode
 		config_get token "$cfg" 'token'
@@ -62,61 +62,52 @@ start_vntcli() {
                 config_get desvice_id "$cfg" 'desvice_id'
                 config_get desvice_name "$cfg" 'desvice_name'
                 config_get vntshost "$cfg" 'vntshost'
+                config_get local_ipv4 "$cfg" 'local_ipv4'
 #以下解析IP4P地址的脚本由恩山大佬liaohcai提供
-if [ ! -n "`echo $vntshost | grep ':'`" ] && [ ! -z "$vntshost" ] ;then
-	eval $(nslookup $vntshost 223.5.5.5 | awk '/2001/' |cut -d ':' -f 2-6 | awk -F: '{print "port="$3" ipa="$4" ipb="$5 }')
-##查询域名，并提取IP4P地址
-	port=$((0x$port))
-	ip1=$((0x${ipa:0:2}))
-	ip2=$((0x${ipa:2:2}))
-	ip3=$((0x${ipb:0:2}))
-	ip4=$((0x${ipb:2:2}))
-	ipv4="${ip1}.${ip2}.${ip3}.${ip4}:${port}"
-	lastIP="$(cat /tmp/natmap-vnts-ip4p.txt)"
-	#检查ip是否变动
-		if [ "$lastIP" != "$ipv4" ] ; then
-echo ${ip1}.${ip2}.${ip3}.${ip4}:${port} > /tmp/natmap-vnts-ip4p.txt
-		fi
-	vntshost="${ipv4}"
+if [ ! -z "$vntshost" ] ; then
+
+  cas=$(echo $vntshost | grep -oE ':|/'| head -1)
+	case ${cas} in
+  :)  vntshost="$vntshost" 
+  
+  ;;
+ 	# 原地址
+  /) vntshost="`curl $vntshost`"
+
+	# 短链接
+	;;
+	* ) addr=$(curl -k -s "https://ipw.cn/api/dns/${vntshost}/AAAA/all" |  grep -o -i  "2001::[0-9a-fA-F:]\+" | head -n 1 )
 	
-cat <<'EOF2'> "/tmp/vnts_ip4p.sh"
-#!/bin/ash
+		if [ ! -z "$(echo "$addr" | grep -o -i  "2001::[0-9a-fA-F:]\+")" ] ; then # 判断AAAA记录是不是IP4P地址  使用通断检测 服务器的虚拟ip 来定时检测ip变化
+			eval $(echo "$addr" | awk '/2001/'|cut -d ':' -f 1-6 | awk -F ':' '{print "port="$3" ipa="$4" ipb="$5 }')
+			port=$((0x$port))
+			ip1=$((0x${ipa:0:2}))
+			ip2=$((0x${ipa:2:2}))
+			ip3=$((0x${ipb:0:2}))
+			ip4=$((0x${ipb:2:2}))
+			ipv4="${ip1}.${ip2}.${ip3}.${ip4}:${port}"
+			
+		else
+			ip_port=$(curl -k -s "https://ipw.cn/api/dns/${ddns}/TXT/all" |  grep -oE '"Type":"TXT","recordValue":[^,}]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+' | head -n 1 ) 
+			if echo "$ip_port" | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]{1,5}$' &>/dev/null 2>&1 ; then  # 判断TXT记录是不是IP:PORT地址
 
-ddns=$(uci -q get vnt.@vnt-cli[0].vntshost)
-if [  -n "`echo $ddns | grep ':'`" ] || [  -z "$ddns" ] ;then
-exit
-fi
-while true; do
-if [ ! -n "`echo $ddns | grep ':'`" ] && [ ! -z "$ddns" ] ;then
-	eval $(nslookup $ddns 223.5.5.5 | awk '/2001/' |cut -d ':' -f 2-6 | awk -F: '{print "port="$3" ipa="$4" ipb="$5 }')
-##查询域名，并提取IP4P地址
-	port=$((0x$port))
-	ip1=$((0x${ipa:0:2}))
-	ip2=$((0x${ipa:2:2}))
-	ip3=$((0x${ipb:0:2}))
-	ip4=$((0x${ipb:2:2}))
-	ipv4="${ip1}.${ip2}.${ip3}.${ip4}:${port}"
-	lastIP="$(cat /tmp/natmap-vnts-ip4p.txt)"
-	#检查ip是否变动
-		if [ "$lastIP" != "$ipv4" ] ; then
-echo ${ip1}.${ip2}.${ip3}.${ip4}:${port} > /tmp/natmap-vnts-ip4p.txt
-		/etc/init.d/vnt restart
+				ipv4="${ip_port}"
+
+			else
+				echo "不是有效的IPv4地址:端口格式，请检查下服务地址"
+				echo "退出"
+				exit 0
+			fi
 		fi
-fi
-if [  -n "`echo $ddns | grep ':'`" ] || [  -z "$ddns" ] ;then
-exit
-fi
-sleep 120
-done
-EOF2
-
-chmod +x "/tmp/vnts_ip4p.sh"
-ash /tmp/vnts_ip4p.sh &
+		vntshost=${ipv4}
+	
+	;;
+	esac
 fi
                 config_get stunhost "$cfg" 'stunhost'
                 config_get client_port "$cfg" 'client_port'
                 config_get par "$cfg" 'par'
-                config_get punch "$cfg" 'punch'
+                config_get punch "$cfg" 'punch' 'all'
                 config_get passmode "$cfg" 'passmode'
                 config_get peeradd "$cfg" 'peeradd'
                 config_get localadd "$cfg" 'localadd'
@@ -132,6 +123,7 @@ fi
 		config_get_bool finger "$cfg" 'finger' '0'
 		config_get_bool first_latency "$cfg" 'first_latency' '0'
                 config_get_bool log "$cfg" 'log' '0'
+                config_get_bool disable_stats "$cfg" 'disable_stats' '0'
                 config_get_bool allow_wg "$cfg" 'allow_wg' '0'
                 config_get checkip "$cfg" 'checkip'
                 config_get comp "$cfg" 'comp'
@@ -230,7 +222,8 @@ EOF
                 fi
 		[ -z "$par" ] || procd_append_param command --par "$par"
 		[ -z "$tunname" ] || procd_append_param command --nic "$tunname"
-		[ "$punch" = "ipv4/ipv6" ] || procd_append_param command --punch "$punch"
+                [ -z "$local_ipv4" ] || procd_append_param command --local-ipv4 "$local_ipv4"
+		procd_append_param command --punch "$punch"
 		[ "$passmode" != "off" ] && [ -n "$key" ] && procd_append_param command --model "$passmode"
 		[ "$passmode" != "off" ] && [ -n "$key" ] && procd_append_param command -w "$key"
 		[ "$tunmode" = "tun" ] || procd_append_param command -a
@@ -238,6 +231,7 @@ EOF
 		[ "$forward" = "0" ] || procd_append_param command --no-proxy
 		[ "$finger" = "0" ] || procd_append_param command --finger
 		[ "$serverw" = "0" ] || procd_append_param command -W
+                [ "$disable_stats" = "1" ] || procd_append_param command --disable-stats
 		[ "$first_latency" = "0" ] || procd_append_param command --first-latency
                 [ "$relay" = "转发" ] && procd_append_param command --use-channel relay
                 [ "$relay" = "P2P" ] && procd_append_param command --use-channel p2p
@@ -256,7 +250,7 @@ EOF
                 else
                    vnt_tun="$tunname"
                 fi 
-                if [ ! -z "$client_port" ] && [ "$tcp" = "tcp" ] ; then
+                if [ ! -z "$client_port" ] ; then
                    if [ ! -z "$(echo $client_port | grep ',' )" ] ; then
 	              vnt_tcp_port="${client_port%%,*}"
 	           else
@@ -311,7 +305,7 @@ EOF
 		[ "$forward" = "0" ] || sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
                 [ ! -z "$checkip" ] && check
                 echo `date +%s` > /tmp/vnt_time
-                echo "$(date '+%Y-%m-%d %H:%M:%S') 若启动失败请前往 状态-系统日志 查看具体原因 " >>/tmp/vnt-cli.log
+                
 }
 
 check () {
@@ -580,8 +574,8 @@ start_service() {
            [ "$mipstype" = "0" ] && cpucore="mips" || cpucore="mipsle"
         fi
         
-        [ -z "`opkg list-installed | grep curl`" ] && opkg update && opkg install curl
-        [ -z "`opkg list-installed | grep luci-lib-fs`" ] && opkg update && opkg install luci-lib-fs
+        [ -z "`opkg list-installed | grep curl`" ] && echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : 未安装curl，请确定安装好curl " >>/tmp/vnt-cli.log 
+        [ -z "`opkg list-installed | grep luci-lib-fs`" ] && echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : 未安装luci-lib-fs，请确定安装好luci-lib-fs " >>/tmp/vnt-cli.log 
 	config_foreach start_vntcli 'vnt-cli'
 	config_foreach start_vnts 'vnts'
 }

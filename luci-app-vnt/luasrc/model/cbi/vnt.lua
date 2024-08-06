@@ -147,11 +147,15 @@ par = s:taboption("privacy",Value, "par", translate("并行任务数"),
 	translate("默认留空，任务并行度(必须为正整数),默认值为1,该值表示处理网卡读写的任务数,组网设备数较多、处理延迟较大时可适当调大此值"))
 par.placeholder = "2"
 
-punch = s:taboption("privacy",ListValue, "punch", translate("IPV4/IPV6"),
-	translate("选择只使用ipv4打洞或者只使用ipv6打洞，默认两则都会使用,ipv6相对于ipv4速率可能会有所降低，ipv6更容易打通直连"))
-punch:value("ipv4/ipv6")
+punch = s:taboption("privacy",ListValue, "punch", translate("打洞模式"),
+	translate("选择只使用ipv4打洞或者只使用ipv6打洞，all都会使用,ipv6相对于ipv4速率可能会有所降低，ipv6更容易打通直连"))
+punch:value("all")
 punch:value("ipv4")
 punch:value("ipv6")
+punch:value("ipv4-tcp")
+punch:value("ipv6-tcp")
+punch:value("ipv4-udp")
+punch:value("ipv6-udp")
 
 comp = s:taboption("privacy",ListValue, "comp", translate("启用压缩"),
 	translate("启用压缩，默认仅支持lz4压缩，开启压缩后，如果数据包长度大于等于128，则会使用压缩，否则还是会按原数据发送<br>也支持zstd压缩，但是需要确认程序编译时是否添加支持zstd否则无法启动！编译参数--features zstd<br>如果宽度速度比较慢，可以考虑使用高级别的压缩"))

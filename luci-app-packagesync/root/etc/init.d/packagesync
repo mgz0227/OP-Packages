@@ -77,7 +77,6 @@ validate_section_release() {
 		'name:uciname' \
 		'version:string' \
 		'target:string' \
-		'subtarget:string' \
 		'pkgarch:string' \
 		'model:string' \
 		'extra:bool:0'
@@ -93,7 +92,7 @@ gen_order() {
 	json_add_object
 	json_add_string name "$name"
 	json_add_string version "$version"
-	json_add_string target "$target/$subtarget"
+	json_add_string target "$target"
 	json_add_string arch "$pkgarch"
 	json_add_string model "$model"
 	json_add_boolean extra "$extra"
@@ -157,6 +156,7 @@ start_service() {
 getinfo() {
 validate_section_config "$SCONFIG" define_global
 local rawhtml stables releases targets pkgarchs download_url="${GLOBAL_download_url:-$DOWNLOAD_URL}"
+# Versions
 rawhtml="$(curl --connect-timeout 10 --retry 3 -sSL "$download_url")"
 stables="$( \
 echo "$rawhtml" | sed -n '/Stable Release/,/Development Snapshots/p' \
@@ -168,12 +168,24 @@ echo "$rawhtml" | sed -n '/Release Archive/,/\$/p' \
 | sed -n '/<ul>/,/<\/ul>/p' | grep 'OpenWrt' \
 | sed -E "s|.+\breleases/([\.0-9]+)/.+|\1|g" \
 )"
+# Targets
 rawhtml="$(curl --connect-timeout 10 --retry 3 -sSL "$download_url/$URLHREF_RELEASES/$(head -n1 <<< "$stables")/$URLHREF_VERS_TARGETS")"
 targets="$( \
 echo "$rawhtml" \
 | sed -n '/<table>/,/<\/table>/p' | grep '<a href=' \
 | sed -E "s|.+\bhref=\"([^/]+)/.+|\1|g" \
 )"
+## subTargets
+fulltargets="$( \
+for target in $targets; do
+	subtargets="$(curl -sL "$download_url/$URLHREF_RELEASES/$(head -n1 <<< "$stables")/$URLHREF_VERS_TARGETS/$target/" \
+		| sed -n '/<table>/,/<\/table>/p' | grep '<a href=' \
+		| sed -E "s|.+\bhref=\"([^/]+)/.+|\1|g" \
+	)"
+	for subtarget in $subtargets; do sed "s|^|$target/|" <<< "$subtarget"; done
+done \
+)"
+# Archs
 rawhtml="$(curl --connect-timeout 10 --retry 3 -sSL "$download_url/$URLHREF_RELEASES/$(head -n1 <<< "$stables")/$URLHREF_VERS_PACKAGES")"
 pkgarchs="$( \
 echo "$rawhtml" \
@@ -186,8 +198,8 @@ echo -e "$stables\n$releases"
 echo -e "$stables\n$releases" > "$RELEASES_LIST"
 mkdir -p "${TARGETS_LIST%/*}" 2>/dev/null
 echo "Targets:"
-echo "$targets"
-echo "$targets" > "$TARGETS_LIST"
+echo "$fulltargets"
+echo "$fulltargets" > "$TARGETS_LIST"
 mkdir -p "${PKGARCHS_LIST%/*}" 2>/dev/null
 echo "PKGArchs:"
 echo "$pkgarchs"
@@ -232,7 +244,7 @@ fi
 
 cleanup_regex() {
 	[ "$2" == "0" ] || { >&2 echo "section $1 validation failed"; return 1; }
-	targets="${targets:+$targets|}/$version/$URLHREF_VERS_TARGETS/$target/$subtarget\b"
+	targets="${targets:+$targets|}/$version/$URLHREF_VERS_TARGETS/$target\b"
 	packages="${packages:+$packages|}/$version/$URLHREF_VERS_PACKAGES\b"
 	pkgarchs="${pkgarchs:+$pkgarchs|}/$URLHREF_PACKAGES_PREFIX${version%\.*}/$pkgarch\b"
 }
@@ -248,12 +260,12 @@ config_foreach validate_section_release $RELEASE cleanup_regex || return $?
 
 #count=$(uci -q show $CONFIG_NAME|grep "=$RELEASE"|sed -E "s|.+@$RELEASE\[(\d+)\].+|\1|"|tail -n1)
 #
-#local ucivv="version target subtarget pkgarch"
+#local ucivv="version target pkgarch"
 #for i in $(seq 0 $count); do
 #	for _var in $ucivv; do
 #		eval "local $_var=\$(uci -q get $CONFIG_NAME.@$RELEASE[$i].$_var)"
 #	done
-#	targets="${targets:+$targets|}/$version/$URLHREF_VERS_TARGETS/$target/$subtarget\b"
+#	targets="${targets:+$targets|}/$version/$URLHREF_VERS_TARGETS/$target\b"
 #	packages="${packages:+$packages|}/$version/$URLHREF_VERS_PACKAGES\b"
 #	pkgarchs="${pkgarchs:+$pkgarchs|}/$URLHREF_PACKAGES_PREFIX${version%\.*}/$pkgarch\b"
 #done
