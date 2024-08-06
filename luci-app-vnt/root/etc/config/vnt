@@ -15,7 +15,7 @@ config vnt-cli
         option clibin '/usr/bin/vnt-cli'
 config vnts
 	option enabled '0'
-	option server_port '1235'
+	option server_port '29872'
 	option subnet '10.26.0.1'
         option vntsbin '/usr/bin/vnts'
         option logs '0'

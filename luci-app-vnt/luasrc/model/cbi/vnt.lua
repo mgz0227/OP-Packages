@@ -3,7 +3,7 @@ local http = luci.http
 local nixio = require "nixio"
 
 m = Map("vnt")
-m.description = translate('vnt是一个简便高效的异地组网、内网穿透工具。项目地址：<a href="https://github.com/lbl8603/vnt">github.com/lbl8603/vnt</a>&nbsp;&nbsp;<a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=o3Rr9xUWwAAnV9TkU_Nyj3yHNLs9k5F5&authKey=l1FKvqk7%2F256SK%2FHrw0PUhs%2Bar%2BtKYx0pLb7aiwBN9%2BKBCY8sOzWWEqtl4pdXAT7&noverify=0&group_code=1034868233">QQ群</a>&nbsp;&nbsp;安卓端：<a href="https://github.com/lbl8603/VntApp">VntApp</a>')
+m.description = translate('vnt是一个简便高效的异地组网、内网穿透工具。<br>官网：<a href="http://rustvnt.com/">rustvnt.com</a>&nbsp;&nbsp;项目地址：<a href="https://github.com/lbl8603/vnt">github.com/vnt-dev/vnt</a>&nbsp;&nbsp;安卓端、GUI：<a href="https://github.com/lbl8603/VntApp">VntApp</a>&nbsp;&nbsp;<a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=o3Rr9xUWwAAnV9TkU_Nyj3yHNLs9k5F5&authKey=l1FKvqk7%2F256SK%2FHrw0PUhs%2Bar%2BtKYx0pLb7aiwBN9%2BKBCY8sOzWWEqtl4pdXAT7&noverify=0&group_code=1034868233">QQ群</a>')
 
 -- vnt-cli
 m:section(SimpleSection).template  = "vnt/vnt_status"
@@ -84,7 +84,7 @@ allow_wg = s:taboption("general",Flag, "allow_wg", translate("允许WireGuard接
 allow_wg.rmempty = false
 
 log = s:taboption("general",Flag, "log", translate("启用日志"),
-	translate("运行日志在/tmp/vnt.log,可在上方客户端日志查看，无法启动等详细错误日志在 状态-系统日志里查看"))
+	translate("运行日志在/tmp/vnt.log,可在上方客户端日志查看"))
 log.rmempty = false
 
 clibin = s:taboption("privacy", Value, "clibin", translate("vnt-cli程序路径"),
@@ -141,7 +141,7 @@ mapping.placeholder = "tcp:0.0.0.0:80->10.26.0.10:80"
 mtu = s:taboption("privacy",Value, "mtu", translate("MTU"),
 	translate("设置虚拟网卡的mtu值，大多数情况下（留空）使用默认值效率会更高，也可根据实际情况进行微调，默认值：不加密1450，加密1410"))
 mtu.datatype = "range(1,1500)"
-mtu.placeholder = "1438"
+mtu.placeholder = "1300"
 
 par = s:taboption("privacy",Value, "par", translate("并行任务数"),
 	translate("默认留空，任务并行度(必须为正整数),默认值为1,该值表示处理网卡读写的任务数,组网设备数较多、处理延迟较大时可适当调大此值"))
@@ -181,6 +181,10 @@ key:depends("passmode", "chacha20")
 key:depends("passmode", "chacha20_poly1305")
 key:depends("passmode", "xor")
 
+local_ipv4  = s:taboption("privacy",Value, "local_ipv4", translate("出口节点IP地址"),
+	translate("本地出口网卡的ipv4地址"))
+local_ipv4.optional = false
+
 serverw = s:taboption("privacy",Flag, "serverw", translate("启用服务端客户端加密"),
 	translate("用服务端通信的数据加密，采用rsa+aes256gcm加密客户端和服务端之间通信的数据，可以避免token泄漏、中间人攻击，<br>上面的加密模式是客户端与客户端之间加密，这是服务器和客户端之间的加密，不是一个性质，无需选择加密模式"))
 serverw.rmempty = false
@@ -192,6 +196,10 @@ finger.rmempty = false
 first_latency = s:taboption("privacy",Flag, "first_latency", translate("启用优化传输"),
 	translate("启用后优先使用低延迟通道，默认情况下优先使用p2p通道，某些情况下可能p2p比客户端中继延迟更高，可启用此参数进行优化传输"))
 first_latency.rmempty = false
+
+disable_stats = s:taboption("privacy",Flag, "disable_stats", translate("启用流量统计"),
+	translate("记录vnt使用的流量统计信息"))
+disable_stats.rmempty = false
 
 check = s:taboption("privacy",Flag, "check", translate("通断检测"),
         translate("开启通断检测后，可以指定对端的设备IP，当所有指定的IP都ping不通时将会重启vnt程序"))
@@ -323,7 +331,7 @@ btnchart = s:taboption("infos", Button, "btnchart")
 btnchart.inputtitle = translate("设备流量统计")
 btnchart.description = translate("点击按钮刷新，查看所有设备流量统计")
 btnchart.inputstyle = "apply"
-btnchart:depends("cmdmode", "原版")
+btnchart:depends({ cmdmode = "原版", disable_stats = "1" })
 btnchart.write = function()
 if process_status ~= "" then
     luci.sys.call("$(uci -q get vnt.@vnt-cli[0].clibin) --chart_a >/tmp/vnt-cli_chart")
@@ -379,7 +387,7 @@ local upload = s:taboption("upload", FileUpload, "upload_file")
 upload.optional = true
 upload.default = ""
 upload.template = "vnt/other_upload"
-upload.description = translate("可直接上传二进制程序vnt-cli和vnts或者以.tar.gz结尾的压缩包,上传新版本会自动覆盖旧版本，下载地址：<a href='https://github.com/lbl8603/vnt/releases' target='_blank'>vnt-cli</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href='https://github.com/lbl8603/vnts/releases' target='_blank'>vnts</a><br>上传的文件将会保存在/tmp文件夹里，如果在高级设置里自定义了程序路径那么启动程序时将会自动移至自定义的路径<br>")
+upload.description = translate("可直接上传二进制程序vnt-cli和vnts或者以.tar.gz结尾的压缩包,上传新版本会自动覆盖旧版本，下载地址：<a href='https://github.com/vnt-dev/vnt/releases' target='_blank'>vnt-cli</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href='https://github.com/vnt-dev/vnts/releases' target='_blank'>vnts</a><br>上传的文件将会保存在/tmp文件夹里，如果在高级设置里自定义了程序路径那么启动程序时将会自动移至自定义的路径<br>")
 local um = s:taboption("upload",DummyValue, "", nil)
 um.template = "vnt/other_dvalue"
 
@@ -488,7 +496,7 @@ web_wan.rmempty = false
 web_wan:depends("web", "1")
 
 logs = s:taboption("gen",Flag, "logs", translate("启用日志"),
-	translate("运行日志在/tmp/vnts.log，可在上方服务端日志查看，无法启动等详细错误日志在 状态-系统日志里查看"))
+	translate("运行日志在/tmp/vnts.log，可在上方服务端日志查看"))
 logs.rmempty = false
 
 vntsbin = s:taboption("pri",Value, "vntsbin", translate("vnts程序路径"),
