@@ -388,7 +388,7 @@ jobs:
         done
 
         git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/lean package/network/services/shellsync package/wwan package/qca/shortcut-fe
-        git_clone https://github.com/vernesong/OpenClash -b dev -depth 1 && mv -n OpenClash/luci-app-openclash ./; rm -rf OpenClash
+        git clone -b dev --depth 1 https://github.com/vernesong/OpenClash && mv -n OpenClash/luci-app-openclash ./; rm -rf OpenClash
     - name: Delete duplicated packages
       run: |
         shopt -s extglob
