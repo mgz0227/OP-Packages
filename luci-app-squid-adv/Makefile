@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 PKG_LICENSE:=Apache-2.0
 PKG_NAME:=luci-app-squid-adv
 PKG_VERSION:=2.0
-PKG_RELEASE:=10
+PKG_RELEASE:=11
 PKG_MAINTAINER:=Douglas Orend <doug.orend2@gmail.com>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -19,7 +19,7 @@ define Package/luci-app-squid-adv
 	SUBMENU:=3. Applications
 	TITLE:=Advanced LuCI support for Squid
 	PKGARCH:=all
-	#DEPENDS:=+squid +luci-base
+	#DEPENDS:=+squid +luci-base +coreutils-date
 endef
 
 define Package/luci-app-squid-adv/description

@@ -16,8 +16,8 @@ return view.extend({
 		object: 'luci.squid-adv',
 		method: 'cert_valid',
 	}),
- 
- 	// Validate whether string passed is a valid IP/Port combination or just a valid Port:  
+
+ 	// Validate whether string passed is a valid IP/Port combination or just a valid Port:
 	validate_ip: function(section_id, value) {
 		var ipv4 = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):(6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9][0-9]|[1-5](\d){4}|[1-9](\d){0,3})$/;
 		var ipv6 = /^(?:(?:[a-fA-F\d]{1,4}:){7}(?:[a-fA-F\d]{1,4}|:)|(?:[a-fA-F\d]{1,4}:){6}(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}|:[a-fA-F\d]{1,4}|:)|(?:[a-fA-F\d]{1,4}:){5}(?::(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}|(?::[a-fA-F\d]{1,4}){1,2}|:)|(?:[a-fA-F\d]{1,4}:){4}(?:(?::[a-fA-F\d]{1,4}){0,1}:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}|(?::[a-fA-F\d]{1,4}){1,3}|:)|(?:[a-fA-F\d]{1,4}:){3}(?:(?::[a-fA-F\d]{1,4}){0,2}:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}|(?::[a-fA-F\d]{1,4}){1,4}|:)|(?:[a-fA-F\d]{1,4}:){2}(?:(?::[a-fA-F\d]{1,4}){0,3}:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}|(?::[a-fA-F\d]{1,4}){1,5}|:)|(?:[a-fA-F\d]{1,4}:){1}(?:(?::[a-fA-F\d]{1,4}){0,4}:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}|(?::[a-fA-F\d]{1,4}){1,6}|:)|(?::(?:(?::[a-fA-F\d]{1,4}){0,5}:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}|(?::[a-fA-F\d]{1,4}){1,7}|:)))(?:%[0-9a-zA-Z]{1,})?$/gm;
@@ -30,11 +30,11 @@ return view.extend({
 	},
 
 	// Loading function:
-    load: function () {
-        return Promise.all([
-            this.cert_valid(),
-        ]);
-    },
+	load: function () {
+		return Promise.all([
+			this.cert_valid(),
+		]);
+	},
 
 	// Rendering function:
 	render: function(data) {
@@ -46,8 +46,8 @@ return view.extend({
 
 		s = m.section(form.TypedSection, 'transparent');
 		s.anonymous = true;
-		
-		o = s.option(widgets.NetworkSelect, 'interface', _('Interface'), _('Transparent proxy only works on the specified interface.') + "<br />" + _("Do not use on interfaces controlled by programs like ") + '<a href="https://nodogsplashdocs.readthedocs.io/en/stable/">nodogsplash</a>!"));
+
+		o = s.option(widgets.NetworkSelect, 'interface', _('Interface'), _('Transparent proxy only works on the specified interface.') + "<br />" + _("Do not use on interfaces controlled by programs like nodogsplash!"));
 		o.multiple = false;
 		o.default = 'lan';
 
@@ -79,7 +79,7 @@ return view.extend({
 	},
 
 	handleSaveApply: function(ev, mode) {
-		var tasks = [ 
+		var tasks = [
 			this.handleSave(ev),
 			this.configure_proxies(),
 		];
