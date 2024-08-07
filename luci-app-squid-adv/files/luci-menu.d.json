@@ -31,7 +31,7 @@
     },
     "admin/services/squid/openssl": {
         "title": "OpenSSL Cert",
-        "order": 20,
+        "order": 30,
         "action": {
             "type": "view",
             "path": "squid-adv/openssl"

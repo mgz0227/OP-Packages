@@ -4,9 +4,10 @@
 		"read": {
 			"ubus": {
 				"luci.squid-adv": [
+					"cert_info",
 					"reconfigure",
 					"generate",
-					"cert_valid",
+					"ip_info",
 				]
 			},
 			"uci": [

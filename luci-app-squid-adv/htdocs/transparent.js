@@ -12,9 +12,9 @@ return view.extend({
 		object: 'luci.squid-adv',
 		method: 'reconfigure',
 	}),
-	cert_valid: rpc.declare({
+	cert_info: rpc.declare({
 		object: 'luci.squid-adv',
-		method: 'cert_valid',
+		method: 'cert_info',
 	}),
 
  	// Validate whether string passed is a valid IP/Port combination or just a valid Port:
@@ -32,7 +32,7 @@ return view.extend({
 	// Loading function:
 	load: function () {
 		return Promise.all([
-			this.cert_valid(),
+			this.cert_info(),
 		]);
 	},
 
@@ -60,7 +60,7 @@ return view.extend({
 		o.depends("http_enabled", '1');
 
 		o = s.option(form.HiddenValue, "cert_valid")
-		o.cfgvalue = function(section_id) { return valid; }
+		o.cfgvalue = function(section_id) { return valid ? "1" : "0"; }
 		o.write = null;
 
 		o = s.option(form.Flag, "https_enabled", _("Enable Transparent HTTPS Proxy") + ":")

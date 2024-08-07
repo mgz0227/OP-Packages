@@ -4,7 +4,6 @@
 CERTS=/etc/squid/cert
 FILE=/tmp/luci.squid-adv.tmp
 trap 'rm ${FILE} 2> /dev/null' EXIT
-DEBUG=1
 
 ##########################################################################################################
 # Function to check firewall to see if proxy firewall rule is setup correctly:
@@ -44,7 +43,7 @@ check_firewall() {
 case "$1" in
 	list)
 		json_init
-		json_add_object "cert_valid"
+		json_add_object "cert_info"
 		json_close_object
 		json_add_object "configure"
 		json_close_object
@@ -55,6 +54,8 @@ case "$1" in
 		json_add_int    'stateOrProvinceName' 'String'
 		json_add_string 'localityName'        'String'
 		json_add_int    'organizationName'    'String'
+		json_close_object
+		json_add_object "ip_info"
 		json_close_object
 		json_dump
 		;;
@@ -101,33 +102,18 @@ case "$1" in
 				uci commit firewall
 				/sbin/service firewall restart
 				;;
-				
+
 			####################################################################################
 			generate)
-				if [[ "${DEBUG}" == "1" ]]; then
-					# Get the settings we need for this action:
-					config_load squid
-					config_get bits cert bits
-					config_get days cert days
-					config_get country cert country
-					config_get state cert state
-					config_get locality cert locality
-					config_get organization cert organization 
-					config_get overwrite cert overwrite
-				else
-					read input
-					json_load "$input"
-					json_get_var bits "bits"
-					json_get_var days "days"
-					json_get_var country "countryName"
-					json_get_var state "stateOrProvinceName"
-					json_get_var locality "localityName"
-					json_get_var organization "organizationName"
-				fi
+				read input
+				json_load "$input"
+				json_get_var bits "bits"
+				json_get_var days "days"
+				json_get_var country "country"
+				json_get_var state "state"
+				json_get_var locality "locality"
+				json_get_var organization "organization"
 
-				# If certificate exists --AND-- force option is NOT set to "1", then abort:
-				[[ -f ${CERTS}/ca.key && "${overwrite}" != "1" ]] && exit
-				
 				# Generate OpenSSL certificates, using defaults if option is not set:
 				mkdir -p ${CERTS}
 				openssl req -new -x509 -newkey rsa:${bits:=2048} -days ${days:=3650} -nodes -keyout ${CERTS}/ca.key  -out ${CERTS}/ca.pem -subj "/C=${country:=XX}/ST=${state:=Unspecified}/L=${locality:=Unspecified}/O=${organization:-OpenWrt Router}" 2>&1
@@ -138,21 +124,26 @@ case "$1" in
 				;;
 
 			####################################################################################
-			cert_valid)
+			cert_info)
 				VALID=false
-				test -f ${CERTS}/ca.pem && openssl x509 -noout -subject -in ${CERT}/ca.pem -nameopt multiline -checkdates -dates > ${FILE} && VALID=true
+				test -f ${CERTS}/ca.pem && openssl x509 -noout -subject -in ${CERTS}/ca.pem -nameopt multiline -checkdates -dates > ${FILE} && VALID=true
 				echo -n "{"
 				if [[ "${VALID}" == "true" ]]; then
-					cat ${FILE} | while read LINE; do 
+					cat ${FILE} | while read LINE; do
 						VAR=$(echo "${LINE%%=*}" | xargs)
 						VAL="$(echo "${LINE#*=}" | xargs)"
 						[[ "${#VAL}" -gt 0 ]] && echo -n "\"${VAR}\":\"${VAL}\","
 						[[ "${VAR}" == "notBefore" ]] && DAYS=$(date -d"${VAL}" +%s)
 						[[ "${VAR}" == "notAfter" ]] && echo -n "\"days\":\"$(( ($(date -d"${VAL}" +%s) - ${DAYS}) / (60*60*24) ))\","
 					done
-					echo -n "\"bits\":\"$(openssl x509 -noout -in ${CERT}/ca.pem -text | grep "Public-Key" | grep -o "[0-9]*")\","
+					echo -n "\"bits\":\"$(openssl x509 -noout -in ${CERTS}/ca.pem -text | grep "Public-Key" | grep -o "[0-9]*")\","
 				fi
 				echo "\"valid\":${VALID}}"
+				;;
+
+			####################################################################################
+			ip_info)
+				curl ipinfo.io 2> /dev/null || echo "{}"
 				;;
 		esac
 		;;
