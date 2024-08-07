@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2023 muink
+# Copyright (C) 2023-2024 muink
 #
 # This is free software, licensed under the Apache-2.0 license.
 # See /LICENSE for more information.
@@ -7,8 +7,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=stuntman
-PKG_VERSION:=1.2.16
-PKG_RELEASE:=9
+PKG_VERSION:=1.2.17
+PKG_RELEASE:=10
 
 PKG_MAINTAINER:=muink <hukk1996@gmail.com>
 PKG_LICENSE:=Apache-2.0
