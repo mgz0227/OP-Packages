@@ -8,8 +8,6 @@
 					"reconfigure",
 					"generate",
 					"ip_info",
-					"read_config",
-					"move_config",
 				]
 			},
 			"uci": [

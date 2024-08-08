@@ -18,15 +18,15 @@ return view.extend({
 	generate: rpc.declare({
 		object: 'luci.squid-adv',
 		method: 'generate',
-        params: [ 'bits', 'days', 'country', 'state', 'locality', 'organization' ],
+		params: [ 'bits', 'days', 'country', 'state', 'locality', 'organization' ],
 	}),
 
 	// Loading function:
-    load: function () {
-        return Promise.all([
-            this.cert_valid(),
-        ]);
-    },
+	load: function () {
+		return Promise.all([
+			this.cert_valid(),
+		]);
+	},
 
 	// Rendering function:
 	render: function(data) {
@@ -66,12 +66,12 @@ return view.extend({
 		o.datatype = 'integer';
 		o.cfgvalue = function() { if (data[0].days != undefined) { return data[0].days; } }
 		o.write = null;
-		o.validate = function(section_id, value) { return value > 0 ? true : _("Number of days cannot be negative!"); } 
-		
+		o.validate = function(section_id, value) { return value > 0 ? true : _("Number of days cannot be negative!"); }
+
 		o = s.option(form.Value, "countryName", _("Country Name:"))
 		o.cfgvalue = function() { return data[0].countryName != undefined ? data[0].countryName : 'XX'; }
 		o.write = null;
-		o.validate = function(section_id, value) { return value.length == 2 ? true : _("Must be a two-letter country code!"); } 
+		o.validate = function(section_id, value) { return value.length == 2 ? true : _("Must be a two-letter country code!"); }
 
 		o = s.option(form.Value, "stateOrProvinceName", _("State Or Province Name:"))
 		o.cfgvalue = function() { return data[0].stateOrProvinceName != undefined ? data[0].stateOrProvinceName : 'Unspecified'; }
@@ -94,7 +94,7 @@ return view.extend({
 			return this.generate_cert();
 		}
 	},
-	
+
 	generate_cert: function() {
 		// Gather information:
 		var bits = document.getElementById("widget.cbid.squid.squid.bits").value;
@@ -117,15 +117,15 @@ return view.extend({
 		return Promise.all([ this.get_ipinfo() ]).then(function(data) {
 			console.log(data);
 			document.getElementById("widget.cbid.squid.squid.countryName").value = data[0].country != undefined ? data[0].country : 'XX';
-			document.getElementById("widget.cbid.squid.squid.stateOrProvinceName").value = data[0].region != undefined ? data[0].region : 'Unspecified'; 
+			document.getElementById("widget.cbid.squid.squid.stateOrProvinceName").value = data[0].region != undefined ? data[0].region : 'Unspecified';
 			document.getElementById("widget.cbid.squid.squid.localityName").value = data[0].city != undefined ? data[0].city : 'Unspecified';
 		});
 	},
 
 	addFooter: function() {
 		return E('div', { 'class': 'cbi-page-actions' }, [
-			this.valid ? 
-				E('button', {'class': 'cbi-button cbi-button-positive', 'click': L.ui.createHandlerFn(this, 'regenerate_cert')}, [ _('Regenerate Certificate'), ' ' ]) : 
+			this.valid ?
+				E('button', {'class': 'cbi-button cbi-button-positive', 'click': L.ui.createHandlerFn(this, 'regenerate_cert')}, [ _('Regenerate Certificate'), ' ' ]) :
 				E('button', {'class': 'cbi-button cbi-button-positive', 'click': L.ui.createHandlerFn(this, 'generate_cert')}, [ _('Generate Certificate'), ' ' ]),
 			E('button', {'class': 'cbi-button cbi-button-negative', 'click': L.ui.createHandlerFn(this, 'populate')}, [ _('Populate Fields') ])
 		]);

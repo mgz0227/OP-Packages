@@ -185,3 +185,6 @@ uci -q set firewall.@defaults[0].fullcone='0'
 uci commit firewall
 }
 }
+uci set nginx._lan.listen="80"
+uci add_list nginx._lan.listen="[::]:80"
+uci commit nginx
