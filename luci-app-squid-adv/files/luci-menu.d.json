@@ -37,4 +37,20 @@
             "path": "squid-adv/openssl"
         }
     },
+    "admin/services/squid/installation": {
+        "title": "How To Install",
+        "order": 40,
+        "action": {
+            "type": "view",
+            "path": "squid-adv/install"
+        }
+    },
+    "admin/services/squid/advanced": {
+        "title": "Advanced",
+        "order": 50,
+        "action": {
+            "type": "view",
+            "path": "squid-adv/advanced"
+        }
+    },
 }

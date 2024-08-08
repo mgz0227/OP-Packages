@@ -57,9 +57,30 @@ case "$1" in
 		json_close_object
 		json_add_object "ip_info"
 		json_close_object
+		json_add_object "read_config"
+		json_close_object
+		json_add_object "move_config"
+		json_close_object
 		json_dump
 		;;
 
+	############################################################################################
+	config)
+		OUT=$(uci get squid.@squid[0].config_file)
+		case "$2" in
+			####################################################################################
+			read)
+				cat ${OUT}
+				;;
+				
+			####################################################################################
+			move)
+				mv /tmp/luci-app-squid-adv.data ${OUT}
+				;;
+		esac
+		;;
+
+	############################################################################################
 	call)
 		case "$2" in
 			####################################################################################
