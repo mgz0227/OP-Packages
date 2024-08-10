@@ -1,0 +1,37 @@
+#!/bin/sh
+
+exports=$(uci -q get firewall.@defaults[0].export)
+
+rule_exists() {
+    uci -q get firewall.ex_$1 >/dev/null
+}
+
+add_rule() {
+    uci set firewall.ex_$1=rule
+    uci set firewall.ex_$1.name="ex_$1"
+    uci set firewall.ex_$1.src='wan'
+    uci set firewall.ex_$1.proto='tcp'
+    uci set firewall.ex_$1.dest_port="$1"
+    uci set firewall.ex_$1.target='ACCEPT'
+}
+
+existing_rules=$(uci show firewall | grep "^firewall\.ex_[0-9]\+=rule" | cut -d. -f2 | cut -d= -f1)
+
+if [[ "$exports" != "$(echo $existing_rules | sed 's/ex_//g')" ]]; then
+if [ -n "$exports" ]; then
+    for port in $exports; do
+        if ! rule_exists "$port"; then
+            add_rule "$port"
+        fi
+        existing_rules=$(echo "$existing_rules" | grep -v "^ex_$port$")
+    done
+fi
+
+if [ -n "$existing_rules" ]; then
+    for rule in $existing_rules; do
+        uci delete firewall.$rule
+    done
+fi
+
+uci commit firewall
+fi
