@@ -10,17 +10,18 @@
    EXTRA_DEPENDS:=ucode (>=2022.03.22)
    PROVIDES:=uci-firewall
  endef
-@@ -38,10 +38,13 @@ endef
+@@ -38,10 +38,14 @@ endef
  define Package/firewall4/conffiles
  /etc/config/firewall
  /etc/nftables.d/
-+/etc/firewall.include
++/etc/firewall.user
  endef
  
  define Package/firewall4/install
  	$(CP) -a $(PKG_BUILD_DIR)/root/* $(1)/
 +	$(INSTALL_DIR) $(1)/etc/
-+	$(INSTALL_CONF) ./files/firewall.include $(1)/etc/firewall.include
++	$(INSTALL_CONF) ./files/firewall.include $(1)/etc/firewall.user
++	$(INSTALL_CONF) ./files/firewall.exwan $(1)/etc/firewall.exwan
  endef
  
  define Build/Compile
@@ -39,3 +40,53 @@
  endef
  
  define Package/firewall/description
+@@ -59,6 +59,7 @@ define Package/firewall/install
+ 	$(INSTALL_CONF) ./files/firewall.config $(1)/etc/config/firewall
+ 	$(INSTALL_DIR) $(1)/etc/
+ 	$(INSTALL_CONF) ./files/firewall.user $(1)/etc/firewall.user
++	$(INSTALL_CONF) ./files/firewall.exwan $(1)/etc/firewall.exwan
+ 	$(INSTALL_DIR) $(1)/usr/share/fw3
+ 	$(INSTALL_CONF) $(PKG_BUILD_DIR)/helpers.conf $(1)/usr/share/fw3
+ endef
+
+--- a/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
++++ b/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
+@@ -63,6 +63,15 @@ return view.extend({
+ 				o = s.option(form.Flag, 'fullcone6', _('Enable FullCone NAT6'));
+ 		}
+ 
++		o = s.option(form.Flag, 'expose_wan', _('Expose WAN'), _('Danger! Proceed at your own risk.'));
++		o.rmempty = false;
++		o.default = '0';
++
++		o = s.option(form.Value, 'export', _('Ports to Expose'), _('Multiple ports can be, separated by spaces, format: 80 81 82'));
++		o.depends('expose_wan', '1');
++		o.rmempty = true;
++		o.datatype = 'portlist';
++
+ 		var p = [
+ 			s.option(form.ListValue, 'input', _('Input')),
+ 			s.option(form.ListValue, 'output', _('Output')),
+
+--- a/firewall/files/firewall.init
++++ b/firewall/files/firewall.init
+@@ -38,10 +38,12 @@ service_triggers() {
+ }
+ 
+ restart() {
++	test -f /etc/firewall.exwan && sh /etc/firewall.exwan
+ 	fw3 restart
+ }
+ 
+ start_service() {
++	test -f /etc/firewall.exwan && sh /etc/firewall.exwan
+ 	fw3 ${QUIET} start
+ }
+ 
+@@ -50,6 +52,7 @@ stop_service() {
+ }
+ 
+ reload_service() {
++	test -f /etc/firewall.exwan && sh /etc/firewall.exwan
+ 	fw3 reload
+ }
