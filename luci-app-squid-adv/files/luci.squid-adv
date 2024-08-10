@@ -143,20 +143,30 @@ case "$1" in
 				openssl pkcs12 -export -out ${CERTS}/ca.p12 -in ${CERTS}/ca.pem -inkey ${CERTS}/ca.key -passout pass: -nokeys 2>&1
 				chmod 0644 ${CERTS}/ca.*
 				chmod 0600 ${CERTS}/ca.key
+
+				# Generate needed symlinks to make the web portion work properly:
+				DST=/www/ca
+				mkdir -p ${DST}
+				ln -sf ${CERTS}/ca.der ${DST}/squid-ca.cer
+				ln -sf ${CERTS}/ca.pem ${DST}/squid-ca.pem
+				ln -sf ${CERTS}/ca.p12 ${DST}/squid-ca.p12
 				;;
 
 			####################################################################################
 			cert_info)
 				VALID=false
-				test -f ${CERTS}/ca.pem && openssl x509 -noout -subject -in ${CERTS}/ca.pem -nameopt multiline -checkdates -dates > ${FILE} && VALID=true
+				test -f ${CERTS}/ca.pem && openssl x509 -noout -subject -in ${CERTS}/ca.pem -nameopt multiline -checkdates -dates  -dateopt iso_8601 > ${FILE} && VALID=true
 				echo -n "{"
 				if [[ "${VALID}" == "true" ]]; then
 					cat ${FILE} | while read LINE; do
 						VAR=$(echo "${LINE%%=*}" | xargs)
 						VAL="$(echo "${LINE#*=}" | xargs)"
 						[[ "${#VAL}" -gt 0 ]] && echo -n "\"${VAR}\":\"${VAL}\","
-						[[ "${VAR}" == "notBefore" ]] && DAYS=$(date -d"${VAL}" +%s)
-						[[ "${VAR}" == "notAfter" ]] && echo -n "\"days\":\"$(( ($(date -d"${VAL}" +%s) - ${DAYS}) / (60*60*24) ))\","
+						if [[ "${VAR}" == "notBefore" || "${VAR}" == "notAfter" ]]; then
+							VAL=$(echo "${VAL}" | sed "s/[[:alpha:]]//g") 
+							[[ "${VAR}" == "notBefore" ]] && DAYS=$(date -d"${VAL}" +%s)
+							[[ "${VAR}" == "notAfter" ]] && echo -n "\"days\":\"$(( ($(date -d"${VAL}" +%s) - ${DAYS}) / (60*60*24) ))\","
+						fi
 					done
 					echo -n "\"bits\":\"$(openssl x509 -noout -in ${CERTS}/ca.pem -text | grep "Public-Key" | grep -o "[0-9]*")\","
 				fi
