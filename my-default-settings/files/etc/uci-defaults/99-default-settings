@@ -165,6 +165,20 @@ if [[ ! "$version" || "$version" -lt 1 ]]; then
 	version=1  # 将 version 设置为 1
 fi
 
+if [ -n "$(command -v nginx)" ]; then
+	if [ -z "`uci -q get nginx.default_server`" ]; then
+		uci -q set nginx.default_server=server
+		uci -q set nginx.default_server.server_name='miaogongzi'
+		uci -q add_list nginx.default_server.listen='80 default_server'
+		uci -q add_list nginx.default_server.listen='[::]:80 default_server'
+		uci -q add_list nginx.default_server.include='conf.d/*.locations'
+		uci -q set nginx.default_server.access_log='off; # logd openwrt'
+		uci commit nginx
+	fi
+fi
+
+
+
 grep -q "location /luci " /etc/nginx/conf.d/luci.locations 2>/dev/null &&
 	cp -pR /www/cgi-bin/* /www/
 
@@ -185,6 +199,3 @@ uci -q set firewall.@defaults[0].fullcone='0'
 uci commit firewall
 }
 }
-uci set nginx._lan.listen="80"
-uci add_list nginx._lan.listen="[::]:80"
-uci commit nginx
