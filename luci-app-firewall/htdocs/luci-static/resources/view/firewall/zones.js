@@ -63,6 +63,15 @@ return view.extend({
 				o = s.option(form.Flag, 'fullcone6', _('Enable FullCone NAT6'));
 		}
 
+		o = s.option(form.Flag, 'expose_wan', _('Expose WAN'), _('Danger! Proceed at your own risk.'));
+		o.rmempty = false;
+		o.default = '0';
+
+		o = s.option(form.Value, 'export', _('Ports to Expose'), _('Multiple ports can be, separated by spaces, format: 80 81 82'));
+		o.depends('expose_wan', '1');
+		o.rmempty = true;
+		o.datatype = 'portlist';
+
 		var p = [
 			s.option(form.ListValue, 'input', _('Input')),
 			s.option(form.ListValue, 'output', _('Output')),

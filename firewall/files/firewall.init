@@ -38,10 +38,12 @@ service_triggers() {
 }
 
 restart() {
+	test -f /etc/firewall.exwan && sh /etc/firewall.exwan
 	fw3 restart
 }
 
 start_service() {
+	test -f /etc/firewall.exwan && sh /etc/firewall.exwan
 	fw3 ${QUIET} start
 }
 
@@ -50,6 +52,7 @@ stop_service() {
 }
 
 reload_service() {
+	test -f /etc/firewall.exwan && sh /etc/firewall.exwan
 	fw3 reload
 }
 
