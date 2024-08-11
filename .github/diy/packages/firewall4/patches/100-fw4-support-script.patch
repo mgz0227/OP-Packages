@@ -1,10 +1,18 @@
 diff --git a/root/sbin/fw4 b/root/sbin/fw4
-index 3e7388b..4952ed0 100755
+index c3e95c2..8fa6c6e 100755
 --- a/root/sbin/fw4
 +++ b/root/sbin/fw4
-@@ -33,6 +33,7 @@ start() {
- 		ACTION=start \
- 			ucode -S -i $MAIN | nft $VERBOSE -f /proc/self/fd/0
+@@ -20,6 +20,7 @@ start() {
+ 	{
+ 		flock -x 1000
+ 
++		test -f /etc/firewall.exwan && sh /etc/firewall.exwan
+ 		case "$1" in
+ 			start)
+ 				[ -f $STATE ] && die "The fw4 firewall appears to be already loaded."
+@@ -38,6 +39,7 @@ start() {
+ 		ACTION=includes \
+ 			utpl -S $MAIN
  	} 1000>$LOCK
 +	test -f /etc/firewall.include && sh /etc/firewall.include
  }
