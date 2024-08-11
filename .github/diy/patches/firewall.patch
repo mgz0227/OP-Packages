@@ -1,92 +1,290 @@
---- a/firewall4/Makefile
-+++ b/firewall4/Makefile
-@@ -25,7 +25,8 @@ define Package/firewall4
- 	+kmod-nft-core +kmod-nft-fib +kmod-nft-offload \
- 	+kmod-nft-nat +kmod-nft-fullcone \
- 	+nftables-json \
--	+ucode +ucode-mod-fs +ucode-mod-ubus +ucode-mod-uci
-+	+ucode +ucode-mod-fs +ucode-mod-ubus +ucode-mod-uci \
-+	+iptables +ip6tables +kmod-nft-socket +kmod-nft-tproxy
-   EXTRA_DEPENDS:=ucode (>=2022.03.22)
-   PROVIDES:=uci-firewall
- endef
-@@ -38,10 +38,14 @@ endef
- define Package/firewall4/conffiles
- /etc/config/firewall
- /etc/nftables.d/
-+/etc/firewall.user
- endef
- 
- define Package/firewall4/install
- 	$(CP) -a $(PKG_BUILD_DIR)/root/* $(1)/
-+	$(INSTALL_DIR) $(1)/etc/
-+	$(INSTALL_CONF) ./files/firewall.include $(1)/etc/firewall.user
-+	$(INSTALL_CONF) ./files/firewall.exwan $(1)/etc/firewall.exwan
- endef
- 
- define Build/Compile
-
---- a/firewall/Makefile
-+++ b/firewall/Makefile
-@@ -32,9 +32,9 @@ define Package/firewall
-   TITLE:=OpenWrt C Firewall
-   DEPENDS:=+libubox +libubus +libuci +libip4tc +IPV6:libip6tc +libiptext +IPV6:libiptext6 \
- 	+libxtables +kmod-ipt-core +kmod-ipt-conntrack +IPV6:kmod-nf-conntrack6 +kmod-ipt-nat \
--	+iptables-mod-fullconenat
-+	+iptables-mod-fullconenat +ip6tables-mod-fullconenat +iptables-legacy +ip6tables-legacy +kmod-ipt-nat6 +kmod-ipt-offload \
-+	+ipset +iptables-mod-conntrack-extra +iptables-mod-iprange +iptables-mod-socket +iptables-mod-tproxy
-   PROVIDES:=uci-firewall
--  CONFLICTS:=firewall4
- endef
- 
- define Package/firewall/description
-@@ -59,6 +59,7 @@ define Package/firewall/install
- 	$(INSTALL_CONF) ./files/firewall.config $(1)/etc/config/firewall
- 	$(INSTALL_DIR) $(1)/etc/
- 	$(INSTALL_CONF) ./files/firewall.user $(1)/etc/firewall.user
-+	$(INSTALL_CONF) ./files/firewall.exwan $(1)/etc/firewall.exwan
- 	$(INSTALL_DIR) $(1)/usr/share/fw3
- 	$(INSTALL_CONF) $(PKG_BUILD_DIR)/helpers.conf $(1)/usr/share/fw3
- endef
-
---- a/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
-+++ b/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
-@@ -63,6 +63,15 @@ return view.extend({
- 				o = s.option(form.Flag, 'fullcone6', _('Enable FullCone NAT6'));
+--- a/luci-app-opkg/htdocs/luci-static/resources/view/opkg.js
++++ b/luci-app-opkg/htdocs/luci-static/resources/view/opkg.js
+@@ -184,7 +184,7 @@ function parseList(s, dest)
+ 			val = RegExp.$2.trim();
  		}
+ 		else if (pkg) {
+-			dest.pkgs[pkg.name] = pkg;
++			dest.pkgs[pkg.name] = dest.pkgs[pkg.name] ? dest.pkgs[pkg.name] : pkg;
  
-+		o = s.option(form.Flag, 'expose_wan', _('Expose WAN'), _('Danger! Proceed at your own risk.'));
-+		o.rmempty = false;
-+		o.default = '0';
+ 			var provides = dest.providers[pkg.name] ? [] : [ pkg.name ];
+ 
+@@ -248,7 +248,7 @@ function display(pattern)
+ 			var avail = packages.available.pkgs[name],
+ 			    inst  = packages.installed.pkgs[name];
+ 
+-			if (!inst || !inst.installed)
++			if (!inst || !inst.installed || pkg.name.includes('kmod-') || pkg.name.includes('busybox') || pkg.name.includes('base-files'))
+ 				continue;
+ 
+ 			if (!avail || compareVersion(avail.version, pkg.version) <= 0)
+@@ -261,6 +261,7 @@ function display(pattern)
+ 			btn = E('div', {
+ 				'class': 'btn cbi-button-positive',
+ 				'data-package': name,
++				'action': 'upgrade',
+ 				'click': handleInstall
+ 			}, _('Upgrade…'));
+ 		}
+@@ -284,12 +285,14 @@ function display(pattern)
+ 				btn = E('div', {
+ 					'class': 'btn cbi-button-action',
+ 					'data-package': name,
++					'action': 'install',
+ 					'click': handleInstall
+ 				}, _('Install…'));
+-			else if (inst.installed && inst.version != pkg.version)
++			else if (inst.installed && compareVersion(pkg.version, inst.version) > 0)
+ 				btn = E('div', {
+ 					'class': 'btn cbi-button-positive',
+ 					'data-package': name,
++					'action': 'upgrade',
+ 					'click': handleInstall
+ 				}, _('Upgrade…'));
+ 			else
+@@ -393,6 +396,12 @@ function handleMode(ev)
+ 
+ 	currentDisplayMode = tab.getAttribute('data-mode');
+ 
++	if (currentDisplayMode == "updates"){
++	var filterv = document.querySelector('input[name="filter"]')
++	if ( filterv.value == "luci-app-")
++		filterv.value = ""
++	}
 +
-+		o = s.option(form.Value, 'export', _('Ports to Expose'), _('Multiple ports can be, separated by spaces, format: 80 81 82'));
-+		o.depends('expose_wan', '1');
-+		o.rmempty = true;
-+		o.datatype = 'portlist';
+ 	display(document.querySelector('input[name="filter"]').value);
+ 
+ 	ev.target.blur();
+@@ -661,6 +670,7 @@ function handleReset(ev)
+ function handleInstall(ev)
+ {
+ 	var name = ev.target.getAttribute('data-package'),
++	    action = ev.target.getAttribute('action'),
+ 	    pkg = packages.available.pkgs[name],
+ 	    depcache = {},
+ 	    size;
+@@ -786,7 +796,8 @@ function handleInstall(ev)
+ 						'id': 'overwrite-cb',
+ 						'type': 'checkbox',
+ 						'name': 'overwrite',
+-						'disabled': isReadonlyView
++						'disabled': isReadonlyView,
++						'checked': true
+ 					}), ' ',
+ 					E('label', { 'for': 'overwrite-cb' }), ' ',
+ 					_('Allow overwriting conflicting package files')
+@@ -800,7 +811,7 @@ function handleInstall(ev)
+ 			}, _('Cancel')),
+ 			' ',
+ 			E('div', {
+-				'data-command': 'install',
++				'data-command': action,
+ 				'data-package': name,
+ 				'class': 'btn cbi-button-action',
+ 				'click': handleOpkg,
+@@ -1000,7 +1011,8 @@ function handleOpkg(ev)
+ 
+ 		fs.exec_direct('/usr/libexec/opkg-call', argv, 'json').then(function(res) {
+ 			dlg.removeChild(dlg.lastChild);
+-
++			var showModalFlag = (cmd !== 'update' && pkg) || res.stderr;
++			if (showModalFlag) {
+ 			if (res.stdout)
+ 				dlg.appendChild(E('pre', [ res.stdout ]));
+ 
+@@ -1028,6 +1040,10 @@ function handleOpkg(ev)
+ 							resolveFn(res);
+ 					}, this, res)
+ 				}, _('Dismiss'))));
++			} else {
++				ui.hideModal();
++				updateLists();
++			}
+ 		}).catch(function(err) {
+ 			ui.addNotification(null, E('p', _('Unable to execute <em>opkg %s</em> command: %s').format(cmd, err)));
+ 			ui.hideModal();
+@@ -1122,6 +1138,36 @@ return view.extend({
+ 	},
+ 
+ 	render: function(listData) {
++		var checkUpdateNeeded = function() {
++            return Promise.all([
++                L.resolveDefault(fs.stat('/tmp/opkg-lists/openwrt_base'), null),
++                L.resolveDefault(fs.read('/tmp/resolv.conf.d/resolv.conf.auto'), '')
++            ]).then(function(results) {
++                var stat = results[0];
++                var resolvContent = results[1];
 +
- 		var p = [
- 			s.option(form.ListValue, 'input', _('Input')),
- 			s.option(form.ListValue, 'output', _('Output')),
++                // 检查 /tmp/opkg-lists 的更新时间
++                var needTimeUpdate = false;
++                if (!stat) {
++                    needTimeUpdate = true; // 如果文件夹不存在，需要更新
++                } else {
++                    var currentTime = Math.floor(Date.now() / 1000);
++                    var lastUpdateTime = stat.mtime;
++                    var timeDifference = currentTime - lastUpdateTime;
++                    needTimeUpdate = timeDifference > 21600; // 如果超过1小时，需要更新
++                }
++
++                // 检查 resolv.conf.auto 文件内容
++                var hasResolvContent = resolvContent && resolvContent.trim().length > 0;
++
++                // 只有当需要时间更新且 resolv.conf.auto 不为空时，才返回 true
++                return needTimeUpdate && hasResolvContent;
++            }).catch(function(error) {
++                console.error('Error checking update status:', error);
++                return false; // 如果出错，不执行更新
++            });
++        };
++
+ 		var query = decodeURIComponent(L.toArray(location.search.match(/\bquery=([^=]+)\b/))[1] || '');
+ 
+ 		var view = E([], [
+@@ -1138,7 +1184,7 @@ return view.extend({
+ 				E('div', {}, [
+ 					E('label', {}, _('Filter') + ':'),
+ 					E('span', { 'class': 'control-group' }, [
+-						E('input', { 'type': 'text', 'name': 'filter', 'placeholder': _('Type to filter…'), 'value': query, 'input': handleInput }),
++						E('input', { 'type': 'text', 'name': 'filter', 'placeholder': _('Type to filter…'), 'value': 'luci-app-', 'input': handleInput }),
+ 						E('button', { 'class': 'btn cbi-button', 'click': handleReset }, [ _('Clear') ])
+ 					])
+ 				]),
+@@ -1155,6 +1201,7 @@ return view.extend({
+ 					E('label', {}, _('Actions') + ':'), ' ',
+ 					E('span', { 'class': 'control-group' }, [
+ 						E('button', { 'class': 'btn cbi-button-positive', 'data-command': 'update', 'click': handleOpkg, 'disabled': isReadonlyView }, [ _('Update lists…') ]), ' ',
++						E('button', { 'class': 'btn cbi-button-negative', 'data-command': 'upgradeall', 'click': handleOpkg, 'disabled': isReadonlyView }, [ _('Upgrade all…') ]), ' ',
+ 						E('button', { 'class': 'btn cbi-button-action', 'click': handleUpload, 'disabled': isReadonlyView }, [ _('Upload Package…') ]), ' ',
+ 						E('button', { 'class': 'btn cbi-button-neutral', 'click': handleConfig }, [ _('Configure opkg…') ])
+ 					])
+@@ -1240,7 +1287,17 @@ return view.extend({
+ 		]);
+ 
+ 		requestAnimationFrame(function() {
+-			updateLists(listData)
++			updateLists(listData);
++            checkUpdateNeeded().then(function(needUpdate) {
++                if (needUpdate) {
++					setTimeout(function() {
++                    var updateButton = document.querySelector('button[data-command="update"]');
++                    if (updateButton) {
++                        updateButton.click();
++                    }
++					}, 10)
++                }
++            });
+ 		});
+ 
+ 		return view;
 
---- a/firewall/files/firewall.init
-+++ b/firewall/files/firewall.init
-@@ -38,10 +38,12 @@ service_triggers() {
- }
+--- a/luci-app-opkg/root/usr/libexec/opkg-call
++++ b/luci-app-opkg/root/usr/libexec/opkg-call
+@@ -13,7 +13,7 @@ case "$action" in
+ 		lists_dir=$(sed -rne 's#^lists_dir \S+ (\S+)#\1#p' /etc/opkg.conf /etc/opkg/*.conf 2>/dev/null | tail -n 1)
+ 		find "${lists_dir:-/usr/lib/opkg/lists}" -type f '!' -name '*.sig' | xargs -r gzip -cd
+ 	;;
+-	install|update|remove)
++	install|update|upgrade|upgradeall|remove)
+ 		(
+ 			opkg="opkg"
  
- restart() {
-+	test -f /etc/firewall.exwan && sh /etc/firewall.exwan
- 	fw3 restart
- }
+@@ -33,10 +33,45 @@ case "$action" in
+ 			done
  
- start_service() {
-+	test -f /etc/firewall.exwan && sh /etc/firewall.exwan
- 	fw3 ${QUIET} start
- }
+ 			if flock -x 200; then
+-				$opkg $action "$@" </dev/null >/tmp/opkg.out 2>/tmp/opkg.err
+-				code=$?
+-				stdout=$(cat /tmp/opkg.out)
++				if [ $action == "upgradeall" ]; then
++					opkg update </dev/null >/tmp/opkg.out 2>/tmp/opkg.err
++					code=$?
++					if [ $code == 0 ]; then
++						. /etc/profile.d/opkg.sh
++						if [[ "$(cat `opkg export au`)" ]] && lock -n /var/lock/opkg-upgrade; then
++						 opkg upgr </dev/null >>/tmp/opkg.out 2>>/tmp/opkg.err
++						 code=$?
++						 lock -u /var/lock/opkg-upgrade
++						else
++							echo "🎉 所有软件包已是最新~" >>/tmp/opkg.out
++							code=0
++						fi
++					fi
++				else
++					$opkg $action "$@" </dev/null >/tmp/opkg.out 2>/tmp/opkg.err
++					code=$?
++				fi
++				pkgn="$(echo $@ | cut -d - -f 3-)"
++				case "$action" in
++					install|upgrade)
++					if [ "$(opkg list-installed | cut -f 1 -d ' ' | grep -w $@)" ]; then
++							rm -f /tmp/opkg.err
++							([ -f /etc/profile.d/opkg.sh ] && . /etc/profile.d/opkg.sh && opkg save) &
++					fi
++					;;
++					remove)
++						if [ ! "$(opkg list-installed | cut -f 1 -d ' ' | grep -w $@)" ]; then
++							rm -f /tmp/opkg.err
++							([ -f /etc/profile.d/opkg.sh ] && . /etc/profile.d/opkg.sh && opkg save) &
++						fi
++					;;
++				esac
+ 				stderr=$(cat /tmp/opkg.err)
++				[ -n "$stderr" ] || {
++					echo "🎉 已完成, 请关闭本窗口~" >>/tmp/opkg.out
++					code=0
++				}
++				stdout=$(cat /tmp/opkg.out)
+ 			else
+ 				code=255
+ 				stderr="Failed to acquire lock"
+@@ -53,7 +88,7 @@ case "$action" in
+ 	;;
+ 	*)
+ 		echo "Usage: $0 {list-installed|list-available}"       >&2
+-		echo "       $0 {install|upgrade|remove} pkg[ pkg...]" >&2
++		echo "       $0 {install|upgrade|upgradeall|remove} pkg[ pkg...]" >&2
+ 		exit 1
+ 	;;
+ esac
+
+--- a/luci-app-opkg/root/usr/share/rpcd/acl.d/luci-app-opkg.json
++++ b/luci-app-opkg/root/usr/share/rpcd/acl.d/luci-app-opkg.json
+@@ -9,6 +9,7 @@
+ 				"/usr/libexec/opkg-call list-installed": [ "exec" ],
+ 				"/usr/libexec/opkg-call list-available": [ "exec" ],
+ 				"/etc/opkg.conf": [ "read" ],
++				"/tmp/resolv.conf.d/resolv.conf.auto": [ "read" ],
+ 				"/etc/opkg/*.conf": [ "read" ]
+ 			},
+ 			"ubus": {
+@@ -20,6 +21,8 @@
+ 				"/usr/libexec/opkg-call install *": [ "exec" ],
+ 				"/usr/libexec/opkg-call remove *": [ "exec" ],
+ 				"/usr/libexec/opkg-call update *": [ "exec" ],
++				"/usr/libexec/opkg-call upgrade *": [ "exec" ],
++				"/usr/libexec/opkg-call upgradeall *": [ "exec" ],
+ 				"/etc/opkg.conf": [ "write" ],
+ 				"/etc/opkg/*.conf": [ "write" ],
+ 				"/tmp/upload.ipk": [ "write" ]
+
+--- a/luci-mod-system/htdocs/luci-static/resources/view/system/flash.js
++++ b/luci-mod-system/htdocs/luci-static/resources/view/system/flash.js
+@@ -261,6 +261,7 @@ return view.extend({
+ 					body.push(E('p', {}, E('label', { 'class': 'btn' }, [
+ 						opts.backup_pkgs[0], ' ', _('Include in backup a list of current installed packages at /etc/backup/installed_packages.txt')
+ 					])));
++					opts.backup_pkgs[0].checked = true;
+ 				};
  
-@@ -50,6 +52,7 @@ stop_service() {
- }
+ 				var cntbtn = E('button', {
+@@ -302,6 +303,10 @@ return view.extend({
+ 				opts.keep[0].addEventListener('change', function(ev) {
+ 					opts.skip_orig[0].disabled = !ev.target.checked;
+ 					opts.backup_pkgs[0].disabled = !ev.target.checked;
++					if (ev.target.checked == false){
++						opts.skip_orig[0].checked =false
++						opts.backup_pkgs[0].checked =false
++					}
  
- reload_service() {
-+	test -f /etc/firewall.exwan && sh /etc/firewall.exwan
- 	fw3 reload
- }
+ 				});
+ 
