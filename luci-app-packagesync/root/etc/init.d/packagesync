@@ -290,3 +290,7 @@ boot() {
 	mkdir -p "$RESULTPATH" 2>/dev/null
     return 0
 }
+
+service_triggers() {
+      procd_add_reload_trigger "packagesync"
+}

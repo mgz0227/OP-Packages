@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aMule
 PKG_VERSION:=2.3.3
-PKG_RELEASE:=9
+PKG_RELEASE:=29
 PKG_REV=4b87b20
 
 

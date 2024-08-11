@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=shellsync
 PKG_VERSION:=0.2
-PKG_RELEASE:=9
+PKG_RELEASE:=11
 
 include $(INCLUDE_DIR)/package.mk
 

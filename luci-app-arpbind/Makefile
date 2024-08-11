@@ -7,10 +7,8 @@
 include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=ARP Binding
-LUCI_DEPENDS:=+ip-full
+LUCI_DEPENDS:=+ip
 LUCI_PKGARCH:=all
-
-PKG_NAME:=luci-app-arpbind
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
