@@ -546,7 +546,7 @@ jobs:
         git push -f
 
     - name: Delete workflow runs
-      uses: Mattraks/delete-workflow-runs@main
+      uses: mgz0227/delete-workflow-runs@main
       continue-on-error: true
       with:
         retain_days: 1
