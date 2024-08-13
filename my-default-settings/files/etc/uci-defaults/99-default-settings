@@ -1,6 +1,6 @@
 #!/bin/sh
 
-sed -i "s/op.supes.top/op.miaogongzi.cc/" /etc/opkg/distfeeds.conf
+sed -i "s/dl.openwrt.ai/op.miaogongzi.cc/" /etc/opkg/distfeeds.conf
 
 ([ -x /bin/bash ] && ! grep -q "^root.*bash" /etc/passwd) && sed -i "s/^\(root.*\/\)ash/\1bash/g" /etc/passwd
 
