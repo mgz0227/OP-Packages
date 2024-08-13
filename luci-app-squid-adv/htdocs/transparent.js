@@ -16,6 +16,10 @@ return view.extend({
 		object: 'luci.squid-adv',
 		method: 'cert_info',
 	}),
+	parse_config: rpc.declare({
+		object: 'luci.squid-adv',
+		method: 'parse_config',
+	}),
 
  	// Validate whether string passed is a valid IP/Port combination or just a valid Port:
 	validate_ip: function(section_id, value) {
@@ -33,31 +37,38 @@ return view.extend({
 	load: function () {
 		return Promise.all([
 			this.cert_info(),
+			this.parse_config(),
 		]);
 	},
 
 	// Rendering function:
 	render: function(data) {
-		var m, o, i, s, t, valid = data[0].valid;
+		var m, o, i, s, t, valid = data[0].valid, config = data[1];
 		if (!valid) {
-			ui.addNotification(null, _("NOTICE: Server certificate missing!  ") + "&quot;" + _("Enable Transparent HTTPS Proxy") + "&quot " + _("setting will be not be shown until the server certificate has been generated!"), 'error' );
+			ui.addNotification(null, _("NOTICE: Server certificate not valid for use!  ") + "&quot;" + _("Enable Transparent HTTPS Proxy") + "&quot " + _("setting will be not be shown until the server certificate has been generated!"), 'error' );
 		}
 		m = new form.Map('squid', _('Transparent Proxy Configuration'));
 
-		s = m.section(form.TypedSection, 'transparent');
+		s = m.section(form.TypedSection, 'squid');
 		s.anonymous = true;
 
 		o = s.option(widgets.NetworkSelect, 'interface', _('Interface'), _('Transparent proxy only works on the specified interface.') + "<br />" + _("Do not use on interfaces controlled by programs like nodogsplash!"));
 		o.multiple = false;
 		o.default = 'lan';
+		o.cfgvalue = function() { return config.interface; }
+		o.write = function() { }
 
 		o = s.option(form.Flag, "http_enabled", _("Enable Transparent HTTP Proxy") + ":")
+		o.cfgvalue = function() { return config.http_port != ""; }
+		o.write = function() { }
 
 		o = s.option(form.Value, "http_port", _("Bind for Transparent HTTP Proxy:"), _("Specify either IP address and Port combination, or just the Port."))
 		o.validate = this.validate_ip;
 		o.default = '3126'
 		o.placeholder = "0-65535"
 		o.depends("http_enabled", '1');
+		o.cfgvalue = function() { return config.http_port; }
+		o.write = function() { }
 
 		o = s.option(form.HiddenValue, "cert_valid")
 		o.cfgvalue = function(section_id) { return valid ? "1" : "0"; }
@@ -65,12 +76,16 @@ return view.extend({
 
 		o = s.option(form.Flag, "https_enabled", _("Enable Transparent HTTPS Proxy") + ":")
 		o.depends("cert_valid", '1')
+		o.cfgvalue = function() { return config.https_port != ""; }
+		o.write = function() { }
 
 		o = s.option(form.Value, "https_port", _("Bind for Transparent HTTPS Proxy:"), _("Specify either IP address and Port combination, or just the Port."))
 		o.validate = this.validate_ip;
 		o.default = '3127'
 		o.placeholder = "0-65535"
 		o.depends("https_enabled", '1');
+		o.cfgvalue = function() { return config.https_port; }
+		o.write = function() { }
 
 		// mac_list = s.option(DynamicList, "transparent_mac", _("Allowed MACs for Transparent HTTPS Proxy:"))
 		// nt.mac_hints(function(mac, name) mac_list :value(mac, "%s (%s)" %{ mac, name }) end)

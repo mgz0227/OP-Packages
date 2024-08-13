@@ -8,6 +8,7 @@
 					"reconfigure",
 					"generate",
 					"ip_info",
+					"parse_config",
 				]
 			},
 			"uci": [
