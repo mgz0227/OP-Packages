@@ -1,7 +1,5 @@
 include $(TOPDIR)/rules.mk
 
-PKG_VERSION:=1.5.3
-PKG_RELEASE:=7
 
 LUCI_TITLE:=LuCI Support for mihomo
 LUCI_DEPENDS:=+luci-base +mihomo
