@@ -1,5 +1,5 @@
 # NATMap by heiher <https://github.com/heiher/natmap>
-# Copyright (C) 2023 muink <https://github.com/muink>
+# Copyright (C) 2023-2024 muink <https://github.com/muink>
 #
 # This is free software, licensed under the Apache License, Version 2.0
 

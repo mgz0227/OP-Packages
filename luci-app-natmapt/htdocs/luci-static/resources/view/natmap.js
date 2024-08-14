@@ -133,9 +133,6 @@ return view.extend({
 		o.placeholder = 3445;
 		o.rmempty = false;
 		o.validate = function(section_id, value) {
-			if (value == null || value == '' || value == 'ignore')
-				return _('Expecting: non-empty value');
-
 			let conf = 'firewall';
 			let fw_forwards = uci.sections(conf, 'redirect');
 			let fw_rules = uci.sections(conf, 'rule');
@@ -240,6 +237,7 @@ return view.extend({
 		s.sortable  = true;
 		s.addremove = true;
 		s.anonymous = true;
+		s.nodescriptions = true;
 
 		s.tab('general', _('General Settings'));
 		s.tab('forward', _('Forward Settings'));
@@ -302,9 +300,19 @@ return view.extend({
 		o.nocreate = false;
 		o.rmempty = true;
 
-		o = s.taboption('general', form.Value, 'port', _('Bind port'));
-		o.datatype = "and(port, min(1))";
+		o = s.taboption('general', form.Value, 'port', _('Bind port'),
+			_('Note: After using <code>portrange</code>, the public ports will be opened in rotation</br>') +
+			_('If you enable <b>Notify Scripts</b>, you will be bombarded with messages'));
+		o.datatype = "or(port, portrange)";
 		o.rmempty = false;
+		o.validate = function(section_id, value) {
+			let regexp = new RegExp(/^([1-9]\d*)(-([1-9]\d*))*$/)
+
+			if (!regexp.test(value))
+				return _('Expecting: %s').format(_('Non-0 port'));
+
+			return true;
+		};
 
 		o = s.taboption('forward', form.Flag, 'forward', _('Forward mode'));
 		o.default = o.disabled;
@@ -338,9 +346,6 @@ return view.extend({
 		o.depends('forward', '1');
 		o.modalonly = true;
 		o.validate = function(section_id, value) {
-			if (value == null || value == '' || value == 'ignore')
-				return _('Expecting: non-empty value');
-
 			let family = L.bind(function() {
 				let E = document.getElementById('widget.' + this.cbid(section_id).match(/.+\./) + 'family');
 				let i = E ? E.selectedIndex : null;
