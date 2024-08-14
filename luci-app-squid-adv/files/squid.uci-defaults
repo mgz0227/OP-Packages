@@ -4,5 +4,7 @@ uci -q batch <<-EOF >/dev/null
         add ucitrack squid
         set ucitrack.@squid[-1].init=squid
         commit ucitrack
+        set squid.transparent='transparent'
+        commit squid
 EOF
 exit 0

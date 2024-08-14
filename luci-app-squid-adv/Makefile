@@ -5,8 +5,8 @@ include $(TOPDIR)/rules.mk
 
 PKG_LICENSE:=Apache-2.0
 PKG_NAME:=luci-app-squid-adv
-PKG_VERSION:=2.1
-PKG_RELEASE:=19
+PKG_VERSION:=2.0
+PKG_RELEASE:=20
 PKG_MAINTAINER:=Douglas Orend <doug.orend2@gmail.com>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)

@@ -46,7 +46,7 @@ case "$1" in
 		json_init
 		json_add_object "cert_info"
 		json_close_object
-		json_add_object "configure"
+		json_add_object "reconfigure"
 		json_close_object
 		json_add_object "generate"
 		json_add_string 'bits'                'Integer'
@@ -70,7 +70,7 @@ case "$1" in
 			read)
 				cat ${CONF}
 				;;
-				
+
 			####################################################################################
 			move)
 				mv /tmp/luci-app-squid-adv.data ${CONF}
@@ -83,16 +83,16 @@ case "$1" in
 		case "$2" in
 			####################################################################################
 			parse_config)
-				# Determine which interface zone current configuration is using: 
+				# Determine which interface zone current configuration is using:
 				echo -n "{"
 				IFACE=$(uci -q show firewall.tproxy_80.src | cut -d= -f 2 | sed "s|'||g")
-				[[ -z "${IFACE}" ]] && IFACE=$(uci -q show firewall.tproxy_443.src | cut -d= -f 2 | sed "s|'||g") 
+				[[ -z "${IFACE}" ]] && IFACE=$(uci -q show firewall.tproxy_443.src | cut -d= -f 2 | sed "s|'||g")
 				echo -n "\"interface\":\"${IFACE}\","
-				
-				# Determine if transparent HTTP proxy is in use: 
+
+				# Determine if transparent HTTP proxy is in use:
 				echo -n "\"http_port\":\"$(grep "^http_port .* intercept$" ${SRC} | awk '{print $2}')\","
 
-				# Determine if transparent HTTPS proxy is in use: 
+				# Determine if transparent HTTPS proxy is in use:
 				echo "\"https_port\":\"$(grep "^http_port .* intercept .*ssl-bump" ${SRC} | awk '{print $2}')\"}"
 				;;
 
@@ -176,7 +176,7 @@ case "$1" in
 						VAL="$(echo "${LINE#*=}" | xargs)"
 						[[ "${#VAL}" -gt 0 ]] && echo -n "\"${VAR}\":\"${VAL}\","
 						if [[ "${VAR}" == "notBefore" || "${VAR}" == "notAfter" ]]; then
-							VAL=$(echo "${VAL}" | sed "s/[[:alpha:]]//g") 
+							VAL=$(echo "${VAL}" | sed "s/[[:alpha:]]//g")
 							[[ "${VAR}" == "notBefore" ]] && DAYS=$(date -d"${VAL}" +%s)
 							[[ "${VAR}" == "notAfter" ]] && echo -n "\"days\":\"$(( ($(date -d"${VAL}" +%s) - ${DAYS}) / (60*60*24) ))\","
 						fi
