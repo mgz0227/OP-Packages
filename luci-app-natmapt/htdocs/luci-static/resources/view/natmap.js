@@ -101,11 +101,15 @@ return view.extend({
 		o.default = o.disabled;
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'def_tcp_stun', _('Default ') + _('TCP STUN ') + _('Server'));
+		o = s.option(form.Value, 'def_tcp_stun', _('Default ') + _('TCP STUN ') + _('Server'),
+			_('Available server <a href="%s" target="_blank">references</a>')
+				.format(_('https://github.com/muink/rfc5780-stun-server/blob/master/valid_hosts_rfc5780.txt')));
 		o.datatype = 'or(hostname, hostport)';
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'def_udp_stun', _('Default ') + _('UDP STUN ') + _('Server'));
+		o = s.option(form.Value, 'def_udp_stun', _('Default ') + _('UDP STUN ') + _('Server'),
+			_('Available server <a href="%s" target="_blank">references</a>')
+				.format(_('https://github.com/muink/rfc5780-stun-server/blob/master/valid_hosts_rfc5780_tcp.txt')));
 		o.datatype = 'or(hostname, hostport)';
 		o.rmempty = false;
 
@@ -521,9 +525,9 @@ return view.extend({
 
 		o = s.taboption('notify', form.DynamicList, 'notify_tokens', _('Tokens'),
 			_('The KEY required by the script above. ' +
-				'See <a href="%s" target="_blank">%s*</a> for the format of KEY required by each script. ' +
+				'See <a href="%s" target="_blank">%s</a> for the format of KEY required by each script. ' +
 				'Add multiple entries here in KEY=VAL shell variable format to supply multiple KEY variables.')
-			.format('https://github.com/muink/openwrt-natmapt/tree/master/files/notify/'));
+			.format('https://github.com/muink/openwrt-natmapt/tree/master/files/notify/', _('<code># All external tokens required</code> Field')));
 		o.datatype = 'list(string)';
 		o.placeholder = 'KEY=VAL';
 		o.rmempty = true;
@@ -557,9 +561,9 @@ return view.extend({
 
 		o = s.taboption('ddns', form.DynamicList, 'ddns_tokens', _('Tokens'),
 			_('The KEY required by the script above. ' +
-				'See <a href="%s" target="_blank">%s*</a> for the format of KEY required by each script. ' +
+				'See <a href="%s" target="_blank">%s</a> for the format of KEY required by each script. ' +
 				'Add multiple entries here in KEY=VAL shell variable format to supply multiple KEY variables.')
-			.format('https://github.com/muink/openwrt-natmapt/tree/master/files/ddns/'));
+			.format('https://github.com/muink/openwrt-natmapt/tree/master/files/ddns/', _('<code># All external tokens required</code> Field')));
 		o.datatype = 'list(string)';
 		o.placeholder = 'KEY=VAL';
 		o.rmempty = true;
