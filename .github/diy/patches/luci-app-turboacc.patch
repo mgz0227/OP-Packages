@@ -208,3 +208,25 @@
 -	option dns_caching '0'
 -	option dns_caching_mode '1'
 -	option dns_caching_dns '114.114.114.114,114.114.115.115,223.5.5.5,223.6.6.6,180.76.76.76,119.29.29.29,119.28.28.28,1.2.4.8,210.2.4.8'
+
+--- a/shortcut-fe/shortcut-fe/Makefile
++++ b/shortcut-fe/shortcut-fe/Makefile
+@@ -58,7 +58,6 @@ define KernelPackage/shortcut-fe-cm
+ 	   CONFIG_NF_CONNTRACK_CHAIN_EVENTS=y \
+ 	   CONFIG_NF_CONNTRACK_EVENTS=y \
+ 	   CONFIG_XFRM=y
+-  CONFLICTS:=kmod-shortcut-fe-drv
+ endef
+ 
+ define KernelPackage/shortcut-fe-cm/Description
+
+--- a/shortcut-fe/fast-classifier/Makefile
++++ b/shortcut-fe/fast-classifier/Makefile
+@@ -32,7 +32,6 @@ define KernelPackage/fast-classifier/Default
+ 	   CONFIG_NF_CONNTRACK_CHAIN_EVENTS=y \
+ 	   CONFIG_NF_CONNTRACK_MARK=y \
+ 	   CONFIG_XFRM=y
+-  CONFLICTS:=kmod-shortcut-fe-drv kmod-shortcut-fe-cm
+ endef
+ 
+ define KernelPackage/fast-classifier
