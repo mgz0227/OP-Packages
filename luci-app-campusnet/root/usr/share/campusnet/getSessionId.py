@@ -21,6 +21,8 @@ def get_base_ip():
             lines = f.readlines()
             for line in lines:
                 items = line.split()
+                if len(items) < 3:
+                    continue
                 if items[1] == "base_ip":
                     base_ip = items[2][1:-1]
                     break

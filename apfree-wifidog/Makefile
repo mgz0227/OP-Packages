@@ -9,11 +9,11 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=apfree-wifidog
 PKG_VERSION:=master
-PKG_RELEASE:=18
+PKG_RELEASE:=19
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/liudf0716/apfree-wifidog.git
-PKG_SOURCE_VERSION:=5a87b52b10be8fe0fc5677855bdee4d15d2d6a93
+PKG_SOURCE_VERSION:=0ddce8ec91c70b4dd47e6d11bb792135ed5cdb7d
 PKG_MIRROR_HASH:=skip
 
 PKG_MAINTAINER:=Dengfeng Liu <liudf0716@gmail.com>
