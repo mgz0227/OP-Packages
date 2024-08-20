@@ -340,7 +340,7 @@ jobs:
         package/base-files package/system/opkg package/network/services/ppp \
         package/network/services/dnsmasq
         git_sparse_clone main "https://github.com/openwrt/openwrt" \
-        package/network/config/wifi-scripts
+        package/network/config/wifi-scripts package/system/fstools
         git_sparse_clone openwrt-23.05 "https://github.com/openwrt/luci" applications/luci-app-attendedsysupgrade applications/luci-app-aria2 \
         applications/luci-app-ddns applications/luci-app-acme applications/luci-app-opkg \
         applications/luci-app-ksmbd applications/luci-app-samba4 applications/luci-app-watchcat applications/luci-app-upnp \
