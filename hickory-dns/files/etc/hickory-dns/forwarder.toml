@@ -6,10 +6,10 @@ zone = "."
 zone_type = "Forward"
 stores = { type = "forward", name_servers = [
         { socket_addr = "[2400:3200::1]:443", protocol = "h3", trust_nx_responses = true, tls_dns_name = "dns.alidns.com" },
-        { socket_addr = "[2400:3200:baba::1]:443", protocol = "h3", trust_nx_responses = true, tls_dns_name = "dns.alidns.com" },
-        { socket_addr = "1.12.12.12:443", protocol = "https", trust_nx_responses = false, tls_dns_name = "1.12.12.12" },
-        { socket_addr = "120.53.53.53:443", protocol = "https", trust_nx_responses = false, tls_dns_name = "120.53.53.53" },
         { socket_addr = "223.5.5.5:443", protocol = "h3", trust_nx_responses = true, tls_dns_name = "dns.alidns.com" },
-        { socket_addr = "223.6.6.6:443", protocol = "h3", trust_nx_responses = true, tls_dns_name = "dns.alidns.com" }
+        { socket_addr = "1.12.12.12:443", protocol = "https", trust_nx_responses = false, tls_dns_name = "1.12.12.12" },
+        { socket_addr = "[2400:3200:baba::1]:443", protocol = "h3", trust_nx_responses = true, tls_dns_name = "dns.alidns.com" },
+        { socket_addr = "223.6.6.6:443", protocol = "h3", trust_nx_responses = true, tls_dns_name = "dns.alidns.com" },
+        { socket_addr = "120.53.53.53:443", protocol = "https", trust_nx_responses = false, tls_dns_name = "120.53.53.53" },
     ], options = { rotate = true, edns0 = true, ip_strategy = "Ipv6thenIpv4", cache_size = 0, use_hosts_file = true, num_concurrent_reqs = 3, server_ordering_strategy = "QueryStatistics", shuffle_dns_servers = true }}
 
