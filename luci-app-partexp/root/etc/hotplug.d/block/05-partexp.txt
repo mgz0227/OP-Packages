@@ -6,4 +6,43 @@
       uci commit partexp
     }
   }
+LABEL="expanded"
+function NEWPART(){
+ROOT_DISK=$1
+partition_table=$(fdisk -l $ROOT_DISK | grep -i "Disklabel type:")
+[ -z "$partition_table" ] && parted -s $ROOT_DISK mklabel gpt
+    # 检查是否有未分配空间
+  DISK_SIZE=$(parted -s $ROOT_DISK unit MB print | grep '^Disk' | awk '{print $3}' | sed 's/MB//')
+	LAST_PART_END=$(parted -s $ROOT_DISK unit MB print | tail -n 2 | head -n 1 | awk '{print $3}' | sed 's/MB//')
+[ $LAST_PART_END == "End" ] && LAST_PART_END=1
+	UNALLOCATED_SPACE=$((DISK_SIZE-LAST_PART_END))
+
+    if [ $UNALLOCATED_SPACE -lt 1024 ]; then
+        echo "No unallocated space found."
+        return 0
+    fi
+
+    # 创建新分区
+ROOT_DISK_NAME="$(echo $ROOT_DISK | cut -d / -f 3)"
+LAST_PART_NAME="$(lsblk -o NAME | grep $ROOT_DISK_NAME | tail -n 1 | grep -o '[0-9a-zA-Z]*')"
+NEW_PART_NAME="$(echo "$LAST_PART_NAME" | sed -E 's/([a-zA-Z]+)([0-9]+)$/\1'$(($(echo "$LAST_PART_NAME" | sed -E 's/.*[a-zA-Z]+([0-9]+)$/\1/') + 1))'/')"
+parted -s $ROOT_DISK mkpart primary ext4 ${LAST_PART_END}MB 100%
+
+    # 格式化新分区
+    mkfs.ext4 -F -L "$LABEL" /dev/${NEW_PART_NAME}
+
+if [ uci -q get wizard.default.mountdocker == "1" ]; then
+uci -q get fstab.docker || {
+eval $(block info /dev/${NEW_PART_NAME} | grep -o -e 'UUID="\S*"')
+uci -q delete fstab.docker
+uci set fstab.docker="mount"
+uci set fstab.docker.uuid="${UUID}"
+uci set fstab.docker.target="/opt/docker"
+uci commit fstab
+}
+fi
+}
+for disk in $(find /dev -type b \( -name 'sd[a-z]' -o -name 'mmcblk[0-9]' -o -name 'nvme[0-9]n[0-9]' -o -name 'vd[a-z]' -o -name 'sata[a-z]' \) 2>/dev/null | sort); do
+NEWPART $disk
+done
 }
