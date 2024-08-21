@@ -416,6 +416,7 @@ jobs:
 
     - name: Modify
       run: |
+        sed -i 's/^\(PKG_RELEASE:=\).*/\1beta/' ./luci-app-openclash/Makefile
         shopt -s extglob
         set +e
         sed -i \
@@ -524,7 +525,6 @@ jobs:
           -e 's/URL:=@IMMORTALWRT/URL:=https:\/\/mirror2.immortalwrt.org\/sources/g' \
           */Makefile
         ) &
-        sed -i 's/^\(PKG_RELEASE:=\).*/\1beta/' ./luci-app-openclash/Makefile
 
         while [[ ! -f /tmp/ok ||  ! -f /tmp/ok2 ]]; do
             echo "wait"
