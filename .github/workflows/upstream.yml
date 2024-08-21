@@ -416,7 +416,7 @@ jobs:
 
     - name: Modify
       run: |
-        sed -i 's/^\(PKG_RELEASE:=\).*/\1beta/' ./luci-app-openclash/Makefile
+        
         shopt -s extglob
         set +e
         sed -i \
@@ -530,7 +530,7 @@ jobs:
             echo "wait"
           sleep 1
         done
-
+        sed -i 's/^\(PKG_RELEASE:=\).*/\1beta/' ./luci-app-openclash/Makefile
     - name: Apply
       run: |
         Emoji=("🎉" "🤞" "✨" "🎁" "🎈" "🎄" "🎨" "💋" "🍓" "🍕" "🍉" "💐" "🌴" "🚀" "🛸" "🗽" "⛅" "🌈" "🔥" "⛄" "🐶" "🏅" "🦄" "🐤")
