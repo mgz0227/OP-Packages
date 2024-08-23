@@ -370,126 +370,59 @@ include './cfg.php';
                 <a href="/nekoclash/upload_sb.php" class="btn btn-primary">Sing-box专用订阅管理器</a>
                 <br><br>     
             </p>
-
-            <h2 class="text-center" style="color: #00FF7F;">自动更新设置</h2>
-            <form method="post" class="text-center">
-                <div class="input-group">
-                    <label for="update_time">设置更新时间:</label>
-                    <select name="update_time" id="update_time" required>
-                        <?php
-                        for ($h = 0; $h < 24; $h++) {
-                            $time = sprintf('%02d:00', $h);
-                            $selected = ($time == $autoUpdateConfig['update_time']) ? 'selected' : '';
-                            echo "<option value='$time' $selected>$time</option>";
-                        }
-                        ?>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label for="auto_update_enabled">启用自动更新:</label>
-                    <input type="checkbox" name="auto_update_enabled" id="auto_update_enabled" <?php echo $autoUpdateConfig['auto_update_enabled'] ? 'checked' : ''; ?>>
-                </div>
-                <button type="submit" name="set_auto_update" class="btn btn-primary">保存设置</button>
-            </form>
-
-            <div class="form-spacing"></div> 
-
+<h2 class="text-center" style="color: #00FF7F;">订阅管理</h2>
+ <div class="form-spacing"></div>
             <?php if ($message): ?>
-                <p class="text-center"><?php echo nl2br(htmlspecialchars($message)); ?></p>
+                <p><?php echo nl2br(htmlspecialchars($message)); ?></p>
             <?php endif; ?>
-
-            <h2 class="text-center" style="color: #00FF7F;">订阅管理</h2>
             <?php for ($i = 0; $i < 7; $i++): ?>
-                <form method="post" class="text-center">
+                <form method="post" class="mb-3">
                     <div class="input-group">
-                        <label for="subscription_url_<?php echo $i; ?>">订阅链接 <?php echo ($i + 1); ?>:</label>
-                        <input type="text" name="subscription_url" id="subscription_url_<?php echo $i; ?>" value="<?php echo htmlspecialchars($subscriptions[$i]['url']); ?>" required>
-                    </div>
-                    <div class="input-group">
-                        <label for="custom_file_name_<?php echo $i; ?>">自定义文件名:</label>
-                        <input type="text" name="custom_file_name" id="custom_file_name_<?php echo $i; ?>" value="<?php echo htmlspecialchars($subscriptions[$i]['file_name']); ?>">
+                        <label for="subscription_url_<?php echo $i; ?>" class="sr-only">订阅链接 <?php echo ($i + 1); ?>:</label>
+                        <input type="text" name="subscription_url" id="subscription_url_<?php echo $i; ?>" value="<?php echo htmlspecialchars($subscriptions[$i]['url']); ?>" required class="form-control">
+                        <input type="text" name="custom_file_name" id="custom_file_name_<?php echo $i; ?>" value="<?php echo htmlspecialchars($subscriptions[$i]['file_name']); ?>" class="form-control ml-2" placeholder="自定义文件名">
                         <input type="hidden" name="index" value="<?php echo $i; ?>">
-                        <button type="submit" name="update" class="btn btn-primary">更新配置</button>
-                    </div>
-                </form>
-            <?php endfor; ?>
+                        <button type="submit" name="update" class="btn btn-primary btn-custom ml-2">更新配置</button>
+               </div>
+     </form>
+<?php endfor; ?>
+<div class="container container-bg border border-3 rounded-4 col-12 mb-4">
+    <h2 class="text-center p-2 mb-3">小提示</h2>
+    <div class="container text-center border border-3 rounded-4 col-10 mb-4">
+        <p style="color: #87CEEB; text-align: left;">
+            播放器采用github歌单推送歌曲，键盘方向键可以控制切换歌曲。终端输入./nekoclash.sh可以更新客户端和核心<br>
+            <?php
+            error_reporting(E_ALL);
+            ini_set('display_errors', 1);
 
-            <div class="container container-bg border border-3 rounded-4 col-12 mb-4">
-              <h2 class="text-center p-2 mb-3">小提示</h2>
-              <div class="container text-center border border-3 rounded-4 col-10 mb-4">
-                <p style="color: #87CEEB; text-align: left;">
-                  播放器采用github歌单推送歌曲，键盘方向键可以控制切换歌曲。终端输入./nekoclash.sh可以更新客户端和核心<br>
-                  <?php
-                  error_reporting(E_ALL);
-                  ini_set('display_errors', 1);
+            $output = [];
+            $return_var = 0;
+            exec('uci get network.lan.ipaddr 2>&1', $output, $return_var);
+            $routerIp = trim(implode("\n", $output));
 
-                  $output = [];
-                  $return_var = 0;
-                  exec('uci get network.lan.ipaddr 2>&1', $output, $return_var);
-                  $routerIp = trim(implode("\n", $output));
-
-                  function isValidIp($ip) {
-                  $parts = explode('.', $ip);
-                  if (count($parts) !== 4) return false;
-                  foreach ($parts as $part) {
-                      if (!is_numeric($part) || (int)$part < 0 || (int)$part > 255) return false;
-                  }
-                  return true;
-                  }
-
-                  if (isValidIp($routerIp) && !in_array($routerIp, ['0.0.0.0', '255.255.255.255'])) {
-                  $controlPanelUrl = "http://$routerIp/nekoclash";
-                  echo "独立控制面板地址: $controlPanelUrl<br>";
-                  } else {
-                  echo "无法获取路由器的 IP 地址。错误信息: $routerIp";
-                  }
-                 ?>
-              </p>
-          </div>
-        </div>
-            <footer class="text-center">
-                <p><?php echo $footer ?></p>
-            </footer>
-        </div>
-
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const autoUpdateEnabled = <?php echo json_encode($autoUpdateConfig['auto_update_enabled']); ?>;
-                const updateTime = <?php echo json_encode($autoUpdateConfig['update_time']); ?>;
-
-                if (autoUpdateEnabled) {
-                    const now = new Date();
-                    const updateParts = updateTime.split(':');
-                    const updateHour = parseInt(updateParts[0], 10);
-                    const updateMoment = new Date(now.getFullYear(), now.getMonth(), now.getDate(), updateHour, 0, 0, 0);
-
-                    if (now > updateMoment) {
-                        updateMoment.setDate(updateMoment.getDate() + 1);
-                    }
-
-                    const timeUntilUpdate = updateMoment - now;
-
-                    function triggerUpdate() {
-                        fetch(window.location.href, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                            },
-                            body: new URLSearchParams({
-                                'update': true
-                            })
-                        }).then(response => response.text())
-                        .then(data => console.log('自动更新完成', data))
-                        .catch(error => console.error('自动更新错误:', error));
-                    }
-
-                    setTimeout(function() {
-                        triggerUpdate();
-                        setInterval(triggerUpdate, 24 * 60 * 60 * 1000); 
-                    }, timeUntilUpdate);
+            function isValidIp($ip) {
+                $parts = explode('.', $ip);
+                if (count($parts) !== 4) return false;
+                foreach ($parts as $part) {
+                    if (!is_numeric($part) || (int)$part < 0 or (int)$part > 255) return false;
                 }
-            });
-        </script>
-    </body>
-    </html>
+                return true;
+            }
+
+            if (isValidIp($routerIp) && !in_array($routerIp, ['0.0.0.0', '255.255.255.255'])) {
+                $controlPanelUrl = "http://$routerIp/nekoclash";
+                echo "独立控制面板地址: $controlPanelUrl<br>";
+            } else {
+                echo "无法获取路由器的 IP 地址。错误信息: $routerIp";
+            }
+            ?>
+        </p>
+    </div>
 </div>
+
+<footer class="text-center">
+    <p><?php echo $footer ?></p>
+</footer>
+</div>
+</body>
+</html>
