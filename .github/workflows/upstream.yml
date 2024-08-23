@@ -260,6 +260,7 @@ jobs:
         git_clone https://github.com/Carseason/openwrt-themedog && mv -n openwrt-themedog/luci/* ./;rm -rf openwrt-themedog
         git_clone https://github.com/Carseason/openwrt-app-actions Carseason && mv -n Carseason/applications/* ./;rm -rf Carseason
         # git_clone https://github.com/VergilGao/openwrt-sblite && mvdir openwrt-sblite
+        git_clone https://github.com/Thaolga/luci-app-nekoclash
         ) &
         (
         git_clone https://github.com/liudf0716/luci-app-yt-dlp
@@ -509,8 +510,8 @@ jobs:
         cp -rf luci-app-bypass/root/www/luci-static/bypass/* luci-app-passwall/root/www/luci-static/passwall/
         cp -rf luci-app-bypass/root/www/luci-static/bypass/* luci-app-passwall2/root/www/luci-static/passwall2/
         cp -rf luci-app-bypass/root/www/luci-static/bypass/* luci-app-ssr-plus/root/www/luci-static/shadowsocksr/
-        echo "#page>div[data-v-d324f700]:first-child{display:none}
-        button.btn_styles.color1[data-v-0d223b54]:last-child{display:none}" >>luci-app-quickstart/htdocs/luci-static/quickstart/style.css
+        echo "#page>div:first-child{display:none}
+        button.btn_styles.color1:last-child{display:none}" >>luci-app-quickstart/htdocs/luci-static/quickstart/style.css
         sed -i '/\/etc\/init\.d\/tailscale/d;/\/etc\/config\/tailscale/d;' tailscale/Makefile
         
         sed -i \
