@@ -149,7 +149,7 @@ $singBoxVersion = getSingboxVersion();
     <div class="form-control text-center" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
         <div style="font-family: monospace; flex-grow: 1; text-align: left;">
             <?php
-            $package_name = "luci-app-neko"; 
+            $package_name = "luci-app-nekoclash"; 
             $installed_version = trim(shell_exec("opkg list-installed | grep $package_name | awk '{print $3}'"));
             echo htmlspecialchars($installed_version ?: '-'); 
             ?>
