@@ -180,27 +180,68 @@ $cpuFamily = preg_match('/^CPU family:\s+(.+)/m', $cpuInfo, $matches);
 
 	.rounded-button {
             border-radius: 30px 15px;
-        }		
-</style>
+        }
+        #tooltip {
+            position: absolute;
+            background-color: green;
+            color: #fff;
+            padding: 5px;
+            border-radius: 5px;
+            display: none;
+        }
+        #mobile-controls {
+            margin-top: 20px;
+            transition: opacity 1s ease-in-out;
+            opacity: 1;
+        }
+        #mobile-controls.hidden {
+            opacity: 0;
+            pointer-events: none; 
+        }
 
+        @media (min-width: 768px) {
+            #mobile-controls {
+                display: none;
+            }
+        }
+
+        @media (max-width: 767px) {
+            #mobile-controls {
+                display: block;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div id="player" onclick="toggleAnimation()"> 
-     <p id="hidePlayer" >Mihomo</p>
-            <p id="timeDisplay">00:00 </p>
-        <audio id="audioPlayer" controls autoplay >  
+  <div id="player" onclick="toggleAnimation()"> 
+        <p id="hidePlayer">Mihomo</p>
+        <p id="timeDisplay">00:00</p>
+        <audio id="audioPlayer" controls>  
             <source src="" type="audio/mpeg">
             您的浏览器不支持音频播放。
         </audio>
-      <br>
-     <div id="controls">
-        <button id="prev" class="rounded-button">⏮️</button>
-        <button id="orderLoop" class="rounded-button">🔁</button>
-        <button id="play" class="rounded-button">⏸️</button>
-        <button id="next" class="rounded-button">⏭️</button>        
-    </div>  
+        <br>
+        <div id="controls">
+               <button id="prev" class="rounded-button">⏮️</button>
+               <button id="orderLoop" class="rounded-button">🔁</button>
+               <button id="play" class="rounded-button">⏸️</button>
+               <button id="next" class="rounded-button">⏭️</button> 
+        </div>  
+    </div>
+    <div id="mobile-controls">
+        <button id="togglePlay" class="rounded-button">播放/暂停</button>
+        <button id="toggleEnable" class="rounded-button">启用/禁用</button>
+    </div>
+    <div id="tooltip"></div>
+
     <script>
         let colors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#9400D3'];
+        let isPlayingAllowed = false; 
+        let isLooping = false; 
+        let isOrdered = false; 
+        let currentSongIndex = 0;
+        let songs = [];
+        const audioPlayer = document.getElementById('audioPlayer');
 
         function applyGradient(text, elementId) {
             const element = document.getElementById(elementId);
@@ -211,113 +252,17 @@ $cpuFamily = preg_match('/^CPU family:\s+(.+)/m', $cpuInfo, $matches);
                 span.style.color = colors[i % colors.length];
                 element.appendChild(span);
             }
-
             const firstColor = colors.shift();
             colors.push(firstColor);
         }
 
         function updateTime() {
             const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+
             const timeString = now.toLocaleTimeString('zh-CN', { hour12: false });
-            applyGradient(timeString, 'timeDisplay');
-        }
-
-        applyGradient('Mihomo', 'hidePlayer');
-        updateTime();
-    
-        setInterval(() => {
-            updateTime();
-            applyGradient('Mihomo', 'hidePlayer');
-        }, 1000);
-
-    </script>
-    <script>
-       
-        /* var player = document.getElementById('player');
-        var offsetX, offsetY, isDragging = false;
-
-        player.addEventListener('mousedown', function(e) {
-            isDragging = true;
-            offsetX = e.clientX - player.offsetLeft;
-            offsetY = e.clientY - player.offsetTop;
-            player.style.cursor = 'grabbing';
-        });
-
-        document.addEventListener('mousemove', function(e) {
-            if (isDragging) {
-                player.style.left = (e.clientX - offsetX) + 'px';
-                player.style.top = (e.clientY - offsetY) + 'px';
-            }
-        });
-
-        document.addEventListener('mouseup', function() {
-            isDragging = false;
-            player.style.cursor = 'grab';
-        }); */
-
-       document.addEventListener('keydown', function(event) {
-            switch(event.key) {
-                case 'ArrowLeft': 
-                    document.getElementById('prev').click();
-                    break;
-                case 'ArrowRight': 
-                    document.getElementById('next').click();
-                    break;
-                case ' ': 
-                    document.getElementById('play').click();
-                    break;
-                case 'ArrowUp': 
-                    document.getElementById('orderLoop').click();
-                    break;
-            }
-        });
-        var hidePlayerButton = document.getElementById('hidePlayer');
-        hidePlayerButton.addEventListener('click', function() {
-        var player = document.getElementById('player');
-        if (player.style.display === 'none') {
-            player.style.display = 'flex';
-        } else {
-            player.style.display = 'none';
-          }
-        });
-        function toggleAnimation() {
-            const player = document.getElementById('player');
-            if (player.style.animationPlayState === 'paused') {
-                player.style.animationPlayState = 'running'; 
-            } else {
-                player.style.animationPlayState = 'paused'; 
-            }
-        }
-       /*  function createPetal() {
-            const petal = document.createElement('div');
-            petal.className = 'petal';
-            petal.style.left = Math.random() * 100 + 'vw';
-            petal.style.animationDuration = Math.random() * 3 + 2 + 's';
-            document.body.appendChild(petal);
-
-            petal.addEventListener('animationend', () => {
-                petal.remove();
-            });
-        }
-
-        setInterval(createPetal, 50);
-        function clearAllPetals() {
-            const petals = document.querySelectorAll('.petal');
-            petals.forEach(petal => petal.remove());
-        }
-
-        setTimeout(clearAllPetals, 10000);
-        */
-        function updateTime() {
-            var now = new Date();
-            var hours = now.getHours().toString().padStart(2, '0');
-            var minutes = now.getMinutes().toString().padStart(2, '0');
-            var seconds = now.getSeconds().toString().padStart(2, '0');
-            document.getElementById('timeDisplay').innerText = hours + ':' + minutes + ':' + seconds + ' ' + getAncientTime(now);
-        }
-
-        function getAncientTime(date) {
-            const hours = date.getHours();
             let ancientTime;
 
             if (hours >= 23 || hours < 1) {
@@ -346,93 +291,175 @@ $cpuFamily = preg_match('/^CPU family:\s+(.+)/m', $cpuInfo, $matches);
                 ancientTime = '亥時';
             }
 
-            return ancientTime;
+            const displayString = `${timeString} (${ancientTime})`;
+            applyGradient(displayString, 'timeDisplay');
         }
 
-        setInterval(updateTime, 1000); 
-        window.onload = updateTime;
+        applyGradient('Mihomo', 'hidePlayer');
+        updateTime();
+    
+        setInterval(updateTime, 1000);
 
-        var audioPlayer = document.getElementById('audioPlayer');
-        var playButton = document.getElementById('play');
-        var nextButton = document.getElementById('next');
-        var prevButton = document.getElementById('prev');
-        var orderLoopButton = document.getElementById('orderLoop');
-        var orderButton = document.getElementById('order'); 
-        var isLooping = false; 
-        var isOrdered = false; 
-        var currentSongIndex = 0;
-        var songs = [];
-
-        fetch('https://raw.githubusercontent.com/Thaolga/Rules/main/Clash/songs.txt')
-           .then(response => response.text())
-           .then(data => {
-            songs = data.split('\n').filter(url => url.trim() !== '');
-            initializePlayer();
-            console.log(songs);
-        })
-        .catch(error => console.error('Error fetching songs:', error));
-
-        function loadSong(index) {
-            if (index >= 0 && index < songs.length) {
-                audioPlayer.src = songs[index];
-                setTimeout(() => {
-                audioPlayer.play();
-            }, 65000); 
-          }
+        function showTooltip(text) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.textContent = text;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (window.innerWidth - tooltip.offsetWidth - 20) + 'px';
+            tooltip.style.top = '10px';
+            setTimeout(hideTooltip, 5000);
         }
 
-        playButton.addEventListener('click', function() {
-            if (audioPlayer.paused) {
-                audioPlayer.play();
+        function hideTooltip() {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.display = 'none';
+        }
+
+        function handlePlayPause() {
+            const playButton = document.getElementById('play');
+            if (isPlayingAllowed) {
+                if (audioPlayer.paused) {
+                    showTooltip('播放');
+                    audioPlayer.play();
+                    playButton.textContent = '暂停'; 
+                } else {
+                    showTooltip('暂停播放');
+                    audioPlayer.pause();
+                    playButton.textContent = '播放'; 
+                }
             } else {
-                audioPlayer.pause();
+                showTooltip('播放被禁止');
+                audioPlayer.pause(); 
+            }
+        }
+
+        function handleOrderLoop() {
+            if (isPlayingAllowed) {
+                const orderLoopButton = document.getElementById('orderLoop');
+                if (isOrdered) {
+                    isOrdered = false;
+                    isLooping = !isLooping; 
+                    orderLoopButton.textContent = isLooping ? '循' : ''; 
+                    showTooltip(isLooping ? '循环播放' : '暂停循环');
+                } else {
+                    isOrdered = true;
+                    isLooping = false; 
+                    orderLoopButton.textContent = '顺';
+                    showTooltip('顺序播放');
+                }
+            }
+        }
+
+        document.addEventListener('keydown', function(event) {
+            switch(event.key) {
+                case 'ArrowLeft': 
+                    document.getElementById('prev').click();
+                    break;
+                case 'ArrowRight': 
+                    document.getElementById('next').click();
+                    break;
+                case ' ': 
+                    handlePlayPause();
+                    break;
+                case 'ArrowUp': 
+                    handleOrderLoop();
+                    break;
+                case 'Escape': 
+                    isPlayingAllowed = !isPlayingAllowed;
+                    if (!isPlayingAllowed) {
+                        audioPlayer.pause(); 
+                        audioPlayer.src = ''; 
+                        showTooltip('播放已禁用');
+                    } else {
+                        showTooltip('播放已启用');
+                        if (songs.length > 0) {
+                            loadSong(currentSongIndex);
+                        }
+                    }
+                    break;
             }
         });
 
-        nextButton.addEventListener('click', function() {
-            currentSongIndex = (currentSongIndex + 1) % songs.length;
-            loadSong(currentSongIndex);
-        });
-
-        prevButton.addEventListener('click', function() {
-            currentSongIndex = (currentSongIndex - 1 + songs.length) % songs.length;
-            loadSong(currentSongIndex);
-        });
-
-       orderLoopButton.addEventListener('click', function() {
-            if (isOrdered) {
-                isOrdered = false;
-                isLooping = !isLooping; 
-                orderLoopButton.textContent = isLooping ? '循' : ''; 
-            } else {
-                isOrdered = true;
-                isLooping = false; 
-                orderLoopButton.textContent = '顺';
-                
-                loadSong(currentSongIndex); 
-            }
-        });  
-        audioPlayer.addEventListener('ended', function() {
-            if (isLooping) {
-                audioPlayer.currentTime = 0; 
-                audioPlayer.play(); 
-            } else {
+        document.getElementById('play').addEventListener('click', handlePlayPause);
+        document.getElementById('next').addEventListener('click', function() {
+            if (isPlayingAllowed) {
                 currentSongIndex = (currentSongIndex + 1) % songs.length;
                 loadSong(currentSongIndex);
+                showTooltip('下一首');
+            } else {
+                showTooltip('播放被禁止');
             }
         });
+        document.getElementById('prev').addEventListener('click', function() {
+            if (isPlayingAllowed) {
+                currentSongIndex = (currentSongIndex - 1 + songs.length) % songs.length;
+                loadSong(currentSongIndex);
+                showTooltip('上一首');
+            } else {
+                showTooltip('播放被禁止');
+            }
+        });
+        document.getElementById('orderLoop').addEventListener('click', handleOrderLoop);
+
+        document.getElementById('togglePlay').addEventListener('click', handlePlayPause);
+        document.getElementById('toggleEnable').addEventListener('click', function() {
+            isPlayingAllowed = !isPlayingAllowed;
+            if (!isPlayingAllowed) {
+                audioPlayer.pause(); 
+                audioPlayer.src = ''; 
+                showTooltip('播放已禁用');
+            } else {
+                showTooltip('播放已启用');
+                if (songs.length > 0) {
+                    loadSong(currentSongIndex);
+                }
+            }
+        });
+
+        function loadSong(index) {
+            if (isPlayingAllowed && index >= 0 && index < songs.length) {
+                audioPlayer.src = songs[index];
+                audioPlayer.play(); 
+            } else {
+                audioPlayer.pause(); 
+            }
+        }
+
+        audioPlayer.addEventListener('ended', function() {
+            if (isPlayingAllowed) {
+                if (isLooping) {
+                    audioPlayer.currentTime = 0; 
+                    audioPlayer.play(); 
+                } else if (isOrdered) {
+                    currentSongIndex = (currentSongIndex + 1) % songs.length;
+                    loadSong(currentSongIndex);
+                }
+            }
+        });
+
         function initializePlayer() {
             if (songs.length > 0) {
-            setTimeout(() => {
-            loadSong(currentSongIndex);
-        }, 65000); 
-    }
-}
+                loadSong(currentSongIndex);
+            }
+        }
 
-</script>
+        fetch('https://raw.githubusercontent.com/Thaolga/Rules/main/Clash/songs.txt')
+            .then(response => response.text())
+            .then(data => {
+                songs = data.split('\n').filter(url => url.trim() !== '');
+                initializePlayer();
+                console.log(songs);
+            })
+            .catch(error => console.error('Error fetching songs:', error));
+
+        window.onload = function() {
+            audioPlayer.pause(); 
+            setTimeout(() => {
+                document.getElementById('mobile-controls').classList.add('hidden'); 
+            }, 30000);
+        };
+    </script>
 </body>
 </html>
-
 <?php
 date_default_timezone_set('Asia/Shanghai');
 ?>
