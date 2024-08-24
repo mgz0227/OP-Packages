@@ -516,6 +516,7 @@ if (isset($_POST['update_index'])) {
         <a href="javascript:history.back()" class="btn">返回上一级菜单</a>
         <a href="/nekoclash/upload_sb.php" class="btn">返回当前菜单</a>
         <a href="/nekoclash/configs.php" class="btn">返回配置菜单</a>
+        <a href="/nekoclash/mon.php" class="btn">Sing-box监控面板</a>
         <a href="/nekoclash" class="btn">返回主菜单</a>
     </div>
 </div>

@@ -807,6 +807,61 @@ $singboxStartLogContent = readLogFile($singboxStartLogFile);
             margin-bottom: 20px;
             flex-shrink: 0; 
         }
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px; 
+            margin-top: 20px;
+        }
+        .nav-buttons a {
+            display: inline-block;
+            text-decoration: none;
+            color: #ffffff;
+            border: 1px solid;
+            border-radius: 4px;
+            padding: 10px 20px;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .nav-buttons a:hover {
+            opacity: 0.9;
+        }
+        .current-menu-button {
+            background-color: #6c757d; 
+            border-color: #6c757d;
+        }
+        .current-menu-button:hover {
+            background-color: #5a6268; 
+            border-color: #5a6268;
+        }
+        .config-menu-button {
+            background-color: #28a745; 
+            border-color: #28a745;
+        }
+        .config-menu-button:hover {
+            background-color: #218838; 
+            border-color: #1e7e34;
+        }
+        .monitoring-button {
+            background-color: #ffc107; 
+            border-color: #ffc107;
+        }
+        .monitoring-button:hover {
+            background-color: #e0a800; 
+            border-color: #d39e00;
+        }
+        .main-menu-button {
+            background-color: #dc3545; 
+            border-color: #dc3545;
+        }
+        .main-menu-button:hover {
+            background-color: #c82333; 
+            border-color: #bd2130;
+        }
+        footer {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -837,6 +892,13 @@ $singboxStartLogContent = readLogFile($singboxStartLogFile);
         </div>
     </div>
     <script src="/www/nekoclash/assets/js/bootstrap.bundle.min.js"></script>
+    <div class="container container-bg border border-3 rounded-4 col-12 mb-4">
+        <div class="nav-buttons">
+            <a href="/nekoclash/upload.php" class="config-menu-button">打开Mihomo 管理面板</a>
+            <a href="/nekoclash/upload_sb.php" class="monitoring-button">打开Sing-box 管理面板</a>
+            <a href="/nekoclash/mon.php" class="main-menu-button">打开Sing-box 监控面板</a>
+        </div>
+    </div>
     <footer class="text-center">
         <p><?php echo isset($message) ? $message : ''; ?></p>
         <p><?php echo $footer; ?></p>
