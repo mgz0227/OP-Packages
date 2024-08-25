@@ -183,12 +183,10 @@ function formatSize($size) {
 $subscriptionPath = '/etc/neko/proxy_provider/';
 $subscriptionFile = $subscriptionPath . 'subscriptions.json';
 $clashFile = $subscriptionPath . 'clash_config.yaml';
-$autoUpdateConfigFile = $subscriptionPath . 'auto_update_config.json';
 
 $message = "";
 $decodedContent = ""; 
 $subscriptions = [];
-$autoUpdateConfig = ['auto_update_enabled' => false, 'update_time' => '00:00'];
 
 if (!file_exists($subscriptionPath)) {
     mkdir($subscriptionPath, 0755, true);
@@ -196,10 +194,6 @@ if (!file_exists($subscriptionPath)) {
 
 if (!file_exists($subscriptionFile)) {
     file_put_contents($subscriptionFile, json_encode([]));
-}
-
-if (!file_exists($autoUpdateConfigFile)) {
-    file_put_contents($autoUpdateConfigFile, json_encode($autoUpdateConfig));
 }
 
 $subscriptions = json_decode(file_get_contents($subscriptionFile), true);
@@ -211,8 +205,6 @@ if (!$subscriptions) {
         ];
     }
 }
-
-$autoUpdateConfig = json_decode(file_get_contents($autoUpdateConfigFile), true);
 
 if (isset($_POST['update'])) {
     $index = intval($_POST['index']);
@@ -256,19 +248,6 @@ if (isset($_POST['convert_base64'])) {
     } else {
         $message = "Base64 内容为空！";
     }
-}
-
-if (isset($_POST['set_auto_update'])) {
-    $updateTime = $_POST['update_time'] ?? '00:00';
-    $autoUpdateEnabled = isset($_POST['auto_update_enabled']);
-
-    $autoUpdateConfig = [
-        'auto_update_enabled' => $autoUpdateEnabled,
-        'update_time' => $updateTime
-    ];
-
-    file_put_contents($autoUpdateConfigFile, json_encode($autoUpdateConfig));
-    $message = "自动更新设置已保存！";
 }
 ?>
 <?php
