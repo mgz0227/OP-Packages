@@ -896,6 +896,7 @@ $singboxStartLogContent = readLogFile($singboxStartLogFile);
         <div class="nav-buttons">
             <a href="/nekoclash/upload.php" class="config-menu-button">打开Mihomo 管理面板</a>
             <a href="/nekoclash/upload_sb.php" class="monitoring-button">打开Sing-box 管理面板</a>
+            <a href="/nekoclash/personal.php" class="config-menu-button">打开Mihomo 个人版</a>
             <a href="/nekoclash/mon.php" class="main-menu-button">打开Sing-box 监控面板</a>
         </div>
     </div>
