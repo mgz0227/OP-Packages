@@ -463,9 +463,9 @@ $singBoxVersion = getSingboxVersion();
             </table>
         </div>
 
-        <footer class="footer text-center">
-            <p>©2024 signdev</p>
-        </footer>
+      <footer class="text-center">
+    <p><?php echo $footer ?></p>
+</footer>
     </div>
 
     <script src="/www/nekoclash/assets/js/bootstrap.bundle.min.js"></script>

@@ -19,5 +19,5 @@ $neko_cfg['echanced']=strtoupper(exec("cat $selected_config | grep enhanced-mode
 $neko_cfg['secret']=exec("cat $selected_config | grep secret | awk '{print $2}'");
 $neko_cfg['ext_controller']=shell_exec("cat $selected_config | grep external-ui | awk '{print $2}'");
 
-$footer="©2024 <b>signdev</b>";
+$footer = '<span style="color: red;">©2024 <b>Thaolga</b></span>';
 ?>

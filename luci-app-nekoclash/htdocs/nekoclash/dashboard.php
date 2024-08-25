@@ -100,28 +100,63 @@ $dashboard_link = $neko_cfg['ctrl_host'] . ':' . $neko_cfg['ctrl_port'] . '/ui/d
             margin: 0; 
             text-align: center; 
             color: #fff; 
-            background-color: #007bff; 
-            border-color: #007bff; 
+            border: 3px solid; 
             transition: background-color 0.3s, border-color 0.3s; 
+            width: 100%; 
+            box-sizing: border-box; 
         }
-        .btn-outline-info:hover {
-            background-color: #c66f2d; 
-            border-color: #0056b3; 
+        .btn-yacd {
+            background-color: #007bff; 
+            border-color: #007bff;
+        }
+        .btn-yacd:hover {
+            background-color: #0056b3; 
+            border-color: #0056b3;
+        }
+        .btn-dashboard {
+            background-color: #28a745; 
+            border-color: #28a745;
+        }
+        .btn-dashboard:hover {
+            background-color: #1e7e34; 
+            border-color: #1e7e34;
+        }
+        .btn-meta {
+            background-color: #dc3545; 
+            border-color: #dc3545;
+        }
+        .btn-meta:hover {
+            background-color: #c82333;
+            border-color: #c82333;
         }
         .btn-container {
             display: flex;
-            justify-content: space-between; 
+            flex-direction: column; 
+            justify-content: center;
+            align-items: stretch; 
             width: 100%; 
             position: relative; 
             top: -15px; 
             margin-top: 20px; 
         }
         .btn-container a {
-            flex: 1; 
-            margin: 0 5px; 
+            margin: 5px 0; 
+        }
+        @media (min-width: 768px) {
+            .btn-container {
+                flex-direction: row; 
+                justify-content: space-between; 
+            }
+            .btn-container a {
+                flex: 1; 
+                margin: 0 5px;
+            }
         }
         iframe {
             border: 3px solid #ddd; 
+            width: 100%;
+            height: auto;
+            min-height: 700px; 
         }
         footer {
             margin-top: 20px; 
@@ -135,9 +170,9 @@ $dashboard_link = $neko_cfg['ctrl_host'] . ':' . $neko_cfg['ctrl_port'] . '/ui/d
             <iframe class="border border-3 rounded-4 w-100" height="700" src="http://<?=$yacd_link ?>" title="yacd" allowfullscreen></iframe>
         </div>
         <div class="btn-container">
-            <a class="btn btn-outline-info" target="_blank" href="http://<?=$yacd_link ?>">打开YACD-META面板</a>
-            <a class="btn btn-outline-info" target="_blank" href="http://<?=$dashboard_link ?>">打开DASHBOARD面板</a>
-            <a class="btn btn-outline-info" target="_blank" href="http://<?=$meta_link ?>">打开METACUBEXD面板</a>
+            <a class="btn btn-outline-info btn-yacd" target="_blank" href="http://<?=$yacd_link ?>">打开YACD-META面板</a>
+            <a class="btn btn-outline-info btn-dashboard" target="_blank" href="http://<?=$dashboard_link ?>">打开DASHBOARD面板</a>
+            <a class="btn btn-outline-info btn-meta" target="_blank" href="http://<?=$meta_link ?>">打开METACUBEXD面板</a>
         </div>
     </div>
     <footer class="text-center">

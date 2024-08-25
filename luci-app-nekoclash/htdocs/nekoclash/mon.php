@@ -107,8 +107,13 @@ if (isset($_GET['real_time_network'])) {
     echo json_encode(getRealTimeNetworkTraffic());
     exit;
 }
-?>
 
+if (isset($_GET['status'])) {
+    header('Content-Type: application/json');
+    echo json_encode(['singbox_status' => isSingboxRunning() ? '运行中' : '已停止']);
+    exit;
+}
+?>
 
 <!DOCTYPE html>
 <html lang="zh">
@@ -167,7 +172,7 @@ if (isset($_GET['real_time_network'])) {
         }
         #animation {
             position: absolute;
-            top: 120px;
+            top: 200px;
             left: 0;
             width: 100vw;
             height: 100vh;
@@ -259,7 +264,7 @@ if (isset($_GET['real_time_network'])) {
         <div class="nav-buttons">
             <a href="javascript:history.back()" class="current-menu-button">返回上一级菜单</a>
             <a href="/nekoclash/configs.php" class="config-menu-button">返回配置菜单</a>
-            <a href="/nekoclash/upload_sb.php" class="monitoring-button">Sing-box管理面板</a>
+            <a href="/nekoclash/upload_sb.php" class="monitoring-button">Sing-box 管理面板</a>
             <a href="/nekoclash" class="main-menu-button">返回主菜单</a>
         </div>
     </div>
@@ -352,9 +357,25 @@ if (isset($_GET['real_time_network'])) {
             return bytes.toFixed(2) + ' ' + units[i];
         }
 
+        function updateStatus() {
+            fetch(window.location.href + '?status')
+                .then(response => response.json())
+                .then(data => {
+                    const statusText = document.querySelector('.status-text');
+                    statusText.textContent = data.singbox_status;
+                    statusText.className = 'status-text ' + (data.singbox_status === '运行中' ? 'status-running' : 'status-stopped');
+                });
+        }
+
         setInterval(fetchMetrics, 5000);
         setInterval(fetchNetworkTraffic, 5000);
         setInterval(fetchRealTimeNetworkTraffic, 1000);  
+        setInterval(updateStatus, 5000);
+
+        updateMetrics(); 
+        updateNetworkTraffic();
+        updateRealTimeNetworkTraffic();
+        updateStatus();
     </script>
 </body>
 </html>

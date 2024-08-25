@@ -389,9 +389,30 @@ include './cfg.php';
 <div class="container container-bg border border-3 rounded-4 col-12 mb-4">
     <h2 class="text-center p-2 mb-3">小提示</h2>
     <div class="container text-center border border-3 rounded-4 col-10 mb-4">
-        <p style="color: #87CEEB; text-align: left;">
-            播放器采用github歌单推送歌曲，键盘方向键可以控制切换歌曲。终端输入./nekoclash.sh可以更新客户端和核心<br>
-            <?php
+    <p style="color: #87CEEB; text-align: left;">
+    <p style="text-align: center; font-size: 24px; color: #87CEEB;">
+    <strong>播放器功能说明</strong>
+    </p>
+
+    <p style="color: #87CEEB; text-align: left;">
+    <strong>1. 歌曲推送和控制：</strong><br>
+    &emsp; 1 播放器通过 GitHub 歌单推送歌曲。<br>
+    &emsp; 2 使用键盘方向键可以切换歌曲。<br>
+    &emsp; 3 终端输入 <code>./nekoclash.sh</code> 可以更新客户端和核心。<br>
+    &emsp; 4 sing-box 内置智能转换机制，无论您从哪个机场获取订阅，都能自动适配，无需额外配置。<br><br>
+
+    <strong>2. 播放功能：</strong><br>
+    &emsp; 1 自动播放下一首歌曲：如果启用了播放功能，自动播放下一首歌曲。歌曲列表到达末尾时，会循环到第一首歌曲。<br>
+    &emsp; 2 启用/禁用播放：通过点击或按下 Escape 键，可以启用或禁用播放功能。当禁用时，当前播放将被停止，并且无法选择或播放新歌曲。<br><br>
+
+    <strong>3. 键盘控制：</strong><br>
+    &emsp; 1 提供了箭头 ⇦ ⇨ 键和空格键的快捷控制，支持上下首切换和播放/暂停。<br><br>
+
+    <strong>4. 播放模式：</strong><br>
+    &emsp; 1 循环播放和顺序播放：可以通过按钮和键盘快捷 ⇧ 键切换循环播放和顺序播放的模式。
+       </p>特别说明：<code>iptables</code> 固件只适配了 Mihomo，非 <code>nftables</code> 的固件不要使用 sing-box，有什么问题后果自负  </p>
+    </p>
+        <?php
             error_reporting(E_ALL);
             ini_set('display_errors', 1);
 
@@ -411,7 +432,7 @@ include './cfg.php';
 
             if (isValidIp($routerIp) && !in_array($routerIp, ['0.0.0.0', '255.255.255.255'])) {
                 $controlPanelUrl = "http://$routerIp/nekoclash";
-                echo "独立控制面板地址: $controlPanelUrl<br>";
+                echo '<span style="color: #87CEEB;">独立控制面板地址:</span> <a href="' . $controlPanelUrl . '" style="color: red;" target="_blank"><code>' . $controlPanelUrl . '</code></a><br>';
             } else {
                 echo "无法获取路由器的 IP 地址。错误信息: $routerIp";
             }
