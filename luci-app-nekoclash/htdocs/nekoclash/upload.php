@@ -851,7 +851,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </section>
         <section id="subscription-management" class="section-gap">
             <h2 class="text-success">订阅管理</h2>
-            <p class="help-text">在这里，你可以更新每个订阅链接不要修改默认名字。填写完毕后，点击“更新配置”按钮进行更新。</p>
+                <p class="help-text" style="text-align: left; font-family: Arial, sans-serif; line-height: 1.5; font-size: 14px;">
+                    <strong>1. 注意：</strong> 通用模板（<code>tuanbe.yaml</code>）最多支持<strong>7个</strong>订阅链接，请勿更改默认名称。
+                </p>
+
+                <p class="help-text" style="text-align: left; font-family: Arial, sans-serif; line-height: 1.5; font-size: 14px;">
+                    <strong>2. 保存与更新：</strong> 填写完毕后，请点击“更新配置”按钮进行保存。
+                </p>
+
+                <p class="help-text" style="text-align: left; font-family: Arial, sans-serif; line-height: 1.5; font-size: 14px;">
+                    <strong>3. 节点转换与手动修改：</strong> 该模板支持所有格式的订阅链接，无需进行额外转换。单个节点可通过下方的节点转换工具进行转换，并自动保存为代理，也可手动修改代理目录文件，支持通过节点链接形式添加。
+                </p>
             <div class="form-spacing"></div>
             <?php if ($message): ?>
                 <p><?php echo nl2br(htmlspecialchars($message)); ?></p>
