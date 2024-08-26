@@ -354,7 +354,7 @@ include './cfg.php';
     width: 100%;
     padding: 8px;
     box-sizing: border-box;
-    background-color: #fd7e14; 
+    background-color: #B0C4DE; 
     border: 1px solid #ccc; 
     }
 </style>

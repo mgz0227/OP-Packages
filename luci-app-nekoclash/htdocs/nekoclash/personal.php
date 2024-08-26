@@ -3,10 +3,18 @@ $subscription_file = '/etc/neko/config/subscription.txt';
 $download_path = '/etc/neko/config/'; 
 $php_script_path = '/www/nekoclash/personal.php'; 
 $sh_script_path = '/etc/neko/update_config.sh'; 
-$cron_job = '0 3 * * * /etc/neko/update_config.sh'; 
+$log_file = '/var/log/neko_update.log'; 
+
+function logMessage($message) {
+    global $log_file;
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($log_file, "[$timestamp] $message\n", FILE_APPEND);
+}
 
 function saveSubscriptionUrlToFile($url, $file) {
-    return file_put_contents($file, $url) !== false;
+    $success = file_put_contents($file, $url) !== false;
+    logMessage($success ? "订阅链接已保存到 $file" : "保存订阅链接失败到 $file");
+    return $success;
 }
 
 function transformContent($content) {
@@ -144,16 +152,21 @@ EOD;
     return implode("\n", $new_lines);
 }
 
+
 function saveSubscriptionContentToYaml($url, $filename) {
     global $download_path;
 
     if (preg_match('/[^A-Za-z0-9._-]/', $filename)) {
-        return "文件名包含非法字符，请使用字母、数字、点、下划线或横杠。";
+        $message = "文件名包含非法字符，请使用字母、数字、点、下划线或横杠。";
+        logMessage($message);
+        return $message;
     }
 
     if (!is_dir($download_path)) {
         if (!mkdir($download_path, 0755, true)) {
-            return "无法创建目录：$download_path";
+            $message = "无法创建目录：$download_path";
+            logMessage($message);
+            return $message;
         }
     }
 
@@ -168,12 +181,16 @@ function saveSubscriptionContentToYaml($url, $filename) {
     if (curl_errno($ch)) {
         $error_msg = curl_error($ch);
         curl_close($ch);
-        return "cURL 错误: $error_msg";
+        $message = "cURL 错误: $error_msg";
+        logMessage($message);
+        return $message;
     }
     curl_close($ch);
 
     if ($subscription_data === false || empty($subscription_data)) {
-        return "无法获取订阅内容。请检查链接是否正确。";
+        $message = "无法获取订阅内容。请检查链接是否正确。";
+        logMessage($message);
+        return $message;
     }
 
     if (base64_decode($subscription_data, true) !== false) {
@@ -185,11 +202,10 @@ function saveSubscriptionContentToYaml($url, $filename) {
     $transformed_data = transformContent($decoded_data);
 
     $file_path = $download_path . $filename;
-    if (file_put_contents($file_path, $transformed_data) !== false) {
-        return "内容已成功保存到：$file_path";
-    } else {
-        return "文件保存失败。";
-    }
+    $success = file_put_contents($file_path, $transformed_data) !== false;
+    $message = $success ? "内容已成功保存到：$file_path" : "文件保存失败。";
+    logMessage($message);
+    return $message;
 }
 
 function generateShellScript() {
@@ -232,34 +248,45 @@ else
 fi
 EOD;
 
-    if (file_put_contents($sh_script_path, $sh_script_content) !== false) {
+    $success = file_put_contents($sh_script_path, $sh_script_content) !== false;
+    logMessage($success ? "Shell 脚本已成功创建并赋予执行权限。" : "无法创建 Shell 脚本文件。");
+    if ($success) {
         shell_exec("chmod +x $sh_script_path");
-        return "Shell 脚本已成功创建并赋予执行权限。";
-    } else {
-        return "无法创建 Shell 脚本文件。";
     }
+    return $success ? "Shell 脚本已成功创建并赋予执行权限。" : "无法创建 Shell 脚本文件。";
 }
 
-function setupCronJob() {
-    global $sh_script_path, $cron_job;
+function setupCronJob($cron_time) {
+    global $sh_script_path;
 
-    $cron_entry = "$cron_job\n";
+    $cron_entry = "$cron_time $sh_script_path\n";
     $current_cron = shell_exec('crontab -l 2>/dev/null');
-    if (strpos($current_cron, $sh_script_path) === false) {
-        $new_cron = $current_cron . $cron_entry;
-        file_put_contents('/tmp/crontab.txt', $new_cron);
-        shell_exec('crontab /tmp/crontab.txt');
-        return "Cron 作业已成功设置。";
+    
+    if (strpos($current_cron, $sh_script_path) !== false) {
+        $updated_cron = preg_replace('/.*' . preg_quote($sh_script_path, '/') . '/', $cron_entry, $current_cron);
     } else {
-        return "Cron 作业已存在。";
+        $updated_cron = $current_cron . $cron_entry;
+    }
+
+    $success = file_put_contents('/tmp/cron.txt', $updated_cron) !== false;
+    if ($success) {
+        shell_exec('crontab /tmp/cron.txt');
+        logMessage("Cron 作业已成功设置为 $cron_time 运行。");
+        return "Cron 作业已成功设置为 $cron_time 运行。";
+    } else {
+        logMessage("无法写入临时 Cron 文件。");
+        return "无法写入临时 Cron 文件。";
     }
 }
 
 $result = '';
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+$cron_result = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['subscription_url']) && isset($_POST['filename'])) {
         $subscription_url = $_POST['subscription_url'];
         $filename = $_POST['filename'];
+
         if (empty($filename)) {
             $filename = 'config.yaml';
         }
@@ -267,12 +294,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (saveSubscriptionUrlToFile($subscription_url, $subscription_file)) {
             $result .= saveSubscriptionContentToYaml($subscription_url, $filename) . "<br>";
             $result .= generateShellScript() . "<br>";
-            $result .= setupCronJob() . "<br>";
         } else {
             $result = "保存订阅链接失败。";
         }
-    } else {
-        $result = "请填写所有字段。";
+    }
+
+    if (isset($_POST['cron_time'])) {
+        $cron_time = $_POST['cron_time'];
+        $cron_result .= setupCronJob($cron_time) . "<br>";
     }
 }
 
@@ -319,7 +348,7 @@ $current_subscription_url = getSubscriptionUrlFromFile($subscription_file);
             text-align: center;
         }
         .result {
-            display: <?php echo $result ? 'block' : 'none'; ?>;
+            display: <?php echo $result || $cron_result ? 'block' : 'none'; ?>;
             margin-bottom: 20px;
             padding: 10px;
             background-color: #eaf7e3;
@@ -372,13 +401,13 @@ $current_subscription_url = getSubscriptionUrlFromFile($subscription_file);
             color: #fff;
             font-size: 16px;
             cursor: pointer;
+            margin-bottom: 10px;
         }
         button:hover {
             background-color: #0056b3;
         }
         .back-button {
             background-color: #6c757d;
-            margin-top: 10px;
         }
         .back-button:hover {
             background-color: #5a6268;
@@ -399,8 +428,15 @@ $current_subscription_url = getSubscriptionUrlFromFile($subscription_file);
                    value="<?php echo htmlspecialchars(isset($_POST['filename']) ? $_POST['filename'] : ''); ?>" 
                    placeholder="config.yaml"><br>
             
-            <button type="submit">更新</button>
-            <button type="button" class="back-button" onclick="history.back()">返回上一级</button>
+            <button type="submit" name="action" value="update_subscription">更新订阅</button>
+        </form>
+        <form method="post" action="">
+            <label for="cron_time">设置 Cron 时间 (例如: 0 3 * * *):</label>
+            <input type="text" id="cron_time" name="cron_time" 
+                   value="<?php echo htmlspecialchars(isset($_POST['cron_time']) ? $_POST['cron_time'] : '0 3 * * *'); ?>" 
+                   placeholder="0 3 * * *"><br>
+            
+            <button type="submit" name="action" value="update_cron">更新 Cron 作业</button>
         </form>
         <div class="help">
             <h2 style="text-align: center;">帮助说明</h2>
@@ -408,15 +444,18 @@ $current_subscription_url = getSubscriptionUrlFromFile($subscription_file);
             <ul>
                 <li><strong>输入订阅链接:</strong> 在文本框中输入您的Clash订阅链接。</li>
                 <li><strong>输入保存文件名:</strong> 指定保存配置文件的文件名，默认为 "config.yaml"。</li>
-                <li>点击 "更新" 按钮，系统将下载订阅内容，并进行转换和保存。</li>
-                <li>操作成功后，去配置文件选择config.yaml启动，就能使用你的自定义配置了。</li>
-                <li>创建脚本，默认更新会创建自动更新脚本设置为每天3点更新，要修改请移步计划任务</li>
-                <li>配置文件，内置通用模板 tuanbe.yaml 优点是兼容性好无需转换，个人版订阅只支持Clash格式，可以自行设置.yaml 的名称，在配置选择启用，不要用中文名，config.json为Sing-box的配置文件不能修改</li>
+                <li>点击 "更新订阅" 按钮，系统将下载订阅内容，并进行转换和保存。</li>
+                <li><strong>设置 Cron 时间:</strong> 指定 Cron 作业的执行时间。</li>
+                <li>点击 "更新 Cron 作业" 按钮，系统将设置或更新 Cron 作业。</li>
             </ul>
         </div>
         <div class="result">
             <?php echo nl2br(htmlspecialchars($result)); ?>
         </div>
+        <div class="result">
+            <?php echo nl2br(htmlspecialchars($cron_result)); ?>
+        </div>
+        <button class="back-button" onclick="history.back()">返回上一级</button>
     </div>
 </body>
-</htm
+</html>
