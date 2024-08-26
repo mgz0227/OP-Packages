@@ -425,13 +425,15 @@ install_php() {
     ARCH=$(uname -m)
 
     if [ "$ARCH" == "aarch64" ]; then
-        PHP_CGI_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8-cgi_8.2.22-1_aarch64_generic.ipk"
-        PHP_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8_8.2.22-1_aarch64_generic.ipk"
-        PHP_MOD_CURL_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8-mod-curl_8.2.22-1_aarch64_generic.ipk"
+        PHP_CGI_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8-cgi_8.3.10-1_aarch64_generic.ipk"
+        PHP_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8_8.3.10-1_aarch64_generic.ipk"
+        PHP_MOD_CURL_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8-mod-curl_8.3.10-1_aarch64_generic.ipk"
+        PHP_FPM_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8-fpm_8.3.10-1_aarch64_generic.ipk"
     elif [ "$ARCH" == "x86_64" ]; then
-        PHP_CGI_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8-cgi_8.2.2-1_x86_64.ipk"
-        PHP_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8_8.2.2-1_x86_64.ipk"
-        PHP_MOD_CURL_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8-mod-curl_8.2.2-1_x86_64.ipk"
+        PHP_CGI_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8-cgi_8.3.10-1_x86_64.ipk"
+        PHP_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8_8.3.10-1_x86_64.ipk"
+        PHP_MOD_CURL_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8-mod-curl_8.3.10-1_x86_64.ipk"
+        PHP_FPM_URL="https://github.com/Thaolga/neko/releases/download/core_neko/php8-fpm_8.3.10-1_x86_64.ipk"
     else
         echo -e "${RED}不支持的架构: $ARCH${RESET}"
         exit 1
@@ -461,11 +463,20 @@ install_php() {
         echo -e "${RED}PHP 模块 curl 安装失败。${RESET}"
     fi
 
-    rm -f /tmp/php8-cgi.ipk /tmp/php8.ipk /tmp/php8-mod-curl.ipk
+    echo -e "${GREEN}正在下载并安装 PHP-FPM...${RESET}"
+    wget "$PHP_FPM_URL" -O /tmp/php8-fpm.ipk
+    if opkg install --force-reinstall --force-overwrite /tmp/php8-fpm.ipk; then
+        echo -e "${GREEN}PHP-FPM 安装成功。${RESET}"
+    else
+        echo -e "${RED}PHP-FPM 安装失败。${RESET}"
+    fi
+
+    rm -f /tmp/php8-cgi.ipk /tmp/php8.ipk /tmp/php8-mod-curl.ipk /tmp/php8-fpm.ipk
 
     echo -e "${GREEN}安装完成。${RESET}"
     echo -e "${YELLOW}请重启服务器以应用更改。${RESET}"
 }
+
 
 reboot_router() {
     echo -e "${CYAN}正在重启路由器...${NC}"

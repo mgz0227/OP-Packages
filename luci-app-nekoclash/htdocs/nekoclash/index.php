@@ -895,13 +895,16 @@ $singboxStartLogContent = readLogFile($singboxStartLogFile);
         </div>
     </div>
     <script src="/www/nekoclash/assets/js/bootstrap.bundle.min.js"></script>
-    <div class="container container-bg border border-3 rounded-4 col-12 mb-4">
-        <div class="nav-buttons">
-            <a href="/nekoclash/upload.php" class="config-menu-button">打开Mihomo 管理面板</a>
-            <a href="/nekoclash/upload_sb.php" class="monitoring-button">打开Sing-box 管理面板</a>
-            <a href="/nekoclash/personal.php" class="current-menu-button">打开Mihomo 个人版</a>
-            <a href="/nekoclash/mon.php" class="main-menu-button">打开Sing-box 监控面板</a>
-        </div>
+<div class="container container-bg border border-3 rounded-4 col-12 mb-4 d-flex align-items-center justify-content-center" style="height: 100%;">
+    <div class="nav-buttons text-center" style="height: 100%;">
+        <a href="/nekoclash/upload.php" class="config-menu-button d-block mb-2">打开Mihomo 管理面板</a>
+        <a href="/nekoclash/upload_sb.php" class="monitoring-button d-block mb-2">打开Sing-box 管理面板</a>
+        <a href="/nekoclash/personal.php" class="current-menu-button d-block mb-2">打开Mihomo 个人版</a>
+        <a href="/nekoclash/mon.php" class="main-menu-button d-block mb-2">打开Sing-box 监控面板</a>
+    </div>
+</div>
+
+
     </div>
     <footer class="text-center">
         <p><?php echo isset($message) ? $message : ''; ?></p>

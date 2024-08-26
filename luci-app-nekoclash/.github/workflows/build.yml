@@ -1,0 +1,88 @@
+name: Build and Release NekoClash
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'NekoClash version'
+        required: true
+        default: '1.1.38-beta'
+        type: string
+      changelog:
+        description: 'Changelog'
+        required: true
+        default: ''
+        type: string
+
+jobs:
+  build_ipk:
+    name: Build NekoClash
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          repository: Thaolga/luci-app-nekoclash
+          ref: main
+
+      - name: Preparing Build Environment
+        run: |
+          echo "Setting up the build environment..."
+          mkdir -p feeds artifacts
+          cp -rf ./luci-app-nekoclash ./feeds
+
+      - name: Building Luci NekoClash
+        uses: nosignals/gh-action-sdk@main
+        env:
+          FEED_DIR: ${{ github.workspace }}/feeds
+          PACKAGES: luci-app-nekoclash
+          NO_SHFMT_CHECK: 1
+
+      - name: Upload IPK Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: luci-app-nekoclash
+          path: ${{ github.workspace }}/artifacts/bin/packages/*/action/luci-app-nekoclash*
+
+  release_ipk:
+    needs: build_ipk
+    name: Release IPK Package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download IPK Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: luci-app-nekoclash
+
+      - name: Prepare Release Files
+        run: |
+          mkdir -p release
+          cp -rf ./luci-app-nekoclash* ./release/
+
+      - name: Upload Release Asset
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./release/*
+          overwrite: true
+          tag: ${{ github.event.inputs.version }}
+          file_glob: true
+          body: |
+            # LUCI APP NEKOCLASH ${{ github.event.inputs.version }}
+            Simple Clash TUN based Proxy
+            ### Information
+            - Changelog : 
+              - ${{ github.event.inputs.changelog }}
+            - Supported ARCH : 
+              - `arm64 / aarch64`
+              - `x86_64 / amd64`
+            ### Dependency Requirement
+            - `bash, kmod-tun, php, php-cgi` (install PHP Manually before installing NekoClash)
+            - `iptables` (for OpenWrt 21)
+            - `nftables` (for OpenWrt 23)
+
+            ### Please Install with normal Connectivity
+
+            ### Please Install with normal Connectivity
