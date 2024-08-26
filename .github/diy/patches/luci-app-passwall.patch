@@ -125,7 +125,7 @@
  	local e
  	if uci:get(appname, "@global[0]", "hide_from_luci") ~= "1" then
  		e = entry({"admin", "services", appname}, alias("admin", "services", appname, "settings"), _("Pass Wall"), -1)
-@@ -211,6 +212,59 @@ function clear_log()
+@@ -211,6 +212,61 @@ function clear_log()
  	luci.sys.call("echo '' > /tmp/log/passwall.log")
  end
  
@@ -147,7 +147,8 @@
 +    return {
 +        flag = string.lower(info.countryCode) or "un",
 +        country = get_country_name(info.countryCode) or "Unknown",
-+        ip = info.query
++        ip = info.query,
++        isp = info.isp
 +    }
 +end
 +
@@ -174,6 +175,7 @@
 +    e.ip = geo_info.ip
 +    e.flag = geo_info.flag
 +    e.country = geo_info.country
++    e.isp = geo_info.isp
 +    e.baidu = check_site('www.baidu.com', port)
 +    e.taobao = check_site('www.taobao.com', port)
 +    e.google = check_site('www.google.com', port)
@@ -302,7 +304,7 @@ index 000000000000..a00fff9c79b3
 +
 +function write_status(data) {
 +        document.querySelector(".flag img").src = _ASSETS + "flags/" + data.flag + ".svg";
-+        document.querySelector(".status-info").innerHTML = data.ip + "<br>" + data.country;
++        document.querySelector(".status-info").innerHTML = data.ip + "<br>" + data.country + "&nbsp;" + data.isp;
 +    document.querySelector(".i1").src = data.baidu ? _ASSETS + "img/site_icon_01.png" : _ASSETS + "img/site_icon1_01.png";
 +    document.querySelector(".i2").src = data.taobao ? _ASSETS + "img/site_icon_02.png" : _ASSETS + "img/site_icon1_02.png";
 +    document.querySelector(".i3").src = data.google ? _ASSETS + "img/site_icon_03.png" : _ASSETS + "img/site_icon1_03.png";
@@ -320,7 +322,7 @@ index 000000000000..a00fff9c79b3
 +    );
 +
 +document.addEventListener('DOMContentLoaded', function() {
-+    setTimeout("resize()",10)
++    setTimeout("resize()",200)
 +    fetch(CHECK_IP_URL)
 +        .then(response => response.json())
 +        .then(data => {
