@@ -7,24 +7,23 @@
 -    uci set uhttpd.main.index_page='index.php'
 -    uci set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
 -    uci commit uhttpd
-+    if [ -n "$(command -v nginx)" ];then
++    if [ -n "$(command -v nginx)" ]; then
 +        cat << EOF > /etc/nginx/nekoclash.locations
 +location /nekoclash {
 +    alias /www/nekoclash;
 +    index index.php index.html index.htm;
- 
--    /etc/init.d/uhttpd restart
++
 +    location ~ \.php$ {
-+        if (!-f $request_filename) {
++        if (!-f \$request_filename) {
 +            return 404;
 +        }
 +        fastcgi_pass unix:/var/run/php8-fpm.sock;
 +        fastcgi_index index.php;
 +        include fastcgi_params;
-+        fastcgi_param SCRIPT_FILENAME $request_filename;
++        fastcgi_param SCRIPT_FILENAME \$request_filename;
 +    }
 +}
-+        EOF
++EOF
 +        /etc/init.d/nginx restart
 +    else
 +        uci set uhttpd.main.index_page='index.php'
@@ -36,7 +35,6 @@
  
      case "$arch" in
      aarch64)
-
 --- a/luci-app-nekoclash/Makefile
 +++ b/luci-app-nekoclash/Makefile
 @@ -15,7 +15,7 @@ define Package/$(PKG_NAME)
@@ -44,11 +42,10 @@
  	TITLE:=LuCI support for mihomo
  	PKGARCH:=all
 -	DEPENDS:=+kmod-tun +bash +curl +jq +php8 +php8-cgi +php8-mod-curl +firewall4  +nftables
-+	DEPENDS:=+kmod-tun +bash +curl +jq +php8 +php8-fpm +php8-cgi +php8-mod-curl +firewall4  +nftables
++	DEPENDS:=+kmod-tun +bash +curl +jq +php8 +php8-fpm +php8-cgi +php8-mod-curl +firewall4 +nftables
  endef
  
  define Package/$(PKG_NAME)/description
-
 --- a/luci-app-nekoclash/htdocs/nekoclash/devinfo.php
 +++ b/luci-app-nekoclash/htdocs/nekoclash/devinfo.php
 @@ -213,25 +213,6 @@
