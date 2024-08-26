@@ -230,7 +230,8 @@ function get_ip_geo_info()
     return {
         flag = string.lower(info.countryCode) or "un",
         country = get_country_name(info.countryCode) or "Unknown",
-        ip = info.query
+        ip = info.query,
+        isp = info.isp
     }
 end
 
@@ -257,6 +258,7 @@ function check_ip()
     e.ip = geo_info.ip
     e.flag = geo_info.flag
     e.country = geo_info.country
+    e.isp = geo_info.isp
     e.baidu = check_site('www.baidu.com', port)
     e.taobao = check_site('www.taobao.com', port)
     e.google = check_site('www.google.com', port)

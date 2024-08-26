@@ -2,11 +2,11 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=hickory-dns
 PKG_VERSION:=master
-PKG_RELEASE:=29
+PKG_RELEASE:=30
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/hickory-dns/hickory-dns.git
-PKG_SOURCE_VERSION:=6fe2347f1c66757cd5af8dde4e881ebab9793ab5
+PKG_SOURCE_VERSION:=4f127a7848330e038042b8faa6e93e24a9b33d6b
 PKG_BUILD_DEPENDS:=rust/host
 PKG_BUILD_PARALLEL:=1
 
