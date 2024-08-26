@@ -364,7 +364,7 @@ $singBoxVersion = getSingboxVersion();
             color: #000000;
         }
         .link-box:hover {
-            background-color: #87CEEB; 
+            background-color: #EE82EE; 
         }
     </style>
 </head>
