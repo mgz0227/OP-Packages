@@ -63,109 +63,72 @@ $cpuFamily = preg_match('/^CPU family:\s+(.+)/m', $cpuInfo, $matches);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GitHub Music Player</title>
-
-<style>
-     #container {
-          text-align: center;
-          margin-top: 50px;
-    }
-    body {
-        font-family: Arial, sans-serif;
-        background-color: #f0f0f0;
-        overflow: hidden; 
-    }
-
-    #player {
-        width: 320px;
-        height: 320px; 
-        margin: 50px auto;
-        padding: 20px;     
-        background: url('/nekoclash/assets/img/3.svg') no-repeat center center;
-        background-size: cover;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        border-radius: 50%;
-        transform-style: preserve-3d; 
-        transition: transform 0.5s; 
-        position: relative;
-        animation: rainbow 5s infinite, rotatePlayer 10s linear infinite;
-    }
-
-    #player:hover {
-        transform: rotateY(360deg) rotateX(360deg);
-    }
-
-    #player h2 {
-        margin-top: 0;
-    }
-
-    #controls {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        
-    }
-
-    button {
-        background-color: #4CAF50;
-        border: none;
-        color: white;
-        padding: 10px 20px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 16px;
-        margin: 4px 2px;
-        cursor: pointer;
-        box-shadow: 0 4px #666;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    button:active {
-        transform: translateY(4px);
-        box-shadow: 0 2px #444;
-    }
-
-    @keyframes rainbow {
-        0% {background-color: red;}
-        10% {background-color: orange;}
-        20% {background-color: yellow;}
-        30% {background-color: #4CAF50;} 
-        40% {background-color: cyan;}
-        50% {background-color: blue;}
-        60% {background-color: indigo;}
-        70% {background-color: violet;}
-        80% {background-color: magenta;}
-        90% {background-color: pink;}
-        100% {background-color: red;}
-    }
-
-    @keyframes rotatePlayer {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-
-    @keyframes fall {
-        0% {
-            transform: translateY(0) translateX(0);
-            opacity: 1;
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            overflow: hidden;
         }
-        100% {
-            transform: translateY(100vh) translateX(calc(-50% + 50vw));
-            opacity: 0;
-        }
-    }
 
-    .petal {
-            position: absolute;
-            top: 0;
-            width: 20px;
-            height: 20px;
-            background: pink;
+        #container {
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        #player {
+            width: 320px;
+            height: 320px;
+            margin: 50px auto;
+            padding: 20px;
+            background: url('/nekoclash/assets/img/3.svg') no-repeat center center;
+            background-size: cover;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             border-radius: 50%;
-            animation: fall linear;
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+            position: relative;
+            animation: rainbow 5s infinite, rotatePlayer 10s linear infinite;
+        }
+
+        #player:hover {
+            transform: rotateY(360deg) rotateX(360deg);
+        }
+
+        #player h2 {
+            margin-top: 0;
+        }
+
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            box-shadow: 0 4px #666;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px #444;
+        }
+
+        @keyframes rotatePlayer {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         #hidePlayer, #timeDisplay {
@@ -178,9 +141,10 @@ $cpuFamily = preg_match('/^CPU family:\s+(.+)/m', $cpuInfo, $matches);
             transition: background 1s ease;
         }
 
-	.rounded-button {
+        .rounded-button {
             border-radius: 30px 15px;
         }
+
         #tooltip {
             position: absolute;
             background-color: green;
@@ -189,14 +153,16 @@ $cpuFamily = preg_match('/^CPU family:\s+(.+)/m', $cpuInfo, $matches);
             border-radius: 5px;
             display: none;
         }
+
         #mobile-controls {
             margin-top: 20px;
             transition: opacity 1s ease-in-out;
             opacity: 1;
         }
+
         #mobile-controls.hidden {
             opacity: 0;
-            pointer-events: none; 
+            pointer-events: none;
         }
 
         @media (min-width: 768px) {
@@ -213,247 +179,266 @@ $cpuFamily = preg_match('/^CPU family:\s+(.+)/m', $cpuInfo, $matches);
     </style>
 </head>
 <body>
-<div id="player" onclick="toggleAnimation()"> 
-    <p id="hidePlayer">Mihomo</p>
-    <p id="timeDisplay">00:00</p>
-    <audio id="audioPlayer" controls>  
-        <source src="" type="audio/mpeg">
-        您的浏览器不支持音频播放。
-    </audio>
-    <br>
-    <div id="controls">
-        <button id="prev" class="rounded-button">⏮️</button>
-        <button id="orderLoop" class="rounded-button">🔁</button>
-        <button id="play" class="rounded-button">⏸️</button>
-        <button id="next" class="rounded-button">⏭️</button> 
-    </div>  
-</div>
-<div id="mobile-controls">
-    <button id="togglePlay" class="rounded-button">播放/暂停</button>
-    <button id="toggleEnable" class="rounded-button">启用/禁用</button>
-</div>
-<div id="tooltip"></div>
+    <div id="player" onclick="toggleAnimation()">
+        <p id="hidePlayer">Mihomo</p>
+        <p id="timeDisplay">00:00</p>
+        <audio id="audioPlayer" controls>
+            <source src="" type="audio/mpeg">
+            您的浏览器不支持音频播放。
+        </audio>
+        <br>
+        <div id="controls">
+            <button id="prev" class="rounded-button">⏮️</button>
+            <button id="orderLoop" class="rounded-button">🔁</button>
+            <button id="play" class="rounded-button">⏸️</button>
+            <button id="next" class="rounded-button">⏭️</button>
+        </div>
+    </div>
+    <div id="mobile-controls">
+        <button id="togglePlay" class="rounded-button">播放/暂停</button>
+        <button id="toggleEnable" class="rounded-button">启用/禁用</button>
+    </div>
+    <div id="tooltip"></div>
 
-<script>
-    let colors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#9400D3'];
-    let isPlayingAllowed = false; 
-    let isLooping = false; 
-    let isOrdered = false; 
-    let currentSongIndex = 0;
-    let songs = [];
-    const audioPlayer = document.getElementById('audioPlayer');
+    <script>
+        let colors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#9400D3'];
+        let isPlayingAllowed = false;
+        let isLooping = false;
+        let isOrdered = false;
+        let currentSongIndex = 0;
+        let songs = [];
+        const audioPlayer = document.getElementById('audioPlayer');
 
-    function applyGradient(text, elementId) {
-        const element = document.getElementById(elementId);
-        element.innerHTML = ''; 
-        for (let i = 0; i < text.length; i++) {
-            const span = document.createElement('span');
-            span.textContent = text[i];
-            span.style.color = colors[i % colors.length];
-            element.appendChild(span);
-        }
-        const firstColor = colors.shift();
-        colors.push(firstColor);
-    }
-
-    function updateTime() {
-        const now = new Date();
-        const hours = now.getHours();
-        const timeString = now.toLocaleTimeString('zh-CN', { hour12: false });
-        let ancientTime;
-
-        if (hours >= 23 || hours < 1) {
-            ancientTime = '子時';
-        } else if (hours >= 1 && hours < 3) {
-            ancientTime = '丑時';
-        } else if (hours >= 3 && hours < 5) {
-            ancientTime = '寅時';
-        } else if (hours >= 5 && hours < 7) {
-            ancientTime = '卯時';
-        } else if (hours >= 7 && hours < 9) {
-            ancientTime = '辰時';
-        } else if (hours >= 9 && hours < 11) {
-            ancientTime = '巳時';
-        } else if (hours >= 11 && hours < 13) {
-            ancientTime = '午時';
-        } else if (hours >= 13 && hours < 15) {
-            ancientTime = '未時';
-        } else if (hours >= 15 && hours < 17) {
-            ancientTime = '申時';
-        } else if (hours >= 17 && hours < 19) {
-            ancientTime = '酉時';
-        } else if (hours >= 19 && hours < 21) {
-            ancientTime = '戌時';
-        } else {
-            ancientTime = '亥時';
-        }
-
-        const displayString = `${timeString} (${ancientTime})`;
-        applyGradient(displayString, 'timeDisplay');
-    }
-
-    applyGradient('Mihomo', 'hidePlayer');
-    updateTime();
-    setInterval(updateTime, 1000);
-
-    function showTooltip(text) {
-        const tooltip = document.getElementById('tooltip');
-        tooltip.textContent = text;
-        tooltip.style.display = 'block';
-        tooltip.style.left = (window.innerWidth - tooltip.offsetWidth - 20) + 'px';
-        tooltip.style.top = '10px';
-        setTimeout(hideTooltip, 5000);
-    }
-
-    function hideTooltip() {
-        const tooltip = document.getElementById('tooltip');
-        tooltip.style.display = 'none';
-    }
-
-    function handlePlayPause() {
-        const playButton = document.getElementById('play');
-        if (isPlayingAllowed) {
-            if (audioPlayer.paused) {
-                showTooltip('播放');
-                audioPlayer.play();
-                playButton.textContent = '暂停'; 
+        function toggleAnimation() {
+            const player = document.getElementById('player');
+            if (player.style.animationPlayState === 'paused') {
+                player.style.animationPlayState = 'running';
             } else {
-                showTooltip('暂停播放');
-                audioPlayer.pause();
-                playButton.textContent = '播放'; 
-            }
-        } else {
-            showTooltip('播放被禁止');
-            audioPlayer.pause(); 
-        }
-    }
-
-    function handleOrderLoop() {
-        if (isPlayingAllowed) {
-            const orderLoopButton = document.getElementById('orderLoop');
-            if (isOrdered) {
-                isOrdered = false;
-                isLooping = !isLooping; 
-                orderLoopButton.textContent = isLooping ? '循' : ''; 
-                showTooltip(isLooping ? '循环播放' : '暂停循环');
-            } else {
-                isOrdered = true;
-                isLooping = false; 
-                orderLoopButton.textContent = '顺';
-                showTooltip('顺序播放');
+                player.style.animationPlayState = 'paused';
             }
         }
-    }
 
-    document.addEventListener('keydown', function(event) {
-        switch(event.key) {
-            case 'ArrowLeft': 
-                document.getElementById('prev').click();
-                break;
-            case 'ArrowRight': 
-                document.getElementById('next').click();
-                break;
-            case ' ': 
-                handlePlayPause();
-                break;
-            case 'ArrowUp': 
-                handleOrderLoop();
-                break;
-            case 'Escape': 
-                isPlayingAllowed = !isPlayingAllowed;
-                if (!isPlayingAllowed) {
-                    audioPlayer.pause(); 
-                    audioPlayer.src = ''; 
-                    showTooltip('播放已禁用');
+        var hidePlayerButton = document.getElementById('hidePlayer');
+        hidePlayerButton.addEventListener('click', function() {
+            var player = document.getElementById('player');
+            if (player.style.display === 'none') {
+                player.style.display = 'flex';
+            } else {
+                player.style.display = 'none';
+            }
+        });
+
+        function applyGradient(text, elementId) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = '';
+            for (let i = 0; i < text.length; i++) {
+                const span = document.createElement('span');
+                span.textContent = text[i];
+                span.style.color = colors[i % colors.length];
+                element.appendChild(span);
+            }
+            const firstColor = colors.shift();
+            colors.push(firstColor);
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const hours = now.getHours();
+            const timeString = now.toLocaleTimeString('zh-CN', { hour12: false });
+            let ancientTime;
+
+            if (hours >= 23 || hours < 1) {
+                ancientTime = '子時';
+            } else if (hours >= 1 && hours < 3) {
+                ancientTime = '丑時';
+            } else if (hours >= 3 && hours < 5) {
+                ancientTime = '寅時';
+            } else if (hours >= 5 && hours < 7) {
+                ancientTime = '卯時';
+            } else if (hours >= 7 && hours < 9) {
+                ancientTime = '辰時';
+            } else if (hours >= 9 && hours < 11) {
+                ancientTime = '巳時';
+            } else if (hours >= 11 && hours < 13) {
+                ancientTime = '午時';
+            } else if (hours >= 13 && hours < 15) {
+                ancientTime = '未時';
+            } else if (hours >= 15 && hours < 17) {
+                ancientTime = '申時';
+            } else if (hours >= 17 && hours < 19) {
+                ancientTime = '酉時';
+            } else if (hours >= 19 && hours < 21) {
+                ancientTime = '戌時';
+            } else {
+                ancientTime = '亥時';
+            }
+
+            const displayString = `${timeString} (${ancientTime})`;
+            applyGradient(displayString, 'timeDisplay');
+        }
+
+        applyGradient('Mihomo', 'hidePlayer');
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        function showTooltip(text) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.textContent = text;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (window.innerWidth - tooltip.offsetWidth - 20) + 'px';
+            tooltip.style.top = '10px';
+            setTimeout(hideTooltip, 5000);
+        }
+
+        function hideTooltip() {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.display = 'none';
+        }
+
+        function handlePlayPause() {
+            const playButton = document.getElementById('play');
+            if (isPlayingAllowed) {
+                if (audioPlayer.paused) {
+                    showTooltip('播放');
+                    audioPlayer.play();
+                    playButton.textContent = '暂停';
                 } else {
-                    showTooltip('播放已启用');
-                    if (songs.length > 0) {
-                        loadSong(currentSongIndex);
-                    }
+                    showTooltip('暂停播放');
+                    audioPlayer.pause();
+                    playButton.textContent = '播放';
                 }
-                break;
+            } else {
+                showTooltip('播放被禁止');
+                audioPlayer.pause();
+            }
         }
-    });
 
-    document.getElementById('play').addEventListener('click', handlePlayPause);
-    document.getElementById('next').addEventListener('click', function() {
-        if (isPlayingAllowed) {
-            currentSongIndex = (currentSongIndex + 1) % songs.length;
-            loadSong(currentSongIndex);
-            showTooltip('下一首');
-        } else {
-            showTooltip('播放被禁止');
+        function handleOrderLoop() {
+            if (isPlayingAllowed) {
+                const orderLoopButton = document.getElementById('orderLoop');
+                if (isOrdered) {
+                    isOrdered = false;
+                    isLooping = !isLooping;
+                    orderLoopButton.textContent = isLooping ? '循' : '';
+                    showTooltip(isLooping ? '循环播放' : '暂停循环');
+                } else {
+                    isOrdered = true;
+                    isLooping = false;
+                    orderLoopButton.textContent = '顺';
+                    showTooltip('顺序播放');
+                }
+            }
         }
-    });
-    document.getElementById('prev').addEventListener('click', function() {
-        if (isPlayingAllowed) {
-            currentSongIndex = (currentSongIndex - 1 + songs.length) % songs.length;
-            loadSong(currentSongIndex);
-            showTooltip('上一首');
-        } else {
-            showTooltip('播放被禁止');
-        }
-    });
-    document.getElementById('orderLoop').addEventListener('click', handleOrderLoop);
 
-    document.getElementById('togglePlay').addEventListener('click', handlePlayPause);
-    document.getElementById('toggleEnable').addEventListener('click', function() {
-        isPlayingAllowed = !isPlayingAllowed;
-        if (!isPlayingAllowed) {
-            audioPlayer.pause(); 
-            audioPlayer.src = ''; 
-            showTooltip('播放已禁用');
-        } else {
-            showTooltip('播放已启用');
+        document.addEventListener('keydown', function(event) {
+            switch (event.key) {
+                case 'ArrowLeft':
+                    document.getElementById('prev').click();
+                    break;
+                case 'ArrowRight':
+                    document.getElementById('next').click();
+                    break;
+                case ' ':
+                    handlePlayPause();
+                    break;
+                case 'ArrowUp':
+                    handleOrderLoop();
+                    break;
+                case 'Escape':
+                    isPlayingAllowed = !isPlayingAllowed;
+                    if (!isPlayingAllowed) {
+                        audioPlayer.pause();
+                        audioPlayer.src = '';
+                        showTooltip('播放已禁用');
+                    } else {
+                        showTooltip('播放已启用');
+                        if (songs.length > 0) {
+                            loadSong(currentSongIndex);
+                        }
+                    }
+                    break;
+            }
+        });
+
+        document.getElementById('play').addEventListener('click', handlePlayPause);
+        document.getElementById('next').addEventListener('click', function() {
+            if (isPlayingAllowed) {
+                currentSongIndex = (currentSongIndex + 1) % songs.length;
+                loadSong(currentSongIndex);
+                showTooltip('下一首');
+            } else {
+                showTooltip('播放被禁止');
+            }
+        });
+        document.getElementById('prev').addEventListener('click', function() {
+            if (isPlayingAllowed) {
+                currentSongIndex = (currentSongIndex - 1 + songs.length) % songs.length;
+                loadSong(currentSongIndex);
+                showTooltip('上一首');
+            } else {
+                showTooltip('播放被禁止');
+            }
+        });
+        document.getElementById('orderLoop').addEventListener('click', handleOrderLoop);
+
+        document.getElementById('togglePlay').addEventListener('click', handlePlayPause);
+        document.getElementById('toggleEnable').addEventListener('click', function() {
+            isPlayingAllowed = !isPlayingAllowed;
+            if (!isPlayingAllowed) {
+                audioPlayer.pause();
+                audioPlayer.src = '';
+                showTooltip('播放已禁用');
+            } else {
+                showTooltip('播放已启用');
+                if (songs.length > 0) {
+                    loadSong(currentSongIndex);
+                }
+            }
+        });
+
+        function loadSong(index) {
+            if (isPlayingAllowed && index >= 0 && index < songs.length) {
+                audioPlayer.src = songs[index];
+                audioPlayer.play();
+            } else {
+                audioPlayer.pause();
+            }
+        }
+
+        audioPlayer.addEventListener('ended', function() {
+            if (isPlayingAllowed) {
+                if (isLooping) {
+                    audioPlayer.currentTime = 0;
+                    audioPlayer.play();
+                } else {
+                    currentSongIndex = (currentSongIndex + 1) % songs.length;
+                    loadSong(currentSongIndex);
+                }
+            }
+        });
+
+        function initializePlayer() {
             if (songs.length > 0) {
                 loadSong(currentSongIndex);
             }
         }
-    });
 
-    function loadSong(index) {
-        if (isPlayingAllowed && index >= 0 && index < songs.length) {
-            audioPlayer.src = songs[index];
-            audioPlayer.play(); 
-        } else {
-            audioPlayer.pause(); 
-        }
-    }
+        fetch('https://raw.githubusercontent.com/Thaolga/Rules/main/Clash/songs.txt')
+            .then(response => response.text())
+            .then(data => {
+                songs = data.split('\n').filter(url => url.trim() !== '');
+                initializePlayer();
+                console.log(songs);
+            })
+            .catch(error => console.error('Error fetching songs:', error));
 
-    audioPlayer.addEventListener('ended', function() {
-        if (isPlayingAllowed) {
-            if (isLooping) {
-                audioPlayer.currentTime = 0; 
-                audioPlayer.play(); 
-            } else {
-                currentSongIndex = (currentSongIndex + 1) % songs.length;
-                loadSong(currentSongIndex);
-            }
-        }
-    });
-
-    function initializePlayer() {
-        if (songs.length > 0) {
-            loadSong(currentSongIndex);
-        }
-    }
-
-    fetch('https://raw.githubusercontent.com/Thaolga/Rules/main/Clash/songs.txt')
-        .then(response => response.text())
-        .then(data => {
-            songs = data.split('\n').filter(url => url.trim() !== '');
-            initializePlayer();
-            console.log(songs);
-        })
-        .catch(error => console.error('Error fetching songs:', error));
-
-    window.onload = function() {
-        audioPlayer.pause(); 
-        setTimeout(() => {
-            document.getElementById('mobile-controls').classList.add('hidden'); 
-        }, 30000);
-    };
-</script>
+        window.onload = function() {
+            audioPlayer.pause();
+            setTimeout(() => {
+                document.getElementById('mobile-controls').classList.add('hidden');
+            }, 30000);
+        };
+    </script>
 </body>
 </html>
 
@@ -470,7 +455,7 @@ date_default_timezone_set('Asia/Shanghai');
     <title>语音播报系统</title>
 </head>
 <body>
-    <script>
+   <script>
         const city = 'Beijing'; // 替换为您的城市名
         const apiKey = 'fc8bd2637768c286c6f1ed5f1915eb22'; 
 
