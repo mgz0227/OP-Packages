@@ -13,10 +13,10 @@ ROOT_DISK=$1
     fi
 
     # 创建新分区
-parted -s $ROOT_DISK mkpart primary ext4 ${LAST_PART_END}MB 100%
+parted -s $ROOT_DISK mkpart primary ext4 ${LAST_PART_END}MB 100% && {
 
 ROOT_DISK_NAME="$(echo $ROOT_DISK | cut -d / -f 3)"
-LAST_PART_NAME="$(lsblk -o NAME | grep $ROOT_DISK_NAME | tail -n 1 | grep -o '[0-9a-zA-Z]*')"
+LAST_PART_NAME="$(lsblk -nlo NAME | grep $ROOT_DISK_NAME | tail -n 1)"
     # 格式化新分区
 mkfs.ext4 -F -L "docker" /dev/${LAST_PART_NAME}
 
@@ -28,6 +28,7 @@ uci set fstab.mountdocker.uuid="${UUID}"
 uci set fstab.mountdocker.target="/opt/docker"
 uci commit fstab
 /sbin/block mount
+}
 }
 
 cat /etc/mtab | grep -q "/opt/docker" || {
