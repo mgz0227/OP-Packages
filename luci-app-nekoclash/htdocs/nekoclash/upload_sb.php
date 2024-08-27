@@ -199,24 +199,29 @@ if (isset($_POST['update_index'])) {
                     }
 
                     $newInbounds[] = [
-                        "type" => "mixed",
-                        "tag" => "SOCKS-in",
-                        "listen" => "::",
-                        "listen_port" => 4673
+                      "tag" => "tun",
+                      "type" => "tun",
+                      "inet4_address" => "172.19.0.0/30",
+                      "inet6_address" => "fdfe:dcba:9876::0/126",
+                      "stack" => "system",
+                      "auto_route" => true,
+                      "strict_route" => true,
+                      "sniff" => true,
+                      "platform" => [
+                        "http_proxy" => [
+                          "enabled" => true,
+                          "server" => "0.0.0.0",
+                          "server_port" => 7890
+                        ]
+                      ]
                     ];
 
                     $newInbounds[] = [
-                        "auto_route" => true,
-                        "domain_strategy" => "prefer_ipv4",
-                        "endpoint_independent_nat" => true,
-                        "inet4_address" => "172.19.0.1/30",
-                        "inet6_address" => "2001:0470:f9da:fdfa::1/64",
-                        "mtu" => 9000,
-                        "sniff" => true,
-                        "sniff_override_destination" => true,
-                        "stack" => "system",
-                        "strict_route" => true,
-                        "type" => "tun"
+                      "tag" => "mixed",
+                      "type" => "mixed",
+                      "listen" => "0.0.0.0",
+                      "listen_port" => 7890,
+                      "sniff" => true
                     ];
 
                     $parsedData['inbounds'] = $newInbounds;
