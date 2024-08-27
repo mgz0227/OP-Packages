@@ -33,7 +33,7 @@ uci commit fstab
 cat /etc/mtab | grep -q "/opt/docker" || {
 uci -q get fstab.mountdocker || {
 disk="$(lsblk | awk '/disk/ {print $1; exit}')"
-NEWPART $disk
+NEWPART /dev/$disk
 }
 }
 
