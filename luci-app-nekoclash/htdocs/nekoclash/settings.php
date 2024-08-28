@@ -148,13 +148,9 @@ $singBoxVersion = getSingboxVersion();
 <td class="col-4">
     <div class="form-control text-center" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
         <div style="font-family: monospace; flex-grow: 1; text-align: left;">
-            <?php
-            $package_name = "luci-app-nekoclash"; 
-            $installed_version = trim(shell_exec("opkg list-installed | grep $package_name | awk '{print $3}'"));
-            echo htmlspecialchars($installed_version ?: '-'); 
-            ?>
+        <div class="form-control text-center" id="cliver">-</div>
         </div>
-        <button id="updateButton" class="button" style="flex-shrink: 0;">更新到最新版本</button>
+        <button class="form-control text-center" id="updateButton" ">更新到最新版本</button>
     </div>
     <div id="logOutput"></div>
 </td>
@@ -163,11 +159,10 @@ $singBoxVersion = getSingboxVersion();
     <td class="col-2">Sing-box核心版本</td>
     <td class="col-4">
         <div class="form-control text-center" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-            <div style="font-family: monospace; flex-grow: 1; text-align: left;" id="singBoxCorever">
+            <div class="form-control text-center"  id="singBoxCorever">
                 <?php echo htmlspecialchars($singBoxVersion); ?>
-            </div>
-            <div style="display: flex; gap: 10px; flex-shrink: 0;">
-                <button id="updateSingboxButton" class="button">更新Singbox内核</button>
+            </div>    
+                <button class="form-control text-center"  id="updateSingboxButton">更新Singbox内核</button>
             </div>
         </div>
     </td>
@@ -175,10 +170,10 @@ $singBoxVersion = getSingboxVersion();
     <td class="col-2">Mihomo核心版本</td>
     <td class="col-4">
         <div class="form-control text-center" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-            <div style="font-family: monospace; flex-grow: 1; text-align: left;" id="corever">-</div>
-            <div style="display: flex; gap: 10px; flex-shrink: 0;">              
-                <button id="updateNekoButton" class="button">切换NeKo内核</button>
-                <button id="updateCoreButton" class="button">切换Mihomo内核</button>
+            <div class="form-control text-center"  id="corever">-</div>
+                   
+                <button class="form-control text-center"  id="updateNekoButton">切换NeKo内核</button>
+                <button class="form-control text-center"  id="updateCoreButton" >切换Mihomo内核</button>
             </div>
         </div>
     </td>
@@ -187,28 +182,20 @@ $singBoxVersion = getSingboxVersion();
  </tbody>
  </table>
 <style>
-    .button {
-        background-color: #4169E1; 
-        color: white; 
-        border: none; 
-        height: 40px; 
-        padding: 10px 20px; 
-        border-radius: 5px; 
-        cursor: pointer; 
-        transition: background-color 0.3s; 
-        text-align: center; 
+    #updateButton:hover {
+        background-color: #20B2AA; 
     }
 
-    .button:hover {
-        background-color: #FF00FF; 
+    #updateSingboxButton:hover {
+        background-color: #FF69B4; 
     }
 
     #updateCoreButton:hover {
-        background-color: darkgreen; 
+        background-color: #90EE90; 
     }
 
     #updateNekoButton:hover {
-        background-color: darkorange; 
+        background-color: #87CEFA; 
     }
 </style>
 

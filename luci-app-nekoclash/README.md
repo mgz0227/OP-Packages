@@ -36,7 +36,7 @@ wget -O /root/nekoclash.sh https://cdn.jsdelivr.net/gh/Thaolga/luci-app-nekoclas
 ---
 
 ```bash
-git clone https://github.com/luci-app-nekoclash  package/luci-app-nekoclash
+git clone https://github.com/Thaolga/luci-app-nekoclash  package/luci-app-nekoclash
 
 ```
 
