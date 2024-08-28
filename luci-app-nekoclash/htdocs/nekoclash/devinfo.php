@@ -657,6 +657,7 @@ date_default_timezone_set('Asia/Shanghai');
             fetchWeather();
             speakRandomPoem(); 
             setInterval(updateTime, 1000);
+            speakMessage('您的音乐播放已暂时关闭，按下 ESC 键即可重新启用音乐播放。Your music playback has been paused. Press the ESC key to resume.');
         };
     </script>
 </body>

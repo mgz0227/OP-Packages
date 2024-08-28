@@ -851,6 +851,15 @@ $singboxStartLogContent = readLogFile($singboxStartLogFile);
             background-color: #e0a800; 
             border-color: #d39e00;
         }
+        .box-menu-button {
+            background-color: #ff69b4; 
+            border-color: #ff1493;     
+            color: white;              
+        }
+        .box-menu-button:hover {
+            background-color: #ff69b4; 
+            border-color: #ff1493;    
+        }
         .current-menu-button {
             background: #007bff; 
         }
@@ -899,6 +908,7 @@ $singboxStartLogContent = readLogFile($singboxStartLogFile);
     <div class="nav-buttons text-center" style="height: 100%;">
         <a href="/nekoclash/upload.php" class="config-menu-button d-block mb-2">打开Mihomo 管理面板</a>
         <a href="/nekoclash/upload_sb.php" class="monitoring-button d-block mb-2">打开Sing-box 管理面板</a>
+        <a href="/nekoclash/box.php" class="box-menu-button d-block mb-2">打开Sing-box 转换模板</a>
         <a href="/nekoclash/personal.php" class="current-menu-button d-block mb-2">打开Mihomo 个人版</a>
         <a href="/nekoclash/mon.php" class="main-menu-button d-block mb-2">打开Sing-box 监控面板</a>
     </div>

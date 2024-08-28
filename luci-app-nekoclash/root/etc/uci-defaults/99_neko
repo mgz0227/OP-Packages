@@ -9,7 +9,7 @@ log="$neko_dir/tmp/log.txt"
     
 
 core_ver="neko"
-url_core="https://github.com/nosignals/neko/releases/download/core_neko"
+url_core="https://github.com/Thaolga/neko/releases/download/core_neko"
 url_geo="https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest"
 
 geoip_path="${neko_dir}/geoip.metadb"

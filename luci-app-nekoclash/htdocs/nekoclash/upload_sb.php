@@ -3,6 +3,8 @@ $configDir = '/etc/neko/config/';
 
 ini_set('memory_limit', '256M');
 
+date_default_timezone_set('Asia/Shanghai');
+
 if (!is_dir($configDir)) {
     mkdir($configDir, 0755, true);
 }
@@ -96,6 +98,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             echo '文件不存在！';
         }
+    }
+}
+
+function formatFileModificationTime($filePath) {
+    if (file_exists($filePath)) {
+        $fileModTime = filemtime($filePath);
+        return date('Y-m-d H:i:s', $fileModTime);
+    } else {
+        return '文件不存在';
     }
 }
 
@@ -518,7 +529,7 @@ if (isset($_POST['update_index'])) {
     <?php endfor; ?>
 </form>
     <div class="nav-buttons">
-        <a href="javascript:history.back()" class="btn">返回上一级菜单</a>
+        <a href="/nekoclash/box.php"class="btn">打开订阅转换模板</a>
         <a href="/nekoclash/upload_sb.php" class="btn">返回当前菜单</a>
         <a href="/nekoclash/configs.php" class="btn">返回配置菜单</a>
         <a href="/nekoclash/mon.php" class="btn">Sing-box监控面板</a>

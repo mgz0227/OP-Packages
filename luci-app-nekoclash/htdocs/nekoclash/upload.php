@@ -4,6 +4,8 @@ $configDir = '/etc/neko/config/';
 
 ini_set('memory_limit', '256M');
 
+date_default_timezone_set('Asia/Shanghai');
+
 if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0755, true);
 }
@@ -150,6 +152,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             echo '文件不存在！';
         }
+    }
+}
+
+function formatFileModificationTime($filePath) {
+    if (file_exists($filePath)) {
+        $fileModTime = filemtime($filePath);
+        return date('Y-m-d H:i:s', $fileModTime);
+    } else {
+        return '文件不存在';
     }
 }
 
