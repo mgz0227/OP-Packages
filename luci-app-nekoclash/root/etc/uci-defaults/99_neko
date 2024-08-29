@@ -25,7 +25,7 @@ echo "[ `date +%T` ] - Checking Files"
 
 files_check() {
     if [ -n "$(command -v nginx)" ];then
-        cat << EOF > /etc/nginx/nekoclash.locations
+cat << 'EOF' > /etc/nginx/conf.d/nekoclash.locations
 location /nekoclash {
     alias /www/nekoclash;
     index index.php index.html index.htm;
@@ -40,7 +40,7 @@ location /nekoclash {
         fastcgi_param SCRIPT_FILENAME $request_filename;
     }
 }
-        EOF
+EOF
         /etc/init.d/nginx restart
     else
         uci set uhttpd.main.index_page='index.php'

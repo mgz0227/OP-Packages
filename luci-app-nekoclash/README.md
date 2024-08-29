@@ -13,16 +13,16 @@
   Mihomo based Proxy
 </p>
 
-# 项目更新公告：自 1.1.33 版本起引入 Sing-box 支持
+# Project Update Announcement: Sing-box Support Introduced Starting from Version 1.1.33
 ---
-## 我们很高兴地宣布，自 1.1.33 版本起，项目新增了对 Sing-box 的全面支持，Sing-box 需要与 firewall4 + nftables 防火墙管理功能配合使用。这一更新极大地提升了系统的灵活性与安全性，使得用户可以更加精确地控制流量管理策略。
+## We are pleased to announce that starting from version 1.1.33, the project has fully integrated support for Sing-box. Sing-box requires collaboration with firewall management features, specifically firewall4 + nftables. This update significantly enhances the system's flexibility and security, allowing users to exercise more precise control over traffic management policies.
 
-- Sing-box 支持：集成了 Sing-box，并要求配合 firewall4 + nftables 使用，为您带来更加智能化和高效的流量管理方案。
+- Sing-box Support: Sing-box has been integrated and requires the use of firewall4 + nftables, offering you a smarter and more efficient traffic management solution.
 
-## 值得注意的是，尽管此版本大幅增强了系统功能，原 Mihomo 相关功能保持不变，用户依然可以享受稳定的服务体验。
+## It is important to note that although this version greatly enhances system capabilities, the original Mihomo-related features remain unchanged, ensuring that users can continue to enjoy a stable service experience.
 
 
-# openwrt一键安装脚本
+# OpenWrt One-Click Installation Script
 ---
 
 ```bash
@@ -30,9 +30,9 @@ wget -O /root/nekoclash.sh https://cdn.jsdelivr.net/gh/Thaolga/luci-app-nekoclas
 
 ```
 
-# openwrt编译
+# OpenWrt Compilation
 ---
-## 克隆源码 :
+## Cloning the Source Code:
 ---
 
 ```bash
@@ -40,7 +40,7 @@ git clone https://github.com/Thaolga/luci-app-nekoclash  package/luci-app-nekocl
 
 ```
 
-## 编译 :
+## Compilation :
 ---
 
 ```bash
