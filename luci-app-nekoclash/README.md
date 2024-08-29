@@ -18,9 +18,26 @@
 ## We are pleased to announce that starting from version 1.1.33, the project has fully integrated support for Sing-box. Sing-box requires collaboration with firewall management features, specifically firewall4 + nftables. This update significantly enhances the system's flexibility and security, allowing users to exercise more precise control over traffic management policies.
 
 - Sing-box Support: Sing-box has been integrated and requires the use of firewall4 + nftables, offering you a smarter and more efficient traffic management solution.
+- Introducing an intelligent conversion template to completely solve the configuration difficulties of Sing-box. Our goal is to enable zero-threshold use of Sing-box.
 
 ## It is important to note that although this version greatly enhances system capabilities, the original Mihomo-related features remain unchanged, ensuring that users can continue to enjoy a stable service experience.
 
+Depedencies
+---
+- Mihomo
+  - ` php8 `
+  - ` php8-cgi `
+  - ` php8-mod-curl`
+  - ` firewall `
+  - ` iptables `
+   
+- Sing-box
+  - ` php8 `
+  - ` php8-cgi `
+  - ` php8-mod-curl`
+  - ` firewall4 `
+  - ` kmod-tun `
+  - ` xtables-nft `
 
 # OpenWrt One-Click Installation Script
 ---
@@ -40,7 +57,7 @@ git clone https://github.com/Thaolga/luci-app-nekoclash  package/luci-app-nekocl
 
 ```
 
-## Compilation :
+## Compile :
 ---
 
 ```bash

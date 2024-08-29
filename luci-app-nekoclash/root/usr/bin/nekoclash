@@ -140,6 +140,26 @@ install_ipk() {
     log_message "已删除临时文件: $local_file"
 }
 
+current_script="$(basename "$0")"
+replacement_script="/usr/bin/nekoclash"
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo -e "${RED}必须以 root 用户身份运行此脚本。${NC}"
+    exit 1
+fi
+
+if [ "$current_script" != "nekoclash" ]; then
+    if [ -f "$replacement_script" ]; then
+        echo "旧脚本已存在，正在替换..."
+        rm "$replacement_script"
+    fi
+    echo "将当前脚本重命名为 'nekoclash' 并移动到 /usr/bin 目录..."
+    cp "$0" "$replacement_script"
+    chmod +x "$replacement_script"
+    echo "操作完成。请重新输入 'nekoclash' 运行脚本。"
+    exit 0
+fi
+
 install_core() {
     log_message "获取最新核心版本号..."
     latest_version=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')

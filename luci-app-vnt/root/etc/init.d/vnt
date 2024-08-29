@@ -55,8 +55,8 @@ start_vntcli() {
                 ps | grep 'vnt-cli' | grep -v grep | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1
 		local token mode ipaddr mtu desvice_id localadd log comp local_ipv4
 		local peeradd desvice_name vntshost stunhost checkip mapping disable_stats
-		local punch client_port par key forward serverw vntdns allow_wg
-		local finger relay first_latency tunname tunmode passmode
+		local punch client_port key forward serverw vntdns allow_wg
+		local finger relay first_latency tunname passmode
 		config_get token "$cfg" 'token'
                 config_get vntdns "$cfg" 'vntdns'
                 config_get desvice_id "$cfg" 'desvice_id'
@@ -106,7 +106,6 @@ if [ ! -z "$vntshost" ] ; then
 fi
                 config_get stunhost "$cfg" 'stunhost'
                 config_get client_port "$cfg" 'client_port'
-                config_get par "$cfg" 'par'
                 config_get punch "$cfg" 'punch' 'all'
                 config_get passmode "$cfg" 'passmode'
                 config_get peeradd "$cfg" 'peeradd'
@@ -114,7 +113,6 @@ fi
 		config_get mode "$cfg" 'mode'
 		config_get ipaddr "$cfg" 'ipaddr'
 		config_get mtu "$cfg" 'mtu'
-		config_get tunmode "$cfg" 'tunmode'
 		config_get tunname "$cfg" 'tunname'
 		config_get key "$cfg" 'key'
 		config_get relay "$cfg" 'relay'
@@ -220,13 +218,11 @@ EOF
                    done
                    fi
                 fi
-		[ -z "$par" ] || procd_append_param command --par "$par"
 		[ -z "$tunname" ] || procd_append_param command --nic "$tunname"
                 [ -z "$local_ipv4" ] || procd_append_param command --local-ipv4 "$local_ipv4"
-		procd_append_param command --punch "$punch"
+		[ "$punch" = "all" ] || procd_append_param command --punch "$punch"
 		[ "$passmode" != "off" ] && [ -n "$key" ] && procd_append_param command --model "$passmode"
 		[ "$passmode" != "off" ] && [ -n "$key" ] && procd_append_param command -w "$key"
-		[ "$tunmode" = "tun" ] || procd_append_param command -a
                 [ "$allow_wg" = "0" ] || procd_append_param command --allow-wg
 		[ "$forward" = "0" ] || procd_append_param command --no-proxy
 		[ "$finger" = "0" ] || procd_append_param command --finger
@@ -574,8 +570,8 @@ start_service() {
            [ "$mipstype" = "0" ] && cpucore="mips" || cpucore="mipsle"
         fi
         
-        [ -z "`opkg list-installed | grep curl`" ] && echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : 未安装curl，请确定安装好curl " >>/tmp/vnt-cli.log 
-        [ -z "`opkg list-installed | grep luci-lib-fs`" ] && echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : 未安装luci-lib-fs，请确定安装好luci-lib-fs " >>/tmp/vnt-cli.log 
+        #[ -z "`opkg list-installed | grep curl`" ] && echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : 未安装curl，请确定安装好curl " >>/tmp/vnt-cli.log 
+        #[ -z "`opkg list-installed | grep luci-lib-fs`" ] && echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : 未安装luci-lib-fs，请确定安装好luci-lib-fs " >>/tmp/vnt-cli.log 
 	config_foreach start_vntcli 'vnt-cli'
 	config_foreach start_vnts 'vnts'
 }

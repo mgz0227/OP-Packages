@@ -398,7 +398,7 @@ include './cfg.php';
     <strong>1. 歌曲推送和控制：</strong><br>
     &emsp; 1 播放器通过 GitHub 歌单推送歌曲。<br>
     &emsp; 2 使用键盘方向键可以切换歌曲。<br>
-    &emsp; 3 终端输入 <code>./nekoclash.sh</code> 可以更新客户端和核心。<br>
+    &emsp; 3 终端输入 <code>nekoclash</code> 可以更新客户端和核心。<br>
     &emsp; 4 sing-box 内置智能转换机制，无论您从哪个机场获取订阅，都能自动适配，无需额外配置。<br><br>
 
     <strong>2. 播放功能：</strong><br>

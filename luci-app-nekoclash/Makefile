@@ -6,8 +6,8 @@ include $(TOPDIR)/rules.mk
 
 PKG_MAINTAINER:=Thaolga <https://github.com/Thaolga/luci-app-nekoclash>
 PKG_NAME:=luci-app-nekoclash
-PKG_VERSION:=1.1.39-beta
-PKG_RELEASE:=16
+PKG_VERSION:=1.1.40-beta
+PKG_RELEASE:=17
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 
@@ -16,7 +16,7 @@ define Package/$(PKG_NAME)
 	SUBMENU:=3. Applications
 	TITLE:=LuCI support for mihomo
 	PKGARCH:=all
-	DEPENDS:=+kmod-tun +bash +curl +jq +php8 +php8-fpm +php8-cgi +php8-mod-curl +firewall4  +nftables
+	DEPENDS:=+kmod-tun +bash +curl +jq +php8 +php8-fpm +php8-cgi +php8-mod-curl 
 endef
 
 define Package/$(PKG_NAME)/description
@@ -30,7 +30,7 @@ define Build/Prepare
 	$(CP) $(CURDIR)/root $(PKG_BUILD_DIR)
 	$(CP) $(CURDIR)/luasrc $(PKG_BUILD_DIR)
 	$(CP) $(CURDIR)/htdocs $(PKG_BUILD_DIR)
-	chmod 0755 $(PKG_BUILD_DIR)/root/root/nekoclash.sh
+	chmod 0755 $(PKG_BUILD_DIR)/root/usr/bin/nekoclash
 	chmod 0755 $(PKG_BUILD_DIR)/root/etc/init.d/neko
 	chmod 0755 $(PKG_BUILD_DIR)/root/etc/neko/core/*
 	chmod 0755 $(PKG_BUILD_DIR)/root/etc/uci-defaults/99_neko
