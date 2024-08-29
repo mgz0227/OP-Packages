@@ -215,6 +215,7 @@ jobs:
         git_clone https://github.com/openwrtdiy/luci-app-pppoe-user
         git_clone https://github.com/derisamedia/luci-theme-alpha
         git_clone https://github.com/animegasan/luci-app-alpha-config
+        git_clone https://github.com/gofly/openwrt-luci-proto-tinc
         ) &
         (
         git clone https://github.com/sirpdboy/luci-theme-kucat -b js --depth 1
@@ -373,11 +374,12 @@ jobs:
         ) &
         (
         git_sparse_clone master "https://github.com/x-wrt/com.x-wrt" luci-app-macvlan luci-app-xwan
+        git_sparse_clone master "https://github.com/obsy/packages" oscam luci-proto-wwan
         ) &
         git_sparse_clone master "https://github.com/coolsnowwolf/luci" applications libs/luci-lib-fs
         mv -f applications luciapp
         rm -rf luciapp/{luci-app-qbittorrent,luci-app-zerotier,luci-app-cpufreq,luci-app-e2guardian,luci-app-aliyundrive-fuse,luci-app-syncdial,luci-app-firewall}
-        git_sparse_clone master "https://github.com/immortalwrt/luci" applications protocols/luci-proto-minieap themes/luci-theme-argon
+        git_sparse_clone master "https://github.com/immortalwrt/luci" applications protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
         mv -n luciapp/* applications/; rm -rf luciapp
 
         for ipk in $(ls -d applications/!(luci-app-rclone|luci-app-filebrowser|luci-app-firewall)/); do
