@@ -200,229 +200,284 @@ $cpuFamily = preg_match('/^CPU family:\s+(.+)/m', $cpuInfo, $matches);
     </div>
     <div id="tooltip"></div>
 
-    <script>
-        let colors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#9400D3'];
-        let isPlayingAllowed = false;
-        let isLooping = false;
-        let isOrdered = false;
-        let currentSongIndex = 0;
-        let songs = [];
-        const audioPlayer = document.getElementById('audioPlayer');
+ <script>
+    let colors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#9400D3'];
+    let isPlayingAllowed = false;
+    let isLooping = false;
+    let isOrdered = false;
+    let currentSongIndex = 0;
+    let songs = [];
+    const audioPlayer = document.getElementById('audioPlayer');
 
-        function toggleAnimation() {
-            const player = document.getElementById('player');
-            if (player.style.animationPlayState === 'paused') {
-                player.style.animationPlayState = 'running';
-            } else {
-                player.style.animationPlayState = 'paused';
-            }
+    function speakMessage(message) {
+        const utterance = new SpeechSynthesisUtterance(message);
+        speechSynthesis.speak(utterance);
+    }
+
+    function toggleAnimation() {
+        const player = document.getElementById('player');
+        if (player.style.animationPlayState === 'paused') {
+            player.style.animationPlayState = 'running';
+        } else {
+            player.style.animationPlayState = 'paused';
+        }
+    }
+
+    var hidePlayerButton = document.getElementById('hidePlayer');
+    hidePlayerButton.addEventListener('click', function() {
+        var player = document.getElementById('player');
+        if (player.style.display === 'none') {
+            player.style.display = 'flex';
+        } else {
+            player.style.display = 'none';
+        }
+    });
+
+    function applyGradient(text, elementId) {
+        const element = document.getElementById(elementId);
+        element.innerHTML = '';
+        for (let i = 0; i < text.length; i++) {
+            const span = document.createElement('span');
+            span.textContent = text[i];
+            span.style.color = colors[i % colors.length];
+            element.appendChild(span);
+        }
+        const firstColor = colors.shift();
+        colors.push(firstColor);
+    }
+
+    function updateTime() {
+        const now = new Date();
+        const hours = now.getHours();
+        const timeString = now.toLocaleTimeString('zh-CN', { hour12: false });
+        let ancientTime;
+
+        if (hours >= 23 || hours < 1) {
+            ancientTime = '子時';
+        } else if (hours >= 1 && hours < 3) {
+            ancientTime = '丑時';
+        } else if (hours >= 3 && hours < 5) {
+            ancientTime = '寅時';
+        } else if (hours >= 5 && hours < 7) {
+            ancientTime = '卯時';
+        } else if (hours >= 7 && hours < 9) {
+            ancientTime = '辰時';
+        } else if (hours >= 9 && hours < 11) {
+            ancientTime = '巳時';
+        } else if (hours >= 11 && hours < 13) {
+            ancientTime = '午時';
+        } else if (hours >= 13 && hours < 15) {
+            ancientTime = '未時';
+        } else if (hours >= 15 && hours < 17) {
+            ancientTime = '申時';
+        } else if (hours >= 17 && hours < 19) {
+            ancientTime = '酉時';
+        } else if (hours >= 19 && hours < 21) {
+            ancientTime = '戌時';
+        } else {
+            ancientTime = '亥時';
         }
 
-        var hidePlayerButton = document.getElementById('hidePlayer');
-        hidePlayerButton.addEventListener('click', function() {
-            var player = document.getElementById('player');
-            if (player.style.display === 'none') {
-                player.style.display = 'flex';
-            } else {
-                player.style.display = 'none';
-            }
-        });
+        const displayString = `${timeString} (${ancientTime})`;
+        applyGradient(displayString, 'timeDisplay');
+    }
 
-        function applyGradient(text, elementId) {
-            const element = document.getElementById(elementId);
-            element.innerHTML = '';
-            for (let i = 0; i < text.length; i++) {
-                const span = document.createElement('span');
-                span.textContent = text[i];
-                span.style.color = colors[i % colors.length];
-                element.appendChild(span);
-            }
-            const firstColor = colors.shift();
-            colors.push(firstColor);
-        }
+    applyGradient('Mihomo', 'hidePlayer');
+    updateTime();
+    setInterval(updateTime, 1000);
 
-        function updateTime() {
-            const now = new Date();
-            const hours = now.getHours();
-            const timeString = now.toLocaleTimeString('zh-CN', { hour12: false });
-            let ancientTime;
+    function showTooltip(text) {
+        const tooltip = document.getElementById('tooltip');
+        tooltip.textContent = text;
+        tooltip.style.display = 'block';
+        tooltip.style.left = (window.innerWidth - tooltip.offsetWidth - 20) + 'px';
+        tooltip.style.top = '10px';
+        setTimeout(hideTooltip, 5000);
+    }
 
-            if (hours >= 23 || hours < 1) {
-                ancientTime = '子時';
-            } else if (hours >= 1 && hours < 3) {
-                ancientTime = '丑時';
-            } else if (hours >= 3 && hours < 5) {
-                ancientTime = '寅時';
-            } else if (hours >= 5 && hours < 7) {
-                ancientTime = '卯時';
-            } else if (hours >= 7 && hours < 9) {
-                ancientTime = '辰時';
-            } else if (hours >= 9 && hours < 11) {
-                ancientTime = '巳時';
-            } else if (hours >= 11 && hours < 13) {
-                ancientTime = '午時';
-            } else if (hours >= 13 && hours < 15) {
-                ancientTime = '未時';
-            } else if (hours >= 15 && hours < 17) {
-                ancientTime = '申時';
-            } else if (hours >= 17 && hours < 19) {
-                ancientTime = '酉時';
-            } else if (hours >= 19 && hours < 21) {
-                ancientTime = '戌時';
-            } else {
-                ancientTime = '亥時';
-            }
+    function hideTooltip() {
+        const tooltip = document.getElementById('tooltip');
+        tooltip.style.display = 'none';
+    }
 
-            const displayString = `${timeString} (${ancientTime})`;
-            applyGradient(displayString, 'timeDisplay');
-        }
-
-        applyGradient('Mihomo', 'hidePlayer');
-        updateTime();
-        setInterval(updateTime, 1000);
-
-        function showTooltip(text) {
-            const tooltip = document.getElementById('tooltip');
-            tooltip.textContent = text;
-            tooltip.style.display = 'block';
-            tooltip.style.left = (window.innerWidth - tooltip.offsetWidth - 20) + 'px';
-            tooltip.style.top = '10px';
-            setTimeout(hideTooltip, 5000);
-        }
-
-        function hideTooltip() {
-            const tooltip = document.getElementById('tooltip');
-            tooltip.style.display = 'none';
-        }
-
-        function handlePlayPause() {
-            const playButton = document.getElementById('play');
-            if (isPlayingAllowed) {
-                if (audioPlayer.paused) {
-                    showTooltip('播放');
-                    audioPlayer.play();
-                    playButton.textContent = '暂停';
-                } else {
-                    showTooltip('暂停播放');
-                    audioPlayer.pause();
-                    playButton.textContent = '播放';
-                }
-            } else {
-                showTooltip('播放被禁止');
-                audioPlayer.pause();
-            }
-        }
-
-        function handleOrderLoop() {
-            if (isPlayingAllowed) {
-                const orderLoopButton = document.getElementById('orderLoop');
-                if (isOrdered) {
-                    isOrdered = false;
-                    isLooping = !isLooping;
-                    orderLoopButton.textContent = isLooping ? '循' : '';
-                    showTooltip(isLooping ? '循环播放' : '暂停循环');
-                } else {
-                    isOrdered = true;
-                    isLooping = false;
-                    orderLoopButton.textContent = '顺';
-                    showTooltip('顺序播放');
-                }
-            }
-        }
-
-        document.addEventListener('keydown', function(event) {
-            switch (event.key) {
-                case 'ArrowLeft':
-                    document.getElementById('prev').click();
-                    break;
-                case 'ArrowRight':
-                    document.getElementById('next').click();
-                    break;
-                case ' ':
-                    handlePlayPause();
-                    break;
-                case 'ArrowUp':
-                    handleOrderLoop();
-                    break;
-                case 'Escape':
-                    isPlayingAllowed = !isPlayingAllowed;
-                    if (!isPlayingAllowed) {
-                        audioPlayer.pause();
-                        audioPlayer.src = '';
-                        showTooltip('播放已禁用');
-                    } else {
-                        showTooltip('播放已启用');
-                        if (songs.length > 0) {
-                            loadSong(currentSongIndex);
-                        }
-                    }
-                    break;
-            }
-        });
-
-        document.getElementById('play').addEventListener('click', handlePlayPause);
-        document.getElementById('next').addEventListener('click', function() {
-            if (isPlayingAllowed) {
-                currentSongIndex = (currentSongIndex + 1) % songs.length;
-                loadSong(currentSongIndex);
-                showTooltip('下一首');
-            } else {
-                showTooltip('播放被禁止');
-            }
-        });
-        document.getElementById('prev').addEventListener('click', function() {
-            if (isPlayingAllowed) {
-                currentSongIndex = (currentSongIndex - 1 + songs.length) % songs.length;
-                loadSong(currentSongIndex);
-                showTooltip('上一首');
-            } else {
-                showTooltip('播放被禁止');
-            }
-        });
-        document.getElementById('orderLoop').addEventListener('click', handleOrderLoop);
-
-        document.getElementById('togglePlay').addEventListener('click', handlePlayPause);
-        document.getElementById('toggleEnable').addEventListener('click', function() {
-            isPlayingAllowed = !isPlayingAllowed;
-            if (!isPlayingAllowed) {
-                audioPlayer.pause();
-                audioPlayer.src = '';
-                showTooltip('播放已禁用');
-            } else {
-                showTooltip('播放已启用');
-                if (songs.length > 0) {
-                    loadSong(currentSongIndex);
-                }
-            }
-        });
-
-        function loadSong(index) {
-            if (isPlayingAllowed && index >= 0 && index < songs.length) {
-                audioPlayer.src = songs[index];
+    function handlePlayPause() {
+        const playButton = document.getElementById('play');
+        if (isPlayingAllowed) {
+            if (audioPlayer.paused) {
+                showTooltip('播放');
                 audioPlayer.play();
+                playButton.textContent = '暂停';
+                speakMessage('播放');
             } else {
+                showTooltip('暂停播放');
                 audioPlayer.pause();
+                playButton.textContent = '播放';
+                speakMessage('暂停播放');
             }
+        } else {
+            showTooltip('播放被禁止');
+            audioPlayer.pause();
+            speakMessage('播放被禁用');
         }
+    }
 
-        audioPlayer.addEventListener('ended', function() {
-            if (isPlayingAllowed) {
-                if (isLooping) {
-                    audioPlayer.currentTime = 0;
-                    audioPlayer.play();
-                } else {
-                    currentSongIndex = (currentSongIndex + 1) % songs.length;
-                    loadSong(currentSongIndex);
-                }
+    function handleOrderLoop() {
+        if (isPlayingAllowed) {
+            const orderLoopButton = document.getElementById('orderLoop');
+            if (isOrdered) {
+                isOrdered = false;
+                isLooping = !isLooping;
+                orderLoopButton.textContent = isLooping ? '循' : '';
+                showTooltip(isLooping ? '循环播放' : '暂停循环');
+                speakMessage(isLooping ? '循环播放' : '暂停循环');
+            } else {
+                isOrdered = true;
+                isLooping = false;
+                orderLoopButton.textContent = '顺';
+                showTooltip('顺序播放');
+                speakMessage('顺序播放');
             }
-        });
+        } else {
+            speakMessage('播放被禁用');
+        }
+    }
 
-        function initializePlayer() {
+    document.addEventListener('keydown', function(event) {
+        switch (event.key) {
+            case 'ArrowLeft':
+                if (isPlayingAllowed) {
+                    document.getElementById('prev').click();
+                } else {
+                    showTooltip('播放被禁止');
+                    speakMessage('播放被禁用');
+                }
+                break;
+            case 'ArrowRight':
+                if (isPlayingAllowed) {
+                    document.getElementById('next').click();
+                } else {
+                    showTooltip('播放被禁止');
+                    speakMessage('播放被禁用');
+                }
+                break;
+            case ' ':
+                handlePlayPause();
+                break;
+            case 'ArrowUp':
+                handleOrderLoop();
+                break;
+            case 'Escape':
+                isPlayingAllowed = !isPlayingAllowed;
+                if (!isPlayingAllowed) {
+                    audioPlayer.pause();
+                    audioPlayer.src = '';
+                    showTooltip('播放已禁用');
+                    speakMessage('您的音乐播放已暂时关闭，按下 ESC 键即可重新启用音乐播放。Your music playback has been paused. Press the ESC key to resume.');
+                } else {
+                    showTooltip('播放已启用');
+                    speakMessage('您的音乐播放已重新启用。Your music playback has resumed.');
+                    if (songs.length > 0) {
+                        loadSong(currentSongIndex);
+                    }
+                }
+                break;
+        }
+    });
+
+    document.getElementById('play').addEventListener('click', handlePlayPause);
+    document.getElementById('next').addEventListener('click', function() {
+        if (isPlayingAllowed) {
+            currentSongIndex = (currentSongIndex + 1) % songs.length;
+            loadSong(currentSongIndex);
+            showTooltip('下一首');
+            speakMessage('下一首');
+        } else {
+            showTooltip('播放被禁止');
+            speakMessage('播放被禁用，按下 ESC 键即可启用音乐播放。');
+        }
+    });
+    document.getElementById('prev').addEventListener('click', function() {
+        if (isPlayingAllowed) {
+            currentSongIndex = (currentSongIndex - 1 + songs.length) % songs.length;
+            loadSong(currentSongIndex);
+            showTooltip('上一首');
+            speakMessage('上一首');
+        } else {
+            showTooltip('播放被禁止');
+            speakMessage('播放被禁用，按下 ESC 键即可启用音乐播放。');
+        }
+    });
+    document.getElementById('orderLoop').addEventListener('click', handleOrderLoop);
+
+    document.getElementById('togglePlay').addEventListener('click', handlePlayPause);
+    document.getElementById('toggleEnable').addEventListener('click', function() {
+        isPlayingAllowed = !isPlayingAllowed;
+        if (!isPlayingAllowed) {
+            audioPlayer.pause();
+            audioPlayer.src = '';
+            showTooltip('播放已禁用');
+            speakMessage('您的音乐播放已暂时关闭，按下 ESC 键即可重新启用音乐播放。Your music playback has been paused. Press the ESC key to resume.');
+        } else {
+            showTooltip('播放已启用');
+            speakMessage('您的音乐播放已重新启用。Your music playback has resumed.');
             if (songs.length > 0) {
                 loadSong(currentSongIndex);
             }
         }
+    });
 
+    function loadSong(index) {
+        if (isPlayingAllowed && index >= 0 && index < songs.length) {
+            audioPlayer.src = songs[index];
+            audioPlayer.play();
+        } else {
+            audioPlayer.pause();
+        }
+    }
+
+    audioPlayer.addEventListener('ended', function() {
+        if (isPlayingAllowed) {
+            if (isLooping) {
+                audioPlayer.currentTime = 0;
+                audioPlayer.play();
+            } else {
+                currentSongIndex = (currentSongIndex + 1) % songs.length;
+                loadSong(currentSongIndex);
+            }
+        }
+    });
+
+    function initializePlayer() {
+        if (songs.length > 0) {
+            loadSong(currentSongIndex);
+        }
+    }
+
+    function speakMessage(message) {
+        const utterance = new SpeechSynthesisUtterance(message);
+        utterance.lang = 'zh-CN'; 
+        speechSynthesis.speak(utterance);
+    }
+
+    function loadCustomPlaylist(link) {
+        fetch(link)
+            .then(response => response.text())
+            .then(data => {
+                songs = data.split('\n').filter(url => url.trim() !== '');
+                initializePlayer();
+                speakMessage('自定义歌单已加载'); 
+            })
+            .catch(error => {
+                console.error('加载歌单时出错:', error);
+                speakMessage('加载歌单时出错'); 
+            });
+    }
+
+
+    const customPlaylist = localStorage.getItem('customPlaylist');
+    if (customPlaylist) {
+        loadCustomPlaylist(customPlaylist);
+    } else {
         fetch('https://raw.githubusercontent.com/Thaolga/Rules/main/Clash/songs.txt')
             .then(response => response.text())
             .then(data => {
@@ -430,18 +485,14 @@ $cpuFamily = preg_match('/^CPU family:\s+(.+)/m', $cpuInfo, $matches);
                 initializePlayer();
                 console.log(songs);
             })
-            .catch(error => console.error('Error fetching songs:', error));
-
-        window.onload = function() {
-            audioPlayer.pause();
-            setTimeout(() => {
-                document.getElementById('mobile-controls').classList.add('hidden');
-            }, 30000);
-        };
+            .catch(error => {
+                console.error('Error fetching songs:', error);
+                speakMessage('加载默认歌单时出错'); 
+            });
+    }
     </script>
 </body>
 </html>
-
 
 <?php
 date_default_timezone_set('Asia/Shanghai');
@@ -453,11 +504,14 @@ date_default_timezone_set('Asia/Shanghai');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>语音播报系统</title>
+    <label for="weather-toggle"></label>
+    <input type="checkbox" id="weather-toggle">
 </head>
 <body>
-   <script>
-        const city = 'Beijing'; // 替换为您的城市名
+    <script>
+        let city = 'Beijing'; 
         const apiKey = 'fc8bd2637768c286c6f1ed5f1915eb22'; 
+        let weatherEnabled = true; 
 
         function speakMessage(message) {
             const utterance = new SpeechSynthesisUtterance(message);
@@ -584,6 +638,8 @@ date_default_timezone_set('Asia/Shanghai');
         }
 
         function speakWeather(weather) {
+            if (!weatherEnabled) return; 
+
             const descriptions = {
                 "clear sky": "晴天", "few clouds": "少量云", "scattered clouds": "多云",
                 "broken clouds": "多云", "shower rain": "阵雨", "rain": "雨", 
@@ -637,6 +693,8 @@ date_default_timezone_set('Asia/Shanghai');
         }
 
         function fetchWeather() {
+            if (!weatherEnabled) return; 
+            
             const apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=zh_cn`; 
             fetch(apiUrl)
                 .then(response => response.ok ? response.json() : Promise.reject('网络响应不正常'))
@@ -650,14 +708,56 @@ date_default_timezone_set('Asia/Shanghai');
                 .catch(error => console.error('获取天气数据时出错:', error));
         }
 
+        function saveCity() {
+            const cityInput = document.getElementById('city-input').value.trim();
+            const chineseCharPattern = /[\u4e00-\u9fff]/;
+            const startsWithUppercasePattern = /^[A-Z]/;
+            if (chineseCharPattern.test(cityInput)) {
+                speakMessage('请输入非中文的城市名称。');
+            } else if (!startsWithUppercasePattern.test(cityInput)) {
+                speakMessage('城市名称必须以大写英文字母开头。');
+            } else if (cityInput) {
+                const city = cityInput;
+                localStorage.setItem('city', city); 
+                document.getElementById('current-city').textContent = city;
+                speakMessage(`城市已保存为${city}，正在获取最新天气信息...`);
+                fetchWeather();
+            } else {
+                speakMessage('请输入有效的城市名称。');
+            }
+        }
+
+        document.getElementById('weather-toggle').addEventListener('change', (event) => {
+            weatherEnabled = event.target.checked;
+            localStorage.setItem('weatherEnabled', weatherEnabled); 
+            if (weatherEnabled) {
+                speakMessage('天气播报已启用。');
+                fetchWeather();
+            } else {
+                speakMessage('天气播报已关闭。');
+            }
+        });
+
         window.onload = function() {
+            const savedCity = localStorage.getItem('city');
+            if (savedCity) {
+                city = savedCity;
+                document.getElementById('current-city').textContent = city;
+            }
+            
+            const savedWeatherEnabled = localStorage.getItem('weatherEnabled');
+            if (savedWeatherEnabled !== null) {
+                weatherEnabled = savedWeatherEnabled === 'true';
+                document.getElementById('weather-toggle').checked = weatherEnabled;
+            }
+
             speakMessage('欢迎使用语音播报系统！');
             checkWebsiteAccess(websites);
             speakCurrentTime();
-            fetchWeather();
+            if (weatherEnabled) fetchWeather();
             speakRandomPoem(); 
             setInterval(updateTime, 1000);
-            speakMessage('您的音乐播放已暂时关闭，按下 ESC 键即可重新启用音乐播放。Your music playback has been paused. Press the ESC key to resume.');
+
         };
     </script>
 </body>

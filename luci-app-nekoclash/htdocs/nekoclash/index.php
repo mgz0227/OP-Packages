@@ -761,6 +761,63 @@ $singboxStartLogContent = readLogFile($singboxStartLogFile);
         </tbody>
     </table>
 </div>
+ <div class="container container-bg border border-3 rounded-4 col-12 mb-4">
+        <h2 class="text-center p-2">语音播报系统</h2>
+        <table class="table table-borderless mb-2">
+            <tbody>
+                <tr>
+                    <td>
+                        <div class="row mb-2">
+                            <div class="col">
+                                <input type="text" id="playlistLink" class="form-control" placeholder="输入自定义歌单链接">
+                            </div>
+                            <div class="col-auto">
+                                <button id="loadPlaylistButton" class="btn btn-primary">加载歌单</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="row mb-2">
+                            <div class="col">
+                                <input type="text" id="city-input" class="form-control" placeholder="如 Beijing">
+                            </div>
+                            <div class="col-auto">
+                                <button onclick="saveCity()" class="btn btn-success">保存城市</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                                 当前城市: <span id="current-city">Beijing</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>       
+                        <button id="resetPlaylistButton" class="btn btn-warning">恢复默认歌单</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+document.getElementById('loadPlaylistButton').addEventListener('click', function() {
+            const playlistLink = document.getElementById('playlistLink').value;
+            if (playlistLink) {
+                localStorage.setItem('customPlaylist', playlistLink);
+                speakMessage('歌单链接已保存，您可以在播放器页面中播放。');
+            } else {
+                speakMessage('请输入有效的URL。');
+            }
+        });
+        document.getElementById('resetPlaylistButton').addEventListener('click', function() {
+            localStorage.removeItem('customPlaylist');
+            speakMessage('自定义歌单已重置为默认。');
+        });
+    </script>
 <!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -906,11 +963,21 @@ $singboxStartLogContent = readLogFile($singboxStartLogFile);
     <script src="/www/nekoclash/assets/js/bootstrap.bundle.min.js"></script>
 <div class="container container-bg border border-3 rounded-4 col-12 mb-4 d-flex align-items-center justify-content-center" style="height: 100%;">
     <div class="nav-buttons text-center" style="height: 100%;">
-        <a href="/nekoclash/upload.php" class="config-menu-button d-block mb-2">打开Mihomo 管理面板</a>
-        <a href="/nekoclash/upload_sb.php" class="monitoring-button d-block mb-2">打开Sing-box 管理面板</a>
-        <a href="/nekoclash/box.php" class="box-menu-button d-block mb-2">打开Sing-box 转换模板</a>
-        <a href="/nekoclash/personal.php" class="current-menu-button d-block mb-2">打开Mihomo 个人版</a>
-        <a href="/nekoclash/mon.php" class="main-menu-button d-block mb-2">打开Sing-box 监控面板</a>
+<a href="/nekoclash/upload.php" class="config-menu-button d-block mb-2" onclick="speakAndNavigate('打开Mihomo 管理面板', '/nekoclash/upload.php'); return false;">打开Mihomo 管理面板</a>
+<a href="/nekoclash/upload_sb.php" class="monitoring-button d-block mb-2" onclick="speakAndNavigate('打开Sing-box 管理面板', '/nekoclash/upload_sb.php'); return false;">打开Sing-box 管理面板</a>
+<a href="/nekoclash/box.php" class="box-menu-button d-block mb-2" onclick="speakAndNavigate('打开Sing-box 转换模板', '/nekoclash/box.php'); return false;">打开Sing-box 转换模板</a>
+<a href="/nekoclash/personal.php" class="current-menu-button d-block mb-2" onclick="speakAndNavigate('打开Mihomo 个人版', '/nekoclash/personal.php'); return false;">打开Mihomo 个人版</a>
+<a href="/nekoclash/mon.php" class="main-menu-button d-block mb-2" onclick="speakAndNavigate('打开Sing-box 监控面板', '/nekoclash/mon.php'); return false;">打开Sing-box 监控面板</a>
+
+<script>
+function speakAndNavigate(message, url) {
+    speakMessage(message);
+    setTimeout(function() {
+        window.location.href = url;
+    }, 500); 
+}
+</script>
+
     </div>
 </div>
 
