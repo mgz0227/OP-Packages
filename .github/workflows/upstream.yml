@@ -112,6 +112,7 @@ jobs:
         git_clone https://github.com/sirpdboy/luci-app-parentcontrol
         git_clone https://github.com/sirpdboy/luci-app-poweroffdevice
         git_clone https://github.com/muink/luci-app-homeproxy
+        # git clone https://github.com/immortalwrt/homeproxy -b dev --depth 1
         ) &
         (
         git_clone https://github.com/destan19/OpenAppFilter && mvdir OpenAppFilter
@@ -167,7 +168,7 @@ jobs:
         git_clone https://github.com/linkease/openwrt-app-actions
         git_clone https://github.com/lucikap/luci-app-brukamen && mv -n luci-app-brukamen/{luci*,dogcom,mentohust,iii/*} ./;rm -rf luci-app-brukamen luci-app-autoshell_*.ipk
         git_clone https://github.com/mchome/openwrt-dogcom
-        git_clone https://github.com/yichya/luci-app-xray yichya && mv -f yichya/status ./luci-app-xray-status;mv -f yichya/core ./luci-app-xray
+        git_clone https://github.com/yichya/luci-app-xray yichya && mv -f yichya/status ./luci-app-xray-status;mv -f yichya/core ./luci-app-xray;rm -rf yichya
         git_clone https://github.com/rafmilecki/luci-app-xjay
         git_clone https://github.com/kiddin9/openwrt-thunder && mvdir openwrt-thunder
         ) &
@@ -224,7 +225,7 @@ jobs:
         git_clone https://github.com/sirpdboy/luci-app-netdata
         git_clone https://github.com/sirpdboy/luci-app-chatgpt-web
         git_clone https://github.com/sirpdboy/luci-app-eqosplus
-        git_clone https://github.com/JiaY-shi/fancontrol fanc && mvdir fanc
+        git_clone https://github.com/JiaY-shi/fancontrol fanc && mv fanc/{fancontrol,luci-app-fancontrol} ./;rm -rf fanc
         git_clone https://github.com/Siriling/5G-Modem-Support && mv -n 5G-Modem-Support/{luci-app-modem,luci-app-cpe,luci-app-sms-tool} ./;rm -rf 5G-Modem-Support
         git_clone https://github.com/danchexiaoyang/luci-app-syncthing
         git_clone https://github.com/aa65535/openwrt-dist-luci
@@ -252,7 +253,7 @@ jobs:
         git_clone https://github.com/gSpotx2f/luci-app-temp-status
         git_clone https://github.com/gSpotx2f/luci-app-cpu-perf
         git_clone https://github.com/gSpotx2f/luci-app-log
-        git_clone https://github.com/gSpotx2f/luci-app-internet-detector
+        git_clone https://github.com/gSpotx2f/luci-app-internet-detector idetector && mv idetector/*internet-detector* ./;rm -rf idetector
         git_clone https://github.com/gSpotx2f/luci-app-disks-info
         git_clone https://github.com/gSpotx2f/luci-app-interfaces-statistics
         git_clone https://github.com/gSpotx2f/luci-app-cpu-status-mini
@@ -261,7 +262,7 @@ jobs:
         git_clone https://github.com/Carseason/openwrt-themedog && mv -n openwrt-themedog/luci/* ./;rm -rf openwrt-themedog
         git_clone https://github.com/Carseason/openwrt-app-actions Carseason && mv -n Carseason/applications/* ./;rm -rf Carseason
         # git_clone https://github.com/VergilGao/openwrt-sblite && mvdir openwrt-sblite
-        git_clone https://github.com/Thaolga/luci-app-nekoclash
+        # git_clone https://github.com/Thaolga/luci-app-nekoclash
         ) &
         (
         git_clone https://github.com/liudf0716/luci-app-yt-dlp
@@ -294,7 +295,7 @@ jobs:
         (
         git_clone https://github.com/jackpang960/luci-app-hypermodem
         git_clone https://github.com/wangqn/luci-app-nut
-        git_clone https://github.com/CrazyPegasus/luci-app-accesscontrol-plus
+        git_clone https://github.com/kingyond/luci-app-accesscontrol-plus accesscontrol-plus && mv accesscontrol-plus/luci-app-accesscontrol-plus ./;rm -rf accesscontrol-plus
         git_clone https://github.com/4IceG/luci-app-lite-watchdog
         git_clone https://github.com/Mitsuhaxy/luci-app-miniproxy
         git_clone https://github.com/tkmsst/luci-app-cellularstatus cellularstatus && mv cellularstatus/luci/applications/* ./;rm -rf cellularstatus
