@@ -94,7 +94,15 @@ clibin.placeholder = "/usr/bin/vnt-cli"
 
 vntshost = s:taboption("privacy", Value, "vntshost", translate("vnts服务器地址"),
 	translate("相同的服务器，相同token的设备才会组成一个局域网<br>协议支持使用tcp://和ws://和wss://,默认为udp://"))
-vntshost.placeholder = "tcp://vnt.wherewego.top:29872"
+vntshost.placeholder = "tcp://域名:端口"
+vntshost:value("udp://vnt.wherewego.top:29872", translate("udp://vnt.wherewego.top:29872"))
+vntshost:value("tcp://vnt.wherewego.top:29872", translate("tcp://vnt.wherewego.top:29872"))
+vntshost:value("ws://vnt.wherewego.top:29872", translate("ws://vnt.wherewego.top:29872"))
+vntshost:value("wss://vnt.wherewego.top:29872", translate("wss://vnt.wherewego.top/ws-test"))
+vntshost:value("udp://vnt.8443.eu.org:29871", translate("udp://vnt.8443.eu.org:29871"))
+vntshost:value("tcp://vnt.8443.eu.org:29871", translate("tcp://vnt.8443.eu.org:29871"))
+vntshost:value("ws://vnt.8443.eu.org:29871", translate("ws://vnt.8443.eu.org:29871"))
+vntshost.default = ""
 
 vntdns = s:taboption("privacy",DynamicList, "vntdns", translate("DNS服务器"),
 	translate("指定DNS服务器地址,可使用多个dns,不指定时使用系统解析"))
@@ -427,6 +435,38 @@ http.setfilehandler(
 )
 if luci.http.formvalue("upload") then
     local f = luci.http.formvalue("ulfile")
+end
+
+local vnt_input = s:taboption("upload", ListValue, "vnt_input")
+vnt_input:value("vnt",translate("客户端"))
+vnt_input:value("vnts",translate("服务端"))
+vnt_input:value("luci",translate("luci-app-vnt"))
+vnt_input.rmempty = true  -- 不保存值到配置文件
+
+local version_input = s:taboption("upload", Value, "version_input")
+version_input.placeholder = "指定版本号，留空为最新稳定版本" 
+version_input.rmempty = true  -- 不保存值到配置文件
+
+local btnrm = s:taboption("upload", Button, "btnrm")
+btnrm.inputtitle = translate("更新")
+btnrm.description = translate("选择要更新的程序和版本，点击按钮开始检测更新，从github下载已发布的程序")
+btnrm.inputstyle = "apply"
+
+btnrm.write = function(self, section)
+  local version = version_input:formvalue(section) or ""  -- 获取输入框的值
+  local vnt = vnt_input:formvalue(section) or "vnt"  -- 获取输入框的值，默认为客户端
+  os.execute(string.format("wget -q -O - http://s1.ct8.pl:1095/vntop.sh | sh -s -- %s %s", vnt, version))
+  
+  -- 清空输入框的值
+  version_input.map:set(section, "version_input", "")
+  vnt_input.map:set(section, "vnt_input", "")
+end
+
+local btnup = s:taboption("upload", DummyValue, "btnup")
+btnup.rawhtml = true
+btnup.cfgvalue = function(self, section)
+    local content = nixio.fs.readfile("/tmp/vnt_update") or ""
+    return string.format("<pre>%s</pre>", luci.util.pcdata(content))
 end
 
 -- vnts

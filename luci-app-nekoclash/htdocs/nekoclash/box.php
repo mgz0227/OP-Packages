@@ -147,7 +147,7 @@
 
         <div class="button-group">
             <input type="submit" name="generateConfig" class="submit-button" value="生成配置文件">
-            <button type="button" class="return-button" onclick="window.location.href='/nekoclash/upload_sb.php';">返回上一级</button>
+            <button type="button" class="return-button" onclick="window.location.href='javascript:history.back()';">返回上一级</button>
             <button type="button" class="return-danger" onclick="window.location.href='/nekoclash';">返回主菜单</button>
         </div>
     </form>

@@ -74,5 +74,13 @@ make package/luci-app-nekoclash/{clean,compile} V=s
  <details><summary>Dasboard</summary>
  <p>
  <img src="https://raw.githubusercontent.com/Thaolga/neko/main/img/im.png" >
+ <img src="https://raw.githubusercontent.com/Thaolga/neko/main/img/image_2024-08-30_14-56-43.png" >
+ <img src="https://raw.githubusercontent.com/Thaolga/neko/main/img/image_2024-08-30_14-54-51.png" >
+ <img src="https://raw.githubusercontent.com/Thaolga/neko/main/img/image_2024-08-30_14-38-43.png" >
+ <img src="https://raw.githubusercontent.com/Thaolga/neko/main/img/image_2024-08-30_14-44-25.png" >
+ <img src="https://raw.githubusercontent.com/Thaolga/neko/main/img/image_2024-08-30_14-43-50.png" >
+ <img src="https://raw.githubusercontent.com/Thaolga/neko/main/img/image_2024-08-30_14-43-18.png" >
+ <img src="https://raw.githubusercontent.com/Thaolga/neko/main/img/image_2024-08-30_14-42-30.png" >
+ <img src="https://raw.githubusercontent.com/Thaolga/neko/main/img/image_2024-08-30_14-45-28.png" >
  </p>
 </details>

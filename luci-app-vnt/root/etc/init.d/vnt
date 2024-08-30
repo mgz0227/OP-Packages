@@ -4,6 +4,7 @@
 START=99
 USE_PROCD=1
 size="$(df -k | awk '/\/overlay$/ {sub(/K$/, "", $4); print $4}')"
+[ -z "$size" ] && size="$(df -k /usr/bin | awk 'NR==2 {print $(NF-2) }')"
 
 start_vntcli() {
                 local cfg="$1"
@@ -36,7 +37,7 @@ start_vntcli() {
 		if [ $(($($clibin -h | wc -l))) -lt 3 ] || [ ! -f "$clibin" ] ; then
 		 echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : 未找到程序 $clibin 开始在线下载，下载较慢耐心等候" >>/tmp/vnt-cli.log
                  mkdir -p "$path"
-	         curl -o "${clibin}" --connect-timeout 10 --retry 3 "http://webd.liaoh.dedyn.io:19213/vnt-cli_${cpucore}"
+	         curl -o "${clibin}" --connect-timeout 10 --retry 3 "http://webd.liaoh.dedyn.io:19213/vnt-cli_${cpucore}" || wget -O "${clibin}" --timeout=10 --tries=3 "http://webd.liaoh.dedyn.io:19213/vnt-cli_${cpucore}"
                  chmod +x "$clibin"
  if [ $(($($clibin -h | wc -l))) -gt 3 ]; then
     echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : ${clibin} 下载成功" >>/tmp/vnt-cli.log
@@ -366,7 +367,7 @@ start_vnts() {
                      echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : 无法替换，上传的程序不完整或自定义路径的可用空间不足，当前空间剩余${size}kb" >>/tmp/vnts.log
                    fi
                 fi
-                if [ ! -f "$vntsbin" ] && [ "$size" -lt 11000 ] ; then
+                if [ ! -f "$vntsbin" ] && [ "$size" -lt 10240 ] ; then
                     echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : 自定义程序路径的可用空间不足，当前可用空间剩余${size}kb,自动切换为内存/tmp/vnts" >>/tmp/vnts.log
                     uci -q set vnt.@vnts[0].vntsbin=/tmp/vnts
                     uci commit
@@ -380,21 +381,22 @@ start_vnts() {
                 mkdir -p "$path"
                 proxy_url="https://hub.gitmirror.com/"
                 proxy_url2="http://gh.ddlc.top/"
+                tag=v1.2.12
 		case "${cpucore}" in 
-	           "mipsle")  curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url}https://github.com/vnt-dev/vnts/releases/download/1.2.12/vnts-mipsel-unknown-linux-musl-1.2.12.tar.gz" || curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url2}https://github.com/vnt-dev/vnts/releases/download/1.2.12/vnts-mipsel-unknown-linux-musl-1.2.12.tar.gz"
+	           "mipsle")  curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url}https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-mipsel-unknown-linux-musl-${tag}.tar.gz" || curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url2}https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-mipsel-unknown-linux-musl-${tag}.tar.gz" || wget --no-check-certificate -O /tmp/vnts.tar.gz --timeout=10 --tries=3 "https://dl.cnqq.cloudns.ch/https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-mipsel-unknown-linux-musl-${tag}.tar.gz"
 	           ;;
-	           "mips")  curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url}https://github.com/vnt-dev/vnts/releases/download/1.2.12/vnts-mips-unknown-linux-musl-1.2.12.tar.gz" || curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url2}https://github.com/vnt-dev/vnts/releases/download/1.2.12/vnts-mips-unknown-linux-musl-1.2.12.tar.gz"
+	           "mips")  curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url}https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-mips-unknown-linux-musl-${tag}.tar.gz" || curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url2}https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-mips-unknown-linux-musl-${tag}.tar.gz" || wget --no-check-certificate -O /tmp/vnts.tar.gz --timeout=10 --tries=3 "https://dl.cnqq.cloudns.ch/https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-mips-unknown-linux-musl-${tag}.tar.gz" 
 	           ;;
-	           "x86_64")  curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url}https://github.com/vnt-dev/vnts/releases/download/1.2.12/vnts-x86_64-unknown-linux-musl-1.2.12.tar.gz" || curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url2}https://github.com/vnt-dev/vnts/releases/download/1.2.12/vnts-x86_64-unknown-linux-musl-1.2.12.tar.gz"
+	           "x86_64")  curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url}https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-x86_64-unknown-linux-musl-${tag}.tar.gz" || curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url2}https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-x86_64-unknown-linux-musl-${tag}.tar.gz" || wget --no-check-certificate -O /tmp/vnts.tar.gz --timeout=10 --tries=3 "https://dl.cnqq.cloudns.ch/https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-x86_64-unknown-linux-musl-${tag}.tar.gz"
 	           ;;
 	           "i386")  echo "$(date '+%Y-%m-%d %H:%M:%S') vnt : 不支持的架构,程序退出" >>/tmp/vnts.log
                      return 1
 	           ;;
-	           "arm")  curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url}https://github.com/vnt-dev/vnts/releases/download/1.2.12/vnts-arm-unknown-linux-musleabi-1.2.12.tar.gz" || curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url2}https://github.com/vnt-dev/vnts/releases/download/1.2.12/vnts-arm-unknown-linux-musleabi-1.2.12.tar.gz"
+	           "arm")  curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url}https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-arm-unknown-linux-musleabi-${tag}.tar.gz" || curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url2}https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-arm-unknown-linux-musleabi-${tag}.tar.gz" || wget --no-check-certificate -O /tmp/vnts.tar.gz --timeout=10 --tries=3 "https://dl.cnqq.cloudns.ch/https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-arm-unknown-linux-musleabi-${tag}.tar.gz"
 	           ;;
-	           "armv7")  curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url}https://github.com/vnt-dev/vnts/releases/download/1.2.12/vnts-armv7-unknown-linux-musleabi-1.2.12.tar.gz" || curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url2}https://github.com/vnt-dev/vnts/releases/download/1.2.12/vnts-armv7-unknown-linux-musleabi-1.2.12.tar.gz"
+	           "armv7")  curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url}https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-armv7-unknown-linux-musleabi-${tag}.tar.gz" || curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url2}https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-armv7-unknown-linux-musleabi-${tag}.tar.gz" || wget --no-check-certificate -O /tmp/vnts.tar.gz --timeout=10 --tries=3 "https://dl.cnqq.cloudns.ch/https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-armv7-unknown-linux-musleabi-${tag}.tar.gz"
 	           ;;
-	           "aarch64")  curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url}https://github.com/vnt-dev/vnts/releases/download/1.2.12/vnts-aarch64-unknown-linux-musl-1.2.12.tar.gz" || curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url2}https://github.com/vnt-dev/vnts/releases/download/1.2.12/vnts-aarch64-unknown-linux-musl-1.2.12.tar.gz"
+	           "aarch64")  curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url}https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-aarch64-unknown-linux-musl-${tag}.tar.gz" || curl -L -k -o /tmp/vnts.tar.gz --connect-timeout 10 --retry 3 "${proxy_url2}https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-aarch64-unknown-linux-musl-${tag}.tar.gz" || wget --no-check-certificate -O /tmp/vnts.tar.gz --timeout=10 --tries=3 "https://dl.cnqq.cloudns.ch/https://github.com/vnt-dev/vnts/releases/download/${tag}/vnts-aarch64-unknown-linux-musl-${tag}.tar.gz"
 	           ;;
                    esac
                    tar zxf /tmp/vnts.tar.gz -C /tmp/
