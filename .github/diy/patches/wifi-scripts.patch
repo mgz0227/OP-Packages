@@ -1,20 +1,17 @@
---- a/wifi-scripts/files/sbin/wifi
-+++ b/wifi-scripts/files/sbin/wifi
-@@ -177,8 +177,14 @@ wifi_detect_notice() {
- wifi_config() {
- 	[ -e /tmp/.config_pending ] && return
- 	ucode /usr/share/hostap/wifi-detect.uc
+--- a/wifi-scripts/files/etc/hotplug.d/ieee80211/10-wifi-detect
++++ b/wifi-scripts/files/etc/hotplug.d/ieee80211/10-wifi-detect
+@@ -1,5 +1,10 @@
+ #!/bin/sh
+ 
+ [ "${ACTION}" = "add" ] && {
+-	/sbin/wifi config
 +	for i in $(seq 1 3); do
++		/sbin/wifi config
 +		grep -q '"wlan"' /etc/board.json && break
 +		sleep 1s
-+		ucode /usr/share/hostap/wifi-detect.uc
 +	done
- 	[ ! -f /etc/config/wireless ] && touch /etc/config/wireless
- 	ucode /lib/wifi/mac80211.uc | uci -q batch
-+	. /sbin/mywifi
- 
- 	for driver in $DRIVERS; do (
- 		if eval "type detect_$driver" 2>/dev/null >/dev/null; then
++	[ -z "$(uci -q get base_config.@status[0].wifi)" ] && . /sbin/mywifi
+ }
 
 --- a/wifi-scripts/files/lib/wifi/mac80211.uc
 +++ b/wifi-scripts/files/lib/wifi/mac80211.uc
