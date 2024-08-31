@@ -177,14 +177,14 @@ wifi_detect_notice() {
 wifi_config() {
 	[ -e /tmp/.config_pending ] && return
 	ucode /usr/share/hostap/wifi-detect.uc
-	c=0
-	while ! cat /etc/board.json | grep -q "wlan"; do
-		[ $c -eq 3 ] && break || let c++
+	for i in $(seq 1 3); do
+		grep -q '"wlan"' /etc/board.json && break
 		sleep 1s
 		ucode /usr/share/hostap/wifi-detect.uc
 	done
 	[ ! -f /etc/config/wireless ] && touch /etc/config/wireless
 	ucode /lib/wifi/mac80211.uc | uci -q batch
+	. /sbin/mywifi
 
 	for driver in $DRIVERS; do (
 		if eval "type detect_$driver" 2>/dev/null >/dev/null; then
