@@ -1,13 +1,8 @@
 #!/bin/sh
 
-. /etc/openwrt_release
 board_name() {
 	[ -e /tmp/sysinfo/board_name ] && cat /tmp/sysinfo/board_name || echo "generic"
 }
-SSID="$(uci -q get wizard.default.wifi_ssid || uci -q get system.@system[0].hostname || echo MeowWrt)"
-SSID_PASSWD="$(uci -q get wizard.default.wifi_key)"
-
-sed -i '/option disabled/d' /etc/config/wireless
 
 	wifi_setup_radio(){
 	local radio=$1
@@ -52,7 +47,18 @@ sed -i '/option disabled/d' /etc/config/wireless
 		fi
 	}
 
-	if [[ -f /etc/config/wireless ]]; then
+for i in $(seq 1 5); do
+		[[ "$(uci -q get base_config.@status[0].version)" != 0 && "$(cat /etc/config/wireless)" ]] && break
+		[ "$(cat /etc/config/wireless)" ] || /sbin/wifi config
+		sleep 1s
+done
+
+	if [[ "$(cat /etc/config/wireless)" ]]; then
+		. /etc/openwrt_release
+		SSID="$(uci -q get wizard.default.wifi_ssid || uci -q get system.@system[0].hostname || echo MeowWrt)"
+		SSID_PASSWD="$(uci -q get wizard.default.wifi_key)"
+		sed -i '/option disabled/d' /etc/config/wireless
+
 		[ "$(uci -q get wireless.radio1.band)" == "5g" ] && uci -q set wireless.radio0.band="2g"
 		widx=0
 		while uci rename wireless.@wifi-iface[$widx]=default_radio$widx >/dev/null 2>&1; do widx=$((widx+1)); done
@@ -60,7 +66,7 @@ sed -i '/option disabled/d' /etc/config/wireless
 			wifi_setup_radio ${radio}
 		done
 		uci commit wireless
-		/sbin/wifi reload
 		uci -q set base_config.@status[0].wifi=1
 		uci commit base_config
+		/sbin/wifi reload
 	fi
