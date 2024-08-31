@@ -9,7 +9,7 @@ sed -i "s/dl.openwrt.ai/op.miaogongzi.cc/" /etc/opkg/distfeeds.conf
 version=`uci -q get base_config.@status[0].version`
 
 hostname=`uci -q get system.@system[0].hostname`
-[ -n "${hostname}" ] || hostname="OpenWrt"
+[ -n "${hostname}" ] || hostname="MeowWrt"
 
 if [ "$(uci -q get dhcp.@dnsmasq[0].port)" != "53" ]; then
 	uci -q set dhcp.@dnsmasq[0].port='53'
@@ -62,14 +62,10 @@ if [[ ! "$version" || "$version" -lt 1 ]]; then
 	uci commit upnpd
 	
 	(echo "root"; sleep 1; echo "root") | /bin/busybox passwd root >/dev/null 2>&1 &
-	
-	. /etc/openwrt_release
 
 		uci -q set firewall.@defaults[0].flow_offloading='1'
 		uci -q set firewall.@defaults[0].flow_offloading_hw='1'
 		uci commit firewall
-
-	sed -i '/option disabled/d' /etc/config/wireless
 
 	uci -q set upnpd.config.enabled='1'
 	uci commit upnpd
@@ -184,7 +180,7 @@ grep -q "location /luci " /etc/nginx/conf.d/luci.locations 2>/dev/null &&
 
 grep -q "uwsgi_read_timeout" /etc/nginx/conf.d/luci.locations 2>/dev/null ||
 	sed -i "s/include uwsgi_params;/include uwsgi_params;\n\t\tuwsgi_read_timeout 300s;/" /etc/nginx/conf.d/luci.locations
-	
+
 sed -i "s/client_max_body_size 128/client_max_body_size 3072/" /etc/nginx/uci.conf.template
 sed -i "s/large_client_header_buffers 2 1k/large_client_header_buffers 4 512k/" /etc/nginx/uci.conf.template
 
@@ -194,7 +190,7 @@ uci commit base_config
 
 modprobe xt_FULLCONENAT || {
 [ "$(iptables -L -t nat | grep "FULLCONENAT")" ] || {
-uci -q set firewall.@defaults[0].fullcone='1'
+uci -q set firewall.@defaults[0].fullcone='0'
 uci commit firewall
 }
 }
