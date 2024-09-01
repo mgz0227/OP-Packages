@@ -95,14 +95,6 @@ clibin.placeholder = "/usr/bin/vnt-cli"
 vntshost = s:taboption("privacy", Value, "vntshost", translate("vnts服务器地址"),
 	translate("相同的服务器，相同token的设备才会组成一个局域网<br>协议支持使用tcp://和ws://和wss://,默认为udp://"))
 vntshost.placeholder = "tcp://域名:端口"
-vntshost:value("udp://vnt.wherewego.top:29872", translate("udp://vnt.wherewego.top:29872"))
-vntshost:value("tcp://vnt.wherewego.top:29872", translate("tcp://vnt.wherewego.top:29872"))
-vntshost:value("ws://vnt.wherewego.top:29872", translate("ws://vnt.wherewego.top:29872"))
-vntshost:value("wss://vnt.wherewego.top:29872", translate("wss://vnt.wherewego.top/ws-test"))
-vntshost:value("udp://vnt.8443.eu.org:29871", translate("udp://vnt.8443.eu.org:29871"))
-vntshost:value("tcp://vnt.8443.eu.org:29871", translate("tcp://vnt.8443.eu.org:29871"))
-vntshost:value("ws://vnt.8443.eu.org:29871", translate("ws://vnt.8443.eu.org:29871"))
-vntshost.default = ""
 
 vntdns = s:taboption("privacy",DynamicList, "vntdns", translate("DNS服务器"),
 	translate("指定DNS服务器地址,可使用多个dns,不指定时使用系统解析"))
