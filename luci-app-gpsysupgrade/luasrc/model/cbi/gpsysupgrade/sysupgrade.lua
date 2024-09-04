@@ -12,7 +12,7 @@ end
 
 function check_update()
 		needs_update, notice, md5 = false, false, false
-		remote_version = luci.sys.exec("curl -skfL https://op.miaogongzi.cc/23.05/targets/x86/64/" ..model.. "/version.txt")
+		remote_version = luci.sys.exec("curl -skfL https://op.miaogongzi.cc/23.05/targets/x86/64/version.txt")
 		updatelogs = luci.sys.exec("curl -skfL https://op.miaogongzi.cc/23.05/targets/x86/64/updatelogs.txt")
 		remoteformat = luci.sys.exec("date -d $(echo \"" ..remote_version.. "\" | tr '\r\n' ',' | awk -F, '{printf $1}' | awk -F. '{printf $3\"-\"$1\"-\"$2}') +%s")
 		fnotice = luci.sys.exec("echo \"" ..remote_version.. "\" | tr '\r\n' ',' | awk -F, '{printf $(NF-1)}'")
@@ -38,9 +38,9 @@ function to_check()
     	model = "x86_64"
     	check_update()
     	if fs.access("/sys/firmware/efi") then
-    		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/" .. model .. "/MeowWrt-" .. remote_version .. "-x86-64-generic-squashfs-combined-efi.img.gz"
+    		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/"  "/MeowWrt-" .. remote_version .. "-x86-64-generic-squashfs-combined-efi.img.gz"
     	else
-    		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/" ..model.. "/MeowWrt-" .. remote_version.. "-x86-64-generic-squashfs-combined.img.gz"
+    		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/"  "/MeowWrt-" .. remote_version.. "-x86-64-generic-squashfs-combined.img.gz"
     		md5 = ""
     	end
     elseif board_name == "x86_generic" then
