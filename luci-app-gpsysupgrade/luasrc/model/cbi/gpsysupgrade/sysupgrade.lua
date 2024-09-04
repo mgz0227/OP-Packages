@@ -38,9 +38,9 @@ function to_check()
     	model = "x86_64"
     	check_update()
     	if fs.access("/sys/firmware/efi") then
-    		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/" .. "/MeowWrt-" .. remote_version .. "-x86-64-generic-squashfs-combined-efi.img.gz"
+    		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/" .. "MeowWrt-" .. remote_version .. "-x86-64-generic-squashfs-combined-efi.img.gz"
     	else
-    		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/" .. "/MeowWrt-" .. remote_version.. "-x86-64-generic-squashfs-combined.img.gz"
+    		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/" .. "MeowWrt-" .. remote_version.. "-x86-64-generic-squashfs-combined.img.gz"
     		md5 = ""
     	end
     elseif board_name == "x86_generic" then
