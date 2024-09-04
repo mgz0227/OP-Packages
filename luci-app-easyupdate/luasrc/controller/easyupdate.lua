@@ -23,12 +23,12 @@ function index()
 	if r then
 	    c:commit("easyupdate")
 	end
-	entry({"admin", "services", "easyupdate"}, cbi("easyupdate"),_("EasyUpdate"), 99).dependent = true
-	entry({"admin", "services", "easyupdate", "getver"}, call("getver")).leaf = true
-	entry({"admin", "services", "easyupdate", "download"}, call("download")).leaf = true
-	entry({"admin", "services", "easyupdate", "getlog"}, call("getlog")).leaf = true
-	entry({"admin", "services", "easyupdate", "check"}, call("check")).leaf = true
-	entry({"admin", "services", "easyupdate", "flash"}, call("flash")).leaf = true
+	entry({"admin", "system", "easyupdate"}, cbi("easyupdate"),_("EasyUpdate"), 99).dependent = true
+	entry({"admin", "system", "easyupdate", "getver"}, call("getver")).leaf = true
+	entry({"admin", "system", "easyupdate", "download"}, call("download")).leaf = true
+	entry({"admin", "system", "easyupdate", "getlog"}, call("getlog")).leaf = true
+	entry({"admin", "system", "easyupdate", "check"}, call("check")).leaf = true
+	entry({"admin", "system", "easyupdate", "flash"}, call("flash")).leaf = true
 end
 
 function Split(str, delim, maxNb)  
@@ -59,8 +59,8 @@ end
 function getver()
 	local e={}
     e.newver=luci.sys.exec("/usr/bin/easyupdate.sh -c")
-    e.newver=e.newver:sub(0,-2)
-    e.newverint=os.time({day=e.newver:sub(7,8), month=e.newver:sub(5,6), year=e.newver:sub(1,4), hour=e.newver:sub(10,11), min=e.newver:sub(12,13), sec=e.newver:sub(14,15)})
+    e.newver=e.newver:sub(1,10)
+    e.newverint=os.time({day=e.newver:sub(1,2), month=e.newver:sub(4,5), year=e.newver:sub(7,10), hour=0, min=0, sec=0})
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)
 end
@@ -68,7 +68,7 @@ end
 function download()
 	local e={}
 	ret=luci.sys.exec("/usr/bin/easyupdate.sh -d")
-	e.data=ret:match("openwrt.+%.img%.gz")
+	e.data=ret:match("MeowWrt.+%.img%.gz")
 	e.code=1
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)
