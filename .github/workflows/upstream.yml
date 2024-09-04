@@ -176,8 +176,7 @@ jobs:
         git_clone https://github.com/honwen/luci-app-aliddns
         git_clone https://github.com/peter-tank/luci-app-dnscrypt-proxy2
         git_clone https://github.com/NateLol/luci-app-oled
-        git_clone https://github.com/sundaqiang/openwrt-packages && mv -n openwrt-packages/luci-* ./; rm -rf luci-app-easyupdate openwrt-packages
-        git_clone https://github.com/mgz0227/easyupdate && mv -n easyupdate/luci-app-easyupdate ./; rm -rf easyupdate
+        git_clone https://github.com/sundaqiang/openwrt-packages && mv -n openwrt-packages/luci-* ./; rm -rf openwrt-packages
         git_clone https://github.com/pymumu/luci-app-smartdns
         git_clone https://github.com/CHN-beta/rkp-ipid
         git_clone https://github.com/Erope/openwrt_nezha nezha && mvdir nezha
