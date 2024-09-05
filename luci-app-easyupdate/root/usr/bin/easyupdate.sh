@@ -30,19 +30,25 @@ EOF
 function getCloudVer() {
     checkEnv
     github=$(uci get easyupdate.main.github)
-    github=(${github//// })
     
-    # 获取 GitHub API 的最新版本信息并检查错误
-    response=$(curl -s --fail "https://api.github.com/repos/${github[2]}/${github[3]}/releases/latest")
-    if [ $? -ne 0 ]; then
-        echo "Error fetching release information."
+    if [ -z "$github" ]; then
+        writeLog "Error: No GitHub address configured."
         return 1
     fi
-
-    # 提取版本号，并用 sed 过滤格式
-    echo "$response" | jsonfilter -e '@.tag_name' | sed -E 's/^([0-9]{2}\.[0-9]{2}\.[0-9]{4}).*/\1/'
+    
+    writeLog "Fetching latest release from GitHub for: $github"
+    github=(${github//// })
+    
+    version=$(curl -s --fail "https://api.github.com/repos/${github[2]}/${github[3]}/releases/latest" | jsonfilter -e '@.tag_name')
+    
+    if [ -z "$version" ]; then
+        writeLog "Error: Failed to fetch version information from GitHub."
+        return 1
+    fi
+    
+    writeLog "Cloud version found: $version"
+    echo "$version" | sed -e 's/^([0-9]{2}\.[0-9]{2}\.[0-9]{4}).*/\1/'
 }
-
 
 function downCloudVer() {
     checkEnv
