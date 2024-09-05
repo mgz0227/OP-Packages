@@ -47,10 +47,17 @@ function getCloudVer() {
 function downCloudVer() {
     checkEnv
     writeLog 'Get GitHub project address(读取github项目地址)'
+    
     github=$(uci get easyupdate.main.github)
-    writeLog "Github project address(github项目地址): $github"
+    if [ -z "$github" ]; then
+        writeLog "Error: GitHub address not found in UCI configuration."
+        return 1
+    fi
+    
+    writeLog "GitHub project address(github项目地址): $github"
     github=(${github//// })
     
+    # 检查是否 EFI 固件
     writeLog 'Check whether EFI firmware is available(判断是否EFI固件)'
     if [ -d "/sys/firmware/efi/" ]; then
         suffix="combined-efi.img.gz"
@@ -59,46 +66,51 @@ function downCloudVer() {
     fi
     writeLog "Whether EFI firmware is available(是否EFI固件): $suffix"
 
-    writeLog 'Get the cloud firmware link(获取云端固件链接)'
-    
-    # 获取 GitHub API 的最新发布版本信息
+    # 获取最新发布版本信息
+    writeLog 'Fetching release information from GitHub(从GitHub获取发布信息)'
     response=$(curl -s --fail "https://api.github.com/repos/${github[2]}/${github[3]}/releases/latest")
-    if [ $? -ne 0 ]; then
-        writeLog "Error fetching release information."
+    if [ $? -ne 0 ] || [ -z "$response" ]; then
+        writeLog "Error: Failed to fetch release information from GitHub."
         return 1
     fi
-
-    # 提取 assets 中的下载链接并匹配指定的 suffix
+    
+    # 提取固件下载链接
+    writeLog 'Extracting firmware download URL(提取固件下载链接)'
     url=$(echo "$response" | jsonfilter -e '@.assets[*].browser_download_url' | sed -n "/$suffix/p")
     
     if [ -z "$url" ]; then
         writeLog "Error: No matching firmware found for suffix $suffix."
         return 1
     fi
-
+    
     writeLog "Firmware download URL: $url"
-
-    # 将下载的文件名分割出来
+    
+    # 提取文件名
     fileName=(${url//// })
+    if [ -z "${fileName[7]}" ]; then
+        writeLog "Error: Failed to extract file name from URL."
+        return 1
+    fi
 
     # 下载 SHA256 校验文件
-    writeLog "Downloading SHA256 checksum file."
-    curl -o "/tmp/${fileName[7]}-sha256" -L "$mirror${url/${fileName[7]}/sha256sums}"
+    writeLog "Downloading SHA256 checksum file(下载SHA256校验文件)."
+    curl -s --fail -o "/tmp/${fileName[7]}-sha256" -L "$mirror${url/${fileName[7]}/sha256sums}"
     if [ $? -ne 0 ]; then
-        writeLog "Error downloading SHA256 checksum file."
+        writeLog "Error: Failed to download SHA256 checksum file."
         return 1
     fi
 
     # 下载固件文件并将日志记录到 easyupdate.log
-    writeLog "Downloading firmware file."
-    curl -o "/tmp/${fileName[7]}" -L "$mirror$url" >/tmp/easyupdate.log 2>&1 &
+    writeLog "Downloading firmware file(下载固件文件)."
+    curl -s --fail -o "/tmp/${fileName[7]}" -L "$mirror$url" >/tmp/easyupdate.log 2>&1 &
     if [ $? -ne 0 ]; then
-        writeLog "Error downloading firmware file."
+        writeLog "Error: Failed to download firmware file."
         return 1
     fi
 
-    writeLog "Firmware and checksum files downloaded successfully."
+    writeLog "Firmware and checksum files downloaded successfully(固件和校验文件下载成功)."
 }
+
 
 
 function flashFirmware() {
