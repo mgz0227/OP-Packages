@@ -28,35 +28,78 @@ EOF
 }
 
 function getCloudVer() {
-	checkEnv
-	github=$(uci get easyupdate.main.github)
-	github=(${github//// })
-	curl "https://api.github.com/repos/${github[2]}/${github[3]}/releases/latest" | jsonfilter -e '@.tag_name' | sed -e 's/^([0-9]{2}\.[0-9]{2}\.[0-9]{4}).*/\1/'
+    checkEnv
+    github=$(uci get easyupdate.main.github)
+    github=(${github//// })
+    
+    # 获取 GitHub API 的最新版本信息并检查错误
+    response=$(curl -s --fail "https://api.github.com/repos/${github[2]}/${github[3]}/releases/latest")
+    if [ $? -ne 0 ]; then
+        echo "Error fetching release information."
+        return 1
+    fi
+
+    # 提取版本号，并用 sed 过滤格式
+    echo "$response" | jsonfilter -e '@.tag_name' | sed -E 's/^([0-9]{2}\.[0-9]{2}\.[0-9]{4}).*/\1/'
 }
 
+
 function downCloudVer() {
-	checkEnv
-	writeLog 'Get github project address(读取github项目地址)'
-	github=$(uci get easyupdate.main.github)
-	writeLog "Github project address(github项目地址):$github"
-	github=(${github//// })
-	writeLog 'Check whether EFI firmware is available(判断是否EFI固件)'
-	if [ -d "/sys/firmware/efi/" ]; then
-		suffix="combined-efi.img.gz"
-	else
-		suffix="combined.img.gz"
-	fi
-	writeLog "Whether EFI firmware is available(是否EFI固件):$suffix"
-	writeLog 'Get the cloud firmware link(获取云端固件链接)'
-	url=$(curl "https://api.github.com/repos/${github[2]}/${github[3]}/releases/latest" | jsonfilter -e '@.assets[*].browser_download_url' | sed -n "/$suffix/p")
-	writeLog "Cloud firmware link(云端固件链接):$url"
-	mirror=$(uci get easyupdate.main.mirror)
-	writeLog "Use mirror URL(使用镜像网站):$mirror"
-	fileName=(${url//// })
-	curl -o "/tmp/${fileName[7]}-sha256" -L "$mirror${url/${fileName[7]}/sha256sums}"
-	curl -o "/tmp/${fileName[7]}" -L "$mirror$url" >/tmp/easyupdate.log 2>&1 &
-	writeLog 'Start downloading firmware, log output in /tmp/easyupdate.log(开始下载固件，日志输出在/tmp/easyupdate.log)'
+    checkEnv
+    writeLog 'Get GitHub project address(读取github项目地址)'
+    github=$(uci get easyupdate.main.github)
+    writeLog "Github project address(github项目地址): $github"
+    github=(${github//// })
+    
+    writeLog 'Check whether EFI firmware is available(判断是否EFI固件)'
+    if [ -d "/sys/firmware/efi/" ]; then
+        suffix="combined-efi.img.gz"
+    else
+        suffix="combined.img.gz"
+    fi
+    writeLog "Whether EFI firmware is available(是否EFI固件): $suffix"
+
+    writeLog 'Get the cloud firmware link(获取云端固件链接)'
+    
+    # 获取 GitHub API 的最新发布版本信息
+    response=$(curl -s --fail "https://api.github.com/repos/${github[2]}/${github[3]}/releases/latest")
+    if [ $? -ne 0 ]; then
+        writeLog "Error fetching release information."
+        return 1
+    fi
+
+    # 提取 assets 中的下载链接并匹配指定的 suffix
+    url=$(echo "$response" | jsonfilter -e '@.assets[*].browser_download_url' | sed -n "/$suffix/p")
+    
+    if [ -z "$url" ]; then
+        writeLog "Error: No matching firmware found for suffix $suffix."
+        return 1
+    fi
+
+    writeLog "Firmware download URL: $url"
+
+    # 将下载的文件名分割出来
+    fileName=(${url//// })
+
+    # 下载 SHA256 校验文件
+    writeLog "Downloading SHA256 checksum file."
+    curl -o "/tmp/${fileName[7]}-sha256" -L "$mirror${url/${fileName[7]}/sha256sums}"
+    if [ $? -ne 0 ]; then
+        writeLog "Error downloading SHA256 checksum file."
+        return 1
+    fi
+
+    # 下载固件文件并将日志记录到 easyupdate.log
+    writeLog "Downloading firmware file."
+    curl -o "/tmp/${fileName[7]}" -L "$mirror$url" >/tmp/easyupdate.log 2>&1 &
+    if [ $? -ne 0 ]; then
+        writeLog "Error downloading firmware file."
+        return 1
+    fi
+
+    writeLog "Firmware and checksum files downloaded successfully."
 }
+
 
 function flashFirmware() {
 	checkEnv
