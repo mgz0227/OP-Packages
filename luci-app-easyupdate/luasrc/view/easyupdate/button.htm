@@ -3,7 +3,7 @@
 	<br>
 	<div class="cbi-value-description">
 		<span>
-		    <%:Local Firmware Version%>:<%=luci.sys.exec("grep 'DISTRIB_RELEASE' /etc/openwrt_release | cut -d '=' -f 2")%>
+		    <%:Local Firmware Version%>:<%=luci.sys.exec("cat /etc/openwrt_version")%>
 		</span>
 		<br>
 		<span id="cloudver">

@@ -4,26 +4,26 @@ function index()
 	if not nixio.fs.access("/etc/config/easyupdate") then
 		return
 	end
-	local c=luci.model.uci.cursor()
-	local r=0
+	local c = luci.model.uci.cursor()
+	local r = 0
 	if not c:get("easyupdate", "main", "mirror") then
-	    r=1
+	    r = 1
 	    c:set("easyupdate", "main", "mirror", "")
 	end
 	if not c:get("easyupdate", "main", "keepconfig") then
-	    r=1
+	    r = 1
 	    c:set("easyupdate", "main", "keepconfig", "1")
 	end
 	if not c:get("easyupdate", "main", "github") then
-	    r=1
+	    r = 1
 	    local pcall, dofile, _G = pcall, dofile, _G
-        pcall(dofile, "/etc/openwrt_release")
+	    pcall(dofile, "/etc/openwrt_version")  -- Update this line to use 'openwrt_version'
 	    c:set("easyupdate", "main", "github", _G.DISTRIB_GITHUB)
 	end
 	if r then
 	    c:commit("easyupdate")
 	end
-	entry({"admin", "system", "easyupdate"}, cbi("easyupdate"),_("EasyUpdate"), 99).dependent = true
+	entry({"admin", "system", "easyupdate"}, cbi("easyupdate"), _("EasyUpdate"), 99).dependent = true
 	entry({"admin", "system", "easyupdate", "getver"}, call("getver")).leaf = true
 	entry({"admin", "system", "easyupdate", "download"}, call("download")).leaf = true
 	entry({"admin", "system", "easyupdate", "getlog"}, call("getlog")).leaf = true
@@ -68,12 +68,12 @@ function getver()
     local year = tonumber(e.newver:sub(7,10))
     e.newverint = os.time({day=day, month=month, year=year, hour=0, min=0, sec=0})
 
-    -- 本地版本时间戳
-    local localver = luci.sys.exec("grep 'DISTRIB_RELEASE' /etc/openwrt_release | cut -d '=' -f 2")
-    local localday = tonumber(localver:sub(1,2))
-    local localmonth = tonumber(localver:sub(4,5))
-    local localyear = tonumber(localver:sub(7,10))
-    local nowverint = os.time({day=localday, month=localmonth, year=localyear, hour=0, min=0, sec=0})
+	-- 本地版本时间戳
+	local localver = luci.sys.exec("cat /etc/openwrt_version")
+	local localmonth = tonumber(localver:sub(1,2))
+	local localday = tonumber(localver:sub(4,5))
+	local localyear = tonumber(localver:sub(7,10))
+	local nowverint = os.time({day=localday, month=localmonth, year=localyear, hour=0, min=0, sec=0})
 
     -- 返回结果
     e.localverint = nowverint
