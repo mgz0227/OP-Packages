@@ -87,33 +87,32 @@ function update_status_message(type, content) {
 
 function getver() {
     XHR.get('<%=url([[admin]], [[system]], [[easyupdate]], [[getver]])%>', null,
-    	function(x, data) {
+        function(x, data) {
             const tb = document.getElementById('cloudver');
             const up = document.getElementById('update');
             if (data && tb) {
                 if (data.newver) {
-                    tb.innerHTML = '<%:Cloud Firmware Version%>:' + data.newver;
-                    nowverint = <%=os.time({
-    										day = self.versions:sub(1, 2),
-    										month = self.versions:sub(4, 5),
-    										year = self.versions:sub(7, 10)
-												})%>
-                    if (data.newverint > nowverint){
-                        up.value = '<%:Download Firmware%>'
-                        up.disabled = false
+                    tb.innerHTML = 'Cloud Firmware Version: ' + data.newver;
+                    
+                    // 比较版本
+                    if (data.newverint > data.localverint) {
+                        up.value = 'Download Firmware';
+                        up.disabled = false;
                         up.setAttribute('newver', data.newver);
-                    }else{
-                        up.value = '<%:Is the latest%>'
-                        up.disabled = true
+                    } else {
+                        up.value = 'Is the latest';
+                        up.disabled = true;
                     }
-                }else{
-                    tb.innerHTML = '<%:Cloud Firmware Version%>:<%:Collecting data...%>';
-                    up.value = '<%:Retry Firmware Check%>'
-                    up.disabled = false
+                } else {
+                    tb.innerHTML = 'Cloud Firmware Version: Collecting data...';
+                    up.value = 'Retry Firmware Check';
+                    up.disabled = false;
                 }
             }
         }
     );
+}
+
 	XHR.get('<%=url([[admin]], [[system]], [[easyupdate]], [[check]])%>', {file: ''}, (x, r) => {
 		if (r.code == 1 && r.data.indexOf("OK") > -1) {
 			const tb = document.getElementById('update');

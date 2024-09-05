@@ -58,9 +58,25 @@ end
 
 function getver()
 	local e={}
-    e.newver=luci.sys.exec("/usr/bin/easyupdate.sh -c")
-    e.newver=e.newver:sub(1,10)
-    e.newverint=os.time({day=e.newver:sub(1,2), month=e.newver:sub(4,5), year=e.newver:sub(7,10), hour=0, min=0, sec=0})
+    -- 获取云端版本号
+    e.newver = luci.sys.exec("/usr/bin/easyupdate.sh -c")
+    e.newver = e.newver:sub(1,10)  -- 假设日期格式是 "dd.mm.yyyy"
+    
+    -- 转换为时间戳
+    local day = tonumber(e.newver:sub(1,2))
+    local month = tonumber(e.newver:sub(4,5))
+    local year = tonumber(e.newver:sub(7,10))
+    e.newverint = os.time({day=day, month=month, year=year, hour=0, min=0, sec=0})
+
+    -- 本地版本时间戳
+    local localver = luci.sys.exec("grep 'DISTRIB_RELEASE' /etc/openwrt_release | cut -d '=' -f 2")
+    local localday = tonumber(localver:sub(1,2))
+    local localmonth = tonumber(localver:sub(4,5))
+    local localyear = tonumber(localver:sub(7,10))
+    local nowverint = os.time({day=localday, month=localmonth, year=localyear, hour=0, min=0, sec=0})
+
+    -- 返回结果
+    e.localverint = nowverint
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)
 end
