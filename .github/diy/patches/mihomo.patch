@@ -1,26 +1,10 @@
---- a/mihomo/files/mihomo.init
-+++ b/mihomo/files/mihomo.init
-@@ -275,11 +275,9 @@ start_service() {
- 	procd_set_param user "$MIHOMO_USER"
- 	procd_set_param group "$MIHOMO_GROUP"
- 
--	procd_add_jail mihomo requirejail
- 	procd_add_jail_mount "$PROG" /etc/TZ /etc/localtime /etc/hosts /etc/ssl/certs /proc
- 	procd_add_jail_mount_rw "$RUN_DIR" /dev/net
- 	procd_set_param capabilities /etc/capabilities/mihomo.json
--	procd_set_param no_new_privs 1
- 
- 	procd_close_instance
- 	# transparent proxy
-
---- a/mihomo/files/scripts/constants.sh
-+++ b/mihomo/files/scripts/constants.sh
-@@ -1,7 +1,7 @@
- #!/bin/sh
- 
- # permission
--MIHOMO_USER="mihomo"
-+MIHOMO_USER="root"
- MIHOMO_GROUP="mihomo"
- 
- # routing
+--- a/mihomo/Makefile
++++ b/mihomo/Makefile
+@@ -31,7 +31,7 @@ define Package/mihomo
+   CATEGORY:=Network
+   TITLE:=A rule based proxy in Go.
+   URL:=https://wiki.metacubex.one
+-  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +curl +yq firewall4 +kmod-nft-tproxy +ip-full +kmod-tun
++  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +curl +yq firewall4 +kmod-nft-tproxy +ip-full +kmod-tun +procd-ujail
+   USERID:=mihomo=7890:mihomo=7890
+ endef
