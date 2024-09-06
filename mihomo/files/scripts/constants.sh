@@ -1,15 +1,17 @@
 #!/bin/sh
 
 # permission
-MIHOMO_USER="root"
+MIHOMO_USER="mihomo"
 MIHOMO_GROUP="mihomo"
 
 # routing
 FW_TABLE="mihomo"
 FW_MARK="0x80"
 FW_MARK_MASK="0xFF"
-RULE_PREF="1024"
-ROUTE_TABLE="80"
+TCP_RULE_PREF="1024"
+UDP_RULE_PREF="1025"
+TPROXY_ROUTE_TABLE="80"
+TUN_ROUTE_TABLE="81"
 TUN_DEVICE="tun"
 
 # paths
