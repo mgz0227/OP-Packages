@@ -49,24 +49,24 @@
 
 --- a/my-dnshelper/files/etc/config/my-dnshelper
 +++ b/my-dnshelper/files/etc/config/my-dnshelper
-@@ -8,7 +8,7 @@ config my-dnshelper
- 	option block_games '0'
- 	option block_short '0'
- 	option block_google '0'
--	option dns_detect '0'
-+	option dns_detect '1'
+@@ -11,7 +11,7 @@ config my-dnshelper
+ 	option dns_detect '0'
  	option app_test '1'
  	option dns_cache '600'
- 	option dns_check '1'
-@@ -20,6 +20,5 @@ config my-dnshelper
+-	option dns_check '1'
++	option dns_check '0'
+ 	option filter_aaaa '0'
+ 	option use_mul '0'
+ 	option use_sec '0'
+@@ -20,6 +20,7 @@ config my-dnshelper
  	option dns_log '0'
  	option rev_log '0'
  	option my_github '0'
 -	option time_update '12'
--
--
 +	option time_update '24'
 +	list url 'https://fastly.jsdelivr.net/gh/privacy-protection-tools/anti-AD@master/adblock-for-dnsmasq.conf'
+ 
+ 
 
 --- a/my-dnshelper/files/usr/share/my-dnshelper/comm
 +++ b/my-dnshelper/files/usr/share/my-dnshelper/comm
