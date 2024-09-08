@@ -108,9 +108,9 @@ date_default_timezone_set('Asia/Shanghai');
 <script>
     let city = 'Beijing'; 
     const apiKey = 'fc8bd2637768c286c6f1ed5f1915eb22'; 
-    let systemEnabled = true; 
-    let weatherEnabled = true;
-    let websiteCheckEnabled = true;
+    let systemEnabled = false; 
+    let weatherEnabled = false;
+    let websiteCheckEnabled = false;
     let lastHour = -1; 
 
     function speakMessage(message) {
@@ -445,7 +445,7 @@ date_default_timezone_set('Asia/Shanghai');
             background: url('/nekoclash/assets/img/3.svg') no-repeat center center;
             background-size: cover;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            display: flex;
+            display: none;
             flex-direction: column;
             align-items: center;
             border-radius: 50%;
