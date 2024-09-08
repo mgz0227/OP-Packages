@@ -272,7 +272,6 @@ jobs:
         git_clone https://github.com/liudf0716/luci-app-kcptun
         git_clone https://github.com/liudf0716/luci-app-xfrpc
         git_clone https://github.com/liudf0716/luci-app-apfree-wifidog
-        git_clone https://github.com/liudf0716/actions-apfree-wifidog && mv actions-apfree-wifidog/apfree-wifidog ./; rm -rf actions-apfree-wifidog
         git_clone https://github.com/Akimio521/luci-app-gecoosac
         git_clone https://github.com/ilxp/luci-app-ikoolproxy
         git_clone https://github.com/animegasan/luci-app-droidnet
@@ -294,6 +293,7 @@ jobs:
         git_clone https://github.com/rq1025330/luci-app-virtualhere
         git_clone https://github.com/luochongjun/luci-app-dynv6
         git_clone https://github.com/nicholas9698/luci-app-campusnet
+        git_clone https://github.com/tanghammer/luci-app-switchtools
         ) &
         (
         git_clone https://github.com/jackpang960/luci-app-hypermodem
@@ -337,9 +337,9 @@ jobs:
         multimedia/UnblockNeteaseMusic net/amule net/softethervpn5 net/antileech multimedia/gmediarender net/go-aliyundrive-webdav \
         net/qBittorrent-static net/phtunnel net/frp net/headscale \
         net/uugamebooster net/verysync net/vlmcsd net/dnsforwarder net/tcpping net/netatalk net/pgyvpn
-        git_sparse_clone openwrt-23.05 "https://github.com/openwrt/packages" \
+        git_sparse_clone master  "https://github.com/openwrt/packages" \
         utils/coremark utils/watchcat utils/dockerd utils/cgroupfs-mount net/uwsgi net/p910nd net/ddns-scripts net/smartdns net/curl \
-        net/ariang net/rp-pppoe net/tailscale
+        net/ariang net/tailscale multimedia/yt-dlp
         ) &
         (
         git_sparse_clone openwrt-23.05 "https://github.com/openwrt/openwrt" \
