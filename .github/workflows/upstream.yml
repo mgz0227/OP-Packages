@@ -264,7 +264,7 @@ jobs:
         git_clone https://github.com/Carseason/openwrt-themedog && mv -n openwrt-themedog/luci/* ./;rm -rf openwrt-themedog
         git_clone https://github.com/Carseason/openwrt-app-actions Carseason && mv -n Carseason/applications/* ./;rm -rf Carseason
         # git_clone https://github.com/VergilGao/openwrt-sblite && mvdir openwrt-sblite
-        # git_clone https://github.com/Thaolga/luci-app-nekoclash
+        git_clone https://github.com/Thaolga/luci-app-nekoclash
         git_clone https://github.com/nosignals/openwrt-neko && mv openwrt-neko/luci-app-neko ./;rm -rf openwrt-neko
         ) &
         (
