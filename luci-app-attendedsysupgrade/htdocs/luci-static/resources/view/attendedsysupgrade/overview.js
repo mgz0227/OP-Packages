@@ -393,7 +393,7 @@ return view.extend({
 								if (keep) {
 									ui.awaitReconnect(window.location.host);
 								} else {
-									ui.awaitReconnect('192.168.1.1', 'openwrt.lan');
+									ui.awaitReconnect('10.0.0.1', 'MeowWrt.lan');
 								}
 							});
 						}
@@ -607,7 +607,7 @@ return view.extend({
 			),
 			E('p', [_('更多个性化定制请使用网页版: '),E('a', {
 				'class': '',
-				'href': 'https://openwrt.ai',
+				'href': 'https://op.miaogongzi.cc',
 				'target': '_balank',
 			}, _('在线定制网页版'))]),
 			E('p', [_('非定制固件请在此更新: '),E('a', {
