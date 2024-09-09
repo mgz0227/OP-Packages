@@ -11,6 +11,7 @@
 +    let weatherEnabled = false;
 +    let websiteCheckEnabled = false;
      let lastHour = -1; 
+ 
      function speakMessage(message) {
 @@ -445,7 +445,7 @@ function saveCity() {
              background: url('/nekoclash/assets/img/3.svg') no-repeat center center;
