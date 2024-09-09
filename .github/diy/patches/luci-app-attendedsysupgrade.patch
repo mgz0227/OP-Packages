@@ -1,6 +1,6 @@
 --- a/luci-app-attendedsysupgrade/htdocs/luci-static/resources/view/attendedsysupgrade/overview.js
 +++ b/luci-app-attendedsysupgrade/htdocs/luci-static/resources/view/attendedsysupgrade/overview.js
-@@ -108,7 +108,7 @@ return view.extend({
+@@ -111,7 +111,7 @@ return view.extend({
  
  		if (image.name != undefined) {
  			this.data.sha256_unsigned = image.sha256_unsigned;
@@ -9,7 +9,16 @@
  
  			let keep = E('input', { type: 'checkbox' });
  			keep.checked = true;
-@@ -398,14 +398,11 @@ return view.extend({
+@@ -393,7 +393,7 @@ return view.extend({
+ 								if (keep) {
+ 									ui.awaitReconnect(window.location.host);
+ 								} else {
+-									ui.awaitReconnect('192.168.1.1', 'openwrt.lan');
++									ui.awaitReconnect('10.0.0.1', 'kwrt.lan');
+ 								}
+ 							});
+ 						}
+@@ -401,14 +401,11 @@ return view.extend({
  			});
  	},
  
@@ -26,7 +35,7 @@
  
  		ui.showModal(_('Searching...'), [
  			E(
-@@ -435,40 +432,12 @@ return view.extend({
+@@ -438,40 +435,12 @@ return view.extend({
  				]);
  				return;
  			}
@@ -68,7 +77,7 @@
  
  			// allow to re-install running firmware in advanced mode
  			if (this.data.advanced_mode == 1) {
-@@ -482,7 +451,7 @@ return view.extend({
+@@ -485,7 +454,7 @@ return view.extend({
  					request: {
  						profile: this.firmware.profile,
  						version: candidates[0][0],
@@ -77,7 +86,7 @@
  					},
  				};
  
-@@ -565,6 +534,9 @@ return view.extend({
+@@ -568,6 +537,9 @@ return view.extend({
  					),
  					E('div', { class: 'right' }, [
  						E('div', { class: 'btn', click: ui.hideModal }, _('Close')),
@@ -87,7 +96,7 @@
  					]),
  				]);
  			}
-@@ -593,6 +565,12 @@ return view.extend({
+@@ -596,6 +568,12 @@ return view.extend({
  		this.data.revision = response[1].release.revision;
  
  		this.data.efi = response[2];
@@ -100,13 +109,13 @@
  
  		this.data.url = uci.get_first('attendedsysupgrade', 'server', 'url');
  		this.data.advanced_mode =
-@@ -624,6 +602,16 @@ return view.extend({
+@@ -627,6 +605,16 @@ return view.extend({
  					this.data.revision
  				)
  			),
 +			E('p', [_('更多个性化定制请使用网页版: '),E('a', {
 +				'class': '',
-+				'href': 'https://openwrt.ai',
++				'href': 'https://op.miaogongzi.cc',
 +				'target': '_balank',
 +			}, _('在线定制网页版'))]),
 +			E('p', [_('非定制固件请在此更新: '),E('a', {
