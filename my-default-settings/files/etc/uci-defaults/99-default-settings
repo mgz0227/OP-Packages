@@ -1,6 +1,6 @@
 #!/bin/sh
 
-sed -i "s/dl.openwrt.ai/op.miaogongzi.cc/" /etc/opkg/distfeeds.conf
+
 
 ([ -x /bin/bash ] && ! grep -q "^root.*bash" /etc/passwd) && sed -i "s/^\(root.*\/\)ash/\1bash/g" /etc/passwd
 
@@ -139,57 +139,48 @@ else
 fi
 
 if [[ ! "$version" || "$version" -lt 1 ]]; then
-    uci -q get dhcp.@dnsmasq[0] || uci -q add dhcp dnsmasq
-    uci -q set dhcp.@dnsmasq[0].cachesize="$cachesize"
-    uci -q set dhcp.@dnsmasq[0].dnsforwardmax="$dnsforwardmax"
-    uci -q set dhcp.@dnsmasq[0].localservice='0'
-    uci -q set dhcp.@dnsmasq[0].localise_queries='1'
-    uci -q set dhcp.@dnsmasq[0].rebind_protection='0'
-    uci -q set dhcp.@dnsmasq[0].rebind_localhost='1'
-    uci commit dhcp
-    uci -q set system.@system[0].zram_comp_algo='zstd'
-    uci -q set system.@system[0].zram_size_mb="$(expr $memtotal / 1024 / 3)"
-    uci commit system
-    
-    # sysctl overwrite
-    SYSCTL_LOCAL=/etc/sysctl.d/50-local.conf
-    mkdir -p /etc/sysctl.d
-    echo -n >$SYSCTL_LOCAL
-    echo net.nf_conntrack_max=$nf_conntrack_max >>$SYSCTL_LOCAL
-    echo net.core.rmem_max=$nf_conntrack_max >>$SYSCTL_LOCAL
-
-    version=1  # 将 version 设置为 1
-    
-    # 保存 version 到 uci 配置
-    uci -q set base_config.@status[0].version=1
-    uci commit base_config
-fi
+	uci -q get dhcp.@dnsmasq[0] || uci -q add dhcp dnsmasq
+	uci -q set dhcp.@dnsmasq[0].cachesize="$cachesize"
+	uci -q set dhcp.@dnsmasq[0].dnsforwardmax="$dnsforwardmax"
+	uci -q set dhcp.@dnsmasq[0].localservice='0'
+	uci -q set dhcp.@dnsmasq[0].localise_queries='1'
+	uci -q set dhcp.@dnsmasq[0].rebind_protection='0'
+	uci -q set dhcp.@dnsmasq[0].rebind_localhost='1'
+	uci commit dhcp
+	uci -q set system.@system[0].zram_comp_algo='zstd'
+	uci -q set system.@system[0].zram_size_mb="$(expr $memtotal / 1024 / 3)"
+	uci commit system
+	
+	# sysctl overwrite
+	SYSCTL_LOCAL=/etc/sysctl.d/50-local.conf
+	mkdir -p /etc/sysctl.d
+	echo -n >$SYSCTL_LOCAL
+	echo net.nf_conntrack_max=$nf_conntrack_max >>$SYSCTL_LOCAL
+	echo net.core.rmem_max=$nf_conntrack_max >>$SYSCTL_LOCAL
 
 
 if [ -n "$(command -v nginx)" ]; then
-	if [ -z "`uci -q get nginx.default_server`" ]; then
-		uci -q set nginx.default_server=server
-		uci -q set nginx.default_server.server_name='miaogongzi'
-		uci -q add_list nginx.default_server.listen='80 default_server'
-		uci -q add_list nginx.default_server.listen='[::]:80 default_server'
-		uci -q add_list nginx.default_server.include='conf.d/*.locations'
-		uci -q set nginx.default_server.access_log='off; # logd openwrt'
-		uci commit nginx
-	fi
+if [ -z "`uci -q get nginx.default_server`" ]; then
+	uci -q set nginx.default_server=server
+	uci -q set nginx.default_server.server_name='miaogongzi'
+	uci -q add_list nginx.default_server.listen='80 default_server'
+	uci -q add_list nginx.default_server.listen='[::]:80 default_server'
+	uci -q add_list nginx.default_server.include='conf.d/*.locations'
+	uci -q set nginx.default_server.access_log='off; # logd openwrt'
+	uci commit nginx
 fi
-
 if [ -z "`uci -q get dhcp.default_server`" ]; then
 	uci -q set dhcp.default_server=domain
 	uci -q set dhcp.default_server.name='miaogongzi'
 	uci -q set dhcp.default_server.ip='192.168.3.1'
 	uci -q set dhcp.default_server.comments='后台地址'
 	uci commit dhcp
+fi 
+	version=1
 fi
-
 
 grep -q "uwsgi_read_timeout" /etc/nginx/conf.d/luci.locations 2>/dev/null || {
 	sed -i "s/include uwsgi_params;/include uwsgi_params;\n\t\tuwsgi_read_timeout 300s;/" /etc/nginx/conf.d/luci.locations
-
 	sed -i '/ubus_parallel_req/a\        ubus_script_timeout 600;' /etc/nginx/conf.d/luci.locations
 }
 grep -q "client_max_body_size" /etc/nginx/conf.d/luci.locations || sed -i '/client_max_body_size/a\\tclient_body_buffer_size 512k;' /etc/nginx/uci.conf.template
@@ -198,8 +189,8 @@ sed -i "s/large_client_header_buffers 2 1k/large_client_header_buffers 4 512k/" 
 fi
 
 rm -rf /tmp/luci-*
-#uci -q set base_config.@status[0].version=$version
-#uci commit base_config
+uci -q set base_config.@status[0].version=$version
+uci commit base_config
 
 modprobe xt_FULLCONENAT || {
 [ "$(iptables -L -t nat | grep "FULLCONENAT")" ] || {
@@ -207,5 +198,3 @@ uci -q set firewall.@defaults[0].fullcone='0'
 uci commit firewall
 }
 }
-
-rm -f /etc/uci-defaults/99-default-settings
