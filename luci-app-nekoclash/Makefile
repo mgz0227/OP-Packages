@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 PKG_MAINTAINER:=Thaolga <https://github.com/Thaolga/luci-app-nekoclash>
 PKG_NAME:=luci-app-nekoclash
 PKG_VERSION:=1.2.8
-PKG_RELEASE:=29
+PKG_RELEASE:=30
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 
