@@ -13,9 +13,10 @@ function logMessage($message) {
 
 function saveSubscriptionUrlToFile($url, $file) {
     $success = file_put_contents($file, $url) !== false;
-    logMessage($success ? "Subscription link has been saved to $file" : "Failed to save subscription link to $file");
+    logMessage($success ? "订阅链接已保存到 $file" : "保存订阅链接失败到 $file");
     return $success;
 }
+
 function transformContent($content) {
     $additional_config = "
 redir-port: 7892
@@ -156,18 +157,19 @@ function saveSubscriptionContentToYaml($url, $filename) {
     global $download_path;
 
     if (preg_match('/[^A-Za-z0-9._-]/', $filename)) {
-        $message = "Filename contains illegal characters. Please use letters, numbers, dots, underscores, or hyphens.";
+        $message = "文件名包含非法字符，请使用字母、数字、点、下划线或横杠。";
         logMessage($message);
         return $message;
     }
 
     if (!is_dir($download_path)) {
         if (!mkdir($download_path, 0755, true)) {
-            $message = "Unable to create directory: $download_path";
+            $message = "无法创建目录：$download_path";
             logMessage($message);
             return $message;
         }
     }
+
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -176,20 +178,20 @@ function saveSubscriptionContentToYaml($url, $filename) {
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
     $subscription_data = curl_exec($ch);
 
-   if (curl_errno($ch)) {
-    $error_msg = curl_error($ch);
+    if (curl_errno($ch)) {
+        $error_msg = curl_error($ch);
+        curl_close($ch);
+        $message = "cURL 错误: $error_msg";
+        logMessage($message);
+        return $message;
+    }
     curl_close($ch);
-    $message = "cURL Error: $error_msg";
-    logMessage($message);
-    return $message;
-}
-curl_close($ch);
 
-if ($subscription_data === false || empty($subscription_data)) {
-    $message = "Unable to retrieve subscription content. Please check if the link is correct.";
-    logMessage($message);
-    return $message;
-}
+    if ($subscription_data === false || empty($subscription_data)) {
+        $message = "无法获取订阅内容。请检查链接是否正确。";
+        logMessage($message);
+        return $message;
+    }
 
     if (base64_decode($subscription_data, true) !== false) {
         $decoded_data = base64_decode($subscription_data);
@@ -199,11 +201,11 @@ if ($subscription_data === false || empty($subscription_data)) {
 
     $transformed_data = transformContent($decoded_data);
 
-$file_path = $download_path . $filename;
-$success = file_put_contents($file_path, $transformed_data) !== false;
-$message = $success ? "Content successfully saved to: $file_path" : "File save failed.";
-logMessage($message);
-return $message;
+    $file_path = $download_path . $filename;
+    $success = file_put_contents($file_path, $transformed_data) !== false;
+    $message = $success ? "内容已成功保存到：$file_path" : "文件保存失败。";
+    logMessage($message);
+    return $message;
 }
 
 function generateShellScript() {
@@ -218,7 +220,7 @@ DEST_PATH='/etc/neko/config/config.yaml'
 PHP_SCRIPT_PATH='$php_script_path'
 
 if [ ! -f "\$SUBSCRIPTION_FILE" ]; then
-    echo "Subscription file not found: \$SUBSCRIPTION_FILE"
+    echo "未找到订阅文件: \$SUBSCRIPTION_FILE"
     exit 1
 fi
 
@@ -232,26 +234,26 @@ EOF
 
 UPDATED_FILE="\$DOWNLOAD_PATH/config.yaml"
 if [ ! -f "\$UPDATED_FILE" ]; then
-    echo "Updated configuration file not found: \$UPDATED_FILE"
+    echo "未找到更新后的配置文件: \$UPDATED_FILE"
     exit 1
 fi
 
 mv "\$UPDATED_FILE" "\$DEST_PATH"
 
 if [ \$? -eq 0 ]; then
-    echo "Configuration file successfully updated and moved to \$DEST_PATH"
+    echo "配置文件已成功更新并移动到 \$DEST_PATH"
 else
-    echo "Failed to move configuration file to \$DEST_PATH"
+    echo "配置文件移动到 \$DEST_PATH 失败"
     exit 1
 fi
 EOD;
 
-$success = file_put_contents($sh_script_path, $sh_script_content) !== false;
-logMessage($success ? "Shell script successfully created and given execute permission." : "Unable to create shell script file.");
-if ($success) {
-    shell_exec("chmod +x $sh_script_path");
-}
-return $success ? "Shell script successfully created and given execute permission." : "Unable to create shell script file.";
+    $success = file_put_contents($sh_script_path, $sh_script_content) !== false;
+    logMessage($success ? "Shell 脚本已成功创建并赋予执行权限。" : "无法创建 Shell 脚本文件。");
+    if ($success) {
+        shell_exec("chmod +x $sh_script_path");
+    }
+    return $success ? "Shell 脚本已成功创建并赋予执行权限。" : "无法创建 Shell 脚本文件。";
 }
 
 function setupCronJob($cron_time) {
@@ -267,14 +269,14 @@ function setupCronJob($cron_time) {
     }
 
     $success = file_put_contents('/tmp/cron.txt', $updated_cron) !== false;
-if ($success) {
-    shell_exec('crontab /tmp/cron.txt');
-    logMessage("Cron job successfully set to run at $cron_time.");
-    return "Cron job successfully set to run at $cron_time.";
-} else {
-    logMessage("Unable to write to temporary Cron file.");
-    return "Unable to write to temporary Cron file.";
-}
+    if ($success) {
+        shell_exec('crontab /tmp/cron.txt');
+        logMessage("Cron 作业已成功设置为 $cron_time 运行。");
+        return "Cron 作业已成功设置为 $cron_time 运行。";
+    } else {
+        logMessage("无法写入临时 Cron 文件。");
+        return "无法写入临时 Cron 文件。";
+    }
 }
 
 $result = '';
@@ -293,7 +295,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result .= saveSubscriptionContentToYaml($subscription_url, $filename) . "<br>";
             $result .= generateShellScript() . "<br>";
         } else {
-            $result = "Failed to save subscription link.";
+            $result = "保存订阅链接失败。";
         }
     }
 
@@ -318,7 +320,7 @@ $current_subscription_url = getSubscriptionUrlFromFile($subscription_file);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-       <title>Mihomo Subscription Program</title> 
+    <title>Mihomo 订阅程序</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -414,51 +416,46 @@ $current_subscription_url = getSubscriptionUrlFromFile($subscription_file);
 </head>
 <body>
     <div class="container">
-        <h1>Mihomo Subscription Program (Personal Version)</h1>
-        
+        <h1>Mihomo 订阅程序（个人版）</h1>
         <form method="post" action="">
-            <label for="subscription_url">Enter Subscription Link:</label>
+            <label for="subscription_url">输入订阅链接:</label>
             <input type="text" id="subscription_url" name="subscription_url" 
                    value="<?php echo htmlspecialchars($current_subscription_url); ?>" 
                    required><br>
             
-            <label for="filename">Enter Save Filename (default: config.yaml):</label>
+            <label for="filename">输入保存文件名 (默认: config.yaml):</label>
             <input type="text" id="filename" name="filename" 
                    value="<?php echo htmlspecialchars(isset($_POST['filename']) ? $_POST['filename'] : ''); ?>" 
                    placeholder="config.yaml"><br>
             
-            <button type="submit" name="action" value="update_subscription">Update Subscription</button>
+            <button type="submit" name="action" value="update_subscription">更新订阅</button>
         </form>
-
         <form method="post" action="">
-            <label for="cron_time">Set Cron Time (e.g., 0 3 * * *):</label>
+            <label for="cron_time">设置 Cron 时间 (例如: 0 3 * * *):</label>
             <input type="text" id="cron_time" name="cron_time" 
                    value="<?php echo htmlspecialchars(isset($_POST['cron_time']) ? $_POST['cron_time'] : '0 3 * * *'); ?>" 
                    placeholder="0 3 * * *"><br>
             
-            <button type="submit" name="action" value="update_cron">Update Cron Job</button>
+            <button type="submit" name="action" value="update_cron">更新 Cron 作业</button>
         </form>
-
         <div class="help">
-            <h2 style="text-align: center;">Help Instructions</h2>
-            <p>Welcome to the Mihomo Subscription Program! Please follow the steps below:</p>
+            <h2 style="text-align: center;">帮助说明</h2>
+            <p>欢迎使用 Mihomo 订阅程序！请按照以下步骤进行操作：</p>
             <ul>
-                <li><strong>Enter Subscription Link:</strong> Input your Clash subscription link in the text box.</li>
-                <li><strong>Enter Save Filename:</strong> Specify the filename for saving the configuration, default is "config.yaml".</li>
-                <li>Click the "Update Subscription" button, the system will download the subscription content, convert it, and save it.</li>
-                <li><strong>Set Cron Time:</strong> Specify the execution time for the Cron job.</li>
-                <li>Click the "Update Cron Job" button, the system will set or update the Cron job.</li>
+                <li><strong>输入订阅链接:</strong> 在文本框中输入您的Clash订阅链接。</li>
+                <li><strong>输入保存文件名:</strong> 指定保存配置文件的文件名，默认为 "config.yaml"。</li>
+                <li>点击 "更新订阅" 按钮，系统将下载订阅内容，并进行转换和保存。</li>
+                <li><strong>设置 Cron 时间:</strong> 指定 Cron 作业的执行时间。</li>
+                <li>点击 "更新 Cron 作业" 按钮，系统将设置或更新 Cron 作业。</li>
             </ul>
         </div>
-
         <div class="result">
             <?php echo nl2br(htmlspecialchars($result)); ?>
         </div>
         <div class="result">
             <?php echo nl2br(htmlspecialchars($cron_result)); ?>
         </div>
-
-        <button class="back-button" onclick="history.back()">Go Back</button>
+        <button class="back-button" onclick="history.back()">返回上一级</button>
     </div>
 </body>
 </html>

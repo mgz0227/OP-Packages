@@ -38,45 +38,45 @@ if(isset($_POST['newrulescfg'])){
   </head>
   <body class="container-bg">
     <div class="container text-center justify-content-md-center mb-3"></br>
-    <form action="rulesconf.php" method="post">
-        <div class="container text-center justify-content-md-center">
-            <div class="row justify-content-md-center">
-                <div class="col input-group mb-3 justify-content-md-center">
-                    <select class="form-select" name="rulescfg" aria-label="themex">
-                        <option selected>Select Rule</option>
-                        <?php foreach ($arrFiles as $file) echo "<option value=\"".$file.'">'.$file."</option>" ?>
-                    </select>
-                    <input class="btn btn-info" type="submit" value="Select">
-                </div>
-            </div>
-        </div>
-    </form>
-    <div class="container mb-3">
         <form action="rulesconf.php" method="post">
             <div class="container text-center justify-content-md-center">
                 <div class="row justify-content-md-center">
                     <div class="col input-group mb-3 justify-content-md-center">
-                        <?php if(!empty($file)) echo "<h5>$rulePath</h5>" ?>
-                    </div>
-                </div>
-                <div class="row justify-content-md-center">
-                    <div class="col input-group mb-3 justify-content-md-center">
-                        <textarea class="form-control" name="newrulescfg" rows="16"><?php if (!empty($strRules)) echo $strRules; else echo $strNewRules; ?></textarea>
-                    </div>
-                </div>
-                <div class="row justify-content-md-center">
-                    <div class="col input-group mb-3 justify-content-md-center">
-                        <input class="btn btn-info" type="submit" value="Save Rules">
-                    </div>
-                </div>
-                <div class="row justify-content-md-center">
-                    <div class="col input-group mb-3 justify-content-md-center">
-                        <?php if(!empty($strNewRules)) echo "<h5>RULES SUCCESSFULLY SAVED</h5>" ?>
+                      <select class="form-select" name="rulescfg" aria-label="themex">
+                        <option selected>选择规则</option>
+                        <?php foreach ($arrFiles as $file) echo "<option value=\"".$file.'">'.$file."</option>" ?>
+                      </select>
+                      <input class="btn btn-info" type="submit" value="选择">
                     </div>
                 </div>
             </div>
         </form>
+        <div class="container mb-3">
+        <form action="rulesconf.php" method="post">
+            <div class="container text-center justify-content-md-center">
+                <div class="row justify-content-md-center">
+                    <div class="col input-group mb-3 justify-content-md-center">
+                      <?php if(!empty($file)) echo "<h5>$rulePath</h5>" ?>
+                    </div>
+                </div>
+                <div class="row justify-content-md-center">
+                    <div class="col input-group mb-3 justify-content-md-center">
+                      <textarea class="form-control" name="newrulescfg" rows="16"><?php if (!empty($strRules))echo $strRules; else echo $strNewRules; ?></textarea>
+                    </div>
+                </div>
+                <div class="row justify-content-md-center">
+                    <div class="col input-group mb-3 justify-content-md-center">
+                        <input class="btn btn-info" type="submit" value="保持规则">
+                    </div>
+                </div>
+                <div class="row justify-content-md-center">
+                    <div class="col input-group mb-3 justify-content-md-center">
+                      <?php if(!empty($strNewRules)) echo "<h5>RULES SUCCESSFULLY SAVED</h5>" ?>
+                    </div>
+                </div>
+            </div>
+        </form>
+        </div>
     </div>
-</div>
-</body>
+  </body>
 </html>

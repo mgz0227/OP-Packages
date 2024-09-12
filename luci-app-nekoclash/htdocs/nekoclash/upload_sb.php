@@ -16,21 +16,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($file['error'] === UPLOAD_ERR_OK) {
             if (move_uploaded_file($file['tmp_name'], $uploadFilePath)) {
-                echo 'Configuration file uploaded successfully: ' . htmlspecialchars(basename($file['name']));
+                echo '配置文件上传成功：' . htmlspecialchars(basename($file['name']));
             } else {
-                echo 'Configuration file upload failed!';
+                echo '配置文件上传失败！';
             }
         } else {
-            echo 'Upload error: ' . $file['error'];
+            echo '上传错误：' . $file['error'];
         }
     }
 
     if (isset($_POST['deleteConfigFile'])) {
         $fileToDelete = $configDir . basename($_POST['deleteConfigFile']);
         if (file_exists($fileToDelete) && unlink($fileToDelete)) {
-            echo 'Configuration file deleted successfully: ' . htmlspecialchars(basename($_POST['deleteConfigFile']));
+            echo '配置文件删除成功：' . htmlspecialchars(basename($_POST['deleteConfigFile']));
         } else {
-            echo 'Configuration file deletion failed!';
+            echo '配置文件删除失败！';
         }
     }
 
@@ -42,18 +42,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $oldFilePath = $configDir . $oldFileName;
             $newFilePath = $configDir . $newFileName;
         } else {
-            echo 'Invalid file type';
+            echo '无效的文件类型';
             exit;
         }
 
         if (file_exists($oldFilePath) && !file_exists($newFilePath)) {
             if (rename($oldFilePath, $newFilePath)) {
-                echo 'File renamed successfully: ' . htmlspecialchars($oldFileName) . ' -> ' . htmlspecialchars($newFileName);
+                echo '文件重命名成功：' . htmlspecialchars($oldFileName) . ' -> ' . htmlspecialchars($newFileName);
             } else {
-                echo 'File renaming failed!';
+                echo '文件重命名失败！';
             }
         } else {
-            echo 'File renaming failed; the file does not exist or the new file name already exists.';
+            echo '文件重命名失败，文件不存在或新文件名已存在。';
         }
     }
 
@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 fclose($handle);
             } else {
-                echo 'Unable to open file';
+                echo '无法打开文件';
             }
         }
     }
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fileToSave = $configDir . basename($_POST['fileName']);
         $contentToSave = $_POST['saveContent'];
         file_put_contents($fileToSave, $contentToSave);
-        echo '<p>File content updated: ' . htmlspecialchars(basename($fileToSave)) . '</p>';
+        echo '<p>文件内容已更新：' . htmlspecialchars(basename($fileToSave)) . '</p>';
     }
 
     if (isset($_GET['customFile'])) {
@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             readfile($customFilePath);
             exit;
         } else {
-            echo 'File does not exist!';
+            echo '文件不存在！';
         }
     }
 }
@@ -106,7 +106,7 @@ function formatFileModificationTime($filePath) {
         $fileModTime = filemtime($filePath);
         return date('Y-m-d H:i:s', $fileModTime);
     } else {
-        return 'File does not exist';
+        return '文件不存在';
     }
 }
 
@@ -169,9 +169,9 @@ if (isset($_POST['update_index'])) {
     $customFileName = ($_POST["custom_file_name_$index"] ?? '') ?: 'config.json';
 
     if ($index < 0 || $index >= count($subscriptionData['subscriptions'])) {
-        $message = "Invalid subscription index!";
+        $message = "无效的订阅索引！";
     } elseif (empty($subscriptionUrl)) {
-        $message = "The link for subscription $index is empty!";
+        $message = "订阅 $index 的链接为空！";
     } else {
         $subscriptionData['subscriptions'][$index]['url'] = $subscriptionUrl;
         $subscriptionData['subscriptions'][$index]['file_name'] = $customFileName;
@@ -189,14 +189,14 @@ if (isset($_POST['update_index'])) {
         curl_close($ch);
 
         if ($fileContent === false) {
-            $message = "Unable to download file for subscription $index. cURL error information: " . $error;
+            $message = "订阅 $index 无法下载文件。cURL 错误信息: " . $error;
         } else {
             $fileContent = str_replace("\xEF\xBB\xBF", '', $fileContent);
 
             $parsedData = json_decode($fileContent, true);
             if ($parsedData === null && json_last_error() !== JSON_ERROR_NONE) {
                 file_put_contents($finalPath, $originalContent);
-                $message = "Failed to parse JSON data for subscription $index! Error information: " . json_last_error_msg();
+                $message = "订阅 $index 解析 JSON 数据失败！错误信息: " . json_last_error_msg();
             } else {
                 if (isset($parsedData['inbounds'])) {
                     $newInbounds = [];
@@ -249,9 +249,9 @@ if (isset($_POST['update_index'])) {
                 $fileContent = json_encode($parsedData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
                 if (file_put_contents($finalPath, $fileContent) === false) {
-                  $message = "Unable to save the file for subscription $index to: $finalPath";
+                    $message = "订阅 $index 无法保存文件到: $finalPath";
                 } else {
-                  $message = "Subscription $index updated successfully! File saved to: {$finalPath}, and JSON data parsed and replaced successfully.";
+                    $message = "订阅 $index 更新成功！文件已保存到: {$finalPath}，并成功解析和替换 JSON 数据。";
                 }
             }
         }
@@ -260,13 +260,12 @@ if (isset($_POST['update_index'])) {
     }
 }
 ?>
-
- <!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sing-box File Manager</title>
+    <title>Sing-box文件管理器</title>
     <link href="./assets/bootstrap/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -433,16 +432,16 @@ if (isset($_POST['update_index'])) {
 </head>
 <body>
     <div class="container text-center">
-        <h1 style="margin-top: 40px; margin-bottom: 20px;">Sing-box File Manager</h1>
-        <h2>Configuration File Management</h2>
+        <h1 style="margin-top: 40px; margin-bottom: 20px;">Sing-box 文件管理</h1>
+        <h2>配置文件管理</h2>
         
         <table class="table table-dark table-bordered">
             <thead>
                 <tr>
-                    <th>File Name</th>
-                    <th>Size</th>
-                    <th>Modification Time</th>
-                    <th>Action</th>
+                    <th>文件名</th>
+                    <th>大小</th>
+                    <th>修改时间</th>
+                    <th>执行操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -450,24 +449,24 @@ if (isset($_POST['update_index'])) {
                     <?php $filePath = $configDir . $file; ?>
                     <tr>
                         <td><a href="download.php?file=<?php echo urlencode($file); ?>"><?php echo htmlspecialchars($file); ?></a></td>
-                        <td><?php echo file_exists($filePath) ? formatSize(filesize($filePath)) : 'File not found'; ?></td>
+                        <td><?php echo file_exists($filePath) ? formatSize(filesize($filePath)) : '文件不存在'; ?></td>
                         <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', filemtime($filePath))); ?></td>
                         <td>
                             <div class="btn-group">
                                 <form action="" method="post" class="d-inline">
                                     <input type="hidden" name="deleteConfigFile" value="<?php echo htmlspecialchars($file); ?>">
-                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this file?');">Delete</button>
+                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('确定要删除这个文件吗？');">删除</button>
                                 </form>
-                                <button type="button" class="btn btn-success btn-sm btn-rename" data-toggle="modal" data-target="#renameModal" data-filename="<?php echo htmlspecialchars($file); ?>">Rename</button>
+                                <button type="button" class="btn btn-success btn-sm btn-rename" data-toggle="modal" data-target="#renameModal" data-filename="<?php echo htmlspecialchars($file); ?>">重命名</button>
 
                                 <form action="" method="post" class="d-inline">
                                     <input type="hidden" name="editFile" value="<?php echo htmlspecialchars($file); ?>">
                                     <input type="hidden" name="fileType" value="config">
-                                    <button type="submit" class="btn btn-warning btn-sm">Edit</button>
+                                    <button type="submit" class="btn btn-warning btn-sm">编辑</button>
                                 </form>
                                 <form action="" method="post" enctype="multipart/form-data" class="form-inline d-inline upload-btn">
                                     <input type="file" name="configFileInput" class="form-control-file" required id="fileInput-<?php echo htmlspecialchars($file); ?>" onchange="this.form.submit()">
-                                    <button type="button" class="btn btn-info" onclick="document.getElementById('fileInput-<?php echo htmlspecialchars($file); ?>').click();">Upload</button>
+                                    <button type="button" class="btn btn-info" onclick="document.getElementById('fileInput-<?php echo htmlspecialchars($file); ?>').click();">上传</button>
                                 </form>
                             </div>
                         </td>
@@ -479,20 +478,20 @@ if (isset($_POST['update_index'])) {
         <?php if (isset($fileContent)): ?>
             <?php if (isset($_POST['editFile'])): ?>
                 <?php $fileToEdit = $configDir . basename($_POST['editFile']); ?>
-                <h2 class="mt-5">Edit File: <?php echo $editingFileName; ?></h2>
-                <p>Last Updated Date: <?php echo date('Y-m-d H:i:s', filemtime($fileToEdit)); ?></p>
+                <h2 class="mt-5">编辑文件: <?php echo $editingFileName; ?></h2>
+                <p>最后更新日期: <?php echo date('Y-m-d H:i:s', filemtime($fileToEdit)); ?></p>
                 <div class="editor-container">
                     <form action="" method="post">
                         <textarea name="saveContent" id="editor" class="editor"><?php echo $fileContent; ?></textarea><br>
                         <input type="hidden" name="fileName" value="<?php echo htmlspecialchars($_POST['editFile']); ?>">
                         <input type="hidden" name="fileType" value="<?php echo htmlspecialchars($_POST['fileType']); ?>">
-                        <button type="submit" class="btn btn-primary mt-2" onclick="checkJsonSyntax()">Save Content</button>
+                        <button type="submit" class="btn btn-primary mt-2" onclick="checkJsonSyntax()">保存内容</button>
                     </form>
                 </div>
             <?php endif; ?>
         <?php endif; ?>
 
-        <h1 style="margin-top: 20px; margin-bottom: 20px;">Sing-box Subscription</h1>
+        <h1 style="margin-top: 20px; margin-bottom: 20px;">Sing-box 订阅</h1>
         <?php if ($message): ?>
             <p><?php echo nl2br(htmlspecialchars($message)); ?></p>
         <?php endif; ?>
@@ -502,15 +501,15 @@ if (isset($_POST['update_index'])) {
                     <div class="col-md-4 mb-3">
                         <div class="card subscription-card p-2">
                             <div class="card-body p-2">
-                                <h6 class="card-title">Subscription Link <?php echo $i + 1; ?></h6>
+                                <h6 class="card-title">订阅链接 <?php echo $i + 1; ?></h6>
                                 <div class="form-group mb-2">
-                                    <input type="text" name="subscription_url_<?php echo $i; ?>" id="subscription_url_<?php echo $i; ?>" class="form-control form-control-sm" placeholder="Subscription Link" value="<?php echo htmlspecialchars($subscriptionData['subscriptions'][$i]['url'] ?? ''); ?>">
+                                    <input type="text" name="subscription_url_<?php echo $i; ?>" id="subscription_url_<?php echo $i; ?>" class="form-control form-control-sm" placeholder="订阅链接" value="<?php echo htmlspecialchars($subscriptionData['subscriptions'][$i]['url'] ?? ''); ?>">
                                 </div>
                                 <div class="form-group mb-2">
-                                    <label for="custom_file_name_<?php echo $i; ?>">Custom File Name <?php echo ($i === 0) ? '(Fixed as config.json)' : ''; ?></label>
+                                    <label for="custom_file_name_<?php echo $i; ?>">自定义文件名 <?php echo ($i === 0) ? '(固定为 config.json)' : ''; ?></label>
                                     <input type="text" name="custom_file_name_<?php echo $i; ?>" id="custom_file_name_<?php echo $i; ?>" class="form-control form-control-sm" value="<?php echo htmlspecialchars($subscriptionData['subscriptions'][$i]['file_name'] ?? ($i === 0 ? 'config.json' : '')); ?>" <?php echo ($i === 0) ? 'readonly' : ''; ?> >
                                 </div>
-                                <button type="submit" name="update_index" value="<?php echo $i; ?>" class="btn btn-info btn-sm">Update Subscription <?php echo $i + 1; ?></button>
+                                <button type="submit" name="update_index" value="<?php echo $i; ?>" class="btn btn-info btn-sm">更新订阅 <?php echo $i + 1; ?></button>
                             </div>
                         </div>
                     </div>
@@ -519,9 +518,10 @@ if (isset($_POST['update_index'])) {
         </form>
 
         <div class="nav-buttons mt-4">
-            <a href="javascript:history.back()" class="btn btn-info">Return to Previous Menu</a>
-            <a href="/nekoclash/upload_sb.php" class="btn btn-info">Back to Current Menu</a>
-            <a href="/nekoclash" class="btn btn-info">Return to Main Menu</a>
+            <a href="javascript:history.back()" class="btn btn-info">返回上一级菜单</a>
+            <a href="/nekoclash/upload_sb.php" class="btn btn-info">返回当前菜单</a>
+            <a href="/nekoclash" class="btn btn-info">返回主菜单</a>
+            <a href="/nekoclash/box.php" class="btn btn-info">打开订阅转换模板</a>
         </div>
     </div>
 
@@ -529,7 +529,7 @@ if (isset($_POST['update_index'])) {
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="renameModalLabel">Rename File</h5>
+                    <h5 class="modal-title" id="renameModalLabel">重命名文件</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -538,14 +538,14 @@ if (isset($_POST['update_index'])) {
                     <form id="renameForm" action="" method="post">
                         <input type="hidden" name="oldFileName" id="oldFileName">
                         <div class="form-group">
-                            <label for="newFileName">New File Name</label>
+                            <label for="newFileName">新文件名</label>
                             <input type="text" class="form-control" id="newFileName" name="newFileName" required>
                         </div>
-                        <p>Are you sure you want to rename this file?</p>
+                        <p>是否确实要重命名这个文件?</p>
                         <input type="hidden" name="fileType" value="config">
                         <div class="form-group text-right">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Confirm</button>
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                            <button type="submit" class="btn btn-primary">确定</button>
                         </div>
                     </form>
                 </div>
@@ -566,4 +566,3 @@ if (isset($_POST['update_index'])) {
     </script>
 </body>
 </html>
-

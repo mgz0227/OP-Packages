@@ -12,8 +12,7 @@ function controlSingbox($action) {
     global $singBoxPath;
     $command = "$singBoxPath $action";
     exec($command);
-    return isSingboxRunning() ? 'Running' : 'Stopped';
-
+    return isSingboxRunning() ? '运行中' : '已停止';
 }
 
 function getSystemMetrics() {
@@ -89,8 +88,7 @@ if (isset($_POST['action'])) {
 
 $metrics = getSystemMetrics();
 $networkTraffic = getNetworkTraffic();
-$singbox_status = isSingboxRunning() ? 'Running' : 'Stopped';
-
+$singbox_status = isSingboxRunning() ? '运行中' : '已停止';
 
 if (isset($_GET['metrics'])) {
     header('Content-Type: application/json');
@@ -112,18 +110,17 @@ if (isset($_GET['real_time_network'])) {
 
 if (isset($_GET['status'])) {
     header('Content-Type: application/json');
-    echo json_encode(['singbox_status' => isSingboxRunning() ? 'Running' : 'Stopped']);
+    echo json_encode(['singbox_status' => isSingboxRunning() ? '运行中' : '已停止']);
     exit;
 }
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sing-box Control Panel</title>
-
+    <title>Sing-box 控制面板</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -254,28 +251,28 @@ if (isset($_GET['status'])) {
 <body>
     <div id="animation"></div>
     <div class="container">
-        <h1>Sing-box Monitoring Panel</h1>
+        <h1>Sing-box 监控面板</h1>
         <div class="status">
-            Current Status: <span class="status-text <?php echo $singbox_status === 'Running' ? 'status-running' : 'status-stopped'; ?>"><?php echo $singbox_status; ?></span>
+            当前状态: <span class="status-text <?php echo $singbox_status === '运行中' ? 'status-running' : 'status-stopped'; ?>"><?php echo $singbox_status; ?></span>
         </div>
         <div class="metrics">
-            <div>CPU Load: <span class="metrics-text" id="cpuLoad"><?php echo $metrics['cpuLoad']; ?></span></div>
-            <div>Memory Usage: <span class="metrics-text" id="memoryUsage"><?php echo $metrics['memoryUsage']; ?></span></div>
-            <div>Download Traffic: <span class="metrics-text" id="downloadTraffic"><?php echo formatBytes($networkTraffic['download']); ?></span></div>
-            <div>Upload Traffic: <span class="metrics-text" id="uploadTraffic"><?php echo formatBytes($networkTraffic['upload']); ?></span></div>
+            <div>CPU 负载: <span class="metrics-text" id="cpuLoad"><?php echo $metrics['cpuLoad']; ?></span></div>
+            <div>内存使用: <span class="metrics-text" id="memoryUsage"><?php echo $metrics['memoryUsage']; ?></span></div>
+            <div>下载流量: <span class="metrics-text" id="downloadTraffic"><?php echo formatBytes($networkTraffic['download']); ?></span></div>
+            <div>上传流量: <span class="metrics-text" id="uploadTraffic"><?php echo formatBytes($networkTraffic['upload']); ?></span></div>
         </div>
         <div class="nav-buttons">
-            <a href="javascript:history.back()" class="current-menu-button">Go Back to Previous Menu</a>
-            <a href="/nekoclash/configs.php" class="config-menu-button">Return to Configuration Menu</a>
-            <a href="/nekoclash/upload_sb.php" class="monitoring-button">Sing-box Management Panel</a>
-            <a href="/nekoclash" class="main-menu-button">Return to Main Menu</a>
+            <a href="javascript:history.back()" class="current-menu-button">返回上一级菜单</a>
+            <a href="/nekoclash/configs.php" class="config-menu-button">返回配置菜单</a>
+            <a href="/nekoclash/upload_sb.php" class="monitoring-button">Sing-box 管理面板</a>
+            <a href="/nekoclash" class="main-menu-button">返回主菜单</a>
         </div>
     </div>
 
     <div class="real-time-speed">
         <div>
-            <span style="color: blue; background-color: lightyellow;">Real-time Download Speed:</span><span id="downloadSpeed">0 B/s</span><br> 
-            <span style="color: orange; background-color: lightblue;">Real-time Upload Speed:</span><span id="uploadSpeed">0 B/s</span> 
+            <span style="color: blue; background-color: lightyellow;">实时下载速度:</span><span id="downloadSpeed">0 B/s</span><br> 
+            <span style="color: orange; background-color: lightblue;">实时上传速度:</span><span id="uploadSpeed">0 B/s</span> 
         </div>
     </div>
 
@@ -366,7 +363,7 @@ if (isset($_GET['status'])) {
                 .then(data => {
                     const statusText = document.querySelector('.status-text');
                     statusText.textContent = data.singbox_status;
-                    statusText.className = 'status-text ' + (data.singbox_status === 'Running' ? 'status-running' : 'status-stopped');
+                    statusText.className = 'status-text ' + (data.singbox_status === '运行中' ? 'status-running' : 'status-stopped');
                 });
         }
 
