@@ -385,13 +385,13 @@ jobs:
         rm -rf luciapp/{luci-app-qbittorrent,luci-app-zerotier,luci-app-cpufreq,luci-app-e2guardian,luci-app-aliyundrive-fuse,luci-app-syncdial,luci-app-firewall}
         git_sparse_clone master "https://github.com/immortalwrt/luci" applications protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
         mv -n luciapp/* applications/; rm -rf luciapp
-
+        
         for ipk in $(ls -d applications/!(luci-app-rclone|luci-app-filebrowser|luci-app-firewall)/); do
         	if [[ $(ls $ipk/po | wc -l) -gt 4 ]]; then
             rm -rf $ipk
         	fi
         done
-
+        rm -rf aic8800
         git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/lean package/network/services/shellsync package/wwan package/qca/shortcut-fe
         git clone -b dev --depth 1 https://github.com/vernesong/OpenClash && mv -n OpenClash/luci-app-openclash ./; rm -rf OpenClash
         #git clone -b easyupdate https://github.com/mgz0227/easyupdate && mv -n easyupdate/luci-app-easyupdate ./; rm -rf easyupdate
