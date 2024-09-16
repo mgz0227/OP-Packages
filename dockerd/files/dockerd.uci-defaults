@@ -7,11 +7,7 @@ ROOT_DISK=$1
 	LAST_PART_END=$(parted -s $ROOT_DISK unit MB print | tail -n 2 | head -n 1 | awk '{print $3}' | sed 's/MB//')
 [ $LAST_PART_END == "End" ] && return 0
 	UNALLOCATED_SPACE="$(awk "BEGIN {print $DISK_SIZE - $LAST_PART_END}")"
-	if awk 'BEGIN {exit !('$UNALLOCATED_SPACE' < '1024')}'; then
-        echo "No unallocated space found."
-        return 0
-    fi
-
+	awk 'BEGIN {exit !('$UNALLOCATED_SPACE' >= '1024')}' && {
     # 创建新分区
 parted -s $ROOT_DISK mkpart primary ext4 ${LAST_PART_END}MB 100% && {
 
@@ -19,7 +15,7 @@ ROOT_DISK_NAME="$(echo $ROOT_DISK | cut -d / -f 3)"
 LAST_PART_NAME="$(lsblk -nlo NAME | grep $ROOT_DISK_NAME | tail -n 1)"
     # 格式化新分区
 mkfs.ext4 -F -L "docker" /dev/${LAST_PART_NAME}
-
+pgrep -x /usr/bin/dockerd > /dev/null && /etc/init.d/dockerd stop
 mkdir -p /opt/docker
 eval $(block info /dev/${LAST_PART_NAME} | grep -o -e 'UUID="\S*"')
 [ ! -f /etc/config/fstab ] && ( block detect > /etc/config/fstab )
@@ -27,7 +23,9 @@ uci set fstab.mountdocker="mount"
 uci set fstab.mountdocker.uuid="${UUID}"
 uci set fstab.mountdocker.target="/opt/docker"
 uci commit fstab
+umount -f /dev/${LAST_PART_NAME}
 /sbin/block mount
+}
 }
 }
 
