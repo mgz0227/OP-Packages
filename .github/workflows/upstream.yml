@@ -337,9 +337,9 @@ jobs:
         multimedia/UnblockNeteaseMusic net/amule net/softethervpn5 net/antileech multimedia/gmediarender net/go-aliyundrive-webdav \
         net/qBittorrent-static net/phtunnel net/frp net/headscale \
         net/uugamebooster net/verysync net/vlmcsd net/dnsforwarder net/tcpping net/netatalk net/pgyvpn
-        git_sparse_clone master  "https://github.com/openwrt/packages" \
+        git_sparse_clone openwrt-23.05  "https://github.com/openwrt/packages" \
         utils/coremark utils/watchcat utils/dockerd utils/cgroupfs-mount net/uwsgi net/p910nd net/ddns-scripts net/smartdns net/curl \
-        net/ariang net/tailscale multimedia/yt-dlp
+        net/ariang net/tailscale
         ) &
         (
         git_sparse_clone openwrt-23.05 "https://github.com/openwrt/openwrt" \
