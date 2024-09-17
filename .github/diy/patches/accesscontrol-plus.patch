@@ -1,8 +1,13 @@
+diff --git a/luci-app-accesscontrol-plus/po/zh-Hans/miaplus.po b/luci-app-accesscontrol-plus/po/zh_Hans/miaplus.po
+similarity index 90%
+rename from luci-app-accesscontrol-plus/po/zh-Hans/miaplus.po
+rename to luci-app-accesscontrol-plus/po/zh_Hans/miaplus.po
+index fedd5ae..ad85175 100644
 --- a/luci-app-accesscontrol-plus/po/zh-Hans/miaplus.po
 +++ b/luci-app-accesscontrol-plus/po/zh_Hans/miaplus.po
-@@ -13,6 +13,12 @@ msgstr "严格模式"
- msgid "Strict Mode will degrade CPU performance, but it can achieve better results"
- msgstr "严格模式会损耗部分CPU资源，但可以按照时间规则立即拦截数据包，效果更好"
+@@ -7,6 +7,12 @@ msgstr "设置客户端访问互联网的时间"
+ msgid "General switch"
+ msgstr "开启/关闭"
  
 +msgid "Base Setting"
 +msgstr "基本设置"
@@ -10,6 +15,5 @@
 +msgid "Advance Setting"
 +msgstr "高级设置"
 +
- msgid "Client Rules"
- msgstr "客户端规则"
- 
+ msgid "Strict Mode"
+ msgstr "严格模式"
