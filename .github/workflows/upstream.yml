@@ -219,6 +219,7 @@ jobs:
         git_clone https://github.com/derisamedia/luci-theme-alpha
         git_clone https://github.com/animegasan/luci-app-alpha-config
         git_clone https://github.com/gofly/openwrt-luci-proto-tinc
+        git_clone https://github.com/hzyitc/mnh-openwrt && mvdir mnh-openwrt
         ) &
         (
         git clone https://github.com/sirpdboy/luci-theme-kucat -b js --depth 1
