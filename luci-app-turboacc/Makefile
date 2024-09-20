@@ -6,7 +6,6 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-turboacc
-PKG_FLAGS:=nonshared
 
 PKG_LICENSE:=GPL-3.0-only
 PKG_MAINTAINER:=Lean <coolsnowwolf@gmail.com>
@@ -21,7 +20,10 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_SHORTCUT_FE_DRV
 
 LUCI_TITLE:=LuCI support for Flow Offload / Shortcut-FE
-LUCI_DEPENDS:=+PACKAGE_$(PKG_NAME)_INCLUDE_BBR_CCA:kmod-tcp-bbr \
+LUCI_DEPENDS:=+PACKAGE_$(PKG_NAME)_INCLUDE_PDNSD:pdnsd-alt \
+	+PACKAGE_$(PKG_NAME)_INCLUDE_BBR_CCA:kmod-tcp-bbr \
+	+PACKAGE_$(PKG_NAME)_INCLUDE_DNSFORWARDER:dnsforwarder \
+	+PACKAGE_$(PKG_NAME)_INCLUDE_DNSPROXY:dnsproxy \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_OFFLOADING:kmod-ipt-offload \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_SHORTCUT_FE:kmod-fast-classifier \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_SHORTCUT_FE_CM:kmod-shortcut-fe-cm \
@@ -31,23 +33,25 @@ LUCI_PKGARCH:=all
 define Package/$(PKG_NAME)/config
 config PACKAGE_$(PKG_NAME)_INCLUDE_OFFLOADING
 	bool "Include Flow Offload"
-	default y if !(TARGET_x86||TARGET_ipq40xx||TARGET_ipq60xx||TARGET_ipq806x||TARGET_ipq807x||TARGET_qualcommax)
+	default y if !(TARGET_ipq40xx||TARGET_ipq806x||TARGET_qualcommax||TARGET_x86)
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_SHORTCUT_FE
 	bool "Include Shortcut-FE"
 	depends on PACKAGE_$(PKG_NAME)_INCLUDE_OFFLOADING=n
-	default y if (TARGET_ipq40xx)
+	default y if (TARGET_ipq40xx||TARGET_x86)
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_SHORTCUT_FE_CM
 	bool "Include Shortcut-FE CM"
 	depends on PACKAGE_$(PKG_NAME)_INCLUDE_OFFLOADING=n
-	default y if !(TARGET_ipq40xx||TARGET_ipq60xx||TARGET_ipq806x||TARGET_ipq807x||TARGET_qualcommax)
+	depends on PACKAGE_$(PKG_NAME)_INCLUDE_SHORTCUT_FE=n
+	default y if !(TARGET_ipq806x||TARGET_qualcommax)
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_SHORTCUT_FE_DRV
 	bool "Include Shortcut-FE ECM"
 	depends on PACKAGE_$(PKG_NAME)_INCLUDE_OFFLOADING=n
+	depends on PACKAGE_$(PKG_NAME)_INCLUDE_SHORTCUT_FE=n
 	depends on PACKAGE_$(PKG_NAME)_INCLUDE_SHORTCUT_FE_CM=n
-	depends on (TARGET_ipq60xx||TARGET_ipq806x||TARGET_ipq807x||TARGET_qualcommax)
+	depends on (TARGET_ipq806x||TARGET_qualcommax)
 	default y
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_BBR_CCA
