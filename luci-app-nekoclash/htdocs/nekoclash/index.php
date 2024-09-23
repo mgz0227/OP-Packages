@@ -778,23 +778,6 @@ $singboxStartLogContent = readLogFile($singboxStartLogFile);
         </tbody>
     </table>
 </div>
-<div class="container container-bg border border-3 rounded-4 col-12 mb-4">
-    <h2 class="text-center p-2" style="margin-top: -15px; margin-bottom: 5px;">语音播报系统</h2>
-    <table class="table table-borderless mb-2" style="margin-bottom: 5px;">
-        <tbody>
-            <tr>
-                <td>
-                    <div class="row mb-2" style="margin-bottom: 5px;">
-                        <div class="col">
-                            <input type="text" id="city-input" class="form-control" placeholder="如 Beijing" style="padding: 5px;">
-                        </div>
-                        <div class="col-auto">
-                            <button onclick="saveCity()" class="btn btn-success" style="padding: 5px 10px;">保存城市</button
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
 <!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -986,13 +969,13 @@ $singboxStartLogContent = readLogFile($singboxStartLogFile);
         fetchLogs();
         setInterval(fetchLogs, 5000);
     </script>
-
 <a href="/nekoclash/mon.php" class="config-menu-button d-flex justify-content-center align-items-center" 
-   style="height: 40px; width: 40px; line-height: 40px; border-radius: 50%; background-color: #28a745; color: white; position: absolute; top: 20px; left: 20px; text-align: center; text-decoration: none; transition: background-color 0.3s;" 
+   style="height: 40px; width: 40px; line-height: 40px; border-radius: 50%; background-color: transparent; border: 5px solid; color: white; position: absolute; top: 20px; left: 20px; text-align: center; text-decoration: none; transition: opacity 0.3s; animation: borderAnimation 3s linear infinite;" 
    onclick="speakAndNavigate('打开Mihomo 管理面板', '/nekoclash/mon.php'); return false;"
-   onmouseover="this.style.backgroundColor='#218838';" onmouseout="this.style.backgroundColor='#28a745';">
-    面板
+   onmouseover="this.style.opacity='0.8';" onmouseout="this.style.opacity='1';">
+    <i class="fas fa-cog"></i>
 </a>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script>
         function speakAndNavigate(message, url) {
             speakMessage(message);

@@ -151,7 +151,7 @@ return view.extend({
 
 		s.tab('advance',_('Advanced Settings'));
 
-		o = s.taboption('advance',form.Flag, 'acceptRoutes', _('Auto Mesh'), _('Accept subnet routes that other nodes advertise.'));
+		o = s.taboption('advance',form.Flag, 'acceptRoutes', _('Accept Routes'), _('Accept subnet routes that other nodes advertise.'));
 		o.default = o.disabled;
 		o.rmempty = false;
 
@@ -169,7 +169,6 @@ return view.extend({
 
 		o = s.taboption('advance',form.Value, 'advertiseRoutes', _('Expose Subnets'), _('Expose physical network routes into Tailscale, e.g. <code>10.0.0.0/24</code>.'));
 		o.default = '';
-		o.depends('acceptRoutes', '1');
 		o.rmempty = true;
 
 		o = s.taboption('advance',form.Flag, 's2s', _('Site To Site'), _('Use site-to-site layer 3 networking to connect subnets on the Tailscale network.'));
