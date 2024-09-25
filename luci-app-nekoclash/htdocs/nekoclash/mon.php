@@ -195,6 +195,10 @@
             top: 20px; 
          }
 
+        .config-menu-button {
+            right: 50px; 
+        }
+
         .button-top-60 {
             top: 60px; 
 
@@ -205,7 +209,7 @@
 <body>
 <nav>
     <a href="/nekoclash" class="config-menu-button button-top-60">
-        <i class="fas fa-home"></i>
+        <i> 🏠</i>
     </a>
     <ul>
         <li><a href="?page=upload" class="<?= (!isset($_GET['page']) || $_GET['page'] == 'upload') ? 'active' : '' ?>">Mihomo</a></li>
