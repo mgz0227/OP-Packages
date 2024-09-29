@@ -106,7 +106,7 @@ custom_instance() {
 				let i++
 			done
 		else
-			for route in $(uci show network | grep 'network\.ts_subnet[0-9]*\+=route' | grep -o 'network\.ts_subnet[0-9]*'); do
+			for route in $(uci show network | grep 'network.ts_subnet[0-9]\+=route' | grep -o 'network.ts_subnet[0-9]\+'); do
 				uci -q delete $route
 			done
 		fi
@@ -214,7 +214,7 @@ stop_instance() {
 	# Remove network settings
 	uci -q delete network.tailscale
 	uci -q delete network.ts_lan
-	for route in $(uci show network | grep 'network\.ts_subnet[0-9]*\+=route' | grep -o 'network\.ts_subnet[0-9]*'); do
+	for route in $(uci show network | grep 'network.ts_subnet[0-9]\+=route' | grep -o 'network.ts_subnet[0-9]\+'); do
 		uci -q delete $route
 	done
 	
