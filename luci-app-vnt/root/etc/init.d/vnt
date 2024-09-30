@@ -262,14 +262,14 @@ EOF
 		    uci set firewall.vntcli.dest_port="$vnt_tcp_port"
 		    uci set firewall.vntcli.enabled="1"
 	        fi
-		vnt_ip="$($clibin --info | awk -F 'Virtual ip:' {'print $2'} | tr -d ' \n')"
+		#vnt_ip="$($clibin --info | awk -F 'Virtual ip:' {'print $2'} | tr -d ' \n')"
                 if [ -z "$(uci -q get network.VNT)" ];  then				
 			uci set network.VNT='interface'
-			if [ -z "$vnt_ip" ]; then
+			if [ -z "$ipaddr" ]; then
 				uci set network.VNT.proto='none'
 			else
 				uci set network.VNT.proto='static'
-				uci set network.VNT.ipaddr=$vnt_ip
+				uci set network.VNT.ipaddr=$ipaddr
 				uci set network.VNT.netmask='255.0.0.0'
 			fi
                         uci set network.VNT.device=$vnt_tun

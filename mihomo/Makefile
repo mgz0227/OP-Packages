@@ -1,12 +1,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mihomo
-PKG_RELEASE:=53
+PKG_RELEASE:=54
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo.git
-PKG_SOURCE_DATE:=2024-09-28
-PKG_SOURCE_VERSION:=264713571d349d214ec938911de0de033b8673af
+PKG_SOURCE_DATE:=2024-09-29
+PKG_SOURCE_VERSION:=fc9d5cfee944a75b989d17c637a321e73c52093a
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=MIT
@@ -16,7 +16,7 @@ PKG_BUILD_DEPENDS:=golang/host
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_FLAGS:=no-mips16
 
-PKG_BUILD_VERSION:=alpha-2647135
+PKG_BUILD_VERSION:=alpha-fc9d5cf
 PKG_BUILD_TIME:=$(shell date -u -Iseconds)
 
 GO_PKG:=github.com/metacubex/mihomo
@@ -83,6 +83,26 @@ define Package/mihomo/install
 
 	$(INSTALL_DIR) $(1)/lib/upgrade/keep.d
 	$(INSTALL_DATA) $(CURDIR)/files/mihomo.upgrade $(1)/lib/upgrade/keep.d/mihomo
+endef
+
+define Package/mihomo/postinst
+#!/bin/sh
+uci -q batch <<-EOF > /dev/null
+	del firewall.mihomo
+	set firewall.mihomo=include
+	set firewall.mihomo.type=script
+	set firewall.mihomo.path=/etc/mihomo/scripts/tun.sh
+	set firewall.mihomo.fw4_compatible=1
+	commit firewall
+EOF
+endef
+
+define Package/mihomo/postrm
+#!/bin/sh
+uci -q batch <<-EOF > /dev/null
+	del firewall.mihomo
+	commit firewall
+EOF
 endef
 
 define Build/Prepare
