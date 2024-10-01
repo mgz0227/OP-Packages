@@ -112,8 +112,7 @@ jobs:
         git_clone https://github.com/sirpdboy/netspeedtest && mv -n netspeedtest/luci-app-netspeedtest ./ ; rm -rf netspeedtest
         git_clone https://github.com/sirpdboy/luci-app-parentcontrol
         git_clone https://github.com/sirpdboy/luci-app-poweroffdevice
-        git_clone https://github.com/muink/luci-app-homeproxy
-        # git clone https://github.com/immortalwrt/homeproxy -b dev --depth 1
+        #git_clone https://github.com/muink/luci-app-homeproxy
         ) &
         (
         git_clone https://github.com/destan19/OpenAppFilter && mvdir OpenAppFilter
