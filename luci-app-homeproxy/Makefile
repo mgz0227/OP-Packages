@@ -10,10 +10,7 @@ LUCI_DEPENDS:= \
 	+sing-box \
 	+chinadns-ng \
 	+firewall4 \
-	+kmod-nft-tproxy \
-	+unzip
-
-PKG_NAME:=luci-app-homeproxy
+	+kmod-nft-tproxy
 
 define Package/luci-app-homeproxy/conffiles
 /etc/config/homeproxy
@@ -21,12 +18,7 @@ define Package/luci-app-homeproxy/conffiles
 /etc/homeproxy/ruleset/
 /etc/homeproxy/resources/direct_list.txt
 /etc/homeproxy/resources/proxy_list.txt
-/etc/homeproxy/resources/clash_dashboard.ver
-/etc/homeproxy/resources/*.zip
-/etc/homeproxy/cache.db
 endef
-
-PKG_UNPACK=$(CURDIR)/.prepare.sh $(PKG_NAME) $(CURDIR) $(PKG_BUILD_DIR)
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
