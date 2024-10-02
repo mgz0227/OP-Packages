@@ -113,6 +113,7 @@ jobs:
         git_clone https://github.com/sirpdboy/luci-app-parentcontrol
         git_clone https://github.com/sirpdboy/luci-app-poweroffdevice
         #git_clone https://github.com/muink/luci-app-homeproxy
+        git_clone https://github.com/immortalwrt/homeproxy luci-app-homeproxy
         ) &
         (
         git_clone https://github.com/destan19/OpenAppFilter && mvdir OpenAppFilter
