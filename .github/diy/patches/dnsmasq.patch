@@ -100,3 +100,4 @@
  	fi
 +	[ -n "$(command -v nft)" ] && nftables_clear || iptables_clear
  }
+

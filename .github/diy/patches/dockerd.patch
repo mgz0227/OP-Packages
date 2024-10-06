@@ -71,3 +71,4 @@
 -	list blocked_interfaces 'wan'
 +#	list blocked_interfaces 'wan'
  #	option extra_iptables_args '--match conntrack ! --ctstate RELATED,ESTABLISHED' # allow outbound connections
+ 

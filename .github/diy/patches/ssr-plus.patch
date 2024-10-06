@@ -12,7 +12,7 @@
 
 --- a/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
 +++ b/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
-@@ -26,6 +26,60 @@ function index()
+@@ -26,6 +26,62 @@ function index()
  	entry({"admin", "services", "shadowsocksr", "reset"}, call("act_reset"))
  	entry({"admin", "services", "shadowsocksr", "restart"}, call("act_restart"))
  	entry({"admin", "services", "shadowsocksr", "delete"}, call("act_delete"))
@@ -29,19 +29,20 @@
 +    return ret
 +end
 +
-+function get_ip_geo_info(ip)
-+    local result = luci.sys.exec('curl --retry 3 -m 10 -LfsA "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36" https://ipapi.co/json/')
++function get_ip_geo_info()
++    local result = luci.sys.exec('curl --retry 3 -m 10 -LfsA "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36" http://ip-api.com/json/')
 +    local json = require "luci.jsonc"
 +    local info = json.parse(result)
 +    
 +    return {
-+        flag = string.lower(info.country_code) or "un",
-+        country = get_country_name(info.country_code) or "Unknown",
-+        ip = info.ip
++        flag = string.lower(info.countryCode) or "un",
++        country = get_country_name(info.countryCode) or "Unknown",
++        ip = info.query,
++        isp = info.isp
 +    }
 +end
 +
-+function get_country_name(country_code)
++function get_country_name(countryCode)
 +    local country_names = {
 +        US = "美国", CN = "中国", JP = "日本", GB = "英国", DE = "德国",
 +        FR = "法国", BR = "巴西", IT = "意大利", RU = "俄罗斯", CA = "加拿大",
@@ -54,7 +55,7 @@
 +        CZ = "捷克", RO = "罗马尼亚", VN = "越南", UA = "乌克兰", HU = "匈牙利",
 +        AE = "阿联酋", CO = "哥伦比亚", IN = "印度", EG = "埃及", PE = "秘鲁", TW = "台湾"
 +    }
-+    return country_names[country_code]
++    return country_names[countryCode]
 +end
 +
 +function check_ip()
@@ -64,6 +65,7 @@
 +    e.ip = geo_info.ip
 +    e.flag = geo_info.flag
 +    e.country = geo_info.country
++    e.isp = geo_info.isp
 +    e.baidu = check_site('www.baidu.com', port)
 +    e.taobao = check_site('www.taobao.com', port)
 +    e.google = check_site('www.google.com', port)
@@ -188,7 +190,7 @@ index 000000000000..a00fff9c79b3
 +
 +function write_status(data) {
 +        document.querySelector(".flag img").src = _ASSETS + "flags/" + data.flag + ".svg";
-+        document.querySelector(".status-info").innerHTML = data.ip + "<br>" + data.country;
++        document.querySelector(".status-info").innerHTML = data.ip + "<br>" + data.country + "&nbsp;" + data.isp;
 +    document.querySelector(".i1").src = data.baidu ? _ASSETS + "img/site_icon_01.png" : _ASSETS + "img/site_icon1_01.png";
 +    document.querySelector(".i2").src = data.taobao ? _ASSETS + "img/site_icon_02.png" : _ASSETS + "img/site_icon1_02.png";
 +    document.querySelector(".i3").src = data.google ? _ASSETS + "img/site_icon_03.png" : _ASSETS + "img/site_icon1_03.png";
@@ -206,7 +208,7 @@ index 000000000000..a00fff9c79b3
 +    );
 +
 +document.addEventListener('DOMContentLoaded', function() {
-+    setTimeout("resize()",10)
++    setTimeout("resize()",100)
 +    fetch(CHECK_IP_URL)
 +        .then(response => response.json())
 +        .then(data => {
@@ -224,8 +226,8 @@ index 000000000000..a00fff9c79b3
  	/etc/init.d/uwsgi restart
  fi
  
-+grep -q ipapi.co /etc/ssrplus/black.list ||
-+	sed -i '$a ipapi.co' /etc/ssrplus/black.list
++grep -q ip-api.com /etc/ssrplus/black.list ||
++	sed -i '$a ip-api.com' /etc/ssrplus/black.list
 +
  rm -rf /tmp/luci-modulecache /tmp/luci-indexcache
  exit 0
