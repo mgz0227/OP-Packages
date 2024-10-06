@@ -41,7 +41,7 @@ jobs:
     
     - name: Set git identity
       run : |
-        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git config --global user.name "github-actions[bot]"
         sudo timedatectl set-timezone "Asia/Shanghai"
 
@@ -64,12 +64,18 @@ jobs:
         branch="$1" curl="$2" && shift 2
         rootdir="$PWD"
         tmpdir="$(mktemp -d)" || exit 1
+        if [ ${#branch} -lt 10 ]; then
         git clone -b "$branch" --depth 1 --filter=blob:none --sparse "$curl" "$tmpdir"
+        cd "$tmpdir"
+        else
+        git clone --filter=blob:none --sparse "$curl" "$tmpdir"
+        cd "$tmpdir"
+        git checkout $branch
+        fi
         if [ "$?" != 0 ]; then
             echo "error on $curl"
             exit 1
         fi
-        cd "$tmpdir"
         git sparse-checkout init --cone
         git sparse-checkout set "$@"
         mv -n $@ $rootdir/ || true
@@ -112,8 +118,7 @@ jobs:
         git_clone https://github.com/sirpdboy/netspeedtest && mv -n netspeedtest/luci-app-netspeedtest ./ ; rm -rf netspeedtest
         git_clone https://github.com/sirpdboy/luci-app-parentcontrol
         git_clone https://github.com/sirpdboy/luci-app-poweroffdevice
-        #git_clone https://github.com/muink/luci-app-homeproxy
-        git_clone https://github.com/immortalwrt/homeproxy luci-app-homeproxy
+        # git_clone https://github.com/muink/luci-app-homeproxy
         ) &
         (
         git_clone https://github.com/destan19/OpenAppFilter && mvdir OpenAppFilter
@@ -176,9 +181,8 @@ jobs:
         (
         git_clone https://github.com/honwen/luci-app-aliddns
         git_clone https://github.com/peter-tank/luci-app-dnscrypt-proxy2
-        git_clone https://github.com/NateLol/luci-app-oled
-        git_clone https://github.com/sundaqiang/openwrt-packages && mv -n openwrt-packages/luci-* ./; rm -rf luci-app-easyupdate openwrt-packages
-        git_clone https://github.com/mgz0227/easyupdate && mv -n easyupdate/luci-app-easyupdate ./; rm -rf easyupdate
+        git_clone https://github.com/NateLol/luci-app-oled  lucioled && mv lucioled/luci-app-oled ./;rm -rf lucioled
+        git_clone https://github.com/sundaqiang/openwrt-packages && mv -n openwrt-packages/luci-* ./; rm -rf openwrt-packages
         git_clone https://github.com/pymumu/luci-app-smartdns
         git_clone https://github.com/CHN-beta/rkp-ipid
         git_clone https://github.com/Erope/openwrt_nezha nezha && mvdir nezha
@@ -223,7 +227,7 @@ jobs:
         ) &
         (
         git clone https://github.com/sirpdboy/luci-theme-kucat -b js --depth 1
-        git_clone https://github.com/blueberry-pie-11/luci-app-natmap
+        git_clone https://github.com/blueberry-pie-11/luci-app-natmap lucinatmap && mv lucinatmap/{luci-app-natmap,natmap} ./;rm -rf lucinatmap
         git_clone https://github.com/QiuSimons/luci-app-daed-next daed1 && mvdir daed1
         git_clone https://github.com/sirpdboy/luci-app-netdata
         git_clone https://github.com/sirpdboy/luci-app-chatgpt-web
@@ -265,7 +269,7 @@ jobs:
         git_clone https://github.com/Carseason/openwrt-themedog && mv -n openwrt-themedog/luci/* ./;rm -rf openwrt-themedog
         git_clone https://github.com/Carseason/openwrt-app-actions Carseason && mv -n Carseason/applications/* ./;rm -rf Carseason
         # git_clone https://github.com/VergilGao/openwrt-sblite && mvdir openwrt-sblite
-        git clone https://github.com/Thaolga/luci-app-nekoclash -b neko --depth 1 nekoclash && mv nekoclash/luci-app-nekoclash ./;rm -rf nekoclash
+        git clone https://github.com/Thaolga/openwrt-nekobox -b nekobox --depth 1 && mv openwrt-nekobox/luci-app-nekobox ./;rm -rf openwrt-nekobox
         git_clone https://github.com/nosignals/openwrt-neko && mv openwrt-neko/luci-app-neko ./;rm -rf openwrt-neko
         ) &
         (
@@ -288,10 +292,9 @@ jobs:
         git_clone https://github.com/RymFred11/luci-app-nettask nettask && mv nettask/luci-app-nettask ./;rm -rf nettask
         git_clone https://github.com/jarod360/luci-app-xupnpd
         git_clone https://github.com/fuqiang03/openwrt-caddy
-        git_clone https://github.com/lmq8267/luci-app-caddy
+        git_clone https://github.com/lmq8267/luci-app-caddy luci-caddy && mv luci-caddy/luci-app-caddy ./;rm -rf luci-caddy
         git_clone https://github.com/sbwml/luci-app-smbuser
         git_clone https://github.com/rushxrushx/luci-app-redsocks
-        git_clone https://github.com/rq1025330/luci-app-virtualhere
         git_clone https://github.com/luochongjun/luci-app-dynv6
         git_clone https://github.com/nicholas9698/luci-app-campusnet
         git_clone https://github.com/tanghammer/luci-app-switchtools
@@ -300,7 +303,7 @@ jobs:
         git_clone https://github.com/jackpang960/luci-app-hypermodem
         git_clone https://github.com/wangqn/luci-app-nut
         git_clone https://github.com/kingyond/luci-app-accesscontrol-plus accesscontrol-plus && mv accesscontrol-plus/luci-app-accesscontrol-plus ./;rm -rf accesscontrol-plus
-        git_clone https://github.com/4IceG/luci-app-lite-watchdog
+        git_clone https://github.com/4IceG/luci-app-lite-watchdog lite-watchdog && mv lite-watchdog/luci-app-lite-watchdog ./;rm -rf lite-watchdog
         git_clone https://github.com/Mitsuhaxy/luci-app-miniproxy
         git_clone https://github.com/tkmsst/luci-app-cellularstatus cellularstatus && mv cellularstatus/luci/applications/* ./;rm -rf cellularstatus
         git_clone https://github.com/tracemouse/luci-app-coredns coredns && mv coredns/luci-app-coredns ./;rm -rf coredns
@@ -315,7 +318,7 @@ jobs:
         ) &
         (
         git_clone https://github.com/ttimasdf/luci-app-jederproxy
-        git_clone https://github.com/ApeaSuperz/luci-app-cqustdotnet
+        git_clone https://github.com/ApeaSuperz/luci-app-cqustdotnet cqustdotnet && mv cqustdotnet/luci-app-cqustdotnet ./;rm -rf cqustdotnet
         git_clone https://github.com/shenyunet/luci-app-hypercpe
         git_clone https://github.com/xcode75/luci-app-xclient
         git_clone https://github.com/chenzhen6666/luci-app-mproxy mproxy && mvdir mproxy
@@ -338,7 +341,7 @@ jobs:
         multimedia/UnblockNeteaseMusic net/amule net/softethervpn5 net/antileech multimedia/gmediarender net/go-aliyundrive-webdav \
         net/qBittorrent-static net/phtunnel net/frp net/headscale \
         net/uugamebooster net/verysync net/vlmcsd net/dnsforwarder net/tcpping net/netatalk net/pgyvpn
-        git_sparse_clone openwrt-23.05  "https://github.com/openwrt/packages" \
+        git_sparse_clone openwrt-23.05 "https://github.com/openwrt/packages" \
         utils/coremark utils/watchcat utils/dockerd utils/cgroupfs-mount net/uwsgi net/p910nd net/ddns-scripts net/smartdns net/curl \
         net/ariang net/tailscale
         ) &
@@ -347,7 +350,7 @@ jobs:
         package/base-files package/system/opkg package/network/services/ppp \
         package/network/services/dnsmasq
         git_sparse_clone main "https://github.com/openwrt/openwrt" \
-        package/network/config/wifi-scripts package/system/fstools
+        package/network/config/wifi-scripts
         git_sparse_clone openwrt-23.05 "https://github.com/openwrt/luci" applications/luci-app-attendedsysupgrade applications/luci-app-aria2 \
         applications/luci-app-ddns applications/luci-app-acme applications/luci-app-opkg \
         applications/luci-app-ksmbd applications/luci-app-samba4 applications/luci-app-watchcat applications/luci-app-upnp \
@@ -374,7 +377,7 @@ jobs:
         git_sparse_clone master "https://github.com/immortalwrt/immortalwrt" \
         package/kernel/rtl8189es package/emortal/autocore package/emortal/automount \
         package/network/utils/fullconenat package/emortal/cpufreq package/network/utils/fullconenat-nft package/network/utils/nftables \
-        package/network/config/firewall package/network/config/firewall4 \
+        package/network/config/firewall package/network/config/firewall4 package/system/fstools \
         package/utils/mhz package/libs/libnftnl package/firmware/wireless-regdb 
         ) &
         (
@@ -386,16 +389,15 @@ jobs:
         rm -rf luciapp/{luci-app-qbittorrent,luci-app-zerotier,luci-app-cpufreq,luci-app-e2guardian,luci-app-aliyundrive-fuse,luci-app-syncdial,luci-app-firewall}
         git_sparse_clone master "https://github.com/immortalwrt/luci" applications protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
         mv -n luciapp/* applications/; rm -rf luciapp
-        
+
         for ipk in $(ls -d applications/!(luci-app-rclone|luci-app-filebrowser|luci-app-firewall)/); do
         	if [[ $(ls $ipk/po | wc -l) -gt 4 ]]; then
             rm -rf $ipk
         	fi
         done
-        
-        git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/lean package/network/services/shellsync package/wwan package/qca/shortcut-fe
+
         git clone -b dev --depth 1 https://github.com/vernesong/OpenClash && mv -n OpenClash/luci-app-openclash ./; rm -rf OpenClash
-        #git clone -b easyupdate https://github.com/mgz0227/easyupdate && mv -n easyupdate/luci-app-easyupdate ./; rm -rf easyupdate
+        git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/lean package/network/services/shellsync package/wwan package/qca/shortcut-fe
 
     - name: Delete duplicated packages
       run: |
@@ -426,7 +428,6 @@ jobs:
 
     - name: Modify
       run: |
-        
         shopt -s extglob
         set +e
         sed -i \
@@ -442,7 +443,7 @@ jobs:
              -H "Authorization: Bearer ${{ secrets.TOKEN_MGZ0227 }}" \
              -X POST -d '{ "query": "query {repository(owner: \"'"$1"'\", name: \"'"$2"'\"){latestRelease{tagName tagCommit{oid}}refs(refPrefix:\"refs/tags/\",last:1,orderBy:{field:TAG_COMMIT_DATE,direction:ASC}){edges{node{name target{oid}}}}defaultBranchRef{target{...on Commit {oid}}}}}"}' https://api.github.com/graphql)
         }
-        for pkg in $(ls !(luci-*|cloudflared|dnsproxy|joker|aic8800|aria2|mihomo|hickory-dns|frp|libcryptopp|toml11|chinadns-ng|ddns-go|libtorrent-rasterbar|ua2f|homebox|xtables-wgobfs|nexttrace|tuic-server|subconverter|softethervpn5|shadowsocksr-libev|mt76|sub-web|mmdvm-host|alist|curl|qBittorrent-Enhanced-Edition|libwxwidgets|ysf-clients|natter|fullconenat|v2raya|r8152|amule|brook|3proxy|containerd|oscam|netmaker|n2n_v2|naiveproxy|miniupnpd-nft|upx|netdata|tailscale|mosdns|coremark|mbedtls|quickjspp|accel-ppp)/Makefile); do
+        for pkg in $(ls !(luci-*|cloudflared|dnsproxy|joker|aic8800|headscale|aria2|mihomo|hickory-dns|frp|libcryptopp|toml11|chinadns-ng|ddns-go|libtorrent-rasterbar|ua2f|homebox|xtables-wgobfs|nexttrace|tuic-server|subconverter|softethervpn5|shadowsocksr-libev|mt76|sub-web|mmdvm-host|alist|curl|qBittorrent-Enhanced-Edition|libwxwidgets|ysf-clients|natter|fullconenat|v2raya|r8152|amule|brook|3proxy|containerd|oscam|netmaker|n2n_v2|naiveproxy|miniupnpd-nft|upx|netdata|tailscale|mosdns|coremark|mbedtls|quickjspp|accel-ppp)/Makefile); do
           repo="$(grep PKG_SOURCE_URL $pkg | grep github | cut -f 4-5 -d '/' | sed -e 's/.git//' | grep -E '[0-9a-zA-Z_-]+$')" || true
           if [ "$repo" ]; then
             owner="$(echo $repo | cut -f 1 -d '/')"
@@ -535,7 +536,7 @@ jobs:
           -e 's/URL:=@IMMORTALWRT/URL:=https:\/\/mirror2.immortalwrt.org\/sources/g' \
           */Makefile
         ) &
-
+        
         while [[ ! -f /tmp/ok ||  ! -f /tmp/ok2 ]]; do
             echo "wait"
           sleep 1
@@ -545,7 +546,7 @@ jobs:
       run: |
         Emoji=("🎉" "🤞" "✨" "🎁" "🎈" "🎄" "🎨" "💋" "🍓" "🍕" "🍉" "💐" "🌴" "🚀" "🛸" "🗽" "⛅" "🌈" "🔥" "⛄" "🐶" "🏅" "🦄" "🐤")
         git add .
-        git commit -m "${Emoji[$[$RANDOM % ${#Emoji[@]}]]} Sync $(date +%Y-%m-%d" "%H:%M:%S)" || true
+        git commit -m "${Emoji[$[$RANDOM % ${#Emoji[@]}]]} Sync $(date +%Y-%m-%d" "%H:%M:%S)"
         for pkg in $(git diff-tree --no-commit-id --name-only HEAD); do
           if [ "$(grep "PKG_RELEASE" $pkg/Makefile)" ]; then
             sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=$(git rev-list --count master $pkg)/" $pkg/Makefile || true
