@@ -2,7 +2,7 @@ local pcall, dofile, _G = pcall, dofile, _G
 pcall(dofile, "/etc/openwrt_release")
 local fs = require "nixio.fs"
 
-m=Map("easyupdate",translate("EasyUpdate"),translate("EasyUpdate LUCI supports scheduled upgrade & one-click firmware upgrade.") .. [[<br />]] .. translate("Update may cause the restart failure, Exercise caution when selecting automatic update."))
+m=Map("easyupdate",translate("EasyUpdate"),translate("EasyUpdate LUCI supports scheduled upgrade & one-click firmware upgrade.") .. [[<br />]] .. translate("Update may cause the restart failure, Exercise caution when selecting automatic update.") .. [[<br /><br /><a href="https://github.com/sundaqiang/openwrt-packages" target="_blank">Powered by sundaqiang</a>]])
 
 s=m:section(TypedSection,"easyupdate")
 s.anonymous=true

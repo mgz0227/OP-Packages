@@ -4,31 +4,31 @@ function index()
 	if not nixio.fs.access("/etc/config/easyupdate") then
 		return
 	end
-	local c = luci.model.uci.cursor()
-	local r = 0
+	local c=luci.model.uci.cursor()
+	local r=0
 	if not c:get("easyupdate", "main", "mirror") then
-	    r = 1
+	    r=1
 	    c:set("easyupdate", "main", "mirror", "")
 	end
 	if not c:get("easyupdate", "main", "keepconfig") then
-	    r = 1
+	    r=1
 	    c:set("easyupdate", "main", "keepconfig", "1")
 	end
 	if not c:get("easyupdate", "main", "github") then
-	    r = 1
+	    r=1
 	    local pcall, dofile, _G = pcall, dofile, _G
-	    pcall(dofile, "/etc/openwrt_version")  -- Update this line to use 'openwrt_version'
+        pcall(dofile, "/etc/openwrt_release")
 	    c:set("easyupdate", "main", "github", _G.DISTRIB_GITHUB)
 	end
 	if r then
 	    c:commit("easyupdate")
 	end
-	entry({"admin", "system", "easyupdate"}, cbi("easyupdate"), _("EasyUpdate"), 99).dependent = true
-	entry({"admin", "system", "easyupdate", "getver"}, call("getver")).leaf = true
-	entry({"admin", "system", "easyupdate", "download"}, call("download")).leaf = true
-	entry({"admin", "system", "easyupdate", "getlog"}, call("getlog")).leaf = true
-	entry({"admin", "system", "easyupdate", "check"}, call("check")).leaf = true
-	entry({"admin", "system", "easyupdate", "flash"}, call("flash")).leaf = true
+	entry({"admin", "services", "easyupdate"}, cbi("easyupdate"),_("EasyUpdate"), 99).dependent = true
+	entry({"admin", "services", "easyupdate", "getver"}, call("getver")).leaf = true
+	entry({"admin", "services", "easyupdate", "download"}, call("download")).leaf = true
+	entry({"admin", "services", "easyupdate", "getlog"}, call("getlog")).leaf = true
+	entry({"admin", "services", "easyupdate", "check"}, call("check")).leaf = true
+	entry({"admin", "services", "easyupdate", "flash"}, call("flash")).leaf = true
 end
 
 function Split(str, delim, maxNb)  
@@ -43,7 +43,7 @@ function Split(str, delim, maxNb)
     local pat = "(.-)" .. delim .. "()"  
     local nb = 0 
     local lastPos  
-    for part, pos in string.gmatch(str, pat) do 
+    for part, pos in string.gfind(str, pat) do 
         nb = nb + 1 
         result[nb] = part  
         lastPos = pos  
@@ -58,25 +58,9 @@ end
 
 function getver()
 	local e={}
-    -- 获取云端版本号
-    e.newver = luci.sys.exec("/usr/bin/easyupdate.sh -c")
-    e.newver = e.newver:sub(1,10)  -- 假设日期格式是 "dd.mm.yyyy"
-    
-    -- 转换为时间戳
-    local day = tonumber(e.newver:sub(1,2))
-    local month = tonumber(e.newver:sub(4,5))
-    local year = tonumber(e.newver:sub(7,10))
-    e.newverint = os.time({day=day, month=month, year=year, hour=0, min=0, sec=0})
-
-	-- 本地版本时间戳
-	local localver = luci.sys.exec("cat /etc/openwrt_version")
-	local localmonth = tonumber(localver:sub(1,2))
-	local localday = tonumber(localver:sub(4,5))
-	local localyear = tonumber(localver:sub(7,10))
-	local nowverint = os.time({day=localday, month=localmonth, year=localyear, hour=0, min=0, sec=0})
-
-    -- 返回结果
-    e.localverint = nowverint
+    e.newver=luci.sys.exec("/usr/bin/easyupdate.sh -c")
+    e.newver=e.newver:sub(0,-2)
+    e.newverint=os.time({day=e.newver:sub(7,8), month=e.newver:sub(5,6), year=e.newver:sub(1,4), hour=e.newver:sub(10,11), min=e.newver:sub(12,13), sec=e.newver:sub(14,15)})
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)
 end
@@ -84,7 +68,7 @@ end
 function download()
 	local e={}
 	ret=luci.sys.exec("/usr/bin/easyupdate.sh -d")
-	e.data=ret:match("MeowWrt.+%.img%.gz")
+	e.data=ret:match("openwrt.+%.img%.gz")
 	e.code=1
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)

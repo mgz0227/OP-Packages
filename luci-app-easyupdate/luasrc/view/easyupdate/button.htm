@@ -2,16 +2,17 @@
 	<input class="cbi-button cbi-input-reload" id="update" type="button" value="<%:Collecting data...%>" size="0" disabled onclick="check_version()">
 	<br>
 	<div class="cbi-value-description">
+		<span class="cbi-value-helpicon"><img src="/luci-static/resources/cbi/help.gif" alt="帮助"></span>
 		<span>
-		    <%:Local Firmware Version%>:<%=luci.sys.exec("cat /etc/openwrt_version")%>
+		    <%:Local Firmware Version%>:<%=self.versions%>
 		</span>
 		<br>
+		<span class="cbi-value-helpicon"><img src="/luci-static/resources/cbi/help.gif" alt="帮助"></span>
 		<span id="cloudver">
 		    <%:Cloud Firmware Version%>:<%:Collecting data...%>
 		</span>
 	</div>
 <%+cbi/valuefooter%>
-
 <style type="text/css">
 	#update_apply_overlay {
 	    white-space: pre-line;
@@ -62,7 +63,6 @@
 	    width: 45VW!important;
 	}
 </style>
-
 <script type="text/javascript">
 function update_status_message(type, content) {
 	document.getElementById('update_apply_overlay') || document.body.insertAdjacentHTML("beforeend",'<div id="update_apply_overlay"><div class="alert-message"></div></div>')
@@ -84,36 +84,32 @@ function update_status_message(type, content) {
 		document.body.classList.remove('apply-overlay-active');
 	}
 }
-
 function getver() {
-    XHR.get('<%=url([[admin]], [[system]], [[easyupdate]], [[getver]])%>', null,
-        function(x, data) {
+    XHR.get('<%=url([[admin]], [[services]], [[easyupdate]], [[getver]])%>', null,
+    	function(x, data) {
             const tb = document.getElementById('cloudver');
             const up = document.getElementById('update');
             if (data && tb) {
                 if (data.newver) {
-                    tb.innerHTML = 'Cloud Firmware Version: ' + data.newver;
-                    
-                    // 比较版本
-                    if (data.newverint > data.localverint) {
-                        up.value = 'Download Firmware';
-                        up.disabled = false;
+                    tb.innerHTML = '<%:Cloud Firmware Version%>:' + data.newver;
+                    nowverint=<%=os.time({day=self.versions:sub(7,8), month=self.versions:sub(5,6), year=self.versions:sub(1,4), hour=self.versions:sub(10,11), min=self.versions:sub(12,13), sec=self.versions:sub(14,15)})%>
+                    if (data.newverint > nowverint){
+                        up.value = '<%:Download Firmware%>'
+                        up.disabled = false
                         up.setAttribute('newver', data.newver);
-                    } else {
-                        up.value = 'Is the latest';
-                        up.disabled = true;
+                    }else{
+                        up.value = '<%:Is the latest%>'
+                        up.disabled = true
                     }
-                } else {
-                    tb.innerHTML = 'Cloud Firmware Version: Collecting data...';
-                    up.value = 'Retry Firmware Check';
-                    up.disabled = false;
+                }else{
+                    tb.innerHTML = '<%:Cloud Firmware Version%>:<%:Collecting data...%>';
+                    up.value = '<%:Retry Firmware Check%>'
+                    up.disabled = false
                 }
             }
         }
     );
-}
-
-	XHR.get('<%=url([[admin]], [[system]], [[easyupdate]], [[check]])%>', {file: ''}, (x, r) => {
+	XHR.get('<%=url([[admin]], [[services]], [[easyupdate]], [[check]])%>', {file: ''}, (x, r) => {
 		if (r.code == 1 && r.data.indexOf("OK") > -1) {
 			const tb = document.getElementById('update');
 			tb.setAttribute('file', r.data.slice(0,r.data.indexOf(".img.gz")) + ".img.gz");
@@ -123,14 +119,13 @@ function getver() {
 	});
 }
 getver()
-
 function check_version() {
     const tb = document.getElementById('update');
     const flash= tb.getAttribute("flash")
     if (flash){
-        XHR.get('<%=url([[admin]], [[system]], [[easyupdate]], [[flash]])%>', {file: tb.getAttribute("file")}, (x, r) => {
+        XHR.get('<%=url([[admin]], [[services]], [[easyupdate]], [[flash]])%>', {file: tb.getAttribute("file")}, (x, r) => {
             if (r.code == 1) {
-                XHR.poll(1, '<%=url([[admin]], [[system]], [[easyupdate]], [[getlog]])%>', null,(x, r) => {
+                XHR.poll(1, '<%=url([[admin]], [[services]], [[easyupdate]], [[getlog]])%>', null,(x, r) => {
                     update_status_message('notice', r.data);
 					if (r.data.indexOf("Image check failed.") > -1){
                         XHR.halt()
@@ -160,10 +155,10 @@ function check_version() {
     const newver= tb.getAttribute("newver")
     if (newver){
         tb.disabled = true;
-        XHR.get('<%=url([[admin]], [[system]], [[easyupdate]], [[download]])%>', null, (x, r) => {
+        XHR.get('<%=url([[admin]], [[services]], [[easyupdate]], [[download]])%>', null, (x, r) => {
             if (r.code == 1) {
 				tb.setAttribute('file', r.data);
-                XHR.poll(1, '<%=url([[admin]], [[system]], [[easyupdate]], [[getlog]])%>', null,(x, r) => {
+                XHR.poll(1, '<%=url([[admin]], [[services]], [[easyupdate]], [[getlog]])%>', null,(x, r) => {
                     if (r.data.indexOf("transfer closed") > -1 || r.data.indexOf("Could not resolve host") > -1){
                         XHR.halt()
                         update_status_message('warning', r.data);
@@ -172,7 +167,7 @@ function check_version() {
                         })
                     }else{
                         if (/100\s.+M\s+100.+--:--:--/.test(r.data)){
-							XHR.get('<%=url([[admin]], [[system]], [[easyupdate]], [[check]])%>', {file: tb.getAttribute("file")}, (x, r) => {
+							XHR.get('<%=url([[admin]], [[services]], [[easyupdate]], [[check]])%>', {file: tb.getAttribute("file")}, (x, r) => {
 								XHR.halt()
 								if (r.code == 1 && r.data.indexOf("OK") > -1) {
 									setTimeout(() => {

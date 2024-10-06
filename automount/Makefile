@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=automount
 PKG_FLAGS:=nonshared
-PKG_RELEASE:=16
+PKG_RELEASE:=17
 
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_TARGET_ramips
@@ -20,8 +20,7 @@ define Package/automount
   TITLE:=Mount autoconfig hotplug script.
   MAINTAINER:=Lean
   DEPENDS:= \
-    +kmod-usb3 \
-    +kmod-usb2 \
+    +luci-app-partexp \
     +block-mount \
     +e2fsprogs \
     +kmod-usb-storage \
@@ -48,9 +47,14 @@ endef
 define Build/Compile
 endef
 
+define Package/automount/install
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+endef
+
 define Package/ntfs3-mount/install
 	$(INSTALL_DIR) $(1)/sbin
 	$(INSTALL_BIN) ./files/mount.ntfs $(1)/sbin
 endef
 
 $(eval $(call BuildPackage,automount))
+$(eval $(call BuildPackage,ntfs3-mount))

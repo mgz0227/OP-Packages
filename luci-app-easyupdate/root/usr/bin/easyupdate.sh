@@ -28,96 +28,35 @@ EOF
 }
 
 function getCloudVer() {
-    checkEnv
-    github=$(uci get easyupdate.main.github)
-    
-    if [ -z "$github" ]; then
-        writeLog "Error: No GitHub address configured."
-        return 1
-    fi
-    
-    writeLog "Fetching latest release from GitHub for: $github"
-    github=(${github//// })
-    
-    version=$(curl -s --fail "https://api.github.com/repos/${github[2]}/${github[3]}/releases/latest" | jsonfilter -e '@.tag_name')
-    
-    if [ -z "$version" ]; then
-        writeLog "Error: Failed to fetch version information from GitHub."
-        return 1
-    fi
-    
-    writeLog "Cloud version found: $version"
-    echo "$version" | sed -e 's/^([0-9]{2}\.[0-9]{2}\.[0-9]{4}).*/\1/'
+	checkEnv
+	github=$(uci get easyupdate.main.github)
+	github=(${github//// })
+	curl "https://api.github.com/repos/${github[2]}/${github[3]}/releases/latest" | jsonfilter -e '@.tag_name' | sed -e 's/OpenWrt_//'
 }
 
 function downCloudVer() {
-    checkEnv
-    writeLog 'Get GitHub project address(读取github项目地址)'
-    
-    github=$(uci get easyupdate.main.github)
-    if [ -z "$github" ]; then
-        writeLog "Error: GitHub address not found in UCI configuration."
-        return 1
-    fi
-    
-    writeLog "GitHub project address(github项目地址): $github"
-    github=(${github//// })
-    
-    # 检查是否 EFI 固件
-    writeLog 'Check whether EFI firmware is available(判断是否EFI固件)'
-    if [ -d "/sys/firmware/efi/" ]; then
-        suffix="combined-efi.img.gz"
-    else
-        suffix="combined.img.gz"
-    fi
-    writeLog "Whether EFI firmware is available(是否EFI固件): $suffix"
-
-    # 获取最新发布版本信息
-    writeLog 'Fetching release information from GitHub(从GitHub获取发布信息)'
-    response=$(curl -s --fail "https://api.github.com/repos/${github[2]}/${github[3]}/releases/latest")
-    if [ $? -ne 0 ] || [ -z "$response" ]; then
-        writeLog "Error: Failed to fetch release information from GitHub."
-        return 1
-    fi
-    
-    # 提取固件下载链接
-    writeLog 'Extracting firmware download URL(提取固件下载链接)'
-    url=$(echo "$response" | jsonfilter -e '@.assets[*].browser_download_url' | sed -n "/$suffix/p")
-    
-    if [ -z "$url" ]; then
-        writeLog "Error: No matching firmware found for suffix $suffix."
-        return 1
-    fi
-    
-    writeLog "Firmware download URL: $url"
-    
-    # 提取文件名
-    fileName=(${url//// })
-    if [ -z "${fileName[7]}" ]; then
-        writeLog "Error: Failed to extract file name from URL."
-        return 1
-    fi
-
-    # 下载 SHA256 校验文件
-    writeLog "Downloading SHA256 checksum file(下载SHA256校验文件)."
-    curl -s --fail -o "/tmp/${fileName[7]}-sha256" -L "$mirror${url/${fileName[7]}/sha256sums}"
-    if [ $? -ne 0 ]; then
-        writeLog "Error: Failed to download SHA256 checksum file."
-        return 1
-    fi
-
-    # 下载固件文件并将日志记录到 easyupdate.log
-    writeLog "Downloading firmware file(下载固件文件)."
-    curl -s --fail -o "/tmp/${fileName[7]}" -L "$mirror$url" >/tmp/easyupdate.log 2>&1 &
-    if [ $? -ne 0 ]; then
-        writeLog "Error: Failed to download firmware file."
-        return 1
-    fi
-
-    writeLog "Firmware and checksum files downloaded successfully(固件和校验文件下载成功)."
+	checkEnv
+	writeLog 'Get github project address(读取github项目地址)'
+	github=$(uci get easyupdate.main.github)
+	writeLog "Github project address(github项目地址):$github"
+	github=(${github//// })
+	writeLog 'Check whether EFI firmware is available(判断是否EFI固件)'
+	if [ -d "/sys/firmware/efi/" ]; then
+		suffix="combined-efi.img.gz"
+	else
+		suffix="combined.img.gz"
+	fi
+	writeLog "Whether EFI firmware is available(是否EFI固件):$suffix"
+	writeLog 'Get the cloud firmware link(获取云端固件链接)'
+	url=$(curl "https://api.github.com/repos/${github[2]}/${github[3]}/releases/latest" | jsonfilter -e '@.assets[*].browser_download_url' | sed -n "/$suffix/p")
+	writeLog "Cloud firmware link(云端固件链接):$url"
+	mirror=$(uci get easyupdate.main.mirror)
+	writeLog "Use mirror URL(使用镜像网站):$mirror"
+	fileName=(${url//// })
+	curl -o "/tmp/${fileName[7]}-sha256" -L "$mirror${url/${fileName[7]}/sha256sums}"
+	curl -o "/tmp/${fileName[7]}" -L "$mirror$url" >/tmp/easyupdate.log 2>&1 &
+	writeLog 'Start downloading firmware, log output in /tmp/easyupdate.log(开始下载固件，日志输出在/tmp/easyupdate.log)'
 }
-
-
 
 function flashFirmware() {
 	checkEnv
@@ -143,7 +82,7 @@ function checkSha() {
 	if [[ -z "$file" ]]; then
 		for filename in $(ls /tmp)
 		do
-			if [[ "${filename#*.}" = "img.gz" && "${filename:0:7}" = "meowwrt" ]]; then
+			if [[ "${filename#*.}" = "img.gz" && "${filename:0:7}" = "openwrt" ]]; then
 				file=$filename
 			fi
 		done
@@ -154,13 +93,13 @@ function checkSha() {
 function updateCloud() {
 	checkEnv
 	writeLog 'Get the local firmware version(获取本地固件版本)'
-	lFirVer=$(cat /etc/openwrt_release)
+	lFirVer=$(cat /etc/openwrt_release | sed -n "s/DISTRIB_VERSIONS='\(.*\)'/\1/p")
 	writeLog "Local firmware version(本地固件版本):$lFirVer"
 	writeLog 'Get the cloud firmware version(获取云端固件版本)'
 	cFirVer=$(getCloudVer)
 	writeLog "Cloud firmware version(云端固件版本):$cFirVer"
-	lFirVer=$(date -d "$lFirVer" +%s)
-	cFirVer=$(date -d "$cFirVer" +%s)
+	lFirVer=$(date -d "${lFirVer:0:4}-${lFirVer:4:2}-${lFirVer:6:2} ${lFirVer:9:2}:${lFirVer:11:2}:${lFirVer:13:2}" +%s)
+	cFirVer=$(date -d "${cFirVer:0:4}-${cFirVer:4:2}-${cFirVer:6:2} ${cFirVer:9:2}:${cFirVer:11:2}:${cFirVer:13:2}" +%s)
 	if [ $cFirVer -gt $lFirVer ]; then
 		writeLog 'Need to be updated(需要更新)'
 		checkShaRet=$(checkSha)
