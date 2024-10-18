@@ -1,6 +1,6 @@
 --- a/luci-app-openclash/Makefile
 +++ b/luci-app-openclash/Makefile
-@@ -41,7 +41,8 @@ define Package/$(PKG_NAME)
+@@ -44,7 +44,8 @@ define Package/$(PKG_NAME)
  	TITLE:=LuCI support for clash
  	PKGARCH:=all
  	DEPENDS:=+dnsmasq-full +coreutils +coreutils-nohup +bash +curl +ca-certificates +ipset +ip-full \
