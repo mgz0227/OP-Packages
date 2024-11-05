@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=nginx-util
 PKG_VERSION:=1.7
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_MAINTAINER:=Peter Stadler <peter.stadler@student.uibk.ac.at>
 
 include $(INCLUDE_DIR)/package.mk
@@ -17,7 +17,6 @@ define Package/nginx-ssl-util/default
   SUBMENU:=Web Servers/Proxies
   TITLE:=Nginx configurator including SSL
   DEPENDS:=+libstdcpp +libuci +libubus +libubox +libpthread +libopenssl
-  EXTRA_DEPENDS:=nginx-util (>=1.4-2)
 endef
 
 
