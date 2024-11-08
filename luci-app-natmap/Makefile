@@ -2,17 +2,14 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=luci-app-natmap
+# luci-app-natmap_git-23.208.32967-01d4ecb_all.ipk
+# https://t.me/ctcgfw_openwrt_discuss/1029229
+PKG_PO_VERSION:=$(PKG_VERSION)
 
 LUCI_TITLE:=LuCI Support for natmap
-LUCI_DEPENDS:=+natmap +jq +curl +openssl-util +bash
-
+LUCI_DEPENDS:=+natmap
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=Richard Yu <yurichard3839@gmail.com>
-
-define Package/${PKG_NAME}/conffiles
-/etc/config/natmap
-endef
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
