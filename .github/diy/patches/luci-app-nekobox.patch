@@ -50,4 +50,3 @@
  endef
  
  define Package/$(PKG_NAME)/description
-
