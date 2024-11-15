@@ -41,7 +41,7 @@
 
 --- a/luci-app-nekobox/Makefile
 +++ b/luci-app-nekobox/Makefile
-@@ -16,7 +16,7 @@
+@@ -16,7 +16,7 @@ define Package/$(PKG_NAME)
  	SUBMENU:=3. Applications
  	TITLE:=LuCI support for mihomo
  	PKGARCH:=all
