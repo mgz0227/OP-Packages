@@ -12,8 +12,8 @@ end
 
 function check_update()
 		needs_update, notice, md5 = false, false, false
-		remote_version = luci.sys.exec("curl -skfL https://op.miaogongzi.cc/23.05/targets/x86/64/version.txt")
-		updatelogs = luci.sys.exec("curl -skfL https://op.miaogongzi.cc/23.05/targets/x86/64/updatelogs.txt")
+		remote_version = luci.sys.exec("curl -skfL https://op.miaogongzi.cc/24.10/targets/x86/64/version.txt")
+		updatelogs = luci.sys.exec("curl -skfL https://op.miaogongzi.cc/24.10/targets/x86/64/updatelogs.txt")
 		remoteformat = luci.sys.exec("date -d $(echo \"" ..remote_version.. "\" | tr '\r\n' ',' | awk -F, '{printf $1}' | awk -F. '{printf $3\"-\"$1\"-\"$2}') +%s")
 		fnotice = luci.sys.exec("echo \"" ..remote_version.. "\" | tr '\r\n' ',' | awk -F, '{printf $(NF-1)}'")
 		md5 = luci.sys.exec("echo \"" ..remote_version.. "\" | tr '\r\n' ',' | awk -F, '{printf $2}'")
@@ -47,23 +47,23 @@ function to_check()
     	model = "x86_32"
     	check_update()
     	if fs.access("/sys/firmware/efi") then
-    		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/" ..model.. "/MeowWrt-" ..remote_version.. "-x86-generic-squashfs-combined-efi.img.gz"
+    		download_url = "https://op.miaogongzi.cc/24.10/targets/x86/64/" ..model.. "/MeowWrt-" ..remote_version.. "-x86-generic-squashfs-combined-efi.img.gz"
     	else
-    		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/" ..model.. "/MeowWrt-" ..remote_version.. "-x86-generic-squashfs-combined.img.gz"
+    		download_url = "https://op.miaogongzi.cc/24.10/targets/x86/64/" ..model.. "/MeowWrt-" ..remote_version.. "-x86-generic-squashfs-combined.img.gz"
     		md5 = ""
     	end
     elseif board_name:match("phicomm,k3$") or board_name:match("rt%-ac88u$") then
 		check_update()
-		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/" ..model.. "/" ..remote_version.. "-MeowWrt-" ..target.. "-" ..board_name.. "-squashfs.trx"
+		download_url = "https://op.miaogongzi.cc/24.10/targets/x86/64/" ..model.. "/" ..remote_version.. "-MeowWrt-" ..target.. "-" ..board_name.. "-squashfs.trx"
     elseif target:match("sunxi") then
 		check_update()
-		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/" ..model.. "/" ..remote_version.. "-MeowWrt-" ..target.. "-" ..board_name.. "-squashfs-sdcard.img.gz"    
+		download_url = "https://op.miaogongzi.cc/24.10/targets/x86/64/" ..model.. "/" ..remote_version.. "-MeowWrt-" ..target.. "-" ..board_name.. "-squashfs-sdcard.img.gz"    
     elseif arch:match("aarch64_generic") or board_name:match("rpi%-") then
 		check_update()
-		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/" ..model.. "/" ..remote_version.. "-MeowWrt-" ..target.. "-" ..board_name.. "-squashfs-sysupgrade.img.gz"
+		download_url = "https://op.miaogongzi.cc/24.10/targets/x86/64/" ..model.. "/" ..remote_version.. "-MeowWrt-" ..target.. "-" ..board_name.. "-squashfs-sysupgrade.img.gz"
     else
 		check_update()
-		download_url = "https://op.miaogongzi.cc/23.05/targets/x86/64/" ..model.. "/" ..remote_version.. "-MeowWrt-" ..target.. "-" ..board_name.. "-squashfs-sysupgrade.bin"
+		download_url = "https://op.miaogongzi.cc/24.10/targets/x86/64/" ..model.. "/" ..remote_version.. "-MeowWrt-" ..target.. "-" ..board_name.. "-squashfs-sysupgrade.bin"
     end
 	
 
