@@ -561,7 +561,7 @@ jobs:
           fi
         done
         #sed -i 's/^\(PKG_RELEASE:=\).*/\1beta/' ./luci-app-openclash/Makefile
-        sed '/PKG_RELEASE:=/d' ./luci-app-openclash/Makefile
+        sed -i '/PKG_RELEASE:=/d' ./luci-app-openclash/Makefile
         git reset --soft HEAD^
         git add .
         if ! git diff-index --quiet HEAD --; then
