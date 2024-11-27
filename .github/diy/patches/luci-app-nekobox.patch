@@ -6,6 +6,7 @@
 
 --- a/luci-app-nekobox/root/etc/uci-defaults/99_neko
 +++ b/luci-app-nekobox/root/etc/uci-defaults/99_neko
+@@ -9,11 +9,31 @@ tmp_dir="/tmp"
  echo "[ `date +%T` ] - Checking Files..."
  
  files_check() {
@@ -44,10 +45,8 @@
  	SUBMENU:=3. Applications
  	TITLE:=LuCI support for mihomo & sing-box
  	PKGARCH:=all
--	DEPENDS:=+kmod-tun +bash +curl +jq +php8 +php8-cgi +php8-mod-curl +php8-mod-zip +zoneinfo-asia
-+	DEPENDS:=+kmod-tun +bash +curl +jq +php8 +php8-cgi +php8-fastcgi +php8-mod-curl +php8-mod-zip +zoneinfo-asia
+-	DEPENDS:=+kmod-tun +bash +curl +jq +php8 +php8-cgi +php8-mod-curl +php8-mod-intl +zoneinfo-asia
++	DEPENDS:=+kmod-tun +bash +curl +jq +php8 +php8-cgi +php8-fastcgi +php8-mod-curl +php8-mod-intl +zoneinfo-asia
  endef
  
  define Package/$(PKG_NAME)/description
-
-
