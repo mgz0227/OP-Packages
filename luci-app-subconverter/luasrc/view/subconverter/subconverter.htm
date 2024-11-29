@@ -24,9 +24,9 @@ local function update_scheduled_time(scheduled_time)
   scheduled_time = math.floor(scheduled_time)
   local current_crontab = luci.sys.exec("crontab -l | grep -v '/etc/init.d/subconverter'")
   if scheduled_time >= 0 and scheduled_time <= 23 then 
-    local start_time = string.format('%d 0 * * * /etc/init.d/subconverter start', scheduled_time)
-    local stop_time = string.format('%d 0 * * * /etc/init.d/subconverter stop', (scheduled_time + 2) % 24)
-    current_crontab = start_time .. "\n" .. stop_time .. "\n" .. current_crontab
+    local start_time = string.format('0 %d * * * /etc/init.d/subconverter start', scheduled_time)
+    local stop_time = string.format('0 %d * * * /etc/init.d/subconverter stop', (scheduled_time + 2) % 24)
+    current_crontab = (current_crontab:sub(-1) ~= "\n" and current_crontab .. "\n" or current_crontab) .. start_time .. "\n" .. stop_time .. "\n"
   end
   luci.sys.exec(string.format("echo '%s' | crontab -", current_crontab))
 end
