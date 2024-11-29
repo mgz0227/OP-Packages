@@ -10,7 +10,7 @@ local function get_enabled()
 end
 
 local function get_port()
-  local port = luci.sys.exec("grep -i '^port=' /usr/subconverter/pref.ini | cut -d '=' -f 2 | head -n 1")
+  local port = luci.sys.exec("grep -i '^port=' /etc/subconverter/pref.ini | cut -d '=' -f 2 | head -n 1")
   return port ~= "" and port:gsub("[^%d]", "") or "25500"
 end
 
@@ -35,7 +35,7 @@ local function update_port(port)
   if type(port) ~= "number" then return end
   port = math.floor(port)
   if port >= 1 and port <= 65535 then
-    os.execute(string.format('sed -i \'s/^port=.*/port=%d/\' /usr/subconverter/pref.ini || echo "port=%d" >> /usr/subconverter/pref.ini', port, port))
+    os.execute(string.format('sed -i \'s/^port=.*/port=%d/\' /etc/subconverter/pref.ini || echo "port=%d" >> /etc/subconverter/pref.ini', port, port))
   end
 end
 
