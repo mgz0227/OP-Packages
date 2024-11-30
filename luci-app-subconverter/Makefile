@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-subconverter
 PKG_VERSION:=1.1
-PKG_RELEASE:=8
+PKG_RELEASE:=9
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -30,7 +30,7 @@ endef
 define Package/$(PKG_NAME)/prerm
     #!/bin/sh
     crontab -l | grep -v '/etc/init.d/subconverter' | crontab -
-    killall -q subconverter
+    killall -q /etc/subconverter/subconverter
     rm -rf /etc/subconverter
 endef
 

@@ -8,7 +8,7 @@ start() {
 }
 
 stop() {
-  killall -q subconverter
+  killall -q /etc/subconverter/subconverter
 }
 
 restart() {

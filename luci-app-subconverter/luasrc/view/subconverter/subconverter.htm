@@ -2,7 +2,7 @@
 local VALID_HOURS = {["0"]=0,["1"]=1,["2"]=2,["3"]=3,["4"]=4,["5"]=5,["6"]=6,["7"]=7,["8"]=8,["9"]=9,["10"]=10,["11"]=11,["12"]=12,["13"]=13,["14"]=14,["15"]=15,["16"]=16,["17"]=17,["18"]=18,["19"]=19,["20"]=20,["21"]=21,["22"]=22,["23"]=23}
 
 local function get_status()
-  return luci.sys.exec("pgrep -f subconverter") ~= "" and "running" or "stopped"
+  return luci.sys.exec("pgrep -x /etc/subconverter/subconverter") ~= "" and "running" or "stopped"
 end
 
 local function get_enabled()
@@ -15,18 +15,18 @@ local function get_port()
 end
 
 local function get_scheduled_time()
-  local output = luci.sys.exec("crontab -l | grep '/etc/init.d/subconverter start'")
-  return VALID_HOURS[output:match("(%d+) 0 .*")]
+  local output = luci.sys.exec("crontab -l | grep -m 1 '^0 [0-9]* \\* \\* \\* /etc/init.d/subconverter start'")
+  return VALID_HOURS[output:match("^0 (%d+) %* %* %*")]
 end
 
 local function update_scheduled_time(scheduled_time)
   if type(scheduled_time) ~= "number" then return end
   scheduled_time = math.floor(scheduled_time)
-  local current_crontab = luci.sys.exec("crontab -l | grep -v '/etc/init.d/subconverter'")
+  local current_crontab = luci.sys.exec("crontab -l | grep -v '^0 [0-9]* \\* \\* \\* /etc/init.d/subconverter'")
   if scheduled_time >= 0 and scheduled_time <= 23 then 
-    local start_time = string.format('0 %d * * * /etc/init.d/subconverter start', scheduled_time)
-    local stop_time = string.format('0 %d * * * /etc/init.d/subconverter stop', (scheduled_time + 2) % 24)
-    current_crontab = (current_crontab:sub(-1) ~= "\n" and current_crontab .. "\n" or current_crontab) .. start_time .. "\n" .. stop_time .. "\n"
+    local start_time = string.format('0 %d * * * /etc/init.d/subconverter start\n', scheduled_time)
+    local stop_time = string.format('0 %d * * * /etc/init.d/subconverter stop\n', (scheduled_time + 2) % 24)
+    current_crontab = current_crontab .. start_time .. stop_time
   end
   luci.sys.exec(string.format("echo '%s' | crontab -", current_crontab))
 end
