@@ -406,6 +406,7 @@ jobs:
         	fi
         done
 
+        rm -rf quectel_MHI
         git clone -b dev --depth 1 https://github.com/vernesong/OpenClash && mv -n OpenClash/luci-app-openclash ./; rm -rf OpenClash
         git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/lean package/network/services/shellsync package/wwan package/qca/shortcut-fe
 
