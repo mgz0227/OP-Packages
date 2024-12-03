@@ -23,3 +23,10 @@
  			_('ACL specify which client addresses and ports can be mapped, IPv6 always allowed.'));
  		s.sortable = true;
 
+@@ -253,3 +253,9 @@ msgstr "上传速度"
+ msgctxt "Use %s (%s = STUN)"
+ msgid "Use %s"
+ msgstr "使用 %s"
++
++msgid "Force Forwarding"
++msgstr "强制转发"
