@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-subconverter
 PKG_VERSION:=1.1
-PKG_RELEASE:=13
+PKG_RELEASE:=15
 
 include $(INCLUDE_DIR)/package.mk
 
