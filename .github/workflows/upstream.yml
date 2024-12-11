@@ -342,6 +342,7 @@ jobs:
         git_clone https://github.com/yz-java/openwrt-subconverter && mv -f openwrt-subconverter/luci-app-subconverter ./; rm -rf openwrt-subconverter
         #git_clone https://github.com/karen07/antiblock-openwrt-package
         #git_clone https://github.com/karen07/luci-app-antiblock-openwrt-package
+        git_clone https://github.com/muink/luci-app-netdata
         ) &
         (
         git_sparse_clone master "https://github.com/QiuSimons/OpenWrt-Add" luci-app-irqbalance
@@ -378,7 +379,6 @@ jobs:
         libs/wxbase libs/rapidjson libs/libcron libs/quickjspp libs/toml11 libs/libtorrent-rasterbar \
         libs/libdouble-conversion libs/qt6base libs/cxxopts libs/jpcre2 libs/alac libs/libcryptopp sound/spotifyd \
         utils/qt6tools utils/cpulimit utils/sendat utils/exfatprogs utils/filebrowser utils/cups utils/cups-bjnp utils/joker net/udp2raw net/msd_lite \
-        multimedia/you-get multimedia/lux multimedia/ykdl multimedia/gallery-dl devel/go-rice admin/gotop admin/netdata
         ) &
         (
         git_sparse_clone develop "https://github.com/Ysurac/openmptcprouter-feeds" \
@@ -540,7 +540,6 @@ jobs:
         sed -i \
           -e 's?include \.\./\.\./\(lang\|devel\)?include $(TOPDIR)/feeds/packages/\1?' \
           -e "s/\(\(^\| \|	\)\(PKG_HASH\|PKG_MD5SUM\|PKG_MIRROR_HASH\|HASH\):=\).*/\1skip/" \
-          -e 's/+ca-certificates/+ca-bundle/' \
           -e 's/php7/php8/g' \
           -e 's/+docker\( \|$\)/+docker +dockerd /g' \
           -e 's/URL:=@IMMORTALWRT/URL:=https:\/\/mirror2.immortalwrt.org\/sources/g' \
