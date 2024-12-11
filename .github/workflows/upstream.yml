@@ -231,7 +231,6 @@ jobs:
         git_clone https://github.com/QiuSimons/luci-app-daed-next daed1 && mvdir daed1
         git_clone https://github.com/EkkoG/luci-app-natmap
         git_clone https://github.com/EkkoG/openwrt-natmap
-        git_clone https://github.com/sirpdboy/luci-app-netdata
         git_clone https://github.com/sirpdboy/luci-app-chatgpt-web
         git_clone https://github.com/sirpdboy/luci-app-eqosplus
         git_clone https://github.com/JiaY-shi/fancontrol fanc && mv fanc/{fancontrol,luci-app-fancontrol} ./;rm -rf fanc
