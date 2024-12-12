@@ -47,3 +47,5 @@
 /aic8800
 /xray-core
 
+/luci-app-apinger
+/luci-app-keepalived
