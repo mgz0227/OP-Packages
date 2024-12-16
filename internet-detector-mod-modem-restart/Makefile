@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=internet-detector-mod-modem-restart
 PKG_VERSION:=1.3.1
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 PKG_MAINTAINER:=gSpot <https://github.com/gSpotx2f/luci-app-internet-detector>
 
 include $(INCLUDE_DIR)/package.mk
@@ -17,6 +17,7 @@ define Package/$(PKG_NAME)
   TITLE:=Modem restart module for internet-detector
   URL:=https://github.com/gSpotx2f/luci-app-internet-detector
   PKGARCH:=all
+  #PKGARCH:=noarch
   DEPENDS:=+internet-detector +modemmanager
 endef
 
