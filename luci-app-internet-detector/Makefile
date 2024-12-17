@@ -8,7 +8,6 @@ PKG_NAME:=luci-app-internet-detector
 LUCI_TITLE:=LuCI support for internet-detector
 LUCI_DEPENDS:=+internet-detector
 LUCI_PKGARCH:=all
-#LUCI_PKGARCH:=noarch
 
 #include $(TOPDIR)/feeds/luci/luci.mk
 include $(TOPDIR)/feeds/luci/luci.mk

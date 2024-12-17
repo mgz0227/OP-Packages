@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=internet-detector
 PKG_VERSION:=1.3.1
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 PKG_MAINTAINER:=gSpot <https://github.com/gSpotx2f/luci-app-internet-detector>
 
 include $(INCLUDE_DIR)/package.mk
@@ -17,7 +17,6 @@ define Package/$(PKG_NAME)
   TITLE:=Internet detector
   URL:=https://github.com/gSpotx2f/luci-app-internet-detector
   PKGARCH:=all
-  #PKGARCH:=noarch
   DEPENDS:=+lua +luaposix +libuci-lua
 endef
 
