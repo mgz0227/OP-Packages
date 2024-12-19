@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2023-2024 Anya Lin <hukk1996@gmail.com>
+
 include $(TOPDIR)/rules.mk
 
 PKG_UPSTREAM_NAME:=natmap
@@ -5,7 +9,7 @@ PKG_NAME:=natmapt
 PKG_UPSTREAM_VERSION:=20240813
 PKG_UPSTREAM_GITHASH:=
 PKG_VERSION:=$(PKG_UPSTREAM_VERSION)$(if $(PKG_UPSTREAM_GITHASH),~$(call version_abbrev,$(PKG_UPSTREAM_GITHASH)))
-PKG_RELEASE:=24
+PKG_RELEASE:=25
 SCRIPTS_VERSION:=0.2024.12.13
 
 ifeq ($(PKG_UPSTREAM_GITHASH),)
