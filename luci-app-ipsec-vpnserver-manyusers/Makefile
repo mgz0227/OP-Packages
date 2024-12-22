@@ -8,6 +8,6 @@ include $(TOPDIR)/rules.mk
 LUCI_TITLE:=LuCI support for IPSec VPN Server
 LUCI_DEPENDS:=+strongswan +strongswan-minimal +strongswan-mod-xauth-generic
 
-include ../../luci.mk
+include $(TOPDIR)/feeds/luci/luci.mk
 
 # call BuildPackage - OpenWrt buildroot signature
