@@ -45,12 +45,10 @@
 /ntfs3-mount
 /accel-ppp
 /aic8800
-
 /luci-app-apinger
 /luci-app-keepalived
-
-
 /quectel_SRPD_PCIE
 /fibocom_MHI
 /meig_QMI_WWAN
 /quectel_Gobinet
+/vsftpd-alt
