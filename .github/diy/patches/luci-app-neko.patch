@@ -37,3 +37,14 @@
  if [ -f "/tmp/neko/neko.bak" ]; then
      echo "[ `date +%T` ] - Old Configs"
 
+--- a/luci-app-neko/Makefile
++++ b/luci-app-neko/Makefile
+@@ -15,7 +15,7 @@ define Package/$(PKG_NAME)
+ 	SUBMENU:=3. Applications
+ 	TITLE:=LuCI support for mihomo
+ 	PKGARCH:=all
+-	DEPENDS:=+kmod-tun +bash +curl +jq +mihomo +sing-box +php8 +php8-mod-curl
++	DEPENDS:=+kmod-tun +bash +curl +jq +mihomo +sing-box +php8 +php8-mod-curl +php8-fastcgi
+ endef
+ 
+ define Package/$(PKG_NAME)/description
