@@ -13,7 +13,7 @@
 --- a/luci-app-nekobox/htdocs/nekobox/lib/theme.txt
 +++ b/luci-app-nekobox/htdocs/nekobox/lib/theme.txt
 @@ -1 +1 @@
--pink.css
+-transparent.css
 +light.css
 
 --- a/luci-app-nekobox/root/etc/uci-defaults/99_neko
