@@ -42,9 +42,9 @@ define Package/$(PKG_NAME)
 	SUBMENU:=3. Applications
 	TITLE:=LuCI support for clash
 	PKGARCH:=all
-	DEPENDS:=+dnsmasq-full +coreutils +coreutils-nohup +bash +curl +ca-certificates +ip-full \
-	+libcap +libcap-bin +ruby +ruby-yaml +kmod-tun +unzip \
-	+kmod-inet-diag +luci-compat
+	DEPENDS:=+dnsmasq-full +bash +curl +ca-certificates +ip-full \
+	+ruby +ruby-yaml +kmod-tun +unzip \
+	+kmod-inet-diag
 	MAINTAINER:=vernesong
 endef
 
