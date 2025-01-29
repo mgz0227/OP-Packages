@@ -369,7 +369,7 @@ jobs:
         net/go-nats net/go-wol net/bitsrunlogin-go net/transfer net/cloudreve net/daed \
         net/subconverter net/ngrokc net/njitclient net/scutclient net/gost net/ua2f net/dufs net/qBittorrent-Enhanced-Edition \
         net/tinyportmapper net/tinyfecvpn net/nexttrace net/pcap-dnsproxy net/rustdesk-server net/tuic-server net/speedtest-go \
-        net/dns-forwarder net/ipset-lists net/ShadowVPN net/cloudflared net/nps \
+        net/dns-forwarder net/ipset-lists net/ShadowVPN net/cloudflared net/nps net/strongswan \
         libs/wxbase libs/rapidjson libs/libcron libs/quickjspp libs/toml11 libs/libtorrent-rasterbar \
         libs/libdouble-conversion libs/qt6base libs/cxxopts libs/jpcre2 libs/alac libs/libcryptopp sound/spotifyd \
         utils/qt6tools utils/cpulimit utils/sendat utils/exfatprogs utils/filebrowser utils/cups utils/cups-bjnp utils/joker net/udp2raw net/msd_lite \
