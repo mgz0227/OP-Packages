@@ -4,7 +4,7 @@
 if ["x$(uci -q get advancedplus.@basic[0].qos)" = "x1" ] ;then
 
 DEV=`ifconfig | grep "Point-to-Point" | cut -d " " -f1`
-[ ! $DEV ] && DEV=` uci -q get network.wan.device ` || DEV=` uci -q get network.wan.device ` 
+[ ! $DEV ] && DEV=` uci -q get network.wan.ifname ` || DEV=` uci -q get network.wan.device ` 
 [ ! $DEV ] && DEV=br-lan
 
 DOWNLINK=$(uci -q get advancedplus.@basic[0].download 2>/dev/null | awk '{print $1*10^3/2}')
