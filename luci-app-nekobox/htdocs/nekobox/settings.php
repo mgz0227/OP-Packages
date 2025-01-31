@@ -216,7 +216,7 @@ $razordVersion = getRazordVersion();
         <div class="row justify-content-center">
             <div class="col-12 col-md-6 mb-3">
                 <select class="form-select" name="themechange" aria-label="themex">
-                    <option selected>Change Theme (<?php echo $neko_theme ?>)</option>
+                    <option selected>当前主题 (<?php echo $neko_theme ?>)</option>
                     <?php foreach ($arrFiles as $file) echo "<option value=\"".$file.'">'.$file."</option>" ?>
                 </select>
             </div>
@@ -238,118 +238,70 @@ $razordVersion = getRazordVersion();
         </div>
     </form>
 
-    <table class="table table-borderless mb-3">
-        <tbody>
-            <tr>
-                <td colspan="2">
+<table class="table table-borderless mb-3">
+    <tbody>
+        <tr>
+            <td colspan="2">
+                <div class="table-container">
                     <h2 class="text-center mb-3">自动重载防火墙</h2>
                     <form action="settings.php" method="post">
                         <div class="btn-group d-flex justify-content-center">
-                            <button type="submit" name="fw" value="enable" class="btn btn<?php if($fwstatus==1) echo "-outline" ?>-success <?php if($fwstatus==1) echo "disabled" ?> btn-fw" style="margin-right: 20px;">启用</button>
-                            <button type="submit" name="fw" value="disable" class="btn btn<?php if($fwstatus==0) echo "-outline" ?>-danger <?php if($fwstatus==0) echo "disabled" ?>">停用</button>
-                         </div>
-                     </form>
-                 </td>
-             </tr>
-         <tr>
-     <tr>
-    <td>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>客户端版本</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="text-center" style="font-family: monospace;">
-                        <span id="cliver"></span><span id="NewCliver"> </span>
-                    </td>
-                </tr>
-                <tr>
-                    <td class="text-center">
+                            <button type="submit" name="fw" value="enable" class="btn btn-success <?php if($fwstatus==1) echo "disabled" ?>">启用</button>
+                            <button type="submit" name="fw" value="disable" class="btn btn-danger <?php if($fwstatus==0) echo "disabled" ?>">停用</button>
+                        </div>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <div class="table-container">
+                    <h2>客户端版本</h2>
+                    <p id="cliver" class="text-center" style="font-family: monospace;"><?php echo htmlspecialchars($clientVersion); ?></p>
+                    <div class="text-center">
                         <button class="btn btn-pink me-1" id="checkCliverButton"><i class="bi bi-search"></i> 检测版本</button>
                         <button class="btn btn-info" id="updateButton" title="更新到最新版本" onclick="showVersionTypeModal()"><i class="bi bi-arrow-repeat"></i> 更新版本</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </td>
-    <td>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>UI 控制面板</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="text-center">
-                        <?php echo htmlspecialchars($uiVersion); ?><span id="NewUi"> </span>
-                    </td>
-                </tr>
-                <tr>
-                    <td class="text-center">
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="table-container">
+                    <h2>UI 控制面板</h2>
+                    <p class="text-center"><?php echo htmlspecialchars($uiVersion); ?></p>
+                    <div class="text-center">
                         <button class="btn btn-pink me-1" id="checkUiButton"><i class="bi bi-search"></i> 检测版本</button>
                         <button class="btn btn-info" id="updateUiButton" title="更新面板" onclick="showPanelSelector()"><i class="bi bi-arrow-repeat"></i> 更新版本</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </td>
-</tr>
-<tr>
-    <td>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Sing-box 核心版本</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="text-center">
-                        <div id="singBoxCorever">
-                            <?php echo htmlspecialchars($singBoxVersion); ?><span id="NewSingbox"></span>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td class="text-center">
+                    </div>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <div class="table-container">
+                    <h2>Sing-box 核心版本</h2>
+                    <p id="singBoxCorever" class="text-center"><?php echo htmlspecialchars($singBoxVersion); ?></p>
+                    <div class="text-center">
                         <button class="btn btn-pink me-1" id="checkSingboxButton"><i class="bi bi-search"></i> 检测版本</button>
                         <button class="btn btn-info" id="singboxOptionsButton" title="Singbox 相关操作"><i class="bi bi-arrow-repeat"></i> 更新版本</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </td>
-    <td>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Mihomo 核心版本</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="text-center">
-                        <?php echo htmlspecialchars($mihomoVersion); ?><span id="NewMihomo"> </span>
-                    </td>
-                </tr>
-                <tr>
-                    <td class="text-center">
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="table-container">
+                    <h2>Mihomo 核心版本</h2>
+                    <p class="text-center"><?php echo htmlspecialchars($mihomoVersion); ?></p>
+                    <div class="text-center">
                         <button class="btn btn-pink me-1" id="checkMihomoButton"><i class="bi bi-search"></i> 检测版本</button>
                         <button class="btn btn-info" id="updateCoreButton" title="更新 Mihomo 内核" onclick="showMihomoVersionSelector()"><i class="bi bi-arrow-repeat"></i> 更新版本</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </td>
-</tr>
-</tbody>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </tbody>
 </table>
+
 <div class="modal fade" id="updateVersionTypeModal" tabindex="-1" aria-labelledby="updateVersionTypeModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="updateVersionTypeModalLabel">选择更新版本类型</h5>
@@ -368,7 +320,7 @@ $razordVersion = getRazordVersion();
 </div>
 
 <div class="modal fade" id="updateLanguageModal" tabindex="-1" aria-labelledby="updateLanguageModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="updateLanguageModalLabel">选择语言</h5>
@@ -394,7 +346,7 @@ $razordVersion = getRazordVersion();
 </div>
 
 <div class="modal fade" id="previewLanguageModal" tabindex="-1" aria-labelledby="previewLanguageModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="previewLanguageModalLabel">选择预览版语言</h5>
@@ -418,7 +370,7 @@ $razordVersion = getRazordVersion();
 </div>
 
 <div class="modal fade" id="mihomoVersionSelectionModal" tabindex="-1" aria-labelledby="mihomoVersionSelectionModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="mihomoVersionSelectionModalLabel">选择 Mihomo 内核版本</h5>
@@ -441,7 +393,7 @@ $razordVersion = getRazordVersion();
 </div>
 
 <div class="modal fade" id="optionsModal" tabindex="-1" aria-labelledby="optionsModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="optionsModalLabel">选择操作</h5>
@@ -465,7 +417,7 @@ $razordVersion = getRazordVersion();
 </div>
 
 <div class="modal fade" id="operationModal" tabindex="-1" aria-labelledby="operationModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="operationModalLabel">选择操作</h5>
@@ -489,7 +441,7 @@ $razordVersion = getRazordVersion();
 </div>
 
 <div class="modal fade" id="versionSelectionModal" tabindex="-1" aria-labelledby="versionSelectionModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="versionSelectionModalLabel">选择 Singbox 内核版本 （编译通道一）</h5>
@@ -525,7 +477,7 @@ $razordVersion = getRazordVersion();
 </div>
 
 <div class="modal fade" id="singboxVersionModal" tabindex="-1" aria-labelledby="singboxVersionModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="singboxVersionModalLabel">选择 Singbox 核心版本（官方通道二）</h5>
@@ -551,7 +503,7 @@ $razordVersion = getRazordVersion();
 </div>
 
 <div id="panelSelectionModal" class="modal fade" tabindex="-1" aria-labelledby="panelSelectionModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="panelSelectionModalLabel">选择面板</h5>
@@ -580,7 +532,7 @@ $razordVersion = getRazordVersion();
 </div>
 
 <div class="modal fade" id="versionModal" tabindex="-1" aria-labelledby="versionModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="versionModalLabel">版本检测结果</h5>
@@ -601,7 +553,7 @@ $razordVersion = getRazordVersion();
 </div>
 
 <div class="modal fade" id="updateModal" tabindex="-1" aria-labelledby="updateModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="updateModalLabel">更新状态</h5>
@@ -760,6 +712,11 @@ $razordVersion = getRazordVersion();
               <input type="color" class="form-control" name="heading6Color" id="heading6Color" value="#00ffff">
             </div>
           </div>
+            <div class="col-12 mb-3">
+              <label for="containerWidth" class="form-label">容器宽度</label>
+              <input type="range" class="form-range" name="containerWidth" id="containerWidth" min="800" max="2400" step="50" value="1400" style="width: 100%;">
+              <div id="widthValue" class="mt-2" style="color: #FF00FF;">当前宽度: 1400px</div>
+          </div>
           <div class="col-12 mb-3">
             <label for="themeName" class="form-label">自定义主题名称</label>
             <input type="text" class="form-control" name="themeName" id="themeName" value="transparent">
@@ -796,6 +753,72 @@ $razordVersion = getRazordVersion();
     </div>
   </div>
 </div>
+
+<style>
+    input[type="range"] {
+        -webkit-appearance: none;  
+        appearance: none;
+        width: 100%;
+        height: 10px;  
+        border-radius: 5px;
+        background: linear-gradient(to right, #ff00ff, #00ffff); 
+        outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #ff00ff;  
+        border: none;
+        cursor: pointer;
+    }
+
+    input[type="range"]:focus {
+        outline: none; 
+    }
+
+    input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #ff00ff;  
+        border: none;
+        cursor: pointer;
+    }
+
+    #widthValue {
+        color: #ff00ff;
+    }
+</style>
+
+<script>
+    const slider = document.getElementById("containerWidth");
+    const widthValue = document.getElementById("widthValue");
+
+    function updateSliderColor(value) {
+        let red = Math.min(Math.max((value - 800) / (2400 - 800) * 255, 0), 255);
+        let green = 255 - red;
+        
+        slider.style.background = `linear-gradient(to right, rgb(${red}, ${green}, 255), rgb(${255 - red}, ${green}, ${255 - red}))`;
+        slider.style.setProperty('--thumb-color', `rgb(${red}, ${green}, 255)`);
+        widthValue.textContent = `当前宽度: ${value}px`;
+        widthValue.style.color = `rgb(${red}, ${green}, 255)`;  
+    }
+
+    let savedWidth = localStorage.getItem('containerWidth');
+    if (savedWidth) {
+        slider.value = savedWidth;  
+    }
+    updateSliderColor(slider.value);  
+
+    slider.oninput = function() {
+        updateSliderColor(slider.value);
+        localStorage.setItem('containerWidth', slider.value);  
+    };
+</script>
 
 <script>
     document.getElementById('useBackgroundImage').addEventListener('change', function() {
@@ -1029,7 +1052,7 @@ function formatSize($size) {
       document.getElementById('heading3Color').value = '#ffcc00';
       document.getElementById('heading4Color').value = '#00fbff';
       document.getElementById('heading5Color').value = '#ba13f6';
-      document.getElementById('heading6Color').value = '#00ffff';  
+      document.getElementById('heading6Color').value = '#00ffff';   
       localStorage.clear();
     });
 
@@ -1475,6 +1498,19 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+<style>
+    .custom-table {
+        width: 100%;
+        border-collapse: collapse; 
+    }
+
+    .custom-table th, .custom-table td {
+        padding: 10px;
+        text-align: center;
+        border: 1px solid #ccc; 
+    }
+</style>
+
 <script>
 function checkVersion(outputId, updateFiles, currentVersions) {
     const modalContent = document.getElementById('modalContent');
@@ -1536,7 +1572,7 @@ function checkVersion(outputId, updateFiles, currentVersions) {
 
     Promise.all(requests).then(() => {
         modalContent.innerHTML = `
-            <table class="table table-striped  table-bordered">
+            <table class="table custom-table">
                 <thead>
                     <tr>
                         <th class="text-center">组件名称</th>
@@ -1727,6 +1763,13 @@ document.getElementById('checkCliverButton').addEventListener('click', function 
             padding: 0;
             font-family: Arial, sans-serif;
         }
+
+        .container-fluid {
+            max-width: 2400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
         .feature-box {
             padding: 15px;
             margin-bottom: 20px;
@@ -1790,14 +1833,14 @@ document.getElementById('checkCliverButton').addEventListener('click', function 
     </style>
 </head>
 <body>
-    <div class="container mt-4">
+    <div class="container-fluid mt-4">
         <h2 class="text-center mb-4">关于 NekoBox</h2>
         <div class="feature-box text-center">
             <h5>NekoBox</h5>
             <p>NekoBox是一款精心设计的 Sing-box 代理工具，专为家庭用户打造，旨在提供简洁而强大的代理解决方案。基于 PHP 和 BASH 技术，NekoBox 将复杂的代理配置简化为直观的操作体验，让每个用户都能轻松享受高效、安全的网络环境。</p>
         </div>
 
-        <h5 class="text-center mb-4">核心特点</h5>
+        <h5 class="text-center mb-4"><i data-feather="cpu"></i>   核心特点</h5>
         <div class="row">
             <div class="col-md-4 mb-4 d-flex">
                 <div class="feature-box text-center flex-fill">
@@ -1819,7 +1862,7 @@ document.getElementById('checkCliverButton').addEventListener('click', function 
             </div>
         </div>
 
-<h5 class="text-center mb-4">工具信息</h5>
+<h5 class="text-center mb-4"><i data-feather="tool"></i>   工具信息</h5>
 <div class="d-flex justify-content-center">
     <div class="table-container">
         <table class="table table-borderless mb-5">
@@ -1831,12 +1874,12 @@ document.getElementById('checkCliverButton').addEventListener('click', function 
                 <tr class="text-center">
                     <td>
                         <div class="link-box">
-                            <a href="https://github.com/SagerNet/sing-box" target="_blank">Sing-box</a>
+                            <a href="https://github.com/SagerNet/sing-box" target="_blank"><i data-feather="codesandbox"></i>   Sing-box</a>
                         </div>
                     </td>
                     <td>
                         <div class="link-box">
-                            <a href="https://github.com/MetaCubeX/mihomo" target="_blank">Mihomo</a>
+                            <a href="https://github.com/MetaCubeX/mihomo" target="_blank"><i data-feather="box"></i>   Mihomo</a>
                         </div>
                     </td>
                 </tr>
@@ -1844,7 +1887,7 @@ document.getElementById('checkCliverButton').addEventListener('click', function 
         </table>
     </div>
 </div>
-    <h5 class="text-center mb-4">外部链接</h5>
+    <h5 class="text-center mb-4"><i data-feather="paperclip"></i>   外部链接</h5>
         <div class="table-container">
             <table class="table table-borderless mb-5">
                 <tbody>
@@ -1855,12 +1898,12 @@ document.getElementById('checkCliverButton').addEventListener('click', function 
                     <tr class="text-center">
                         <td>
                             <div class="link-box">
-                                <a href="https://github.com/Thaolga/openwrt-nekobox/issues" target="_blank">Issues</a>
+                                <a href="https://github.com/Thaolga/openwrt-nekobox/issues" target="_blank"><i data-feather="github"></i>   Issues</a>
                             </div>
                         </td>
                         <td>
                             <div class="link-box">
-                                <a href="https://github.com/Thaolga/openwrt-nekobox" target="_blank">NEKOBOX</a>
+                                <a href="https://github.com/Thaolga/openwrt-nekobox" target="_blank"><i data-feather="github"></i>   NEKOBOX</a>
                             </div>
                         </td>
                     </tr>
@@ -1871,12 +1914,12 @@ document.getElementById('checkCliverButton').addEventListener('click', function 
                     <tr class="text-center">
                         <td>
                             <div class="link-box">
-                                <a href="https://t.me/+J55MUupktxFmMDgx" target="_blank">Telegram</a>
+                                <a href="https://t.me/+J55MUupktxFmMDgx" target="_blank"><i data-feather="send"></i> Telegram</a>
                             </div>
                         </td>
                         <td>
                             <div class="link-box">
-                                <a href="https://github.com/Zephyruso/zashboard" target="_blank">ZASHBOARD</a>
+                                <a href="https://github.com/Zephyruso/zashboard" target="_blank"><i data-feather="package"></i>    ZASHBOARD</a>
                             </div>
                         </td>
                     </tr>
