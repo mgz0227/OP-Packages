@@ -1,0 +1,18 @@
+--- a/strongswan/Makefile
++++ b/strongswan/Makefile
+@@ -8,12 +8,12 @@
+ include $(TOPDIR)/rules.mk
+ 
+ PKG_NAME:=strongswan
+-PKG_VERSION:=5.9.14
+-PKG_RELEASE:=4
++PKG_VERSION:=6.0.0
++PKG_RELEASE:=1
+ 
+ PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
+ PKG_SOURCE_URL:=https://download.strongswan.org/ https://download2.strongswan.org/
+-PKG_HASH:=728027ddda4cb34c67c4cec97d3ddb8c274edfbabdaeecf7e74693b54fc33678
++PKG_HASH:=0da22a4b845c7329dfb5eb154b6f4c1e529373f56386813b78cd2b3e329c1fd8
+ PKG_LICENSE:=GPL-2.0-or-later
+ PKG_MAINTAINER:=Philip Prindeville <philipp@redfish-solutions.com>, Noel Kuntze <noel.kuntze@thermi.consulting>
+ PKG_CPE_ID:=cpe:/a:strongswan:strongswan
