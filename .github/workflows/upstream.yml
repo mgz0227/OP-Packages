@@ -338,7 +338,7 @@ jobs:
         git_clone https://github.com/xptsp/luci-app-ympd
         git_clone https://github.com/xptsp/openwrt-ympd
         git_clone https://github.com/xptsp/openwrt-peanut
-        git_clone https://github.com/calfeche13/luci-app-public-ip-monitor
+        git_clone https://github.com/vison-v/luci-app-nginx-proxy
         ) &
         (
         git_sparse_clone master "https://github.com/QiuSimons/OpenWrt-Add" luci-app-irqbalance
