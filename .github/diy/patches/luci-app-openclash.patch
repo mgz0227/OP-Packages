@@ -3,9 +3,10 @@
 @@ -43,7 +43,8 @@
  	TITLE:=LuCI support for clash
  	PKGARCH:=all
- 	DEPENDS:=+dnsmasq-full +bash +curl +ca-certificates +ip-full \
+ 	DEPENDS:=+dnsmasq-full +bash +curl +ca-bundle +ip-full \
 -	+ruby +ruby-yaml +kmod-tun +unzip
 +	+ruby +ruby-yaml +kmod-tun +unzip \
 +	+kmod-inet-diag
  	MAINTAINER:=vernesong
  endef
+ 
