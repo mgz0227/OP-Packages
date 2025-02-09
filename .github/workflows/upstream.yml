@@ -19,7 +19,7 @@ on:
       ssh:
         description: 'ssh'
         required: false
-        default: 'true'
+        default: 'false'
   watch:
     types: started
   repository_dispatch:
