@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=oscam
-PKG_RELEASE:=16
+PKG_RELEASE:=17
 
 PKG_SOURCE_URL:=https://git.streamboard.tv/common/oscam
 PKG_SOURCE_PROTO:=git
