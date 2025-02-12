@@ -2,7 +2,7 @@
 # This is free software, lisence use MIT.
 # 
 # 
-# 
+#
 #
 
 name: Merge-upstream
@@ -108,6 +108,7 @@ jobs:
         git_clone https://github.com/NateLol/luci-app-beardropper
         git_clone https://github.com/riverscn/openwrt-iptvhelper && mvdir openwrt-iptvhelper
         git_clone https://github.com/kongfl888/luci-app-timedreboot
+        git_clone https://github.com/sbwml/luci-app-webdav
         ) &
         (
         #git_clone https://github.com/jerrykuku/luci-app-vssr
@@ -313,7 +314,7 @@ jobs:
         ) &
         (
         git_clone https://github.com/kiddin9/luci-app-syscontrol
-        git_clone https://github.com/bobbyunknown/luci-app-insomclash
+        #git_clone https://github.com/bobbyunknown/luci-app-insomclash
         git_clone https://github.com/muink/luci-app-ssrust
         git_clone https://github.com/hudra0/qosmate
         git_clone https://github.com/kiddin9/luci-app-qosmate
@@ -322,6 +323,7 @@ jobs:
         git_clone https://github.com/xptsp/luci-app-ympd
         git_clone https://github.com/xptsp/openwrt-ympd
         git_clone https://github.com/xptsp/openwrt-peanut
+        git_clone https://github.com/calfeche13/luci-app-public-ip-monitor
         git_clone https://github.com/vison-v/luci-app-nginx-proxy
         ) &
         (
@@ -329,9 +331,12 @@ jobs:
         ) &
         (
         git_sparse_clone master "https://github.com/coolsnowwolf/packages" multimedia/UnblockNeteaseMusic-Go \
-        multimedia/UnblockNeteaseMusic net/softethervpn5 net/antileech multimedia/gmediarender net/go-aliyundrive-webdav \
-        net/qBittorrent-static net/phtunnel net/headscale \
-        net/uugamebooster net/pgyvpn ‎sound/forked-daapd
+        multimedia/UnblockNeteaseMusic net/antileech net/go-aliyundrive-webdav net/gowebdav net/kismet net/mstpd \
+        net/qBittorrent-static net/phtunnel net/headscale net/baidupcs-go net/daemonlogger net/geth net/gnurl \
+        net/uugamebooster net/pgyvpn ‎net/ooniprobe net/polipo net/rosy-file-server \
+        net/rsyslog net/sqm-scripts-extra net/tor-fw-helper net/vncrepeater \
+        net/vpnbypass net/vpn-policy-routing sound/forked-daapd utils/flent-tools \
+        utils/qfirehose utils/slirp4netns
         ) &
         (
         git_sparse_clone openwrt-24.10 "https://github.com/openwrt/packages" \
@@ -349,14 +354,14 @@ jobs:
         git_sparse_clone openwrt-24.10 "https://github.com/immortalwrt/packages" net/mwol net/n2n net/dae \
         net/sub-web net/amule net/haproxy net/cdnspeedtest net/zerotier net/minieap net/ddns-go net/sysuh3c \
         net/go-nats net/go-wol net/bitsrunlogin-go net/transfer net/daed net/udp2raw net/msd_lite net/netbird \
-        net/go-nats net/go-wol net/bitsrunlogin-go net/transfer net/cloudreve net/daed \
         net/subconverter net/ngrokc net/njitclient net/scutclient net/gost net/ua2f net/dufs net/qBittorrent-Enhanced-Edition \
         net/tinyportmapper net/tinyfecvpn net/nexttrace net/pcap-dnsproxy net/rustdesk-server net/tuic-server \
         net/dns-forwarder net/ipset-lists net/ShadowVPN net/nps net/verysync net/vlmcsd net/dnsforwarder net/tcpping \
-        net/mentohust net/ps3netsrv net/modemband libs/wxbase libs/rapidjson libs/libcron libs/quickjspp libs/toml11 \
+        net/mentohust net/ps3netsrv net/modemband net/brook net/q net/quectel-cm net/speedtest-cli net/tcping-simple \
+        libs/wxbase libs/rapidjson libs/libcron libs/quickjspp libs/toml11 \
         libs/libdouble-conversion libs/qt6base libs/cxxopts libs/jpcre2 libs/alac libs/libcryptopp \
         utils/qt6tools utils/sms-tool utils/cpulimit utils/sendat utils/filebrowser utils/cups utils/cups-bjnp \
-        utils/phicomm-k3screenctrl utils/joker \
+        utils/phicomm-k3screenctrl utils/joker utils/7z utils/dhrystone utils/supervisor utils/tinymembench \
         multimedia/you-get multimedia/lux multimedia/gmediarender multimedia/ykdl multimedia/gallery-dl sound/spotifyd devel/go-rice admin/gotop
         ) &
         (
@@ -475,7 +480,7 @@ jobs:
           if [ "$(grep "PKG_RELEASE" $pkg/Makefile)" ]; then
             sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=$(git rev-list --count master $pkg)/" $pkg/Makefile || true
           fi
-          
+
         done
         touch /tmp/ok2
         ) &
@@ -486,9 +491,9 @@ jobs:
         bash .github/diy/convert_translation.sh -a >/dev/null 2>&1 || true
         bash .github/diy/generate_ucitrack.sh -a >/dev/null 2>&1 || true
         ) &
-
+        
         (
-          sed -i \
+        sed -i \
           -e 's?include \.\./\.\./\(lang\|devel\)?include $(TOPDIR)/feeds/packages/\1?' \
           -e "s/\(\(^\| \|	\)\(PKG_HASH\|PKG_MD5SUM\|PKG_MIRROR_HASH\|HASH\):=\).*/\1skip/" \
           -e 's/php7/php8/g' \
@@ -497,6 +502,7 @@ jobs:
           -e 's?include .*/luci.mk?include $(TOPDIR)/feeds/luci/luci.mk?' \
           */Makefile
         ) &
+
         #sed -i 's?"http://" + window.location.hostname?window.location.protocol + "//" + window.location.hostname?g' `find luci-app*/luasrc/view/ -maxdepth 2 -name "*.htm"`
         sed -i 's/ +uhttpd-mod-ubus//' luci-app-packet-capture/Makefile
         sed -i '/boot()/,+2d' ddns-scripts/files/etc/init.d/ddns
@@ -511,7 +517,6 @@ jobs:
         echo "#page>div:first-child{display:none}
         button.btn_styles.color1:last-child{display:none}" >>luci-app-quickstart/htdocs/luci-static/quickstart/style.css
 
-        
         while [[ ! -f /tmp/ok ||  ! -f /tmp/ok2 ]]; do
             echo "wait"
           sleep 1
@@ -527,9 +532,9 @@ jobs:
             sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=$(git rev-list --count master $pkg)/" $pkg/Makefile || true
           fi
         done
-
         #sed -i 's/^\(PKG_RELEASE:=\).*/\1beta/' ./luci-app-openclash/Makefile
         sed -i '/PKG_RELEASE:=/d' ./luci-app-openclash/Makefile
+
         git reset --soft HEAD^
         git add .
         if ! git diff-index --quiet HEAD --; then
