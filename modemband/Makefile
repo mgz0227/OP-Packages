@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=modemband
-PKG_VERSION:=20240616
-PKG_RELEASE:=14
+PKG_VERSION:=20241111
+PKG_RELEASE:=15
 
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Cezary Jackiewicz <cezary@eko.one.pl>
