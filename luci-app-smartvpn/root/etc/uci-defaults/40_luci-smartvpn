@@ -1,10 +1,6 @@
 #!/bin/sh
 
 uci -q batch <<-EOF >/dev/null
-	delete ucitrack.@smartvpn[-1]
-	add ucitrack smartvpn
-	set ucitrack.@smartvpn[-1].init=smartvpn
-	commit ucitrack
 EOF
 
 # update system default domain setting(this step is importance for update installation)

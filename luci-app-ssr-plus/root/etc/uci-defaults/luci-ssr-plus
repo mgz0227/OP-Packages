@@ -2,10 +2,6 @@
 
 uci -q batch <<-EOF >/dev/null
 	[ -e "/etc/config/ucitrack" ] && {
-	delete ucitrack.@shadowsocksr[-1]
-	add ucitrack shadowsocksr
-	set ucitrack.@shadowsocksr[-1].init=shadowsocksr
-	commit ucitrack
 	}
 
 	delete firewall.shadowsocksr

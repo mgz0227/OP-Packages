@@ -1,10 +1,6 @@
 #!/bin/sh
 
 uci -q batch <<-EOF >/dev/null
-	delete ucitrack.@miaplus[-1]
-	add ucitrack miaplus
-	set ucitrack.@miaplus[-1].init=miaplus
-	commit ucitrack
 	delete firewall.miaplus
 	set firewall.miaplus=include
 	set firewall.miaplus.type=script

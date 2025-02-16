@@ -653,7 +653,6 @@ start_run_core()
    procd_set_param group "nogroup"
    procd_set_param limits nproc="unlimited" as="unlimited" memlock="unlimited" nofile="1000000 1000000"
    procd_set_param respawn 3600 3 10
-   procd_set_param capabilities "/etc/capabilities/openclash.json"
    procd_set_param stderr 1
    procd_set_param no_new_privs 1
    procd_close_instance
@@ -1280,11 +1279,6 @@ firewall_redirect_exclude()
 set_firewall()
 {
 
-if [ -z "$(uci -q get firewall.openclash)" ] || [ -z "$(uci -q get ucitrack.@openclash[-1].init)" ]; then
-   uci -q delete ucitrack.@openclash[-1]
-   uci -q add ucitrack openclash
-   uci -q set ucitrack.@openclash[-1].init=openclash
-   uci -q commit ucitrack
    uci -q delete firewall.openclash
    uci -q set firewall.openclash=include
    uci -q set firewall.openclash.type=script

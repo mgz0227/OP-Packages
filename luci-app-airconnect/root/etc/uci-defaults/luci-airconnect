@@ -2,10 +2,6 @@
 
 [ -f "/etc/config/ucitrack" ] && {
 uci -q batch <<-EOF >/dev/null
-	delete ucitrack.@airconnect[-1]
-	add ucitrack airconnect
-	set ucitrack.@airconnect[-1].init=airconnect
-	commit ucitrack
 EOF
 }
 

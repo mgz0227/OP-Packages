@@ -1,10 +1,6 @@
 #!/bin/sh
 
 uci -q batch <<-EOF >/dev/null
-	delete ucitrack.@linkease[-1]
-	add ucitrack linkease
-	set ucitrack.@linkease[-1].init=linkease
-	commit ucitrack
 
 	delete firewall.linkease
 	set firewall.linkease=rule
