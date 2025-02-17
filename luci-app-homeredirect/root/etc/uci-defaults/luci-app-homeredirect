@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-homeredirect.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-homeredirect.json << EEOF
+{
+    "config": "homeredirect",
+    "init": "homeredirect"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 	delete firewall.homeredirect

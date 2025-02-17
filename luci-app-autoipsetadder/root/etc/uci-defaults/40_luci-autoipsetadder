@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-autoipsetadder.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-autoipsetadder.json << EEOF
+{
+    "config": "autoipsetadder",
+    "init": "autoipsetadder"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

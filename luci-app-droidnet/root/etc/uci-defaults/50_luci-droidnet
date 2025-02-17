@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-droidnet.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-droidnet.json << EEOF
+{
+    "config": "droidnet",
+    "init": "droidnet"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 uci -q batch <<-EOF >/dev/null
 EOF
 rm -rf /tmp/luci*

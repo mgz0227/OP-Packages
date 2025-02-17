@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-passwall.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-passwall.json << EEOF
+{
+    "config": "passwall",
+    "init": "passwall"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 grep -q ip-api.com /usr/share/passwall/rules/proxy_host ||
 	sed -i '$a ip-api.com' /usr/share/passwall/rules/proxy_host

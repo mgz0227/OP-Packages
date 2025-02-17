@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-lcdsimple.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-lcdsimple.json << EEOF
+{
+    "config": "lcdsimple",
+    "init": "lcdsimple"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-iptvhelper.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-iptvhelper.json << EEOF
+{
+    "config": "iptvhelper",
+    "init": "iptvhelper"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 # needed for "Save and Apply" to restart iptvhelper
 uci -q batch <<-EOF >/dev/null

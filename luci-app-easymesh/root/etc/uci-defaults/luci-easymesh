@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-easymesh.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-easymesh.json << EEOF
+{
+    "config": "easymesh",
+    "init": "easymesh"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

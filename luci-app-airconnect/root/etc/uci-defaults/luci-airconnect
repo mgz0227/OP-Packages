@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-airconnect.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-airconnect.json << EEOF
+{
+    "config": "airconnect",
+    "init": "airconnect"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 [ -f "/etc/config/ucitrack" ] && {
 uci -q batch <<-EOF >/dev/null

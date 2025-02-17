@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-mia.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-mia.json << EEOF
+{
+    "config": "mia",
+    "init": "mia"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 

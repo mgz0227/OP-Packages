@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-mwan3helper.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-mwan3helper.json << EEOF
+{
+    "config": "mwan3helper",
+    "init": "mwan3helper"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

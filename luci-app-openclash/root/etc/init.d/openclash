@@ -1,4 +1,13 @@
 #!/bin/sh /etc/rc.common
+[ ! -f "/usr/share/ucitrack/luci-app-add.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-add.json << EEOF
+{
+    "config": "add",
+    "init": "add"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 # Copyright (c) 2019-2024 vernesong
 
 START=99
@@ -1279,6 +1288,7 @@ firewall_redirect_exclude()
 set_firewall()
 {
 
+if [ -z "$(uci -q get firewall.openclash)" ] || [ -z "$(uci -q get ucitrack.@openclash[-1].init)" ]; then
    uci -q delete firewall.openclash
    uci -q set firewall.openclash=include
    uci -q set firewall.openclash.type=script

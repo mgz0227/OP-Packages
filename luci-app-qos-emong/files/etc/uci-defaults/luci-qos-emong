@@ -1,4 +1,13 @@
 #!/bin/sh 
+[ ! -f "/usr/share/ucitrack/luci-app-qos-emong.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-qos-emong.json << EEOF
+{
+    "config": "qos-emong",
+    "init": "qos-emong"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

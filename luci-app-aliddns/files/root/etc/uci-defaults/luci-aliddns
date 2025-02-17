@@ -1,4 +1,13 @@
 #!/bin/sh 
+[ ! -f "/usr/share/ucitrack/luci-app-aliddns.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-aliddns.json << EEOF
+{
+    "config": "aliddns",
+    "init": "aliddns"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

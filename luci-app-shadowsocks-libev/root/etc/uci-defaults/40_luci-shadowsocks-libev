@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-shadowsocks-libev.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-shadowsocks-libev.json << EEOF
+{
+    "config": "shadowsocks-libev",
+    "init": "shadowsocks-libev"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

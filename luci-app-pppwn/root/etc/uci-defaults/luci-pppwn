@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-pppwn.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-pppwn.json << EEOF
+{
+    "config": "pppwn",
+    "init": "pppwn"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

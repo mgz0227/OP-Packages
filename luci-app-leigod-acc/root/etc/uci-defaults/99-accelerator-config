@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-accelerator.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-accelerator.json << EEOF
+{
+    "config": "accelerator",
+    "init": "accelerator"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 # check if file exist
 if [ ! -f /etc/config/accelerator ]; then

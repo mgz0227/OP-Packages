@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-xclient.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-xclient.json << EEOF
+{
+    "config": "xclient",
+    "init": "xclient"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 uci -q batch <<-EOF >/dev/null
 delete firewall.xclient
 set firewall.xclient=include

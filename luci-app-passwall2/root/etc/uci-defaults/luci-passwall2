@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-passwall2.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-passwall2.json << EEOF
+{
+    "config": "passwall2",
+    "init": "passwall2"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 	set dhcp.@dnsmasq[0].localuse=1

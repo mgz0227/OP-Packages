@@ -1,4 +1,13 @@
 #!/bin/sh 
+[ ! -f "/usr/share/ucitrack/luci-app-guest-wifi.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-guest-wifi.json << EEOF
+{
+    "config": "guest-wifi",
+    "init": "guest-wifi"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

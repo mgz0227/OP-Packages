@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-cupsd.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-cupsd.json << EEOF
+{
+    "config": "cupsd",
+    "init": "cupsd"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

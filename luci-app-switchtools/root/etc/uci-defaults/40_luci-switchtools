@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-switchmode.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-switchmode.json << EEOF
+{
+    "config": "switchmode",
+    "init": "switchmode"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

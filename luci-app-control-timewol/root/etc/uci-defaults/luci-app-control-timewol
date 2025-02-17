@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-timewol.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-timewol.json << EEOF
+{
+    "config": "timewol",
+    "init": "timewol"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

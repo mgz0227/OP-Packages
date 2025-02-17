@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-cloudreve.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-cloudreve.json << EEOF
+{
+    "config": "cloudreve",
+    "init": "cloudreve"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

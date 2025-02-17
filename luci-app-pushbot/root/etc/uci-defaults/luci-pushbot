@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-pushbot.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-pushbot.json << EEOF
+{
+    "config": "pushbot",
+    "init": "pushbot"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

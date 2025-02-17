@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-istoreenhance.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-istoreenhance.json << EEOF
+{
+    "config": "istoreenhance",
+    "init": "istoreenhance"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 

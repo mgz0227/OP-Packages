@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-sysuh3c.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-sysuh3c.json << EEOF
+{
+    "config": "sysuh3c",
+    "init": "sysuh3c"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-weburl.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-weburl.json << EEOF
+{
+    "config": "weburl",
+    "init": "weburl"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

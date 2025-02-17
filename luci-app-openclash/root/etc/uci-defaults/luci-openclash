@@ -1,4 +1,13 @@
 #!/bin/bash
+[ ! -f "/usr/share/ucitrack/luci-app-add.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-add.json << EEOF
+{
+    "config": "add",
+    "init": "add"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 . /lib/functions.sh
 
 [ -e "/etc/config/ucitrack" ] && {

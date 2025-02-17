@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-luci-app-ipsec-server.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-luci-app-ipsec-server.json << EEOF
+{
+    "config": "luci-app-ipsec-server",
+    "init": "luci-app-ipsec-server"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 	delete firewall.luci_app_ipsec_server

@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-squid.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-squid.json << EEOF
+{
+    "config": "squid",
+    "init": "squid"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 uci -q batch <<-EOF >/dev/null
         set squid.transparent='transparent'
         commit squid

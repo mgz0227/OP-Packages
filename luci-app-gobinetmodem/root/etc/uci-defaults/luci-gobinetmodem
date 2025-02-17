@@ -1,4 +1,13 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-gobinetmodem.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-gobinetmodem.json << EEOF
+{
+    "config": "gobinetmodem",
+    "init": "gobinetmodem"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 
 uci -q batch <<-EOF >/dev/null
 EOF

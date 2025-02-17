@@ -1,4 +1,13 @@
 uci -q batch <<-EOF >/dev/null
+[ ! -f "/usr/share/ucitrack/luci-app-campusnet.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-campusnet.json << EEOF
+{
+    "config": "campusnet",
+    "init": "campusnet"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
 EOF
 
 rm -f /tmp/luci-indexcache
