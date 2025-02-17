@@ -181,7 +181,7 @@ jobs:
         git_clone https://github.com/peter-tank/luci-app-dnscrypt-proxy2
         git_clone https://github.com/sundaqiang/openwrt-packages && mv -n openwrt-packages/luci-* ./; rm -rf openwrt-packages
         git_clone https://github.com/CHN-beta/rkp-ipid
-        git_clone https://github.com/Erope/openwrt_nezha nezha && mvdir nezha
+        git_clone https://github.com/dysf888/OpenWRT_NeZha_V1 nezha && mvdir nezha
         ) &
         (
         git_clone https://github.com/koshev-msk/modemfeed && mv -n modemfeed/*/!(telephony)/* ./ && rm -rf modemfeed
@@ -205,7 +205,7 @@ jobs:
         git_clone https://github.com/4IceG/luci-app-atcommands atcommands && mvdir atcommands
         ) &
         (
-        git_clone https://github.com/izilzty/luci-app-chinadns-ng
+        git_clone https://github.com/kiddin9/luci-app-chinadns-ng
         git_clone https://github.com/Diciya/luci-app-broadbandacc
         git_clone https://github.com/wiwizcom/WiFiPortal && mvdir WiFiPortal
         git_clone https://github.com/vinewx/NanoHatOLED && mv NanoHatOLED/nanohatoled ./ && rm -rf NanoHatOLED
