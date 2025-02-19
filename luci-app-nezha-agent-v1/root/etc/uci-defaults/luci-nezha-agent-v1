@@ -28,6 +28,10 @@ EOF
 
 # 添加服务跟踪
 uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@nezha-agent-v1[-1] 2>/dev/null
+	add ucitrack nezha-agent-v1
+	set ucitrack.@nezha-agent-v1[-1].init=nezha-agent
+	commit ucitrack
 EOF
 
 # 设置权限

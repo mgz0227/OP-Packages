@@ -10,6 +10,10 @@ EEOF
 }
 
 uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@chinadns-ng[-1]
+	add ucitrack chinadns-ng
+	set ucitrack.@chinadns-ng[-1].init=chinadns-ng
+	commit ucitrack
 EOF
 
 if ! crontab -l | grep -q "chinadns-ng"; then
