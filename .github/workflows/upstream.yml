@@ -224,7 +224,7 @@ jobs:
         git_clone https://github.com/sirpdboy/luci-app-chatgpt-web
         git_clone https://github.com/sirpdboy/luci-app-eqosplus
         git_clone https://github.com/JiaY-shi/fancontrol fanc && mv fanc/{fancontrol,luci-app-fancontrol} ./;rm -rf fanc
-        git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/wwan package/lean/aic8800 && cp -rf wwan/*/* ./ ; rm -Rf wwan
+        git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/wwan && cp -rf wwan/*/* ./ ; rm -Rf wwan
         git_clone https://github.com/Siriling/5G-Modem-Support && rm -rf 5G-Modem-Support/rooter && mvdir 5G-Modem-Support
         git_clone https://github.com/aa65535/openwrt-dist-luci
         git_clone https://github.com/morytyann/OpenWrt-msd && mvdir OpenWrt-msd
@@ -321,7 +321,7 @@ jobs:
         git_clone https://github.com/hudra0/qosmate
         git_clone https://github.com/kiddin9/luci-app-qosmate
         git_clone https://github.com/muink/luci-app-netdata
-        git_clone https://github.com/kiddin9/openwrt-netdata
+        git_clone https://github.com/kiddin9/openwrt-netdata netdata
         git_clone https://github.com/xptsp/luci-app-ympd
         git_clone https://github.com/xptsp/openwrt-ympd
         git_clone https://github.com/xptsp/openwrt-peanut
