@@ -154,7 +154,7 @@ jobs:
         git_clone https://github.com/linkease/nas-packages-luci && mv -n nas-packages-luci/luci/* ./; rm -rf nas-packages-luci
         git_clone https://github.com/linkease/istore && mv -n istore/luci/* ./; rm -rf istore
         git_clone https://github.com/linkease/lcdsimple
-        git_clone https://github.com/muink/openwrt-fchomo && mvdir openwrt-fchomo
+        git_clone https://github.com/fcshark-org/openwrt-fchomo && mvdir openwrt-fchomo
         git_clone https://github.com/asvow/luci-app-tailscale
         ) &
         (
@@ -321,6 +321,7 @@ jobs:
         git_clone https://github.com/hudra0/qosmate
         git_clone https://github.com/kiddin9/luci-app-qosmate
         git_clone https://github.com/muink/luci-app-netdata
+        git_clone https://github.com/kiddin9/openwrt-netdata
         git_clone https://github.com/xptsp/luci-app-ympd
         git_clone https://github.com/xptsp/openwrt-ympd
         git_clone https://github.com/xptsp/openwrt-peanut
@@ -363,7 +364,8 @@ jobs:
         libs/libdouble-conversion libs/qt6base libs/cxxopts libs/jpcre2 libs/alac libs/libcryptopp \
         utils/qt6tools utils/sms-tool utils/cpulimit utils/sendat utils/filebrowser utils/cups utils/cups-bjnp \
         utils/phicomm-k3screenctrl utils/joker utils/7z utils/dhrystone utils/supervisor utils/tinymembench \
-        multimedia/you-get multimedia/lux multimedia/gmediarender multimedia/ykdl multimedia/gallery-dl sound/spotifyd devel/go-rice admin/gotop
+        multimedia/you-get multimedia/lux multimedia/gmediarender multimedia/ykdl multimedia/gallery-dl \
+        sound/spotifyd devel/go-rice admin/gotop
         ) &
         (
         git_sparse_clone develop "https://github.com/Ysurac/openmptcprouter-feeds" \
@@ -437,7 +439,7 @@ jobs:
              -H "Authorization: Bearer ${{ secrets.TOKEN_MGZ0227 }}" \
              -X POST -d '{ "query": "query {repository(owner: \"'"$1"'\", name: \"'"$2"'\"){latestRelease{tagName tagCommit{oid}}refs(refPrefix:\"refs/tags/\",last:1,orderBy:{field:TAG_COMMIT_DATE,direction:ASC}){edges{node{name target{oid}}}}defaultBranchRef{target{...on Commit {oid}}}}}"}' https://api.github.com/graphql)
         }
-        for pkg in $(ls !(luci-*|cloudflared|dnsproxy|ppp|joker|ps3netsrv|sub-web|sms-tool|openwrt-ympd|gost|aic8800|gecoosac|headscale|aria2|webd|mihomo|netmaker-openwrt|hickory-dns|frp|libcryptopp|toml11|chinadns-ng|ddns-go|libtorrent-rasterbar|ua2f|homebox|xtables-wgobfs|nexttrace|tuic-server|subconverter|softethervpn5|shadowsocksr-libev|mt76|mmdvm-host|alist|curl|qBittorrent-Enhanced-Edition|libwxwidgets|ysf-clients|natter|fullconenat|v2raya|r8152|amule|brook|3proxy|containerd|oscam|netmaker|n2n_v2|naiveproxy|miniupnpd-nft|upx|netdata|tailscale|mosdns|coremark|mbedtls|quickjspp|accel-ppp)/Makefile); do
+        for pkg in $(ls !(luci-*|cloudflared|dnsproxy|ppp|joker|ps3netsrv|sub-web|sms-tool|openwrt-ympd|gost|aic8800|gecoosac|headscale|aria2|webd|mihomo|netmaker-openwrt|hickory-dns|frp|libcryptopp|toml11|chinadns-ng|ddns-go|libtorrent-rasterbar|ua2f|homebox|xtables-wgobfs|nexttrace|tuic-server|subconverter|softethervpn5|shadowsocksr-libev|mt76|mmdvm-host|alist|curl|qBittorrent-Enhanced-Edition|libwxwidgets|ysf-clients|natter|fullconenat|v2raya|r8152|amule|brook|3proxy|containerd|oscam|netmaker|n2n_v2|naiveproxy|miniupnpd-nft|upx|tailscale|mosdns|coremark|mbedtls|quickjspp|accel-ppp)/Makefile); do
           repo="$(grep ^PKG_SOURCE_URL $pkg | grep github | cut -f 4-5 -d '/' | sed -e 's/.git//' | grep -E '[0-9a-zA-Z_-]+$')" || true
           if [ "$repo" ]; then
             owner="$(echo $repo | cut -f 1 -d '/')"
@@ -486,12 +488,6 @@ jobs:
         touch /tmp/ok2
         ) &
 
-        (
-        chmod +x github/diy/*.sh
-        bash .github/diy/create_acl_for_luci.sh -a >/dev/null 2>&1 || true
-        bash .github/diy/convert_translation.sh -a >/dev/null 2>&1 || true
-        bash .github/diy/generate_ucitrack.sh -a >/dev/null 2>&1 || true
-        ) &
         
         (
         sed -i \
@@ -503,7 +499,11 @@ jobs:
           -e 's?include .*/luci.mk?include $(TOPDIR)/feeds/luci/luci.mk?' \
           */Makefile
         ) &
-
+        
+        chmod +x github/diy/*.sh
+        bash .github/diy/create_acl_for_luci.sh -a >/dev/null 2>&1 || true
+        bash .github/diy/convert_translation.sh -a >/dev/null 2>&1 || true
+        bash .github/diy/generate_ucitrack.sh -a >/dev/null 2>&1 || true
         #sed -i 's?"http://" + window.location.hostname?window.location.protocol + "//" + window.location.hostname?g' `find luci-app*/luasrc/view/ -maxdepth 2 -name "*.htm"`
         sed -i "s/default n/default y/" dockerd/Config.in
         sed -i '$a cgi-timeout = 500' uwsgi/files-luci-support/luci-*.ini
