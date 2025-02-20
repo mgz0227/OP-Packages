@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=pikpak-webdav
 PKG_VERSION:=0.0.3
-PKG_RELEASE:=8
+PKG_RELEASE:=9
 
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=ykxVK8yL5L
