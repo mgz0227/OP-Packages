@@ -109,6 +109,7 @@ jobs:
         git_clone https://github.com/riverscn/openwrt-iptvhelper && mvdir openwrt-iptvhelper
         git_clone https://github.com/kongfl888/luci-app-timedreboot
         git_clone https://github.com/sbwml/luci-app-webdav
+        git_clone https://github.com/hudra0/luci-app-qosmate
         git_clone https://github.com/kiddin9/luci-app-subconverter
         ) &
         (
@@ -136,8 +137,6 @@ jobs:
         git_clone https://github.com/sbwml/luci-app-mosdns openwrt-mos && mv -n openwrt-mos/{*mosdns,v2dat} ./; rm -rf openwrt-mos
         ) &
         (
-        git_clone https://github.com/esirplayground/LingTiGameAcc
-        git_clone https://github.com/esirplayground/luci-app-LingTiGameAcc
         git_clone https://github.com/jerrykuku/luci-app-go-aliyundrive-webdav
         git_clone https://github.com/SSSSSimon/tencentcloud-openwrt-plugin-ddns && mv -n tencentcloud-openwrt-plugin-ddns/tencentcloud_ddns ./luci-app-tencentddns; rm -rf tencentcloud-openwrt-plugin-ddns
         git_clone https://github.com/Tencent-Cloud-Plugins/tencentcloud-openwrt-plugin-cos && mv -n tencentcloud-openwrt-plugin-cos/tencentcloud_cos ./luci-app-tencentcloud-cos; rm -rf tencentcloud-openwrt-plugin-cos
@@ -176,7 +175,7 @@ jobs:
         git_clone https://github.com/yichya/luci-app-xray yichya && mv -f yichya/status ./luci-app-xray-status;mv -f yichya/core ./luci-app-xray;rm -rf yichya
         git_clone https://github.com/rafmilecki/luci-app-xjay
         git_clone https://github.com/kiddin9/qBittorrent
-        # git_clone https://github.com/kiddin9/openwrt-thunder && mvdir openwrt-thunder
+        git_clone https://github.com/kiddin9/openwrt-lingtigameacc && mvdir openwrt-lingtigameacc
         ) &
         (
         git_clone https://github.com/honwen/luci-app-aliddns
@@ -323,7 +322,6 @@ jobs:
         git_clone https://github.com/hudra0/qosmate
         git_clone https://github.com/kiddin9/luci-app-qosmate
         git_clone https://github.com/muink/luci-app-netdata
-        git_clone https://github.com/kiddin9/openwrt-netdata netdata
         git_clone https://github.com/xptsp/luci-app-ympd
         git_clone https://github.com/xptsp/openwrt-ympd
         git_clone https://github.com/xptsp/openwrt-peanut
@@ -339,7 +337,7 @@ jobs:
         net/qBittorrent-static net/phtunnel net/headscale net/baidupcs-go net/daemonlogger net/geth net/gnurl \
         net/uugamebooster net/pgyvpn ‎net/ooniprobe net/polipo net/rosy-file-server \
         net/rsyslog net/sqm-scripts-extra net/tor-fw-helper net/vncrepeater \
-        net/vpnbypass net/vpn-policy-routing sound/forked-daapd utils/flent-tools \
+        net/vpnbypass net/vpn-policy-routing utils/flent-tools \
         utils/qfirehose utils/slirp4netns
         ) &
         (
