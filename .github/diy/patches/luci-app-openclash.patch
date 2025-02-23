@@ -1,11 +1,11 @@
 --- a/luci-app-openclash/Makefile
 +++ b/luci-app-openclash/Makefile
-@@ -43,7 +43,8 @@
-	TITLE:=LuCI support for clash
-	PKGARCH:=all
+@@ -43,7 +43,7 @@
+ 	TITLE:=LuCI support for clash
+ 	PKGARCH:=all
  	DEPENDS:=+dnsmasq-full +bash +curl +ca-bundle +ip-full \
 -	+ruby +ruby-yaml +kmod-tun +unzip
-+	+ruby +ruby-yaml +kmod-tun +unzip \
-+	+kmod-inet-diag
++	+ruby +ruby-yaml +kmod-tun +unzip +kmod-inet-diag
  	MAINTAINER:=vernesong
  endef
+ 
