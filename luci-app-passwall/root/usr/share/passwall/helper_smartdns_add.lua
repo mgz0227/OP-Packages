@@ -188,7 +188,7 @@ if DNS_MODE == "socks" then
 					if s2 and #s2 > 1 then
 						http_host = s2[1]
 						port = s2[2]
-					end 
+					end
 					url = url:gsub(http_host, dns_ip)
 				end
 			end

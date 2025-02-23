@@ -85,7 +85,7 @@ local hysteria2_type = map:get("@global_subscribe[0]", "hysteria2_type") or "sin
 		};
 		return r;
 	}
-	
+
 	function genQrcode(btn, urlname, sid) {
 		var qrcode_div = document.getElementById("qrcode_div");
 		qrcode_div.style.display = null;
@@ -500,9 +500,9 @@ local hysteria2_type = map:get("@global_subscribe[0]", "hysteria2_type") or "sin
 			var params = "";
 			params += opt.query("sni", dom_prefix + "tls_serverName");
 			params += opt.query("insecure", dom_prefix + "tls_allowInsecure");
-			
+
 			var v_password = null;
-			
+
 			if (v_type === "Hysteria2") {
 				v_password = opt.get("hysteria2_auth_password");
 				params += opt.query("pinSHA256", "hysteria2_tls_pinSHA256");
@@ -557,7 +557,7 @@ local hysteria2_type = map:get("@global_subscribe[0]", "hysteria2_type") or "sin
 		}
 		return false;
 	}
-	
+
 	function exportUrl(btn, urlname, sid) {
 		var url = buildUrl(btn, urlname, sid);
 		if (url) {
@@ -866,7 +866,7 @@ local hysteria2_type = map:get("@global_subscribe[0]", "hysteria2_type") or "sin
 								var kv = ws_path_params_array[i].split('=');
 								ws_path_params[decodeURIComponent(kv[0]).toLowerCase()] = decodeURIComponent(kv[1] || '');
 							}
-							
+
 							if (ws_path_params.ed) {
 								opt.set(dom_prefix + 'ws_path', ws_path);
 								opt.set(dom_prefix + 'ws_enableEarlyData', true);
@@ -998,7 +998,7 @@ local hysteria2_type = map:get("@global_subscribe[0]", "hysteria2_type") or "sin
 						var kv = ws_path_params_array[i].split('=');
 						ws_path_params[decodeURIComponent(kv[0]).toLowerCase()] = decodeURIComponent(kv[1] || '');
 					}
-					
+
 					if (ws_path_params.ed) {
 						opt.set(dom_prefix + 'ws_path', ws_path);
 						opt.set(dom_prefix + 'ws_enableEarlyData', true);
@@ -1108,7 +1108,7 @@ local hysteria2_type = map:get("@global_subscribe[0]", "hysteria2_type") or "sin
 						var kv = ws_path_params_array[i].split('=');
 						ws_path_params[decodeURIComponent(kv[0]).toLowerCase()] = decodeURIComponent(kv[1] || '');
 					}
-					
+
 					if (ws_path_params.ed) {
 						opt.set(dom_prefix + 'ws_path', ws_path);
 						opt.set(dom_prefix + 'ws_enableEarlyData', true);
@@ -1238,7 +1238,7 @@ local hysteria2_type = map:get("@global_subscribe[0]", "hysteria2_type") or "sin
 						var kv = ws_path_params_array[i].split('=');
 						ws_path_params[decodeURIComponent(kv[0]).toLowerCase()] = decodeURIComponent(kv[1] || '');
 					}
-					
+
 					if (ws_path_params.ed) {
 						opt.set(dom_prefix + 'ws_path', ws_path);
 						opt.set(dom_prefix + 'ws_enableEarlyData', true);
@@ -1317,10 +1317,10 @@ local hysteria2_type = map:get("@global_subscribe[0]", "hysteria2_type") or "sin
 					opt.set(dom_prefix + 'tls_pinSHA256', queryParam.pinSHA256);
 				}
 			}
-			
+
 			opt.set(dom_prefix + 'address', m.hostname);
 			opt.set(dom_prefix + 'port', m.port || "443");
-			
+
 			opt.set(dom_prefix + 'tls_serverName', queryParam.sni);
 			if (queryParam.insecure && queryParam.insecure == "1") {
 				opt.set(dom_prefix + 'tls_allowInsecure', true);

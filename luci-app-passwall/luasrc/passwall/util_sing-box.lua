@@ -1044,7 +1044,7 @@ function gen_config(var)
 									})
 								end
 							end
-							
+
 							local _outbound = gen_outbound(flag, _node, rule_name, { tag = use_proxy and preproxy_tag or nil })
 							if _outbound then
 								_outbound.tag = _outbound.tag .. ":" .. _node.remarks
@@ -1117,7 +1117,7 @@ function gen_config(var)
 							end
 						end
 					end
-					
+
 					local rule = {
 						inbound = inboundTag,
 						outbound = outboundTag,
@@ -1284,7 +1284,7 @@ function gen_config(var)
 				server = dns_socks_address,
 				server_port = tonumber(dns_socks_port)
 			})
-		else 
+		else
 			default_outTag = COMMON.default_outbound_tag
 		end
 
@@ -1328,7 +1328,7 @@ function gen_config(var)
 				inet4_range = "198.18.0.0/15",
 				inet6_range = "fc00::/18",
 			}
-			
+
 			table.insert(dns.servers, {
 				tag = fakedns_tag,
 				address = "fakeip",
@@ -1344,7 +1344,7 @@ function gen_config(var)
 				path = api.CACHE_PATH .. "/singbox_" .. flag .. ".db"
 			}
 		end
-	
+
 		if direct_dns_udp_server or direct_dns_tcp_server or direct_dns_dot_server then
 			local domain = {}
 			local nodes_domain_text = sys.exec('uci show passwall | grep ".address=" | cut -d "\'" -f 2 | grep "[a-zA-Z]$" | sort -u')
@@ -1357,7 +1357,7 @@ function gen_config(var)
 					domain = domain
 				})
 			end
-	
+
 			local direct_strategy = "prefer_ipv6"
 			if direct_dns_query_strategy == "UseIPv4" then
 				direct_strategy = "ipv4_only"
@@ -1380,7 +1380,7 @@ function gen_config(var)
 					direct_dns_server = "tls://[" .. direct_dns_dot_server .. "]:" .. port
 				end
 			end
-	
+
 			table.insert(dns.servers, {
 				tag = "direct",
 				address = direct_dns_server,
@@ -1449,7 +1449,7 @@ function gen_config(var)
 				end
 			end
 		end
-	
+
 		table.insert(inbounds, {
 			type = "direct",
 			tag = "dns-in",
@@ -1469,7 +1469,7 @@ function gen_config(var)
 			outbound = "dns-out"
 		})
 	end
-	
+
 	if inbounds or outbounds then
 		local config = {
 			log = {
@@ -1661,7 +1661,7 @@ function gen_proto_config(var)
 		}
 		if outbound then table.insert(outbounds, outbound) end
 	end
-	
+
 	local config = {
 		log = {
 			disabled = true,
