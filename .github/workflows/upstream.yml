@@ -403,7 +403,10 @@ jobs:
       run: |
         shopt -s extglob
         set +e
+        work_dir=$(mktemp -d)
+        mv -f luci-app* $work_dir/
         mv -n applications/!(luci-app-noddos|luci-app-openvpn-server|luci-app-kodexplorer|luci-app-cshark|luci-app-dnscrypt-proxy|luci-app-https-dns-proxy|luci-app-ssr-mudb-server|luci-app-ledtrig-*) ./ ; rm -Rf applications
+        mv -f $work_dir/* ./
         mv -n lean/!(r8101|r8125|r8126|r8168) ./ ; rm -Rf lean
         mv -n liep/* ./ ; rm -Rf liep
         mv -n openwrt-app-actions/applications/* ./;rm -rf openwrt-app-actions
