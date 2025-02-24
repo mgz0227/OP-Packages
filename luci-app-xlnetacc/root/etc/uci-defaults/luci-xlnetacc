@@ -1,15 +1,17 @@
-#!/bin/sh
-
-general=$(uci -q get xlnetacc.@general[-1])
-if [ -z "$general" ]; then
-	uci -q add xlnetacc general
-fi
-if [ "$general"x != "general"x ]; then
-	uci -q batch <<-EOF >/dev/null
-		rename xlnetacc.@general[-1]="general"
-		commit xlnetacc
-	EOF
-fi
-
-rm -rf /tmp/luci-indexcache /tmp/luci-modulecache
+uci batch <<EOF
+[ ! -f "/usr/share/ucitrack/luci-app-xlnetacc.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-xlnetacc.json << EEOF
+{
+    "config": "xlnetacc",
+    "init": "xlnetacc"
+}
+EEOF
+/etc/init.d/ucitrack reload
+}
+	delete ucitrack.@xlnetacc[-1]
+	add ucitrack xlnetacc
+	set ucitrack.@xlnetacc[-1].init=xlnetacc
+	commit ucitrack
+EOF
+rm -rf /tmp/luci-*
 exit 0

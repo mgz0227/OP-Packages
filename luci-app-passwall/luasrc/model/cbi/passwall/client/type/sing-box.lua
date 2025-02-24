@@ -412,8 +412,8 @@ if singbox_tags:find("with_ech") then
 	o.validate = function(self, value)
 		value = value:gsub("^%s+", ""):gsub("%s+$","\n"):gsub("\r\n","\n"):gsub("[ \t]*\n[ \t]*", "\n")
 		value = value:gsub("^%s*\n", "")
-		if value:sub(-1) == "\n" then
-			value = value:sub(1, -2)
+		if value:sub(-1) == "\n" then  
+			value = value:sub(1, -2)  
 		end
 		return value
 	end
@@ -454,10 +454,10 @@ if singbox_tags:find("with_utls") then
 	o:depends({ [_n("protocol")] = "shadowsocks", [_n("utls")] = true })
 	o:depends({ [_n("protocol")] = "socks", [_n("utls")] = true })
 	o:depends({ [_n("protocol")] = "trojan", [_n("utls")] = true })
-
+	
 	o = s:option(Value, _n("reality_publicKey"), translate("Public Key"))
 	o:depends({ [_n("utls")] = true, [_n("reality")] = true })
-
+	
 	o = s:option(Value, _n("reality_shortId"), translate("Short Id"))
 	o:depends({ [_n("utls")] = true, [_n("reality")] = true })
 end
