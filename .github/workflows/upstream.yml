@@ -159,7 +159,7 @@ jobs:
         git_clone https://github.com/linkease/nas-packages && mv -n nas-packages/{network/services/*,multimedia/*} ./; rm -rf nas-packages
         git_clone https://github.com/linkease/nas-packages-luci && mv -n nas-packages-luci/luci/* ./; rm -rf nas-packages-luci
         git_clone https://github.com/linkease/istore && mv -n istore/luci/* ./; rm -rf istore
-        git_clone https://github.com/linkease/lcdsimple
+        git_clone https://github.com/linkease/lcdsimple lcdsimple1 && mvdir lcdsimple1
         git_clone https://github.com/fcshark-org/openwrt-fchomo && mvdir openwrt-fchomo
         git_clone https://github.com/asvow/luci-app-tailscale
         ) &
@@ -170,7 +170,7 @@ jobs:
         git_clone https://github.com/ykxVK8yL5L/pikpak-webdav pikpak && mv -n pikpak/openwrt/* ./;rm -rf pikpak
         git_clone https://github.com/jjm2473/openwrt-apps && rm -rf openwrt-apps/{luci-app-cpufreq,luci-app-ota,luci-alias.mk} && sed -i "s/luci-alias.mk/..\/luci.mk/" openwrt-apps/*/Makefile && mvdir openwrt-apps
         git_clone https://github.com/lwb1978/openwrt-gecoosac && mvdir openwrt-gecoosac
-        git_clone https://github.com/nikkinikki-org/OpenWrt-nikki
+        git_clone https://github.com/nikkinikki-org/OpenWrt-nikki && mv -f OpenWrt-nikki/{luci-app-nikki,nikki} ./;rm -rf OpenWrt-nikki
         ) &
         (
         git_clone https://github.com/ZeaKyX/speedtest-web
@@ -277,7 +277,7 @@ jobs:
         git_clone https://github.com/hingbong/hickory-dns-openwrt && mvdir hickory-dns-openwrt
         ) &
         (
-        git_clone https://github.com/EasyTier/luci-app-easytier
+        git_clone https://github.com/EasyTier/luci-app-easytier luci-app-easytier1 && mvdir luci-app-easytier1
         git_clone https://github.com/ntlf9t/luci-app-dnspod
         git_clone https://github.com/lmq8267/luci-app-vnt opvnt && mv -f opvnt/luci-app-vnt ./;rm -rf opvnt
         git_clone https://github.com/RymFred11/luci-app-nettask nettask && mv nettask/luci-app-nettask ./;rm -rf nettask
@@ -355,7 +355,7 @@ jobs:
 
         (
         git_sparse_clone openwrt-24.10 "https://github.com/immortalwrt/packages" net/mwol net/n2n net/dae \
-        net/sub-web net/amule net/haproxy net/cdnspeedtest net/minieap net/ddns-go net/sysuh3c \
+        net/sub-web net/amule net/haproxy net/cdnspeedtest net/minieap net/ddns-go net/sysuh3c net/cloudreve \
         net/go-nats net/go-wol net/bitsrunlogin-go net/transfer net/daed net/udp2raw net/msd_lite net/netbird \
         net/subconverter net/ngrokc net/njitclient net/scutclient net/gost net/ua2f net/dufs net/qBittorrent-Enhanced-Edition \
         net/tinyportmapper net/tinyfecvpn net/nexttrace net/pcap-dnsproxy net/rustdesk-server net/tuic-server \
@@ -439,7 +439,7 @@ jobs:
              -H "Authorization: Bearer ${{ secrets.TOKEN_MGZ0227 }}" \
              -X POST -d '{ "query": "query {repository(owner: \"'"$1"'\", name: \"'"$2"'\"){latestRelease{tagName tagCommit{oid}}refs(refPrefix:\"refs/tags/\",last:1,orderBy:{field:TAG_COMMIT_DATE,direction:ASC}){edges{node{name target{oid}}}}defaultBranchRef{target{...on Commit {oid}}}}}"}' https://api.github.com/graphql)
         }
-        for pkg in $(ls !(luci-*|cloudflared|dnsproxy|ppp|joker|ps3netsrv|sub-web|sms-tool|openwrt-ympd|gost|aic8800|gecoosac|headscale|aria2|webd|mihomo|netmaker-openwrt|hickory-dns|frp|libcryptopp|toml11|chinadns-ng|ddns-go|libtorrent-rasterbar|ua2f|homebox|xtables-wgobfs|nexttrace|tuic-server|subconverter|softethervpn5|shadowsocksr-libev|mt76|mmdvm-host|alist|curl|qBittorrent-Enhanced-Edition|libwxwidgets|ysf-clients|natter|fullconenat|v2raya|r8152|amule|brook|3proxy|containerd|oscam|netmaker|n2n_v2|naiveproxy|miniupnpd-nft|upx|tailscale|mosdns|coremark|mbedtls|quickjspp|accel-ppp)/Makefile); do
+        for pkg in $(ls !(luci-*|cloudflared|dnsproxy|ppp|joker|nikki|ps3netsrv|sub-web|sms-tool|openwrt-ympd|gost|aic8800|gecoosac|headscale|aria2|webd|mihomo|netmaker-openwrt|hickory-dns|frp|libcryptopp|toml11|chinadns-ng|ddns-go|libtorrent-rasterbar|ua2f|homebox|xtables-wgobfs|nexttrace|tuic-server|subconverter|softethervpn5|shadowsocksr-libev|mt76|mmdvm-host|alist|curl|qBittorrent-Enhanced-Edition|libwxwidgets|ysf-clients|natter|fullconenat|v2raya|r8152|amule|brook|3proxy|containerd|oscam|netmaker|n2n_v2|naiveproxy|miniupnpd-nft|upx|tailscale|mosdns|coremark|mbedtls|quickjspp|accel-ppp)/Makefile); do
           repo="$(grep ^PKG_SOURCE_URL $pkg | grep github | cut -f 4-5 -d '/' | sed -e 's/.git//' | grep -E '[0-9a-zA-Z_-]+$')" || true
           if [ "$repo" ]; then
             owner="$(echo $repo | cut -f 1 -d '/')"
