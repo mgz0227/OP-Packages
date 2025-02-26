@@ -6,8 +6,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=xtables-wgobfs
-PKG_VERSION:=0.4.1
-PKG_RELEASE:=9
+PKG_VERSION:=0.6.1
+PKG_RELEASE:=10
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/xt_wgobfs-$(PKG_VERSION)
 PKG_SOURCE:=xt_wgobfs-$(PKG_VERSION).tar.xz
