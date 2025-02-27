@@ -149,7 +149,7 @@ jobs:
         git_clone https://github.com/Tencent-Cloud-Plugins/tencentcloud-openwrt-plugin-cos && mv -n tencentcloud-openwrt-plugin-cos/tencentcloud_cos ./luci-app-tencentcloud-cos; rm -rf tencentcloud-openwrt-plugin-cos
         git_clone https://github.com/doushang/luci-app-shortcutmenu luci-shortcutmenu && mv -n luci-shortcutmenu/luci-app-shortcutmenu ./ ; rm -rf luci-shortcutmenu
         # git_clone https://github.com/messense/aliyundrive-webdav aliyundrive && mv -n aliyundrive/openwrt/* ./ ; rm -rf aliyundrive
-        git_clone https://github.com/sbilly/netmaker-openwrt && mv -n netmaker-openwrt/netmaker ./; rm -rf netmaker-openwrt
+        # git_clone https://github.com/sbilly/netmaker-openwrt && mv -n netmaker-openwrt/netmaker ./; rm -rf netmaker-openwrt
         git_clone https://github.com/lisaac/luci-app-dockerman dockerman && mv -n dockerman/applications/* ./; rm -rf dockerman
         ) &
         (
@@ -177,8 +177,8 @@ jobs:
         git_clone https://github.com/ZeaKyX/luci-app-speedtest-web
         git_clone https://github.com/linkease/openwrt-app-actions
         git_clone https://github.com/Wulnut/luci-app-suselogin
-        git_clone https://github.com/lucikap/luci-app-brukamen && mv -n luci-app-brukamen/{luci*,iii/*} ./;rm -rf luci-app-brukamen luci-app-autoshell_*.ipk
-        git_clone https://github.com/mchome/openwrt-dogcom
+        git_clone https://github.com/lucikap/luci-app-brukamen && mv -n luci-app-brukamen/luci* ./;rm -rf luci-app-brukamen luci-app-autoshell_*.ipk
+        # git_clone https://github.com/mchome/openwrt-dogcom
         git_clone https://github.com/yichya/luci-app-xray yichya && mv -f yichya/status ./luci-app-xray-status;mv -f yichya/core ./luci-app-xray;rm -rf yichya
         git_clone https://github.com/rafmilecki/luci-app-xjay
         # git_clone https://github.com/kiddin9/openwrt-thunder && mvdir openwrt-thunder
@@ -196,7 +196,7 @@ jobs:
         git_clone https://github.com/shanglanxin/luci-app-homebridge
         git_clone https://github.com/ykxVK8yL5L/luci-app-synology synology && mv -n synology/luci-app-synology ./ && rm -rf synology
         git_clone https://github.com/htynkn/openwrt-switch-lan-play && mv -n openwrt-switch-lan-play/package/* ./ && rm -rf openwrt-switch-lan-play
-        git_clone https://github.com/xptsp/luci-app-nodogsplash
+        # git_clone https://github.com/xptsp/luci-app-nodogsplash
         git_clone https://github.com/xptsp/luci-mod-listening-ports
         git_clone https://github.com/xptsp/luci-app-squid-adv
         git_clone https://github.com/xptsp/openwrt-bcrypt-tool
@@ -376,7 +376,7 @@ jobs:
         git_sparse_clone openwrt-24.10 "https://github.com/immortalwrt/immortalwrt" \
         package/kernel/rtl8189es package/emortal/autocore package/emortal/automount \
         package/network/utils/fullconenat package/emortal/cpufreq package/network/utils/fullconenat-nft \
-        package/utils/mhz
+        package/utils/mhz package/utils/pcat-manager
         ) &
         (
         git_sparse_clone master "https://github.com/x-wrt/com.x-wrt" luci-app-macvlan luci-app-xwan
@@ -440,7 +440,7 @@ jobs:
              -H "Authorization: Bearer ${{ secrets.TOKEN_MGZ0227 }}" \
              -X POST -d '{ "query": "query {repository(owner: \"'"$1"'\", name: \"'"$2"'\"){latestRelease{tagName tagCommit{oid}}refs(refPrefix:\"refs/tags/\",last:1,orderBy:{field:TAG_COMMIT_DATE,direction:ASC}){edges{node{name target{oid}}}}defaultBranchRef{target{...on Commit {oid}}}}}"}' https://api.github.com/graphql)
         }
-        for pkg in $(ls !(luci-*|nikki|openwrt-einat-ebpf)/Makefile); do
+        for pkg in $(ls !(luci-*|nikki|openwrt-einat-ebpf|3proxy|sub-web|UnblockNeteaseMusic|frp|gecoosac|hickory-dns|libcryptopp|naiveproxy|homebox|rustdesk-server|shadowsocksr-libev|tuic-server|joker|natter|netmaker|openwrt-ympd|subconverter|sms-tool)/Makefile); do
           repo="$(grep ^PKG_SOURCE_URL $pkg | grep github | cut -f 4-5 -d '/' | sed -e 's/.git//' | grep -E '[0-9a-zA-Z_-]+$')" || true
           if [ "$repo" ]; then
             owner="$(echo $repo | cut -f 1 -d '/')"
