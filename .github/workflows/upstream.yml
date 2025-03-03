@@ -178,7 +178,7 @@ jobs:
         git_clone https://github.com/linkease/openwrt-app-actions
         git_clone https://github.com/Wulnut/luci-app-suselogin
         git_clone https://github.com/mchome/openwrt-dogcom
-        git_clone https://github.com/lucikap/luci-app-brukamen && mv -n luci-app-brukamen/{luci*,mentohust} ./;rm -rf luci-app-brukamen luci-app-autoshell_*.ipk
+        git_clone https://github.com/lucikap/luci-app-brukamen && mv -n luci-app-brukamen/luci* ./;rm -rf luci-app-brukamen luci-app-autoshell_*.ipk
         git_clone https://github.com/yichya/luci-app-xray yichya && mv -f yichya/status ./luci-app-xray-status;mv -f yichya/core ./luci-app-xray;rm -rf yichya
         git_clone https://github.com/rafmilecki/luci-app-xjay
         # git_clone https://github.com/kiddin9/openwrt-thunder && mvdir openwrt-thunder
@@ -456,8 +456,10 @@ jobs:
                 function version_lt() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" != "$1"; }
                 if version_lt "$over" "$ver"; then
                   latest="$(echo $latest | jq -r '.data.repository.latestRelease.tagCommit.oid' || echo $latest | jq -r '.data.repository.refs.edges[-1].node.target.oid')"
+                  set -x
                   sed -i -e "s/PKG_SOURCE_VERSION:=.*/PKG_SOURCE_VERSION:=$latest/" \
                          -e "s/PKG_VERSION:=.*/PKG_VERSION:=$ver/" $pkg || true
+                  set -x
                 fi || true
               fi
             fi
