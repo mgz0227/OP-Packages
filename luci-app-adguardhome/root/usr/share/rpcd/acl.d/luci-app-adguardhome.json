@@ -4,15 +4,13 @@
 		"read": {
 			"ubus": {
 				"luci.adguardhome": [
-					"get_config",
-					"get_status",
-					"get_statistics",
-					"set_passwd",
-				]
+ 					"get_config",
+ 					"get_status",
+ 					"get_statistics",
+ 					"set_passwd"
+ 				]
 			},
-			"uci": [
-				"adguardhome"
-			],
+			"uci": [ "adguardhome" ],
 			"file": {
 				"/sbin/logread": [
 					"stat",
@@ -26,9 +24,7 @@
 			}
 		},
 		"write": {
-			"uci": [
-				"adguardhome"
-			]
+			"uci": [ "adguardhome" ]
 		}
 	}
 }
