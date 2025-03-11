@@ -1,59 +1,141 @@
---- a/miniupnpd/files/miniupnpd.init
-+++ b/miniupnpd/files/miniupnpd.init
-@@ -63,6 +63,7 @@ upnpd() {
- 	local use_stun stun_host stun_port uuid notify_interval presentation_url
- 	local upnp_lease_file clean_ruleset_threshold clean_ruleset_interval
- 	local ipv6_disable
-+	local force_forwarding
+--- a/luci-app-easytier/Makefile
++++ b/luci-app-easytier/Makefile
+@@ -10,7 +10,7 @@ PKG_VERSION:=2.2.2
+ PKG_RELEASE:=
  
- 	local enabled
- 	config_get_bool enabled config enabled 1
-@@ -90,6 +91,7 @@ upnpd() {
- 	config_get clean_ruleset_threshold config clean_ruleset_threshold
- 	config_get clean_ruleset_interval config clean_ruleset_interval
- 	config_get ipv6_disable config ipv6_disable 0
-+	config_get force_forwarding config force_forwarding 1
+ LUCI_TITLE:=LuCI support for EasyTier
+-LUCI_DEPENDS:=+kmod-tun
++LUCI_DEPENDS:=+kmod-tun +easytier
+ LUCI_PKGARCH:=all
  
- 	local conf ifname ifname6
- 
-@@ -142,6 +144,7 @@ upnpd() {
- 		upnpd_write_bool igdv1 0 force_igd_desc_v1
- 		upnpd_write_bool use_stun 0 ext_perform_stun
- 		upnpd_write_bool ipv6_disable $ipv6_disable
-+		upnpd_write_bool force_forwarding $force_forwarding
- 
- 		[ "$use_stun" -eq 0 ] || {
- 			[ -n "$stun_host" ] && echo "ext_stun_host=$stun_host"
+ PKG_NAME:=luci-app-easytier
 
---- a/miniupnpd/files/upnpd.config
-+++ b/miniupnpd/files/upnpd.config
-@@ -1,5 +1,5 @@
- config upnpd config
--	option enabled		0
-+	option enabled		1
- 	option enable_natpmp	1
- 	option enable_upnp	1
- 	option secure_mode	1
-@@ -13,8 +13,9 @@ config upnpd config
- 	option upnp_lease_file	/var/run/miniupnpd.leases
- 	option igdv1		1
- 	option ipv6_disable	1
--	option use_stun		0
--	option stun_host 	stunserver.stunprotocol.org
-+	option force_forwarding 1
-+	option use_stun		1
-+	option stun_host 	stun.miwifi.com
- 	option stun_port	3478
+--- a/luci-app-samba4/Makefile
++++ b//luci-app-samba4/Makefile
+@@ -3,7 +3,7 @@
+ include $(TOPDIR)/rules.mk
  
- config perm_rule
+ LUCI_TITLE:=Network Shares - Samba 4 SMB/CIFS fileserver
+-LUCI_DEPENDS:=+luci-base +samba4-server
++LUCI_DEPENDS:=+luci-base +samba4-server +autoshare-samba
+ 
+ PKG_LICENSE:=Apache-2.0
+ PKG_MAINTAINER:=Andy Walsh <andy.walsh44+github@gmail.com>
 
---- a/miniupnpd/Makefile
-+++ b/miniupnpd/Makefile
-@@ -58,7 +58,6 @@ define Package/miniupnpd-nftables
-   TITLE+= (nftables)
-   VARIANT:=nftables
-   DEFAULT_VARIANT:=1
--  CONFLICTS:=miniupnpd-iptables
+--- a/luci-app-ksmbd/Makefile
++++ b/luci-app-ksmbd/Makefile
+@@ -3,7 +3,7 @@
+ include $(TOPDIR)/rules.mk
+ 
+ LUCI_TITLE:=Network Shares - Ksmbd the SMB kernel fileserver
+-LUCI_DEPENDS:=+luci-base +ksmbd-server
++LUCI_DEPENDS:=+luci-base +ksmbd-server +autoshare-ksmbd
+ 
+ PKG_LICENSE:=Apache-2.0
+ PKG_MAINTAINER:=Richard Yu <yurichard3839@gmail.com>
+
+--- a/fullconenat/Makefile
++++ b/fullconenat/Makefile
+@@ -36,7 +36,7 @@ define Package/ip6tables-mod-fullconenat
+   SECTION:=net
+   CATEGORY:=Network
+   TITLE:=FULLCONENAT ip6tables extension
+-  DEPENDS:=ip6tables +kmod-nf-nat6 +kmod-ipt-fullconenat +ip6tables-mod-nat
++  DEPENDS:=+ip6tables +kmod-nf-nat6 +kmod-ipt-fullconenat +ip6tables-mod-nat
  endef
  
- define Package/miniupnpd/conffiles/Default
+ define KernelPackage/ipt-fullconenat
+
+--- a/phtunnel/Makefile
++++ b/phtunnel/Makefile
+@@ -36,7 +36,6 @@ PKG_SOURCE:=phtunnel
+ PKG_SOURCE_URL:=https://mirrors.oray.com/orayos/packages/$(PKG_NAME)/$(PKG_ARCH_PHT)/$(PKG_VERSION)/bin
+ PKG_HASH:=skip
+ 
+-PKG_FLAGS:=nonshared
+ PKG_MAINTAINER:=Oray <developer@oray.com>
+ 
+ include $(INCLUDE_DIR)/package.mk
+
+--- a/pgyvpn/Makefile
++++ b/pgyvpn/Makefile
+@@ -36,7 +36,6 @@ PKG_SOURCE:=pgyvpnsvr
+ PKG_SOURCE_URL:=https://mirrors.oray.com/orayos/packages/$(PKG_NAME)/$(PKG_ARCH_PGYYPN)/$(PKG_VERSION)/bin
+ PKG_HASH:=skip
+ 
+-PKG_FLAGS:=nonshared
+ PKG_MAINTAINER:=Oray <developer@oray.com>
+ 
+ include $(INCLUDE_DIR)/package.mk
+
+--- a/wifidog-wiwiz/Makefile
++++ b/wifidog-wiwiz/Makefile
+@@ -21,7 +21,7 @@ define Package/wifidog-wiwiz
+   SUBMENU:=Portal
+   SECTION:=net
+   CATEGORY:=Wiwiz/PinPinWiFi
+-  DEPENDS:=+iptables-mod-extra +iptables-mod-ipopt +iptables-mod-nat-extra +libpthread +curl
++  DEPENDS:=+luci-app-eqos +dcc2-wiwiz-nossl +iptables-mod-extra +iptables-mod-ipopt +iptables-mod-nat-extra +libpthread +curl
+   TITLE:=wifidog-wiwiz
+   URL:=http://www.wiwiz.com
+   MENU:=1
+
+--- a/luci-app-rclone/Makefile
++++ b/luci-app-rclone/Makefile
+@@ -9,7 +9,7 @@ PKG_VERSION:=1.4.1-3
+ PKG_RELEASE:=
+ 
+ LUCI_TITLE:=LuCI support for Rclone
+-LUCI_DEPENDS:=+rclone-config \
++LUCI_DEPENDS:=+rclone-config +fuse-overlayfs +fuse3-utils \
+               +PACKAGE_$(PKG_NAME)_INCLUDE_rclone-webui:rclone-webui-react \
+               +PACKAGE_$(PKG_NAME)_INCLUDE_rclone-ng:rclone-ng
+ LUCI_PKGARCH:=all
+
+--- a/luci-app-einat/Makefile
++++ b/luci-app-einat/Makefile
+@@ -9,7 +9,7 @@ LUCI_NAME:=luci-app-einat
+ 
+ LUCI_TITLE:=LuCI Support for einat
+ LUCI_PKGARCH:=all
+-LUCI_DEPENDS:=
++LUCI_DEPENDS:=+einat-ebpf
+ 
+ LUCI_DESCRIPTION:=eBPF-based Endpoint-Independent NAT
+
+
+--- a/tailscale/Makefile
++++ b/tailscale/Makefile
+@@ -58,8 +58,6 @@ define Package/tailscale/install
+ 	$(INSTALL_DIR) $(1)/usr/sbin $(1)/etc/init.d $(1)/etc/config
+ 	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/tailscaled $(1)/usr/sbin
+ 	$(LN) tailscaled $(1)/usr/sbin/tailscale
+-	$(INSTALL_BIN) ./files//tailscale.init $(1)/etc/init.d/tailscale
+-	$(INSTALL_DATA) ./files//tailscale.conf $(1)/etc/config/tailscale
+ endef
+ 
+ $(eval $(call BuildPackage,tailscale))
+
+--- a/k3screenctrl/Makefile
++++ b/k3screenctrl/Makefile
+@@ -19,7 +19,7 @@ TARGET_CFLAGS+= -D_GNU_SOURCE
+ define Package/k3screenctrl
+   SECTION:=utils
+   CATEGORY:=Utilities
+-  DEPENDS:=@TARGET_bcm53xx_generic_DEVICE_phicomm_k3 +@KERNEL_DEVMEM
++  DEPENDS:=@(TARGET_bcm53xx_generic_DEVICE_phicomm_k3||TARGET_DEVICE_bcm53xx_generic_DEVICE_phicomm_k3) +@KERNEL_DEVMEM
+   TITLE:=LCD screen controller on PHICOMM K3
+   URL:=https://github.com/updateing/k3-screen-ctrl
+ endef
+
+--- a/luci-app-packet-capture/Makefile
++++ b/luci-app-packet-capture/Makefile
+@@ -4,7 +4,7 @@
+ include $(TOPDIR)/rules.mk
+ 
+ LUCI_TITLE:=Packet capture application
+-LUCI_DEPENDS:=+luci-mod-admin-full +tcpdump +uhttpd-mod-ubus +coreutils +coreutils-timeout
++LUCI_DEPENDS:=+luci-mod-admin-full +tcpdump +coreutils +coreutils-timeout
+ 
+ PKG_MAINTAINER:=Wojciech Jowsa <wojciech.jowsa@gmail.com>
+ PKG_LICENSE:=Apache-2.0
