@@ -1,141 +1,70 @@
---- a/luci-app-easytier/Makefile
-+++ b/luci-app-easytier/Makefile
-@@ -10,7 +10,7 @@ PKG_VERSION:=2.2.2
- PKG_RELEASE:=
+--- a/luci-app-ddns/Makefile
++++ b/luci-app-ddns/Makefile
+@@ -12,7 +12,7 @@ PKG_LICENSE:=Apache-2.0
+ PKG_MAINTAINER:=Ansuel Smith <ansuelsmth@gmail.com>
  
- LUCI_TITLE:=LuCI support for EasyTier
--LUCI_DEPENDS:=+kmod-tun
-+LUCI_DEPENDS:=+kmod-tun +easytier
- LUCI_PKGARCH:=all
+ LUCI_TITLE:=LuCI Support for Dynamic DNS Client (ddns-scripts)
+-LUCI_DEPENDS:=+luci-base +ddns-scripts
++LUCI_DEPENDS:=+luci-base +ddns-scripts +ddns-scripts-aliyun +ddns-scripts-dnspod-v3 +ddns-scripts-cloudflare
  
- PKG_NAME:=luci-app-easytier
+ include ../../luci.mk
+ 
 
---- a/luci-app-samba4/Makefile
-+++ b//luci-app-samba4/Makefile
-@@ -3,7 +3,7 @@
- include $(TOPDIR)/rules.mk
- 
- LUCI_TITLE:=Network Shares - Samba 4 SMB/CIFS fileserver
--LUCI_DEPENDS:=+luci-base +samba4-server
-+LUCI_DEPENDS:=+luci-base +samba4-server +autoshare-samba
- 
- PKG_LICENSE:=Apache-2.0
- PKG_MAINTAINER:=Andy Walsh <andy.walsh44+github@gmail.com>
-
---- a/luci-app-ksmbd/Makefile
-+++ b/luci-app-ksmbd/Makefile
-@@ -3,7 +3,7 @@
- include $(TOPDIR)/rules.mk
- 
- LUCI_TITLE:=Network Shares - Ksmbd the SMB kernel fileserver
--LUCI_DEPENDS:=+luci-base +ksmbd-server
-+LUCI_DEPENDS:=+luci-base +ksmbd-server +autoshare-ksmbd
- 
- PKG_LICENSE:=Apache-2.0
- PKG_MAINTAINER:=Richard Yu <yurichard3839@gmail.com>
-
---- a/fullconenat/Makefile
-+++ b/fullconenat/Makefile
-@@ -36,7 +36,7 @@ define Package/ip6tables-mod-fullconenat
-   SECTION:=net
-   CATEGORY:=Network
-   TITLE:=FULLCONENAT ip6tables extension
--  DEPENDS:=ip6tables +kmod-nf-nat6 +kmod-ipt-fullconenat +ip6tables-mod-nat
-+  DEPENDS:=+ip6tables +kmod-nf-nat6 +kmod-ipt-fullconenat +ip6tables-mod-nat
+--- a/ddns-scripts/Makefile
++++ b/ddns-scripts/Makefile
+@@ -165,6 +165,15 @@ define Package/ddns-scripts-dnspod-v3/description
+   Dynamic DNS Client scripts extension for dnspod.tencentcloudapi.com API v3 (require curl)
  endef
  
- define KernelPackage/ipt-fullconenat
-
---- a/phtunnel/Makefile
-+++ b/phtunnel/Makefile
-@@ -36,7 +36,6 @@ PKG_SOURCE:=phtunnel
- PKG_SOURCE_URL:=https://mirrors.oray.com/orayos/packages/$(PKG_NAME)/$(PKG_ARCH_PHT)/$(PKG_VERSION)/bin
- PKG_HASH:=skip
++define Package/ddns-scripts-aliyun
++  $(call Package/ddns-scripts/Default)
++  TITLE:=Extension for aliyun.com API
++  DEPENDS:=ddns-scripts +curl +bind-host +openssl-util
++endef
++
++define Package/ddns-scripts-aliyun/description
++  Dynamic DNS Client scripts extension for aliyun.com API (require curl)
++endef
  
--PKG_FLAGS:=nonshared
- PKG_MAINTAINER:=Oray <developer@oray.com>
- 
- include $(INCLUDE_DIR)/package.mk
-
---- a/pgyvpn/Makefile
-+++ b/pgyvpn/Makefile
-@@ -36,7 +36,6 @@ PKG_SOURCE:=pgyvpnsvr
- PKG_SOURCE_URL:=https://mirrors.oray.com/orayos/packages/$(PKG_NAME)/$(PKG_ARCH_PGYYPN)/$(PKG_VERSION)/bin
- PKG_HASH:=skip
- 
--PKG_FLAGS:=nonshared
- PKG_MAINTAINER:=Oray <developer@oray.com>
- 
- include $(INCLUDE_DIR)/package.mk
-
---- a/wifidog-wiwiz/Makefile
-+++ b/wifidog-wiwiz/Makefile
-@@ -21,7 +21,7 @@ define Package/wifidog-wiwiz
-   SUBMENU:=Portal
-   SECTION:=net
-   CATEGORY:=Wiwiz/PinPinWiFi
--  DEPENDS:=+iptables-mod-extra +iptables-mod-ipopt +iptables-mod-nat-extra +libpthread +curl
-+  DEPENDS:=+luci-app-eqos +dcc2-wiwiz-nossl +iptables-mod-extra +iptables-mod-ipopt +iptables-mod-nat-extra +libpthread +curl
-   TITLE:=wifidog-wiwiz
-   URL:=http://www.wiwiz.com
-   MENU:=1
-
---- a/luci-app-rclone/Makefile
-+++ b/luci-app-rclone/Makefile
-@@ -9,7 +9,7 @@ PKG_VERSION:=1.4.1-3
- PKG_RELEASE:=
- 
- LUCI_TITLE:=LuCI support for Rclone
--LUCI_DEPENDS:=+rclone-config \
-+LUCI_DEPENDS:=+rclone-config +fuse-overlayfs +fuse3-utils \
-               +PACKAGE_$(PKG_NAME)_INCLUDE_rclone-webui:rclone-webui-react \
-               +PACKAGE_$(PKG_NAME)_INCLUDE_rclone-ng:rclone-ng
- LUCI_PKGARCH:=all
-
---- a/luci-app-einat/Makefile
-+++ b/luci-app-einat/Makefile
-@@ -9,7 +9,7 @@ LUCI_NAME:=luci-app-einat
- 
- LUCI_TITLE:=LuCI Support for einat
- LUCI_PKGARCH:=all
--LUCI_DEPENDS:=
-+LUCI_DEPENDS:=+einat-ebpf
- 
- LUCI_DESCRIPTION:=eBPF-based Endpoint-Independent NAT
-
-
---- a/tailscale/Makefile
-+++ b/tailscale/Makefile
-@@ -58,8 +58,6 @@ define Package/tailscale/install
- 	$(INSTALL_DIR) $(1)/usr/sbin $(1)/etc/init.d $(1)/etc/config
- 	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/tailscaled $(1)/usr/sbin
- 	$(LN) tailscaled $(1)/usr/sbin/tailscale
--	$(INSTALL_BIN) ./files//tailscale.init $(1)/etc/init.d/tailscale
--	$(INSTALL_DATA) ./files//tailscale.conf $(1)/etc/config/tailscale
+ define Package/ddns-scripts-noip
+   $(call Package/ddns-scripts/Default)
+@@ -401,6 +410,7 @@ define Package/ddns-scripts-services/install
+ 	rm $(1)/usr/share/ddns/default/digitalocean.com-v2.json
+ 	rm $(1)/usr/share/ddns/default/dnspod.cn.json
+ 	rm $(1)/usr/share/ddns/default/dnspod.cn-v3.json
++	rm $(1)/usr/share/ddns/default/aliyun.com.json
+ 	rm $(1)/usr/share/ddns/default/no-ip.com.json
+ 	rm $(1)/usr/share/ddns/default/bind-nsupdate.json
+ 	rm $(1)/usr/share/ddns/default/route53-v1.json
+@@ -575,6 +585,23 @@ fi
+ exit 0
  endef
  
- $(eval $(call BuildPackage,tailscale))
-
---- a/k3screenctrl/Makefile
-+++ b/k3screenctrl/Makefile
-@@ -19,7 +19,7 @@ TARGET_CFLAGS+= -D_GNU_SOURCE
- define Package/k3screenctrl
-   SECTION:=utils
-   CATEGORY:=Utilities
--  DEPENDS:=@TARGET_bcm53xx_generic_DEVICE_phicomm_k3 +@KERNEL_DEVMEM
-+  DEPENDS:=@(TARGET_bcm53xx_generic_DEVICE_phicomm_k3||TARGET_DEVICE_bcm53xx_generic_DEVICE_phicomm_k3) +@KERNEL_DEVMEM
-   TITLE:=LCD screen controller on PHICOMM K3
-   URL:=https://github.com/updateing/k3-screen-ctrl
- endef
-
---- a/luci-app-packet-capture/Makefile
-+++ b/luci-app-packet-capture/Makefile
-@@ -4,7 +4,7 @@
- include $(TOPDIR)/rules.mk
++define Package/ddns-scripts-aliyun/install
++	$(INSTALL_DIR) $(1)/usr/lib/ddns
++	$(INSTALL_BIN) ./files/usr/lib/ddns/update_aliyun_com.sh \
++		$(1)/usr/lib/ddns
++
++	$(INSTALL_DIR) $(1)/usr/share/ddns/default
++	$(INSTALL_DATA) ./files/usr/share/ddns/default/aliyun.com.json \
++		$(1)/usr/share/ddns/default/
++endef
++
++define Package/ddns-scripts-aliyun/prerm
++#!/bin/sh
++if [ -z "$${IPKG_INSTROOT}" ]; then
++	/etc/init.d/ddns stop
++fi
++exit 0
++endef
  
- LUCI_TITLE:=Packet capture application
--LUCI_DEPENDS:=+luci-mod-admin-full +tcpdump +uhttpd-mod-ubus +coreutils +coreutils-timeout
-+LUCI_DEPENDS:=+luci-mod-admin-full +tcpdump +coreutils +coreutils-timeout
- 
- PKG_MAINTAINER:=Wojciech Jowsa <wojciech.jowsa@gmail.com>
- PKG_LICENSE:=Apache-2.0
+ define Package/ddns-scripts-noip/install
+ 	$(INSTALL_DIR) $(1)/usr/lib/ddns
+@@ -796,6 +823,7 @@ $(eval $(call BuildPackage,ddns-scripts-godaddy))
+ $(eval $(call BuildPackage,ddns-scripts-digitalocean))
+ $(eval $(call BuildPackage,ddns-scripts-dnspod))
+ $(eval $(call BuildPackage,ddns-scripts-dnspod-v3))
++$(eval $(call BuildPackage,ddns-scripts-aliyun))
+ $(eval $(call BuildPackage,ddns-scripts-noip))
+ $(eval $(call BuildPackage,ddns-scripts-nsupdate))
+ $(eval $(call BuildPackage,ddns-scripts-route53))
