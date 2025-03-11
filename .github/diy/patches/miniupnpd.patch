@@ -1,70 +1,59 @@
---- a/luci-app-ddns/Makefile
-+++ b/luci-app-ddns/Makefile
-@@ -12,7 +12,7 @@ PKG_LICENSE:=Apache-2.0
- PKG_MAINTAINER:=Ansuel Smith <ansuelsmth@gmail.com>
+--- a/miniupnpd/files/miniupnpd.init
++++ b/miniupnpd/files/miniupnpd.init
+@@ -63,6 +63,7 @@ upnpd() {
+ 	local use_stun stun_host stun_port uuid notify_interval presentation_url
+ 	local upnp_lease_file clean_ruleset_threshold clean_ruleset_interval
+ 	local ipv6_disable
++	local force_forwarding
  
- LUCI_TITLE:=LuCI Support for Dynamic DNS Client (ddns-scripts)
--LUCI_DEPENDS:=+luci-base +ddns-scripts
-+LUCI_DEPENDS:=+luci-base +ddns-scripts +ddns-scripts-aliyun +ddns-scripts-dnspod-v3 +ddns-scripts-cloudflare
+ 	local enabled
+ 	config_get_bool enabled config enabled 1
+@@ -90,6 +91,7 @@ upnpd() {
+ 	config_get clean_ruleset_threshold config clean_ruleset_threshold
+ 	config_get clean_ruleset_interval config clean_ruleset_interval
+ 	config_get ipv6_disable config ipv6_disable 0
++	config_get force_forwarding config force_forwarding 1
  
- include ../../luci.mk
+ 	local conf ifname ifname6
  
+@@ -142,6 +144,7 @@ upnpd() {
+ 		upnpd_write_bool igdv1 0 force_igd_desc_v1
+ 		upnpd_write_bool use_stun 0 ext_perform_stun
+ 		upnpd_write_bool ipv6_disable $ipv6_disable
++		upnpd_write_bool force_forwarding $force_forwarding
+ 
+ 		[ "$use_stun" -eq 0 ] || {
+ 			[ -n "$stun_host" ] && echo "ext_stun_host=$stun_host"
 
---- a/ddns-scripts/Makefile
-+++ b/ddns-scripts/Makefile
-@@ -165,6 +165,15 @@ define Package/ddns-scripts-dnspod-v3/description
-   Dynamic DNS Client scripts extension for dnspod.tencentcloudapi.com API v3 (require curl)
+--- a/miniupnpd/files/upnpd.config
++++ b/miniupnpd/files/upnpd.config
+@@ -1,5 +1,5 @@
+ config upnpd config
+-	option enabled		0
++	option enabled		1
+ 	option enable_natpmp	1
+ 	option enable_upnp	1
+ 	option secure_mode	1
+@@ -13,8 +13,9 @@ config upnpd config
+ 	option upnp_lease_file	/var/run/miniupnpd.leases
+ 	option igdv1		1
+ 	option ipv6_disable	1
+-	option use_stun		0
+-	option stun_host 	stunserver.stunprotocol.org
++	option force_forwarding 1
++	option use_stun		1
++	option stun_host 	stun.miwifi.com
+ 	option stun_port	3478
+ 
+ config perm_rule
+
+--- a/miniupnpd/Makefile
++++ b/miniupnpd/Makefile
+@@ -58,7 +58,6 @@ define Package/miniupnpd-nftables
+   TITLE+= (nftables)
+   VARIANT:=nftables
+   DEFAULT_VARIANT:=1
+-  CONFLICTS:=miniupnpd-iptables
  endef
  
-+define Package/ddns-scripts-aliyun
-+  $(call Package/ddns-scripts/Default)
-+  TITLE:=Extension for aliyun.com API
-+  DEPENDS:=ddns-scripts +curl +bind-host +openssl-util
-+endef
-+
-+define Package/ddns-scripts-aliyun/description
-+  Dynamic DNS Client scripts extension for aliyun.com API (require curl)
-+endef
- 
- define Package/ddns-scripts-noip
-   $(call Package/ddns-scripts/Default)
-@@ -401,6 +410,7 @@ define Package/ddns-scripts-services/install
- 	rm $(1)/usr/share/ddns/default/digitalocean.com-v2.json
- 	rm $(1)/usr/share/ddns/default/dnspod.cn.json
- 	rm $(1)/usr/share/ddns/default/dnspod.cn-v3.json
-+	rm $(1)/usr/share/ddns/default/aliyun.com.json
- 	rm $(1)/usr/share/ddns/default/no-ip.com.json
- 	rm $(1)/usr/share/ddns/default/bind-nsupdate.json
- 	rm $(1)/usr/share/ddns/default/route53-v1.json
-@@ -575,6 +585,23 @@ fi
- exit 0
- endef
- 
-+define Package/ddns-scripts-aliyun/install
-+	$(INSTALL_DIR) $(1)/usr/lib/ddns
-+	$(INSTALL_BIN) ./files/usr/lib/ddns/update_aliyun_com.sh \
-+		$(1)/usr/lib/ddns
-+
-+	$(INSTALL_DIR) $(1)/usr/share/ddns/default
-+	$(INSTALL_DATA) ./files/usr/share/ddns/default/aliyun.com.json \
-+		$(1)/usr/share/ddns/default/
-+endef
-+
-+define Package/ddns-scripts-aliyun/prerm
-+#!/bin/sh
-+if [ -z "$${IPKG_INSTROOT}" ]; then
-+	/etc/init.d/ddns stop
-+fi
-+exit 0
-+endef
- 
- define Package/ddns-scripts-noip/install
- 	$(INSTALL_DIR) $(1)/usr/lib/ddns
-@@ -796,6 +823,7 @@ $(eval $(call BuildPackage,ddns-scripts-godaddy))
- $(eval $(call BuildPackage,ddns-scripts-digitalocean))
- $(eval $(call BuildPackage,ddns-scripts-dnspod))
- $(eval $(call BuildPackage,ddns-scripts-dnspod-v3))
-+$(eval $(call BuildPackage,ddns-scripts-aliyun))
- $(eval $(call BuildPackage,ddns-scripts-noip))
- $(eval $(call BuildPackage,ddns-scripts-nsupdate))
- $(eval $(call BuildPackage,ddns-scripts-route53))
+ define Package/miniupnpd/conffiles/Default
