@@ -330,6 +330,7 @@ jobs:
         git_clone https://github.com/xptsp/openwrt-peanut
         git_clone https://github.com/calfeche13/luci-app-public-ip-monitor
         git_clone https://github.com/vison-v/luci-app-nginx-proxy
+        git_clone https://github.com/tty228/luci-app-wechatpush
         ) &
         (
         git_sparse_clone openwrt-24.10 "https://github.com/immortalwrt/packages" net/mwol net/n2n net/dae \
@@ -401,7 +402,7 @@ jobs:
         for pkg in $(ls -d .github/diy/packages/*); do
           mv -f $pkg/Makefile $pkg/Makefile.k >/dev/null 2>&1 || true
         done
-        sed -i 's/\r//g' luci-app-ua2f/Makefile
+        rm -rf */.github
 
 
     - name: SSH connection to Actions
