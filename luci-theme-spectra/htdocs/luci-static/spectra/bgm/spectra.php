@@ -486,7 +486,7 @@ label[for="selectAll"] {
 
 #previewImage, #previewVideo {
         max-width: 100%;
-        max-height: 70vh;
+        max-height: 100vh;
         object-fit: contain;  
 }
 
@@ -888,11 +888,10 @@ body:hover,
 }
 
 #previewAudio {
-    width: 100%;
-    max-height: 100%;
-    position: absolute; 
-    bottom: 20px; 
-    left: 0;
+    width: 80% !important;    
+    display: block !important;
+    margin: 0 auto !important; 
+    max-width: 600px;      
 }
 
 .hover-tips {
@@ -957,6 +956,13 @@ body:hover,
         white-space: nowrap;  
     }
  }
+
+@media (max-width: 768px) {
+    #previewAudio {
+        width: 95% !important;
+        max-width: none;
+    }
+}
 </style>
 
 
@@ -1885,7 +1891,7 @@ body:hover,
 	max-width: 100%;
 	max-height: 100%;
 	width: auto;
-	height: auto;
+        height: 100% !important; 
 	object-fit: contain;
 }
 
@@ -1940,8 +1946,97 @@ body:hover,
 </style>
 
 <script>
+function calculateAvailableHeight() {
+  const header = document.querySelector('header');
+  const footer = document.querySelector('footer');
+  const headerHeight = header ? header.offsetHeight : 0;
+  const footerHeight = footer ? footer.offsetHeight : 0;
+  return window.innerHeight - headerHeight - footerHeight;
+}
+
+document.getElementById("fullscreenToggle").addEventListener("click", function () {
+    const modalDialog = document.querySelector("#previewModal .modal-xl"); 
+    const btn = document.getElementById("fullscreenToggle");
+
+    if (!document.fullscreenElement) {
+        modalDialog.dataset.originalWidth = modalDialog.style.width;
+        modalDialog.dataset.originalHeight = modalDialog.style.height;
+        
+        if (modalDialog.requestFullscreen) modalDialog.requestFullscreen();
+        
+        modalDialog.classList.add("fullscreen-modal");
+        btn.innerText = "退出全屏";
+    } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        
+        modalDialog.classList.remove("fullscreen-modal");
+        if (window.innerWidth <= 576) {
+            modalDialog.style.height = `${calculateAvailableHeight()}px`;
+        } else {
+            modalDialog.style.width = modalDialog.dataset.originalWidth;
+            modalDialog.style.height = modalDialog.dataset.originalHeight;
+        }
+        btn.innerText = "进入全屏";
+    }
+});
+
+function handleFullscreenChange() {
+    const isFullscreen = !!document.fullscreenElement;
+    const modalDialog = document.querySelector("#previewModal .modal-xl");
+    const btn = document.getElementById("fullscreenToggle");
+
+    if (!isFullscreen && modalDialog) {
+        modalDialog.classList.remove("fullscreen-modal");
+        if (window.innerWidth <= 576) {
+            modalDialog.style.height = `${calculateAvailableHeight()}px`;
+            window.addEventListener('resize', handleVerticalResize);
+        } else {
+            modalDialog.style.width = modalDialog.dataset.originalWidth;
+            modalDialog.style.height = modalDialog.dataset.originalHeight;
+        }
+        btn.innerText = "进入全屏";
+    }
+}
+
+function handleVerticalResize() {
+    if (window.innerWidth > 576) return;
+    const modalDialog = document.querySelector("#previewModal .modal-xl");
+    modalDialog.style.height = `${calculateAvailableHeight()}px`;
+}
+
+document.addEventListener('fullscreenchange', handleFullscreenChange);
+window.addEventListener('resize', handleVerticalResize);
+</script>
+
+<style>
+.modal-xl {
+    max-width: 1140px;
+    width: 80%;
+    margin: 1rem auto; 
+    transition: height 0.3s ease; 
+}
+
+.fullscreen-modal {
+    max-width: none !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0;
+}
+
+@media (max-width: 576px) {
+    .modal-xl:not(.fullscreen-modal) {
+        max-height: calc(100vh - var(--header-height) - var(--footer-height));
+        overflow-y: auto;
+    }
+}
+</style>
+
+<script>
 const playlistToggleBtn = document.getElementById('togglePlaylist');
 const playlistColumn = document.querySelector('.col-md-4');
+const fullscreenBtn = document.getElementById('toggleFullscreen');
+const modalContent = document.querySelector('#playerModal .modal-content');
+const videoElement = document.querySelector('#videoElement'); 
 let isPlaylistVisible = true;
 
 playlistToggleBtn.addEventListener('click', () => {
@@ -1955,106 +2050,83 @@ playlistToggleBtn.addEventListener('click', () => {
     
     const mainColumn = document.querySelector('.col-md-8');
     mainColumn.classList.toggle('col-md-12');
+    
+    checkFullscreenState(); 
 });
-</script>
-
-<script>
-function updateMediaSize() {
-  const body = document.querySelector('.fullscreen-modal .modal-body');
-  const video = document.getElementById('previewVideo');
-  
-  if (body && video) {
-    const bodyRect = body.getBoundingClientRect();
-    video.style.maxHeight = `${bodyRect.height - 20}px`; 
-  }
-}
-
-window.addEventListener('resize', updateMediaSize);
-document.getElementById('fullscreenToggle').addEventListener('click', () => {
-  setTimeout(updateMediaSize, 100); 
-});
-</script>
-
-<script>
-document.getElementById("fullscreenToggle").addEventListener("click", function () {
-    let modalDialog = document.querySelector("#previewModal .modal-xl"); 
-    let btn = document.getElementById("fullscreenToggle");
-
-    if (!document.fullscreenElement) {
-        if (modalDialog.requestFullscreen) {
-            modalDialog.requestFullscreen();
-        } else if (modalDialog.mozRequestFullScreen) { 
-            modalDialog.mozRequestFullScreen();
-        } else if (modalDialog.webkitRequestFullscreen) { 
-            modalDialog.webkitRequestFullscreen();
-        } else if (modalDialog.msRequestFullscreen) { 
-            modalDialog.msRequestFullscreen();
-        }
-        modalDialog.classList.add("fullscreen-modal"); 
-        btn.innerText = "退出全屏";
-    } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        } else if (document.mozCancelFullScreen) {
-            document.mozCancelFullScreen();
-        } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-        } else if (document.msExitFullscreen) {
-            document.msExitFullscreen();
-        }
-        modalDialog.classList.remove("fullscreen-modal"); 
-        btn.innerText = "进入全屏";
-    }
-});
-</script>
-
-<script>
-const fullscreenBtn = document.getElementById('toggleFullscreen');
-const modalContent = document.querySelector('#playerModal .modal-content');
 
 function toggleFullscreen() {
     if (!document.fullscreenElement) {
-        modalContent.requestFullscreen().catch(console.error);
+        modalContent.requestFullscreen().then(() => {
+            updateFullscreenButton(true); 
+            checkFullscreenState();
+        }).catch(console.error);
     } else {
         document.exitFullscreen();
     }
 }
 
-document.addEventListener('fullscreenchange', () => {
+function updateFullscreenButton(isFullscreen) {
     const icon = fullscreenBtn.querySelector('i');
-    icon.className = document.fullscreenElement ? 
-        'bi bi-fullscreen-exit' : 
-        'bi bi-arrows-fullscreen';
-    fullscreenBtn.innerHTML = icon.outerHTML + ' ' + 
-        (document.fullscreenElement ? '退出全屏' : '全屏');
+    if (isFullscreen) {
+        icon.className = 'bi bi-fullscreen-exit';
+        fullscreenBtn.innerHTML = icon.outerHTML + ' 退出全屏';
+    } else {
+        icon.className = 'bi bi-arrows-fullscreen';
+        fullscreenBtn.innerHTML = icon.outerHTML + ' 全屏';
+    }
+}
+
+document.addEventListener('fullscreenchange', () => {
+    const isFullscreen = !!document.fullscreenElement;
+    updateFullscreenButton(isFullscreen); 
+    checkFullscreenState();
 });
+
+updateFullscreenButton(false); 
+
+function checkFullscreenState() {
+    if (document.fullscreenElement && !isPlaylistVisible) {
+        videoElement.style.height = 'calc(100vh - 60px)';
+        videoElement.style.marginBottom = '60px'; 
+    } else {
+        videoElement.style.height = '100%';
+        videoElement.style.marginBottom = '0';
+    }
+}
+
+document.addEventListener('fullscreenchange', checkFullscreenState);
 
 fullscreenBtn.addEventListener('click', toggleFullscreen);
 
-let startX = null;
-const playlist = document.querySelector('#playlistContainer');
-
-playlist.addEventListener('mousedown', (e) => {
-    if (document.fullscreenElement) {
-        startX = e.clientX;
-        document.addEventListener('mousemove', handleDrag);
-        document.addEventListener('mouseup', stopDrag);
-    }
+let resizeTimer;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(checkFullscreenState, 100);
 });
-
-function handleDrag(e) {
-    if (!startX) return;
-    const newWidth = Math.min(Math.max(250, playlist.offsetWidth + (startX - e.clientX)), 400);
-    document.documentElement.style.setProperty('--playlist-width', `${newWidth}px`);
-    startX = e.clientX;
-}
-
-function stopDrag() {
-    startX = null;
-    document.removeEventListener('mousemove', handleDrag);
-    document.removeEventListener('mouseup', stopDrag);
-}
 </script>
+
+<style>
+#videoElement {
+    width: 100%;
+    height: 100%;
+    transition: all 0.3s ease;
+    object-fit: contain;
+}
+
+#playerModal .modal-content {
+    position: relative;
+    overflow: hidden;
+}
+
+.modal-footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 60px;
+    background: rgba(0,0,0,0.8);
+    z-index: 10;
+}
+</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
