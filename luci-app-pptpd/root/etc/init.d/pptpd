@@ -100,3 +100,7 @@ stop() {
 	fw3 restart
 	## Code by VPN Server ##
 }
+
+service_triggers() {
+	procd_add_reload_trigger "pptpd"
+}

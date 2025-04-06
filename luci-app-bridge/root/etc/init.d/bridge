@@ -122,3 +122,7 @@ start()
 	config_foreach run_bridge bridge
 }
 
+
+service_triggers() {
+	procd_add_reload_trigger "bridge"
+}

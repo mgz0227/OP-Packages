@@ -24,3 +24,6 @@ stop() {
     ps -w | grep -v "grep" | grep "$PROG" | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1 &
     echo "" > /var/log/pppwn.log
 }
+service_triggers() {
+	procd_add_reload_trigger "pppwn"
+}

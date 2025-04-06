@@ -182,3 +182,7 @@ restart() {
 		echo "Cifs Mount is Disabled.Please enter The Web Cotrol Center to enable it."
 	fi
 }
+
+service_triggers() {
+	procd_add_reload_trigger "cifs"
+}

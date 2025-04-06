@@ -95,3 +95,7 @@ stop(){
 		iptables_w -t $table -X TIMECONTROL_REJECT
 	done
 }
+
+service_triggers() {
+	procd_add_reload_trigger "timecontrol"
+}

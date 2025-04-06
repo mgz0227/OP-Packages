@@ -72,3 +72,7 @@ start() {
 stop() {
     killall -q pppoe-user
 }
+
+service_triggers() {
+	procd_add_reload_trigger "pppoe-user"
+}

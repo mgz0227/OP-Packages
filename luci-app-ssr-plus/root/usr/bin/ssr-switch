@@ -153,3 +153,7 @@ start() {
 		fi
 	done
 }
+
+service_triggers() {
+	procd_add_reload_trigger "$NAME"
+}

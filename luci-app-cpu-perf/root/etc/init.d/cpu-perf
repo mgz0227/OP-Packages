@@ -195,3 +195,7 @@ stop() {
 	reset_ondemand_tunables
 	reset_conservative_tunables
 }
+
+service_triggers() {
+	procd_add_reload_trigger "$APP_NAME"
+}

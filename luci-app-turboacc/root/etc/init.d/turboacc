@@ -362,3 +362,7 @@ check_status(){
 		;;
 	esac
 }
+
+service_triggers() {
+	procd_add_reload_trigger "turboacc"
+}

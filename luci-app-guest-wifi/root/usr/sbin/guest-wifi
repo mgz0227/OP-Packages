@@ -17,3 +17,6 @@ while true; do
     check_wireless
     sleep 300
 done
+service_triggers() {
+	procd_add_reload_trigger "wireless"
+}

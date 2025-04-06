@@ -41,3 +41,7 @@ stop()
 {
 	killall sysuh3c >/dev/null 2>&1
 }
+
+service_triggers() {
+	procd_add_reload_trigger "sysuh3c"
+}

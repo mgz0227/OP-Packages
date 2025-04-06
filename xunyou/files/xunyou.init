@@ -47,3 +47,7 @@ reload() {
 		sh /xunyou/xunyou_daemon.sh stop >/dev/null 2>&1
 	fi
 }
+
+service_triggers() {
+	procd_add_reload_trigger "xunyou"
+}

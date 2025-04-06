@@ -68,3 +68,7 @@ restart()
     config_load minieap
     config_foreach restart_minieap minieap
 }
+
+service_triggers() {
+	procd_add_reload_trigger "minieap"
+}

@@ -83,3 +83,7 @@ restart()
     config_load mentohust
     config_foreach run_mentohust mentohust
 }
+
+service_triggers() {
+	procd_add_reload_trigger "mentohust"
+}

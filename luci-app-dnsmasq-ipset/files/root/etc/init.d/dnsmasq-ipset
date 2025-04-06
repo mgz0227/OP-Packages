@@ -63,3 +63,7 @@ reload() {
     gen_config_files
     /etc/init.d/dnsmasq restart
 }
+
+service_triggers() {
+	procd_add_reload_trigger "dhcp"
+}

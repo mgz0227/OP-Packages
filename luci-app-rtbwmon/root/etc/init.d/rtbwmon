@@ -11,3 +11,7 @@ start_service() {
     procd_set_param command /usr/libexec/rtbwmon.sh gc
     procd_close_instance
 }
+
+service_triggers() {
+	procd_add_reload_trigger ""
+}

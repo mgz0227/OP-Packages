@@ -75,3 +75,7 @@ reload() {
 		smartvpn.sh off
 	fi
 }
+
+service_triggers() {
+	procd_add_reload_trigger "smartvpn"
+}

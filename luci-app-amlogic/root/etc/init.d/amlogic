@@ -40,3 +40,7 @@ start() {
         echo $maxfreq >/sys/devices/system/cpu/cpufreq/${policy_name}/scaling_max_freq
     done
 }
+
+service_triggers() {
+	procd_add_reload_trigger "$NAME"
+}

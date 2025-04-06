@@ -53,3 +53,7 @@ stop()
 {
 	clean_arp
 }
+
+service_triggers() {
+	procd_add_reload_trigger "arpbind"
+}
