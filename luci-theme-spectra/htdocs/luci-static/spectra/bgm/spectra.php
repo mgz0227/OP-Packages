@@ -1422,6 +1422,10 @@ body:hover,
                     </div> 
                  
                     <div class="controls d-flex justify-content-center gap-3 mt-4">
+                        <button class="btn btn-outline-light control-btn" id="toggleFloatingLyrics" onclick="toggleFloating()" title="桌面歌词"><i id="floatingIcon" class="bi bi-display"></i></button>
+                        <button class="btn btn-outline-light control-btn" id="repeatBtn" onclick="toggleRepeat()">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </button>
                         <button class="btn btn-outline-light control-btn" onclick="changeTrack(-1)">
                             <i class="bi bi-skip-backward-fill"></i>
                         </button>
@@ -1431,10 +1435,7 @@ body:hover,
                         <button class="btn btn-outline-light control-btn" onclick="changeTrack(1)">
                             <i class="bi bi-skip-forward-fill"></i>
                         </button>
-                        <button class="btn btn-outline-light control-btn" id="repeatBtn" onclick="toggleRepeat()">
-                            <i class="bi bi-arrow-repeat"></i>
-                        </button>
-                        <button class="btn btn-outline-light control-btn" id="toggleFloatingLyrics" onclick="toggleFloating()" title="桌面歌词"><i id="floatingIcon" class="bi bi-display"></i></button>
+                        <button class="btn btn-outline-light control-btn" id="clear-cache-btn" title="清除配置"><i class="bi bi-trash3-fill"></i></button>
                         <button class="btn btn-volume position-relative" id="volumeToggle">
                             <i class="bi bi-volume-up-fill"></i>
                             <div class="volume-slider-container position-absolute bottom-100 start-50 translate-middle-x mb-1 p-2"
@@ -3506,7 +3507,7 @@ function updatePlaylistUI() {
 
 function playTrack(index) {
     const songName = decodeURIComponent(songs[index].split('/').pop().replace(/\.\w+$/, ''));
-    showLogMessage(`播放列表点击：索引：${index}，歌曲名称：${songName}`);
+    showLogMessage(`播放列表点击：索引：${index + 1}，歌曲名称：${songName}`);
     currentTrackIndex = index;
     loadTrack(songs[index]);
 }
@@ -4085,4 +4086,42 @@ audioPlayer.volume = lastVolume;
 updateVolumeIcon();
 </script>
 
+<script>
+const notificationMessage = '配置已清除';
+const speechMessage = '配置已清除';
 
+document.addEventListener('keydown', function(event) {
+    if (event.ctrlKey && event.shiftKey && event.code === 'KeyC') {
+        clearCache();
+        event.preventDefault();  
+    }
+});
+
+document.getElementById('clear-cache-btn').addEventListener('click', function() {
+    clearCache();
+});
+
+function clearCache() {
+    location.reload(true); 
+    localStorage.clear();
+    sessionStorage.clear();
+    sessionStorage.setItem('cacheCleared', 'true');
+    showLogMessage(notificationMessage);
+    speakMessage(speechMessage);
+}
+
+window.addEventListener('load', function() {
+    if (sessionStorage.getItem('cacheCleared') === 'true') {
+        showLogMessage(notificationMessage);
+        speakMessage(speechMessage);
+        sessionStorage.removeItem('cacheCleared'); 
+    }
+});
+
+function speakMessage(text) {
+    if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        speechSynthesis.speak(utterance);
+    }
+}
+</script>
