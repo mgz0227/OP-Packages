@@ -1426,6 +1426,7 @@ body:hover,
         <button class="ctrl-btn" id="floatingRepeatBtn" onclick="toggleRepeat()" title="顺序播放">
             <i class="bi bi-arrow-repeat"></i>
         </button>
+        <button class="ctrl-btn" id="toggleFloatingLyrics" onclick="toggleFloating()" title="关闭歌词"><i id="floatingIcon" class="bi bi-display"></i></button>
     </div>
     <div id="currentSong" class="vertical-title"></div>
     <div class="vertical-lyrics"></div>
@@ -3480,6 +3481,37 @@ body {
     100% {
         transform: scale(0) translateY(-100px); 
         opacity: 0;
+    }
+}
+
+.list-group-item.active {
+    color: #fff !important;
+}
+
+.list-group-item.active .text-truncate,
+.list-group-item.active .text-muted,
+.list-group-item.active .badge {
+    color: #fff !important;
+}
+
+.modal-xl {
+    max-width: 60% !important;  
+    width: 90% !important;
+}
+
+@media (max-width: 768px) {
+    .modal-xl {
+        max-width: 95% !important;
+        width: 95% !important;
+        margin: 1rem auto !important; 
+    }
+}
+
+@media (max-width: 576px) {
+    .modal-xl {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0.5rem auto !important;
     }
 }
 </style>

@@ -367,8 +367,7 @@ document.addEventListener("DOMContentLoaded", function () {
             '3. 暗黑模式：透明背景+光谱动画',
             '4. 亮色模式：主题设置进行切换，关闭控制开关',
             '5. 主题设置：支持自定义背景，需关闭开关，模式切换需清除背景',
-            '6. 项目地址：<a class="github-link" href="https://github.com/Thaolga/openwrt-nekobox" target="_blank">点击访问</a>',
-            '7. 友情提示：要体验完整功能需配合 Nekobox 使用，否则无法启动 PHP 服务<br>'
+            '6. 项目地址：<a class="github-link" href="https://github.com/Thaolga/openwrt-nekobox" target="_blank">点击访问</a>'
         ]);
     });
 
@@ -897,7 +896,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     <button class="close-btn">&times;</button>
                 </div>
                 <iframe id="theme-iframe" 
-                    src="${window.location.protocol}//${window.location.host}/luci-static/spectra/bgm/spectra.php"
+                    src="${window.location.protocol}//${window.location.host}/luci-static/spectra/bgm/index.php"
                     style="width: 100%; height: calc(100% - 40px); border: none; border-radius: 0 0 5px 5px;">
                 </iframe>
             </div>
