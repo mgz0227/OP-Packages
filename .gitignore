@@ -54,7 +54,10 @@
 /configs
 /aic8800
 /assets
-/v2ray-*
+/v2ray-core
+/v2ray-geodata
+/k3screenctrl
+
 
 /shortcut-fe
 /fibocom_QMI_WWAN
