@@ -97,7 +97,6 @@ jobs:
         git_clone https://github.com/kiddin9/luci-app-uugamebooster
         ) &
         (
-        git_clone https://github.com/kiddin9/luci-app-subconverter
         git_clone https://github.com/kiddin9/openwrt-netdata netdata
         git_clone https://github.com/kiddin9/luci-app-syscontrol
         git_clone https://github.com/kiddin9/luci-app-chinadns-ng
@@ -105,6 +104,7 @@ jobs:
         git_clone https://github.com/kiddin9/openwrt-lingtigameacc && mvdir openwrt-lingtigameacc
         git_clone https://github.com/kiddin9/luci-app-timewol
         git_clone https://github.com/kiddin9/luci-app-vsftpd
+        git_clone https://github.com/kiddin9/openwrt-subconverter && mvdir openwrt-subconverter
         ) &
         (
         git_clone https://github.com/xiaorouji/openwrt-passwall && mvdir openwrt-passwall
