@@ -1386,7 +1386,7 @@ body:hover,
         <span id="timeDisplay"></span>
     </div>
     <div class="weather-display d-flex align-items-center d-none d-sm-inline">
-      <i id="weatherIcon" class="wi wi-na" style="font-size:32px; margin-right:4px;"></i>
+      <i id="weatherIcon" class="wi wi-na" style="font-size:28px; margin-right:4px;"></i>
       <span id="weatherText" style="color:var(--accent-color); font-weight: 700;"></span>
     </div>
 </div>
@@ -1785,7 +1785,8 @@ body:hover,
             <i class="bi bi-arrow-repeat"></i>
         </button>
         <button class="ctrl-btn" id="speedToggle" data-translate-title="playback_speed"><span id="speedLabel">1×</span></button>
-        <button id="toggleFloatingLyrics" class="ctrl-btn" data-translate-title="toggle_floating_lyrics"><i id="floatingIcon" class="bi bi-display"></i></button>
+        <button class="ctrl-btn" id="muteToggle" data-translate-title="volume"><i class="bi bi-volume-up-fill"></i></button>
+        <button class="ctrl-btn toggleFloatingLyricsBtn" data-translate-title="toggle_floating_lyrics"><i class="bi bi-display floatingIcon"></i></button>
     </div>
     <div id="floatingCurrentSong" class="vertical-title"></div>
     <div class="vertical-lyrics"></div>
@@ -1814,7 +1815,7 @@ body:hover,
                     </div> 
                  
                     <div class="controls d-flex justify-content-center gap-3 mt-4">
-                        <button class="btn btn-outline-light control-btn" id="toggleFloatingLyrics" onclick="toggleFloating()" data-translate-title="toggle_floating_lyrics"><i id="floatingIcon" class="bi bi-display"></i></button>
+                        <button class="btn btn-outline-light control-btn toggleFloatingLyricsBtn" data-translate-title="toggle_floating_lyrics"><i class="bi bi-display floatingIcon"></i></button>
                         <button class="btn btn-outline-light control-btn" id="repeatBtn" onclick="toggleRepeat()">
                             <i class="bi bi-arrow-repeat"></i>
                         </button>
@@ -3820,12 +3821,10 @@ body {
     pointer-events: none;
     cursor: default; 
     transition: opacity 0.3s ease;
-    pointer-events: auto;
     writing-mode: vertical-rl;
     text-orientation: mixed;
     line-height: 2;
     z-index: 2;
-    display: flex;
     flex-direction: column; 
     gap: 0.5em;
     width: 200px;
@@ -5106,21 +5105,23 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 <script>
-  const volumeToggle = document.getElementById('volumeToggle');
-  const volumePanel = document.getElementById('volumePanel');
-  const volumeSlider = document.getElementById('volumeSlider');
-  const iconEl = volumeToggle.querySelector('i');
+  const muteToggle    = document.getElementById('muteToggle');
+  const volumeToggle  = document.getElementById('volumeToggle');
+  const volumePanel   = document.getElementById('volumePanel');
+  const volumeSlider  = document.getElementById('volumeSlider');
+  const muteIconEl    = muteToggle.querySelector('i');
+  const volumeIconEl  = volumeToggle.querySelector('i');
 
   let lastVolume = 1;
 
   const savedVolume = localStorage.getItem('audioVolume');
-  const savedMuted = localStorage.getItem('audioMuted');
+  const savedMuted  = localStorage.getItem('audioMuted');
   if (savedVolume !== null) {
     lastVolume = parseFloat(savedVolume);
   }
   audioPlayer.volume = lastVolume;
   volumeSlider.value = lastVolume;
-  audioPlayer.muted = savedMuted === 'true';
+  audioPlayer.muted = (savedMuted === 'true');
 
   updateVolumeIcon();
 
@@ -5145,29 +5146,38 @@ document.addEventListener("DOMContentLoaded", function () {
     updateVolumeIcon();
 
     const muteMessage = audioPlayer.muted
-      ? translations['mute_on'] || 'Audio muted'
-      : translations['mute_off'] || 'Audio unmuted';
+      ? (translations['mute_on']  || 'Audio muted')
+      : (translations['mute_off'] || 'Audio unmuted');
     showLogMessage(muteMessage);
     speakMessage(muteMessage);
   }
 
   function updateVolumeIcon() {
+    let cls;
     if (audioPlayer.muted || audioPlayer.volume === 0) {
-      iconEl.className = 'bi bi-volume-mute-fill';
+      cls = 'bi bi-volume-mute-fill';
     } else if (audioPlayer.volume < 0.5) {
-      iconEl.className = 'bi bi-volume-down-fill';
+      cls = 'bi bi-volume-down-fill';
     } else {
-      iconEl.className = 'bi bi-volume-up-fill';
+      cls = 'bi bi-volume-up-fill';
     }
+    muteIconEl.className = cls;
+    volumeIconEl.className = cls;
+
     if (!audioPlayer.muted) {
       lastVolume = audioPlayer.volume;
       localStorage.setItem('audioVolume', lastVolume);
     }
   }
 
+  muteToggle.addEventListener('click', e => {
+    e.stopPropagation();
+    toggleMute();
+  });
+
   volumeToggle.addEventListener('click', e => {
     e.stopPropagation();
-    if (e.target === iconEl) {
+    if (e.target === volumeIconEl) {
       toggleMute();
     } else {
       togglePanel();
@@ -5671,6 +5681,14 @@ $langData = [
         'input_placeholder' => '例如：Beijing',
         'floating_lyrics_enabled' => '浮动歌词已开启',
         'floating_lyrics_disabled' => '浮动歌词已关闭',
+        'weather_label'     => '天气',
+        'temperature_label' => '温度',
+        'feels_like_label'  => '体感',
+        'humidity_label'    => '湿度',
+        'pressure_label'    => '气压',
+        'wind_label'        => '风速',
+        'sunrise_label'     => '日出',
+        'sunset_label'      => '日落',
         'selected_info' => '已选择 %d 个文件，合计 %s MB'
     ],
 
@@ -5905,6 +5923,14 @@ $langData = [
         'input_placeholder' => '例如：Beijing',
         'floating_lyrics_enabled' => '浮動歌詞已開啟',
         'floating_lyrics_disabled' => '浮動歌詞已關閉',
+        'weather_label'     => '天氣',
+        'temperature_label' => '溫度',
+        'feels_like_label'  => '體感',
+        'humidity_label'    => '濕度',
+        'pressure_label'    => '氣壓',
+        'wind_label'        => '風速',
+        'sunrise_label'     => '日出',
+        'sunset_label'      => '日落',
         'selected_info' => '已選擇 %d 個文件，合計 %s MB'
     ],
 
@@ -6139,6 +6165,14 @@ $langData = [
         'input_placeholder' => '예: Beijing',
         'floating_lyrics_enabled' => '플로팅 가사가 활성화되었습니다',
         'floating_lyrics_disabled' => '플로팅 가사가 비활성화되었습니다',
+        'weather_label'     => '날씨',
+        'temperature_label' => '기온',
+        'feels_like_label'  => '체감 온도',
+        'humidity_label'    => '습도',
+        'pressure_label'    => '기압',
+        'wind_label'        => '풍속',
+        'sunrise_label'     => '일출',
+        'sunset_label'      => '일몰',
         'selected_info' => '선택된 파일: %d개, 총합: %s MB'
     ],
 
@@ -6372,6 +6406,14 @@ $langData = [
         'input_placeholder' => '例: 北京',
         'floating_lyrics_enabled' => 'フローティング歌詞が有効になりました',
         'floating_lyrics_disabled' => 'フローティング歌詞が無効になりました',
+        'weather_label'     => '天気',
+        'temperature_label' => '気温',
+        'feels_like_label'  => '体感',
+        'humidity_label'    => '湿度',
+        'pressure_label'    => '気圧',
+        'wind_label'        => '風速',
+        'sunrise_label'     => '日の出',
+        'sunset_label'      => '日の入り',
         'selected_info' => '%dファイル選択（%s MB）'
     ],
 
@@ -6605,6 +6647,14 @@ $langData = [
         'input_placeholder' => 'ví dụ: Beijing',
         'floating_lyrics_enabled' => 'Đã bật lời bài hát nổi',
         'floating_lyrics_disabled' => 'Đã tắt lời bài hát nổi',
+        'weather_label'     => 'Thời tiết',
+        'temperature_label' => 'Nhiệt độ',
+        'feels_like_label'  => 'Cảm giác như',
+        'humidity_label'    => 'Độ ẩm',
+        'pressure_label'    => 'Áp suất',
+        'wind_label'        => 'Tốc độ gió',
+        'sunrise_label'     => 'Bình minh',
+        'sunset_label'      => 'Hoàng hôn',
         'selected_info' => 'Đã chọn %d tệp (%s MB)'
     ],
 
@@ -6822,6 +6872,14 @@ $langData = [
         'input_placeholder' => 'ตัวอย่าง: Beijing',
         'floating_lyrics_enabled' => 'เปิดใช้งานเนื้อเพลงลอย',
         'floating_lyrics_disabled' => 'ปิดใช้งานเนื้อเพลงลอย',
+        'weather_label'     => 'สภาพอากาศ',
+        'temperature_label' => 'อุณหภูมิ',
+        'feels_like_label'  => 'รู้สึกเหมือน',
+        'humidity_label'    => 'ความชื้น',
+        'pressure_label'    => 'ความกดอากาศ',
+        'wind_label'        => 'ความเร็วลม',
+        'sunrise_label'     => 'พระอาทิตย์ขึ้น',
+        'sunset_label'      => 'พระอาทิตย์ตก',
         'selected_info' => 'เลือกไฟล์แล้ว %d ไฟล์ รวมทั้งหมด %s MB'
     ],
 
@@ -7041,6 +7099,14 @@ $langData = [
         'input_placeholder' => 'например: Пекин',
         'floating_lyrics_enabled' => 'Плавающие тексты включены',
         'floating_lyrics_disabled' => 'Плавающие тексты отключены',
+        'weather_label'     => 'Погода',
+        'temperature_label' => 'Температура',
+        'feels_like_label'  => 'Ощущается как',
+        'humidity_label'    => 'Влажность',
+        'pressure_label'    => 'Давление',
+        'wind_label'        => 'Скорость ветра',
+        'sunrise_label'     => 'Восход',
+        'sunset_label'      => 'Закат',
         'selected_info' => 'Выбрано %d файлов, всего %s MB'
     ],
 
@@ -7264,7 +7330,15 @@ $langData = [
         'input_label' => 'اسم المدينة',
         'floating_lyrics_enabled' => 'تم تفعيل كلمات الأغاني العائمة',
         'floating_lyrics_disabled' => 'تم تعطيل كلمات الأغاني العائمة',
-        'input_placeholder' => 'على سبيل المثال: بكين',       
+        'input_placeholder' => 'على سبيل المثال: بكين',   
+        'weather_label'     => 'الطقس',
+        'temperature_label' => 'درجة الحرارة',
+        'feels_like_label'  => 'يشعر كأنّه',
+        'humidity_label'    => 'الرطوبة',
+        'pressure_label'    => 'الضغط',
+        'wind_label'        => 'سرعة الرياح',
+        'sunrise_label'     => 'شروق الشمس',
+        'sunset_label'      => 'غروب الشمس',    
         'selected_info' => 'تم اختيار %d ملفات (%s ميجابايت)'
     ],
 
@@ -7483,6 +7557,14 @@ $langData = [
         'input_placeholder' => 'por ejemplo: Beijing',
         'floating_lyrics_enabled' => 'Letras flotantes habilitadas',
         'floating_lyrics_disabled' => 'Letras flotantes deshabilitadas',
+        'weather_label'     => 'Clima',
+        'temperature_label' => 'Temperatura',
+        'feels_like_label'  => 'Sensación térmica',
+        'humidity_label'    => 'Humedad',
+        'pressure_label'    => 'Presión',
+        'wind_label'        => 'Velocidad del viento',
+        'sunrise_label'     => 'Amanecer',
+        'sunset_label'      => 'Atardecer',
         'selected_info' => 'Seleccionados %d archivos, en total %s MB'
     ],
 
@@ -7701,6 +7783,14 @@ $langData = [
         'input_placeholder' => 'z.B.: Beijing',
         'floating_lyrics_enabled' => 'Schwebende Liedtexte aktiviert',
         'floating_lyrics_disabled' => 'Schwebende Liedtexte deaktiviert',
+        'weather_label'     => 'Wetter',
+        'temperature_label' => 'Temperatur',
+        'feels_like_label'  => 'Gefühlt',
+        'humidity_label'    => 'Luftfeuchtigkeit',
+        'pressure_label'    => 'Luftdruck',
+        'wind_label'        => 'Windgeschwindigkeit',
+        'sunrise_label'     => 'Sonnenaufgang',
+        'sunset_label'      => 'Sonnenuntergang',
         'selected_info' => '%d Dateien ausgewählt, insgesamt %s MB'
     ],
 
@@ -7919,6 +8009,14 @@ $langData = [
         'input_placeholder' => 'par exemple : Beijing',
         'floating_lyrics_enabled' => 'Paroles flottantes activées',
         'floating_lyrics_disabled' => 'Paroles flottantes désactivées',
+        'weather_label'     => 'Météo',
+        'temperature_label' => 'Température',
+        'feels_like_label'  => 'Ressenti',
+        'humidity_label'    => 'Humidité',
+        'pressure_label'    => 'Pression',
+        'wind_label'        => 'Vitesse du vent',
+        'sunrise_label'     => 'Lever du soleil',
+        'sunset_label'      => 'Coucher du soleil',
         'selected_info' => '%d fichiers sélectionnés, total de %s Mo'
     ],
 
@@ -8150,6 +8248,14 @@ $langData = [
         'input_placeholder' => 'e.g., Beijing',
         'floating_lyrics_enabled' => 'Floating lyrics enabled',
         'floating_lyrics_disabled' => 'Floating lyrics disabled',
+        'weather_label'     => 'Weather',
+        'temperature_label' => 'Temperature',
+        'feels_like_label'  => 'Feels like',
+        'humidity_label'    => 'Humidity',
+        'pressure_label'    => 'Pressure',
+        'wind_label'        => 'Wind speed',
+        'sunrise_label'     => 'Sunrise',
+        'sunset_label'      => 'Sunset',
         'selected_info' => 'Selected %d files, total %s MB'
     ],
     'bn' => [
@@ -8367,6 +8473,14 @@ $langData = [
         'input_placeholder' => 'যেমন: বেইজিং',
         'floating_lyrics_enabled' => 'ভাসমান গানের কথা সক্রিয় করা হয়েছে',
         'floating_lyrics_disabled' => 'ভাসমান গানের কথা অক্ষম করা হয়েছে',
+        'weather_label'     => 'আবহাওয়া',
+        'temperature_label' => 'তাপমাত্রা',
+        'feels_like_label'  => 'অনুভূত তাপমাত্রা',
+        'humidity_label'    => 'আর্দ্রতা',
+        'pressure_label'    => 'চাপ',
+        'wind_label'        => 'বায়ুর গতি',
+        'sunrise_label'     => 'সূর্যোদয়',
+        'sunset_label'      => 'সূর্যাস্ত',
         'selected_info' => '%d টি ফাইল নির্বাচিত, মোট %s MB'
     ]
 ];
@@ -8485,8 +8599,6 @@ function updateFlagIcon(lang) {
     flagImg.src = flagMap[lang] || flagMap['en'];
 }
 
-
-
 function changeLanguage(lang) {
     fetch('', {
         method: 'POST',
@@ -8550,7 +8662,7 @@ document.addEventListener('keydown', function (event) {
             break;
         case 'ArrowUp':
             event.preventDefault();
-            document.getElementById('toggleFloatingLyrics')?.click();
+            document.querySelector('.toggleFloatingLyricsBtn')?.click();
             break;
         case 'ArrowDown': 
             event.preventDefault();
@@ -9117,54 +9229,68 @@ async function showIpDetailModal() {
 }
 </style>
 
+<div class="modal fade" id="weatherModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalCityName">—</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <ul class="list-unstyled mb-0">
+          <li><strong data-translate="weather_label">Weather</strong>：<span id="modalDesc">—</span></li>
+          <li><strong data-translate="temperature_label">Temperature</strong>：<span id="modalTemp">—</span>℃</li>
+          <li><strong data-translate="feels_like_label">Feels like</strong>：<span id="modalFeels">—</span>℃</li>
+          <li><strong data-translate="humidity_label">Humidity</strong>：<span id="modalHumidity">—</span>%</li>
+          <li><strong data-translate="pressure_label">Pressure</strong>：<span id="modalPressure">—</span> hPa</li>
+          <li><strong data-translate="wind_label">Wind speed</strong>：<span id="modalWind">—</span> m/s</li>
+          <li><strong data-translate="sunrise_label">Sunrise</strong>：<span id="modalSunrise">—</span></li>
+          <li><strong data-translate="sunset_label">Sunset</strong>：<span id="modalSunset">—</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   let city = localStorage.getItem('city') || 'Beijing';
   const apiKey = 'fc8bd2637768c286c6f1ed5f1915eb22';
+  let currentWeatherData = null;
 
   const countryToLang = {
-    'CN': 'zh_cn',
-    'ZH': 'zh_cn',
-    'HK': 'zh_tw',
-    'EN': 'en',
-    'KO': 'kr',
-    'VI': 'vi',
-    'TH': 'th',
-    'JA': 'ja',
-    'RU': 'ru',
-    'DE': 'de',
-    'FR': 'fr',
-    'AR': 'ar',
-    'ES': 'es',
-    'BN': 'en' 
+    CN: 'zh_cn', ZH: 'zh_cn', HK: 'zh_tw',
+    EN: 'en', KO: 'kr', VI: 'vi', TH: 'th',
+    JA: 'ja', RU: 'ru', DE: 'de', FR: 'fr',
+    AR: 'ar', ES: 'es', BN: 'en'
   };
-  let targetLang = localStorage.getItem('language') || 'CN';
-  targetLang = countryToLang[targetLang.toUpperCase()] || targetLang;
+  let rawLang = localStorage.getItem('language') || 'CN';
+  const targetLang = countryToLang[rawLang.toUpperCase()] || rawLang;
 
-  const weatherIcon = document.getElementById('weatherIcon');
-  const weatherText = document.getElementById('weatherText');
-  const cityInput   = document.getElementById('cityInput');
-  const saveCityBtn = document.getElementById('saveCityBtn');
+  const localeMap = {
+    zh_cn: 'zh-CN', zh_tw: 'zh-TW', en: 'en-US', kr: 'ko-KR',
+    vi: 'vi-VN', th: 'th-TH', ja: 'ja-JP', ru: 'ru-RU',
+    de: 'de-DE', fr: 'fr-FR', ar: 'ar-EG', es: 'es-ES'
+  };
+  const locale = localeMap[targetLang] || 'en-US';
+  const timeFormatter = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', hour12: true });
+
+  const weatherIcon    = document.getElementById('weatherIcon');
+  const weatherText    = document.getElementById('weatherText');
+  const cityInput      = document.getElementById('cityInput');
+  const saveCityBtn    = document.getElementById('saveCityBtn');
+  const weatherDisplay = document.querySelector('.weather-display');
 
   function owmCodeToWiClass(code) {
     const map = {
-      '01d': 'wi-day-sunny',
-      '01n': 'wi-night-clear',
-      '02d': 'wi-day-cloudy',
-      '02n': 'wi-night-cloudy',
-      '03d': 'wi-cloud',
-      '03n': 'wi-cloud',
-      '04d': 'wi-cloudy',
-      '04n': 'wi-cloudy',
-      '09d': 'wi-showers',
-      '09n': 'wi-showers',
-      '10d': 'wi-day-rain',
-      '10n': 'wi-night-alt-rain',
-      '11d': 'wi-thunderstorm',
-      '11n': 'wi-thunderstorm',
-      '13d': 'wi-snow',
-      '13n': 'wi-snow',
-      '50d': 'wi-fog',
-      '50n': 'wi-fog'
+      '01d': 'wi-day-sunny',    '01n': 'wi-night-clear',
+      '02d': 'wi-day-cloudy',   '02n': 'wi-night-cloudy',
+      '03d': 'wi-cloud',        '03n': 'wi-cloud',
+      '04d': 'wi-cloudy',       '04n': 'wi-cloudy',
+      '09d': 'wi-showers',      '09n': 'wi-showers',
+      '10d': 'wi-day-rain',     '10n': 'wi-night-alt-rain',
+      '11d': 'wi-thunderstorm', '11n': 'wi-thunderstorm',
+      '13d': 'wi-snow',         '13n': 'wi-snow',
+      '50d': 'wi-fog',          '50n': 'wi-fog'
     };
     return map[code] || 'wi-na';
   }
@@ -9175,17 +9301,10 @@ async function showIpDetailModal() {
     const desc     = data.weather[0].description;
 
     weatherIcon.className = `wi ${owmCodeToWiClass(iconCode)}`;
-
-    const colorMap = {
-      '01d': '#FFD700',
-      '02d': '#C0C0C0',
-      '09d': '#00BFFF',
-      '13d': '#ADD8E6',
-    };
+    const colorMap = { '01d':'#FFD700','02d':'#C0C0C0','09d':'#00BFFF','13d':'#ADD8E6' };
     weatherIcon.style.color = colorMap[iconCode] || '#FFF';
-
-    weatherIcon.title         = desc;
-    weatherText.textContent   = `${desc} ${temp}℃`;
+    weatherIcon.title       = desc;
+    weatherText.textContent = `${desc} ${temp}℃`;
   }
 
   function fetchWeather() {
@@ -9196,45 +9315,68 @@ async function showIpDetailModal() {
               + `&lang=${targetLang}`;
     fetch(url)
       .then(res => res.ok ? res.json() : Promise.reject('Network not OK'))
-      .then(data => (data.weather && data.main) && updateWeatherUI(data))
+      .then(data => {
+        if (data.weather && data.main) {
+          currentWeatherData = data;
+          updateWeatherUI(data);
+        }
+      })
       .catch(err => console.error('Error fetching weather：', err));
   }
 
   function saveCity() {
     const value = cityInput.value.trim();
     const chineseCharPattern = /[\u4e00-\u9fff]/;
-    const startsWithUppercasePattern = /^[A-Z]/;
+    const startsUpper = /^[A-Z]/;
 
     if (chineseCharPattern.test(value)) {
-      const invalidCityMessage = translations['invalid_city_non_chinese'] || 'Please enter a city name without Chinese characters.';
-      speakMessage(invalidCityMessage);
-      showLogMessage(invalidCityMessage);
-    } else if (!startsWithUppercasePattern.test(value)) {
-      const invalidCityUppercaseMessage = translations['invalid_city_uppercase'] || 'The city name must start with an uppercase English letter.';
-      speakMessage(invalidCityUppercaseMessage);
-      showLogMessage(invalidCityUppercaseMessage);
-    } else if (value) {
+      const msg = translations['invalid_city_non_chinese'];
+      speakMessage(msg); showLogMessage(msg);
+    }
+    else if (!startsUpper.test(value)) {
+      const msg = translations['invalid_city_uppercase'];
+      speakMessage(msg); showLogMessage(msg);
+    }
+    else if (value) {
       city = value;
       localStorage.setItem('city', city);
-      const citySavedMessage = translations['city_saved']
-        ? translations['city_saved'].replace('{city}', city)
-        : `City saved as: ${city}`;
-      const citySavedSpeakMessage = translations['city_saved_speak']
-        ? translations['city_saved_speak'].replace('{city}', city)
-        : `City saved as ${city}, fetching the latest weather information...`;
-
-      showLogMessage(citySavedMessage);
-      speakMessage(citySavedSpeakMessage);
+      const savedMsg = translations['city_saved'].replace('{city}', city);
+      const speakMsg = translations['city_saved_speak'].replace('{city}', city);
+      showLogMessage(savedMsg);
+      speakMessage(speakMsg);
       fetchWeather();
-      const modal = bootstrap.Modal.getInstance(document.getElementById('cityModal'));
-      modal.hide();
-    } else {
-      const invalidCityMessage = translations['invalid_city'] || 'Please enter a valid city name.';
-      speakMessage(invalidCityMessage);
+      bootstrap.Modal.getInstance(document.getElementById('cityModal')).hide();
+    }
+    else {
+      const msg = translations['invalid_city'];
+      speakMessage(msg);
     }
   }
 
+  async function openWeatherModal() {
+    if (!currentWeatherData) return;
+    const d = currentWeatherData;
+
+    const translatedCityName = await translateText(d.name, rawLang);
+    document.getElementById('modalCityName').textContent = translatedCityName;
+    document.getElementById('modalDesc').textContent      = d.weather[0].description;
+    document.getElementById('modalTemp').textContent      = Math.round(d.main.temp);
+    document.getElementById('modalFeels').textContent     = Math.round(d.main.feels_like);
+    document.getElementById('modalHumidity').textContent  = d.main.humidity;
+    document.getElementById('modalPressure').textContent  = d.main.pressure;
+    document.getElementById('modalWind').textContent      = d.wind.speed;
+
+    const toTime = ts => timeFormatter.format(new Date(ts * 1000));
+    document.getElementById('modalSunrise').textContent   = toTime(d.sys.sunrise);
+    document.getElementById('modalSunset').textContent    = toTime(d.sys.sunset);
+
+    bootstrap.Modal.getOrCreateInstance(
+      document.getElementById('weatherModal')
+    ).show();
+  }
+
   saveCityBtn.addEventListener('click', saveCity);
+  weatherDisplay.addEventListener('click', openWeatherModal);
 
   document.addEventListener('DOMContentLoaded', () => {
     cityInput.value = city;
@@ -9245,34 +9387,35 @@ async function showIpDetailModal() {
 
 <script>
 (function() {
-  const btn = document.getElementById('toggleFloatingLyrics');
+  const toggleBtns = document.querySelectorAll('.toggleFloatingLyricsBtn');
   const box = document.getElementById('floatingLyrics');
 
   const savedState = localStorage.getItem('floatingLyricsVisible') === 'true';
-  if (savedState) {
-    box.classList.add('visible');
-  } else {
-    box.classList.remove('visible');
-  }
+  box.classList.toggle('visible', savedState);
 
-  box.style.resize    = 'none';
-  box.style.overflow  = 'auto';
-  box.style.position  = 'absolute';
+  box.style.resize   = 'none';
+  box.style.overflow = 'auto';
+  box.style.position = 'absolute';
 
-  btn.addEventListener('click', () => {
-    box.classList.toggle('visible');
-    const isVisible = box.classList.contains('visible');
-    localStorage.setItem('floatingLyricsVisible', isVisible);
+  toggleBtns.forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const isNowVisible = box.classList.toggle('visible');
+      localStorage.setItem('floatingLyricsVisible', isNowVisible);
 
-    const message = isVisible 
-        ? translations['floating_lyrics_enabled'] || "Floating lyrics enabled" 
-        : translations['floating_lyrics_disabled'] || "Floating lyrics disabled";
-    speakMessage(message);
-    showLogMessage(message);
+      const msgKey = isNowVisible
+        ? 'floating_lyrics_enabled'
+        : 'floating_lyrics_disabled';
+      const message = translations[msgKey] ||
+        (isNowVisible
+          ? "Floating lyrics enabled"
+          : "Floating lyrics disabled");
+      showLogMessage(message);
+      speakMessage(message);
+    });
   });
 
-  let isDragging = false;
-  let offsetX = 0, offsetY = 0;
+  let isDragging = false, offsetX = 0, offsetY = 0;
 
   box.addEventListener('mousedown', e => {
     if (e.target.closest('.ctrl-btn')) return;
@@ -9293,5 +9436,7 @@ async function showIpDetailModal() {
   });
 })();
 </script>
+
+
 
 
