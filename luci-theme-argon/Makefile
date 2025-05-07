@@ -16,6 +16,6 @@ define Package/luci-theme-argon/conffiles
 /www/luci-static/argon/background/
 endef
 
-include ../../luci.mk
+include $(TOPDIR)/feeds/luci/luci.mk
 
 # call BuildPackage - OpenWrt buildroot signature
