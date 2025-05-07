@@ -9,6 +9,6 @@ LUCI_TITLE:=LuCI support for MiniEAP
 LUCI_DEPENDS:=+minieap
 LUCI_PKGARCH:=all
 
-include $(TOPDIR)/feeds/luci/luci.mk
+include ../../luci.mk
 
 # call BuildPackage - OpenWrt buildroot signature
