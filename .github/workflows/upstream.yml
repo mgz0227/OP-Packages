@@ -483,9 +483,12 @@ jobs:
         sed -i \
           -e 's?include \.\./\.\./\(lang\|devel\)?include $(TOPDIR)/feeds/packages/\1?' \
           -e "s/\(\(^\| \|	\)\(PKG_HASH\|PKG_MD5SUM\|PKG_MIRROR_HASH\|HASH\):=\).*/\1skip/" \
+          !(luci-app-*)/Makefile
+        sed -i \
+          -e 's/+php8-cgi\( \|$\)/+php8-cgi +php8-fastcgi /g' \
           -e 's/+docker\( \|$\)/+docker +dockerd /g' \
           -e 's?include .*/luci.mk?include $(TOPDIR)/feeds/luci/luci.mk?' \
-          */Makefile
+          luci-app-*/Makefile
 
         chmod +x github/diy/*.sh
         bash .github/diy/create_acl_for_luci.sh -a >/dev/null 2>&1 || true
