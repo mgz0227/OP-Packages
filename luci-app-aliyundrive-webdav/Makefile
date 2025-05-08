@@ -9,6 +9,6 @@ LUCI_TITLE:=LuCI Support for aliyundrive-webdav
 LUCI_PKGARCH:=all
 LUCI_DEPENDS:=+aliyundrive-webdav
 
-include $(TOPDIR)/feeds/luci/luci.mk
+include ../../luci.mk
 
 # call BuildPackage - OpenWrt buildroot signature
