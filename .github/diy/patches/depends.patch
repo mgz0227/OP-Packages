@@ -1,11 +1,11 @@
 --- a/luci-app-easytier/Makefile
 +++ b/luci-app-easytier/Makefile
-@@ -10,7 +10,7 @@ PKG_VERSION:=2.2.2
- PKG_RELEASE:=
+@@ -10,7 +10,7 @@ PKG_VERSION:=2.3.0
+ PKG_RELEASE:=1
  
  LUCI_TITLE:=LuCI support for EasyTier
--LUCI_DEPENDS:=+kmod-tun
-+LUCI_DEPENDS:=+kmod-tun +easytier
+-LUCI_DEPENDS:=+kmod-tun +luci-compat
++LUCI_DEPENDS:=+kmod-tun +easytier +luci-compat
  LUCI_PKGARCH:=all
  
  PKG_NAME:=luci-app-easytier
@@ -91,7 +91,6 @@
                +PACKAGE_$(PKG_NAME)_INCLUDE_rclone-webui:rclone-webui-react \
                +PACKAGE_$(PKG_NAME)_INCLUDE_rclone-ng:rclone-ng
  LUCI_PKGARCH:=all
-
 
 --- a/tailscale/Makefile
 +++ b/tailscale/Makefile
