@@ -85,6 +85,7 @@ jobs:
         }
         (
         git_clone https://github.com/mgz0227/my-packages && mvdir my-packages
+        git_clone https://github.com/mgz0227/MeowWrt-Packages
         git_clone https://github.com/kiddin9/luci-app-dnsfilter
         git_clone https://github.com/kiddin9/aria2
         git_clone https://github.com/kiddin9/luci-theme-edge
