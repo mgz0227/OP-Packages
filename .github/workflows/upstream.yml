@@ -169,7 +169,7 @@ jobs:
         git_clone https://github.com/peter-tank/luci-app-fullconenat
         git_clone https://github.com/KFERMercer/luci-app-tcpdump
         git_clone https://github.com/ykxVK8yL5L/pikpak-webdav pikpak && mv -n pikpak/openwrt/* ./;rm -rf pikpak
-        git_clone https://github.com/jjm2473/openwrt-apps && rm -rf openwrt-apps/{luci-app-cpufreq,luci-app-ota,homebox,luci-alias.mk} && sed -i "s/luci-alias.mk/..\/luci.mk/" openwrt-apps/*/Makefile && mvdir openwrt-apps
+        git_clone https://github.com/jjm2473/openwrt-apps && rm -rf openwrt-apps/{luci-app-cpufreq,luci-app-ota,luci-alias.mk} && sed -i "s/luci-alias.mk/..\/luci.mk/" openwrt-apps/*/Makefile && mvdir openwrt-apps
         git_clone https://github.com/lwb1978/openwrt-gecoosac && mvdir openwrt-gecoosac
         git_clone https://github.com/nikkinikki-org/OpenWrt-nikki && mv -f OpenWrt-nikki/{luci-app-nikki,nikki} ./;rm -rf OpenWrt-nikki
         ) &
@@ -189,7 +189,7 @@ jobs:
         git_clone https://github.com/peter-tank/luci-app-dnscrypt-proxy2
         git_clone https://github.com/sundaqiang/openwrt-packages && mv -n openwrt-packages/luci-* ./; rm -rf openwrt-packages
         git_clone https://github.com/CHN-beta/rkp-ipid
-        git_clone https://github.com/dysf888/OpenWRT_NeZha_V1 nezha && mvdir nezha
+        git_clone https://github.com/2018nuoyan/openwrt_nezha && mv -n openwrt_nezha/*nezhav1 ./; rm -rf openwrt_nezha
         git clone https://github.com/Ausaci/luci-app-nat6-helper -b main-dev
         ) &
         (
@@ -377,6 +377,8 @@ jobs:
         ) &
         git_sparse_clone openwrt-24.10 "https://github.com/coolsnowwolf/luci" applications themes/luci-theme-design libs/luci-lib-fs
         mv -f applications luciapp;rm -rf luciapp/luci-app-turboacc
+        git_sparse_clone master "https://github.com/coolsnowwolf/luci" applications
+        mv -n applications/* luciapp/; rm -rf applications
         rm -rf luciapp/{luci-app-qbittorrent,luci-app-zerotier,luci-app-cpufreq,luci-app-e2guardian,luci-app-aliyundrive-fuse,luci-app-syncdial,luci-app-firewall}
         git_sparse_clone openwrt-24.10 "https://github.com/immortalwrt/luci" applications protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
         mv -n luciapp/!(luci-app-filetransfer|luci-app-ksmbd) applications/; rm -rf luciapp
@@ -474,7 +476,6 @@ jobs:
         sed -i \
           -e 's?include \.\./\.\./\(lang\|devel\)?include $(TOPDIR)/feeds/packages/\1?' \
           -e "s/\(\(^\| \|	\)\(PKG_HASH\|PKG_MD5SUM\|PKG_MIRROR_HASH\|HASH\):=\).*/\1skip/" \
-          -e 's/+php8-cgi\( \|$\)/+php8-cgi +php8-fastcgi /g' \
           -e 's/+docker\( \|$\)/+docker +dockerd /g' \
           -e 's?include .*/luci.mk?include $(TOPDIR)/feeds/luci/luci.mk?' \
           */Makefile
@@ -495,7 +496,6 @@ jobs:
         echo "#page>div:first-child{display:none}
         button.btn_styles.color1:last-child{display:none}" >>luci-app-quickstart/htdocs/luci-static/quickstart/style.css
         sed -i 's/+php8-cgi /+php8-cgi +php8-fastcgi /' luci-theme-spectra/Makefile
-
 
         while [[ ! -f /tmp/ok || ! -f /tmp/ok2 || ! -f /tmp/ok3 ]]; do
             echo "wait"
@@ -522,7 +522,6 @@ jobs:
         else
           echo "No changes to commit"
         fi
-
 
     - name: Delete workflow runs
       uses: mgz0227/delete-workflow-runs@main
