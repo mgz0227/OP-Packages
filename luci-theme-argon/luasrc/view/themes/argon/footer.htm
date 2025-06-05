@@ -18,11 +18,11 @@
 
 <% local ver = require "luci.version" %>
 </div>
-<footer class="mobile-hide">
-	<div>
-		<%= ver.distversion %>
-		<ul class="breadcrumb pull-right" id="modemenu" style="display:none"></ul>
-	</div>
+<footer class="mobile-hide" style="text-wrap: auto">
+  <div class="footer-content" style="display: flex; flex-wrap: wrap; gap: 0.5em; justify-content: end;">
+    <%= ver.distversion %>
+    <ul class="breadcrumb pull-right" id="modemenu" style="display:none"></ul>
+  </div>
 </footer>
 </div>
 </div>
