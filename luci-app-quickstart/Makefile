@@ -9,9 +9,9 @@ LUCI_TITLE:=LuCI support for quickstart
 LUCI_DEPENDS:=+quickstart +luci-app-ttyd
 LUCI_PKGARCH:=all
 
-PKG_VERSION:=0.8.17-r2
+PKG_VERSION:=0.8.18-r1
 # PKG_RELEASE MUST be empty for luci.mk
-PKG_RELEASE:=9
+PKG_RELEASE:=10
 
 LUCI_MINIFY_CSS:=0
 LUCI_MINIFY_JS:=0
