@@ -8,12 +8,12 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=openlist
 PKG_WEB_VERSION:=4.0.0-rc.4
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/OpenListTeam/OpenList.git
-PKG_SOURCE_DATE:=2025-06-17
-PKG_SOURCE_VERSION:=79521db8e0c388b42a3e1b6d9d42a0144d0d3269
+PKG_SOURCE_DATE:=2025-06-19
+PKG_SOURCE_VERSION:=70b937e031677cdefe97b39a99fcbb7c8d1650a9
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-3.0
@@ -81,6 +81,7 @@ define Build/Prepare
 	$(TAR) --strip-components=1 -C $(PKG_BUILD_DIR)/public/dist -xzf $(DL_DIR)/openlist-frontend-dist-v$(PKG_WEB_VERSION).tar.gz
 	$(SED) 's_https://docs.oplist.org/logo.png_/assets/logo.png_g' $(PKG_BUILD_DIR)/public/dist/index.html
 	$(SED) 's_https://docs.oplist.org/logo.svg_/assets/logo.svg_g' $(PKG_BUILD_DIR)/public/dist/index.html
+	$(SED) 's_https://docs.oplist.org/logo.png_/assets/logo.png_g' $(PKG_BUILD_DIR)/public/dist/static/manifest.json
 endef
 
 define Package/openlist/install
