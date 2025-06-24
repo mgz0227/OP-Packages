@@ -63,6 +63,7 @@
 /fibocom_QMI_WWAN
 /quectel_QMI_WWAN
 /quectel-mhi-pcie
+/quectel-gobinet
 /quectel_MHI
 /xtables-wgobfs
 /shortcut-fe
