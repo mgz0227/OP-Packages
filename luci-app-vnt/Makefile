@@ -7,7 +7,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_VERSION:=1.2.16
-PKG_RELEASE:=26
+PKG_RELEASE:=27
 
 LUCI_TITLE:=LuCI support for vnt
 LUCI_DEPENDS:=+kmod-tun
