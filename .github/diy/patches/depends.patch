@@ -68,7 +68,6 @@
  
  include $(INCLUDE_DIR)/package.mk
 
-
 --- a/luci-app-rclone/Makefile
 +++ b/luci-app-rclone/Makefile
 @@ -9,7 +9,7 @@ PKG_VERSION:=1.4.1-3

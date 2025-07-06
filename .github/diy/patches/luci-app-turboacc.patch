@@ -238,3 +238,4 @@
 -		<tr><td width="33%"><%:DNS Caching%></td><td id="_dnscaching_state"><em><%:Collecting data...%></em></td></tr>
  	</table>
  </fieldset>
+

@@ -5,14 +5,14 @@
  
  LUCI_TITLE:=LuCI support for quickstart 
 -LUCI_DEPENDS:=+quickstart +luci-app-store
-+LUCI_DEPENDS:=+quickstart +luci-app-ttyd
++LUCI_DEPENDS:=+quickstart +luci-app-ttyd +luci-i18n-ttyd-zh-cn
  LUCI_PKGARCH:=all
  
  # PKG_RELEASE MUST be empty for luci.mk
 
 --- a/luci-app-quickstart/luasrc/controller/quickstart.lua
 +++ b/luci-app-quickstart/luasrc/controller/quickstart.lua
-@@ -5,7 +5,7 @@
+@@ -5,7 +5,7 @@ module("luci.controller.quickstart", package.seeall)
  function index()
      if luci.sys.call("pgrep quickstart >/dev/null") == 0 then
          local uci = require "luci.model.uci".cursor()
