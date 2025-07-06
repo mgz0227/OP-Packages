@@ -448,7 +448,3 @@ healthcheck() {
 	iptables -t nat -D OUTPUT -p tcp -d $DNSPOD -j RETURN
 	return 0
 }
-
-service_triggers() {
-	procd_add_reload_trigger "$NAME"
-}

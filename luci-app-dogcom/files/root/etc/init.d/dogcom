@@ -32,7 +32,3 @@ restart(){
     start
     echo "Dogcom has been restarted."
 }
-
-service_triggers() {
-	procd_add_reload_trigger "dogcom"
-}

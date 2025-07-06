@@ -2047,3 +2047,7 @@ case "$action" in
 esac
 
 :
+
+service_triggers() {
+	procd_add_reload_trigger "qosmate"
+}

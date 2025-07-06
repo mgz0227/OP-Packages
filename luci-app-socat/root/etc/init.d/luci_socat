@@ -102,7 +102,3 @@ reload_service() {
 	sleep 1
 	start
 }
-
-service_triggers() {
-	procd_add_reload_trigger "$CONFIG"
-}

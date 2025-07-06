@@ -39,7 +39,3 @@ stop()
 {
 	echo "Auto REBOOT has stoped."
 }
-
-service_triggers() {
-	procd_add_reload_trigger "autoreboot"
-}

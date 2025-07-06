@@ -208,7 +208,3 @@ case $script_action in
         exit 0
     ;;
 esac
-
-service_triggers() {
-	procd_add_reload_trigger ""
-}

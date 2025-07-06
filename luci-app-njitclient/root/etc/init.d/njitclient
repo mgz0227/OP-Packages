@@ -40,7 +40,3 @@ stop()
 	
 	echo "NJIT Client has stoped."
 }
-
-service_triggers() {
-	procd_add_reload_trigger "njitclient"
-}

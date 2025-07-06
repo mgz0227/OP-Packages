@@ -12,7 +12,7 @@ LUCI_PKGARCH:=all
 
 PKG_NAME:=luci-app-cifs-mount
 PKG_VERSION:=1
-PKG_RELEASE:=12
+PKG_RELEASE:=13
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

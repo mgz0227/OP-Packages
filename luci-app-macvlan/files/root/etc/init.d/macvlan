@@ -72,7 +72,3 @@ start() {
 stop() {
 	stop_macvlan
 }
-
-service_triggers() {
-	procd_add_reload_trigger "macvlan"
-}

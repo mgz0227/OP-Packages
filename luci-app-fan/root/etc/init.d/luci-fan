@@ -26,7 +26,3 @@ start() {
     config_foreach start_instance luci-fan
     return 0
 }
-
-service_triggers() {
-	procd_add_reload_trigger "luci-fan"
-}

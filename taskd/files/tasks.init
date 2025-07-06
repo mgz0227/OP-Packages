@@ -155,7 +155,3 @@ _task_onstop() {
 
 	rc_procd _task_exit "$task_id" "$exit_code" "$data"
 }
-
-service_triggers() {
-	procd_add_reload_trigger ""
-}

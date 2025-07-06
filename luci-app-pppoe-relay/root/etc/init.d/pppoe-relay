@@ -27,7 +27,3 @@ start() {
 stop() {
 	killall  pppoe-relay
 }
-
-service_triggers() {
-	procd_add_reload_trigger "pppoe-relay"
-}

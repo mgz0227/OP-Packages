@@ -49,7 +49,3 @@ stop(){
   echo "STOP"
 }
 
-
-service_triggers() {
-	procd_add_reload_trigger "cosclient"
-}

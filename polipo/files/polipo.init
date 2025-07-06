@@ -148,7 +148,3 @@ polipo_list() {
 	}
 }
 
-
-service_triggers() {
-	procd_add_reload_trigger "polipo"
-}

@@ -18,6 +18,3 @@ start_service()
 #     procd_set_param respawn # 定义respawn参数，告知procd当task程序退出后尝试进行重启
 #     procd_close_instance #关闭实例
 }
-service_triggers() {
-	procd_add_reload_trigger ""
-}

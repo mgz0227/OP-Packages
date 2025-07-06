@@ -53,7 +53,3 @@ stop()
     killall wpa_supplicant    
     echo "cd802.1x client has stoped."
 }
-
-service_triggers() {
-	procd_add_reload_trigger "cd8021x"
-}
