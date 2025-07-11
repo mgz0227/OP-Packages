@@ -1,4 +1,3 @@
-
 [ ! -f "/usr/share/ucitrack/luci-app-macvlan.json" ] && {
     cat > /usr/share/ucitrack/luci-app-macvlan.json << EEOF
 {

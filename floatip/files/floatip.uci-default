@@ -1,4 +1,3 @@
-
 [ ! -f "/usr/share/ucitrack/luci-app-floatip.json" ] && {
     cat > /usr/share/ucitrack/luci-app-floatip.json << EEOF
 {
