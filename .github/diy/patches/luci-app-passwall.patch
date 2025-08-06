@@ -82,12 +82,12 @@
  	default y
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server
-@@ -121,22 +137,20 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server
+@@ -128,23 +128,20 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs
  	bool "Include Simple-Obfs (Shadowsocks Plugin)"
 -	select PACKAGE_simple-obfs
-- select PACKAGE_simple-obfs-client
+-	select PACKAGE_simple-obfs-client
  	default y
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_SingBox
@@ -107,6 +107,8 @@
 +	depends on aarch64||i386||x86_64
  	select PACKAGE_tuic-client
  	default n
+ 
+
  
 @@ -148,14 +162,11 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Geodata
  
