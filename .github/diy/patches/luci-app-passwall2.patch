@@ -15,9 +15,9 @@
 
 --- a/luci-app-passwall2/Makefile
 +++ b/luci-app-passwall2/Makefile
-@@ -32,6 +32,21 @@
+@@ -32,6 +32,21 @@ LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
  	+ip-full +libuci-lua +lua +luci-compat +luci-lib-jsonc +resolveip +tcping \
- 	+xray-core +geoview +v2ray-geoip +v2ray-geosite \
+ 	+xray-core +v2ray-geoip +v2ray-geosite \
  	+unzip \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy:haproxy \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Hysteria:hysteria \
@@ -30,14 +30,14 @@
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client:shadowsocksr-libev-ssr-local \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client:shadowsocksr-libev-ssr-redir \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server:shadowsocksr-libev-ssr-server \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs:simple-obfs \
++	+PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs:simple-obfs-client \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_SingBox:sing-box \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client:tuic-client \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Plugin:v2ray-plugin \
  	+PACKAGE_$(PKG_NAME)_INCLUDE_IPv6_Nat:ip6tables-mod-nat
  
  define Package/$(PKG_NAME)/config
-@@ -73,7 +88,6 @@
+@@ -71,7 +86,6 @@ config PACKAGE_$(PKG_NAME)_Nftables_Transparent_Proxy
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy
  	bool "Include Haproxy"
@@ -45,7 +45,7 @@
  	default y if aarch64||arm||i386||x86_64
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Hysteria
-@@ -89,8 +103,6 @@
+@@ -87,8 +101,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Client
  	bool "Include Shadowsocks Libev Client"
@@ -54,7 +54,7 @@
  	default y
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Server
-@@ -101,7 +113,6 @@
+@@ -99,7 +111,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Server
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Client
  	bool "Include Shadowsocks Rust Client"
  	depends on aarch64||arm||i386||mips||mipsel||x86_64
@@ -62,7 +62,7 @@
  	default y if aarch64
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server
-@@ -112,8 +123,6 @@
+@@ -110,8 +121,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client
  	bool "Include ShadowsocksR Libev Client"
@@ -71,11 +71,10 @@
  	default y
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server
-@@ -123,13 +132,10 @@
+@@ -121,12 +130,10 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs
  	bool "Include Simple-Obfs (Shadowsocks Plugin)"
--	select PACKAGE_simple-obfs
 -	select PACKAGE_simple-obfs-client
  	default y
  
@@ -85,7 +84,7 @@
  	default y if aarch64||arm||i386||x86_64
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client
-@@ -140,7 +146,6 @@
+@@ -137,7 +144,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Plugin
  	bool "Include V2ray-Plugin (Shadowsocks Plugin)"
@@ -94,10 +93,9 @@
  
  endif
 
-
 --- a/luci-app-passwall2/luasrc/controller/passwall2.lua
 +++ b/luci-app-passwall2/luasrc/controller/passwall2.lua
-@@ -83,6 +83,7 @@
+@@ -81,6 +81,7 @@ function index()
  	entry({"admin", "services", appname, "subscribe_del_all"}, call("subscribe_del_all")).leaf = true
  	entry({"admin", "services", appname, "subscribe_manual"}, call("subscribe_manual")).leaf = true
  	entry({"admin", "services", appname, "subscribe_manual_all"}, call("subscribe_manual_all")).leaf = true
@@ -105,8 +103,8 @@
  
  	--[[Components update]]
  	entry({"admin", "services", appname, "check_passwall2"}, call("app_check")).leaf = true
-@@ -106,6 +107,61 @@
- 	http.write(jsonStringify(content or {code = 1}))
+@@ -89,6 +90,61 @@ local function http_write_json(content)
+ 	http.write_json(content or {code = 1})
  end
  
 +function check_site(host, port)
