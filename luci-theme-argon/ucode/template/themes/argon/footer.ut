@@ -18,7 +18,8 @@
 
 		</div>
 		<footer class="mobile-hide" style="text-wrap: auto">
-			<%= ver.distversion %>
+			<div class="footer-content" style="text-align:right;">
+				{{ version.distversion }}
 				<ul class="breadcrumb pull-right" id="modemenu" style="display:none"></ul>
 			</div>
 		</footer>
