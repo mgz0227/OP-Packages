@@ -1,10 +1,9 @@
 --- a/luci-theme-argon/ucode/template/themes/argon/footer.ut
 +++ b/luci-theme-argon/ucode/template/themes/argon/footer.ut
-@@ -18,17 +18,8 @@
- 
+@@ -19,16 +19,7 @@
  		</div>
  		<footer class="mobile-hide" style="text-wrap: auto">
--			<div class="footer-content" style="display: flex; flex-wrap: wrap; gap: 0.5em; justify-content: end;">
+ 			<div class="footer-content" style="display: flex; flex-wrap: wrap; gap: 0.5em; justify-content: end;">
 -				<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by {{ version.luciname }} ({{ version.luciversion }})</a>
 -
 -				<span class="footer-separator">|</span>
@@ -15,7 +14,6 @@
 -
 -				<a class="luci-link" href="{{ version.disturl }}" target="_blank">{{ version.distname }} {{ version.distversion }}-{{ version.distrevision }}</a>
 -
-+			<div class="footer-content" style="text-align:right;">
 +				{{ version.distversion }}
  				<ul class="breadcrumb pull-right" id="modemenu" style="display:none"></ul>
  			</div>
