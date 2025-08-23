@@ -703,34 +703,6 @@ let myAppIP = {
         });
     },
 
-    concurrentGeoQuery: async function(ip) {
-        const concurrentApis = this.ipApis.filter(api => api.concurrent);
-        if (!concurrentApis.length) throw new Error("No concurrent APIs configured");
-
-        return new Promise((resolve, reject) => {
-            let resolved = false;
-            let completed = 0;
-
-            concurrentApis.forEach(api => {
-                const apiUrl = typeof api.url === 'function' ? api.url(ip) : api.url;
-                this.get(apiUrl, api.type)
-                    .then(resp => {
-                        if (!resolved && resp.data) {
-                            resolved = true;
-                            resolve(resp.data);
-                        }
-                    })
-                    .catch(err => console.warn("Concurrent API failed:", apiUrl, err))
-                    .finally(() => {
-                        completed++;
-                        if (completed === concurrentApis.length && !resolved) {
-                            reject(new Error("All concurrent APIs failed"));
-                        }
-                    });
-            });
-        });
-    },
-
     fetchIP: async ()=>{
         let error;
         for(let api of myAppIP.ipApis){
@@ -948,16 +920,17 @@ let myAppIP = {
             const latitude = data.latitude || data.lat || 'N/A';
             const longitude = data.longitude || data.lon || data.lng || 'N/A';
 
-            let locationDisplay = '';
-            if (region && city) {
-                if (region === city) {
-                    locationDisplay = region;
-                } else {
-                    locationDisplay = `${region} ${city}`;
-                }
-            } else {
-                locationDisplay = region || city || '';
+            let locationParts = [country];
+    
+            if (region && region !== country) {
+                locationParts.push(region);
             }
+    
+            if (city && city !== region && city !== country) {
+                locationParts.push(city);
+            }
+    
+            const locationDisplay = locationParts.join(' ');
 
             let countryCode = data.country_code || 'unknown';
             if (countryCode.toUpperCase() === 'TW') {
