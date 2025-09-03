@@ -85,6 +85,7 @@ jobs:
         }
         (
         git_clone https://github.com/mgz0227/my-packages && mvdir my-packages
+        git_clone https://github.com/mgz0227/luci-theme-rosy && mvdir luci-theme-rosy
         #git_clone https://github.com/jerrykuku/luci-theme-argon
         git_clone https://github.com/kiddin9/luci-app-dnsfilter
         git_clone https://github.com/kiddin9/aria2
