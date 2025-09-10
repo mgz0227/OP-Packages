@@ -11,7 +11,7 @@
 
 --- a/luci-app-passwall/Makefile
 +++ b/luci-app-passwall/Makefile
-@@ -36,7 +36,31 @@ LUCI_PKGARCH:=all
+@@ -37,7 +37,31 @@
  LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
  	+chinadns-ng +dns2socks +dnsmasq-full +ip-full \
  	+libuci-lua +lua +luci-compat +luci-lib-jsonc \
@@ -44,7 +44,7 @@
  
  define Package/$(PKG_NAME)/config
  menu "Configuration"
-@@ -71,8 +94,7 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Geoview
+@@ -72,8 +96,7 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy
  	bool "Include Haproxy"
@@ -54,7 +54,7 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Hysteria
  	bool "Include Hysteria"
-@@ -87,19 +109,15 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy
+@@ -88,19 +111,15 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Client
  	bool "Include Shadowsocks Libev Client"
@@ -69,12 +69,13 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Client
  	bool "Include Shadowsocks Rust Client"
- 	depends on aarch64||arm||i386||mips||mipsel||x86_64
+-	depends on !i386
 -	select PACKAGE_shadowsocks-rust-sslocal
- 	default y if aarch64
++	depends on aarch64||arm||i386||mips||mipsel||x86_64
+ 	default y if aarch64||x86_64
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server
-@@ -110,8 +128,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server
+@@ -111,8 +130,6 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client
  	bool "Include ShadowsocksR Libev Client"
@@ -83,7 +84,7 @@
  	default y
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server
-@@ -129,22 +146,20 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server
+@@ -128,22 +145,20 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs
  	bool "Include Simple-Obfs (Shadowsocks Plugin)"
@@ -108,7 +109,7 @@
  	select PACKAGE_tuic-client
  	default n
  
-@@ -148,14 +162,11 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Geodata
+@@ -155,14 +170,11 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Plugin
  	bool "Include V2ray-Plugin (Shadowsocks Plugin)"
@@ -125,6 +126,7 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Xray_Plugin
  	bool "Include Xray-Plugin (Shadowsocks Plugin)"
+
 
 --- a/luci-app-passwall/luasrc/controller/passwall.lua
 +++ b/luci-app-passwall/luasrc/controller/passwall.lua
