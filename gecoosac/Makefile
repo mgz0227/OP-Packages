@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gecoosac
-PKG_VERSION:=2.2.20250318
-PKG_RELEASE:=10
+PKG_VERSION:=2.2.20250912
+PKG_RELEASE:=11
 
 ifeq ($(ARCH),aarch64)
   PKG_ARCH:=ac_linux_arm64
