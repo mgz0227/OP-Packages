@@ -27,6 +27,8 @@ define Package/cpulimit/description
   (expressed in percentage, not in CPU time).
 endef
 
+TARGET_CFLAGS += -D_GNU_SOURCE
+
 define Package/cpulimit/install
 	$(INSTALL_DIR) $(1)/usr/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/cpulimit $(1)/usr/bin/
