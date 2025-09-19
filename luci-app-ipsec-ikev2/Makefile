@@ -1,14 +1,12 @@
-# SPDX-License-Identifier: MIT
-# This is free software, licensed under the MIT License.
-
 include $(TOPDIR)/rules.mk
 
+PKG_NAME:=luci-app-ipsec-ikev2
+PKG_VERSION:=20250919
+PKG_RELEASE:=6
+PKG_MAINTAINER:=miaogongzi <miaogongzi0227@gmail.com>
+LUCI_PKGARCH:=all
 
 define Package/$(PKG_NAME)
-  PKG_VERSION:=20250919
-  PKG_RELEASE:=5
-  LUCI_PKGARCH:=all
-  PKG_MAINTAINER:=miaogongzi <miaogongzi0227@gmail.com>
   SECTION:=luci
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
