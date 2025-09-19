@@ -1,0 +1,29 @@
+config global 'config'
+    option enabled '0'
+    option listen '%any'
+    option leftid 'vpn.example.com'
+    option mode 'full'   # full（全量出口）/ lan（仅内网）/ custom（自定义 split_subnets）
+    option ike_proposals 'aes256-sha256-prfsha256-modp2048,aes256gcm16-prfsha256-modp2048'
+    option esp_proposals 'aes256-sha256-modp2048,aes256gcm16-modp2048'
+    option mobike '1'
+    option fragmentation '1'
+    option dpd_delay '30'
+    option pool 'pool0'
+    # option global_psk 'YOUR_GLOBAL_PSK'
+    list dns '1.1.1.1'
+    list dns '8.8.8.8'
+    # 自定义模式下使用（否则自动计算）
+    list split_subnets '0.0.0.0/0'
+    list split_subnets '::/0'
+    option rekey_time '3600'
+    option start_action 'trap'
+    option ensure_wan_masq '1'   # 确保 WAN MASQUERADE
+
+config pool 'pool0'
+    option addrs '10.10.10.0/24'
+
+# 多人 PSK 示例（按需添加/修改/删除）
+# config psk_user 'u1'
+#     option id 'alice@example.com'
+#     option psk 'alice-psk-123'
+#     option note 'iPhone of Alice'

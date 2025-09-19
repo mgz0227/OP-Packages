@@ -1,0 +1,21 @@
+{
+  "luci-app-ikev2": {
+    "description": "Grant access to LuCI IKEv2 app (PSK, zh-optimized)",
+    "read": {
+      "uci": [ "ikev2", "firewall", "network" ],
+      "ubus": {
+        "service": [ "*" ],
+        "system": [ "board" ]
+      },
+      "file": {
+        "/etc/swanctl/swanctl.conf": [ "read" ]
+      }
+    },
+    "write": {
+      "uci": [ "ikev2", "firewall" ],
+      "ubus": {
+        "service": [ "*" ]
+      }
+    }
+  }
+}
