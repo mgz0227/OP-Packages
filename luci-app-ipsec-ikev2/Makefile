@@ -5,10 +5,8 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ipsec-ikev2
 PKG_VERSION:=20250919
-PKG_RELEASE:=2
-
-PKG_LICENSE:=MIT
-
+PKG_RELEASE:=1
+LUCI_PKGARCH:=all
 PKG_MAINTAINER:=miaogongzi <miaogongzi0227@gmail.com>
 
 
