@@ -1,4 +1,4 @@
-m = Map("ikev2", translate("PSK 用户"),
+m = Map("luci-app-ipsec-ikev2", translate("PSK 用户"),
     translate("为不同远端身份（IDi）配置各自的预共享密钥。若留空全局 PSK，则只有此处列出的身份可连接。"))
 
 s = m:section(TypedSection, "psk_user", translate("PSK 条目"))

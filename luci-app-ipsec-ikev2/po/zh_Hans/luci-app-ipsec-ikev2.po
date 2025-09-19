@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: luci-app-ikev2-ss\\n"
-"Content-Type: text/plain; charset=UTF-8\\n"
-"Language: zh_Hans\\n"
+"Project-Id-Version: luci-app-ipsec-ikev2\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh_Hans\n"
 
 msgid "VPN"
 msgstr "VPN"

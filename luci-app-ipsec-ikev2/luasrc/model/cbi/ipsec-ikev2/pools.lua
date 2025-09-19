@@ -1,4 +1,4 @@
-m = Map("ikev2", translate("地址池"),
+m = Map("luci-app-ipsec-ikev2", translate("地址池"),
     translate("为远端用户分配虚拟地址，可用 CIDR（10.10.10.0/24）或范围（10.10.10.10-10.10.10.200）。"))
 
 s = m:section(TypedSection, "pool", translate("地址池条目"))

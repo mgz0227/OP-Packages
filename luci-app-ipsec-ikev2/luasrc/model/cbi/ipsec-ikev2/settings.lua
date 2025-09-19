@@ -3,10 +3,9 @@ local uci  = require "luci.model.uci".cursor()
 local dsp  = require "luci.dispatcher"
 local fs   = require "nixio.fs"
 
-m = Map("ikev2", translate("IKEv2 (strongSwan) - PSK"),
+m = Map("luci-app-ipsec-ikev2", translate("IKEv2 (strongSwan) - PSK"),
     translate("通过 LuCI 可视化配置 IKEv2 PSK（预共享密钥）。保存并应用后自动生成 swanctl.conf 并重载 strongSwan。"))
 
-m:chain("network")
 m.apply_on_parse = true
 
 s = m:section(TypedSection, "global", translate("全局设置"))
@@ -19,15 +18,13 @@ en.default = en.enabled
 
 listen = s:option(Value, "listen", translate("监听地址"),
     translate("留空=自动；可填 IPv4/IPv6 或 %any。通常监听在 WAN 地址。"))
-listen.datatype = "string"
 listen.placeholder = "%any"
 
 leftid = s:option(Value, "leftid", translate("服务端 ID (LeftID)"),
     translate("建议使用你的 VPN 域名或唯一标识，客户端“远程 ID/服务器 ID”需与之匹配。"))
-leftid.datatype = "string"
 leftid.placeholder = "vpn.example.com"
 
--- 模式：全量出口 / 仅内网 / 自定义
+-- 业务模式
 mode = s:option(ListValue, "mode", translate("业务模式"),
     translate("全量出口=客户端访问内网并经内网访问外网；仅内网=只访问内网；自定义=自行填写分流网段。"))
 mode:value("full", translate("全量出口（访问内网 + 经内网访问外网）"))
@@ -39,18 +36,16 @@ global_psk = s:option(Value, "global_psk", translate("全局 PSK（可选）"),
     translate("如果填写，则所有客户端可使用该密钥；若留空，则只允许“PSK 用户”表中的身份连接。"))
 global_psk.password = true
 
-ikep = s:option(Value, "ike_proposals", translate("IKE 提议"),
-    translate("示例：aes256-sha256-prfsha256-modp2048,aes256gcm16-prfsha256-modp2048"))
+ikep = s:option(Value, "ike_proposals", translate("IKE 提议"))
 ikep.placeholder = "aes256-sha256-prfsha256-modp2048,aes256gcm16-prfsha256-modp2048"
 
-espp = s:option(Value, "esp_proposals", translate("ESP 提议"),
-    translate("示例：aes256-sha256-modp2048,aes256gcm16-modp2048"))
+espp = s:option(Value, "esp_proposals", translate("ESP 提议"))
 espp.placeholder = "aes256-sha256-modp2048,aes256gcm16-modp2048"
 
-mobike = s:option(Flag, "mobike", translate("启用 MOBIKE"), translate("移动设备网络切换更稳定。"))
+mobike = s:option(Flag, "mobike", translate("启用 MOBIKE"))
 mobike.default = mobike.enabled
 
-frag = s:option(Flag, "fragmentation", translate("启用 IKEv2 分片"), translate("避免 UDP 封包过大导致的丢包。"))
+frag = s:option(Flag, "fragmentation", translate("启用 IKEv2 分片"))
 frag.default = frag.enabled
 
 dpd  = s:option(Value, "dpd_delay", translate("DPD 间隔 (秒)"))
@@ -58,12 +53,9 @@ dpd.datatype = "uinteger"
 dpd.placeholder = "30"
 
 pool = s:option(ListValue, "pool", translate("地址池"))
+uci:foreach("luci-app-ipsec-ikev2", "pool", function(sec) pool:value(sec[".name"]) end)
 pool.rmempty = false
-uci:foreach("ikev2", "pool", function(sec)
-    pool:value(sec[".name"])
-end)
 
--- DNS：默认自动填路由器 LAN IP
 dns = s:option(DynamicList, "dns", translate("推送 DNS 服务器"),
     translate("为空则不下发；也可在地址池中单独设置。默认会尝试使用路由器 LAN IP。"))
 dns.datatype = "ipaddr"
@@ -81,16 +73,14 @@ start_action:value("trap", "trap（按需建立）")
 start_action:value("start", "start（启动即建立）")
 start_action.default = "trap"
 
--- 确保 WAN MASQUERADE（让客户端经内网访问外网）
-ensure_masq = s:option(Flag, "ensure_wan_masq", translate("确保 WAN 出口 NAT (MASQUERADE)"),
-    translate("开启后将自动检查并启用 WAN 区域的 MASQUERADE，保证客户端可通过内网访问外网。"))
+ensure_masq = s:option(Flag, "ensure_wan_masq", translate("确保 WAN 出口 NAT (MASQUERADE)"))
 ensure_masq.default = ensure_masq.enabled
 
 function m.on_after_commit(self)
-    sys.call("/etc/init.d/ikev2 reload >/dev/null 2>&1")
+    sys.call("/etc/init.d/luci-app-ipsec-ikev2 reload >/dev/null 2>&1")
 end
 
--- 尝试预填 LAN IP 为 DNS
+-- 预填 LAN IP 为 DNS
 local lan_ip = uci:get("network", "lan", "ipaddr")
 if lan_ip then
     dns:value(lan_ip)

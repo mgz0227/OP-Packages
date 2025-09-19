@@ -1,0 +1,14 @@
+{
+  "luci-app-ipsec-ikev2": {
+    "description": "Grant access to LuCI IKEv2 app",
+    "read": {
+      "uci": [ "luci-app-ipsec-ikev2", "firewall", "network" ],
+      "ubus": { "service": [ "*" ], "system": [ "board" ] },
+      "file": { "/etc/swanctl/swanctl.conf": [ "read" ] }
+    },
+    "write": {
+      "uci": [ "luci-app-ipsec-ikev2", "firewall" ],
+      "ubus": { "service": [ "*" ] }
+    }
+  }
+}

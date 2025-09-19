@@ -18,6 +18,6 @@
   <pre style="white-space:pre-wrap;"><%=luci.sys.exec("iptables -S | grep -E 'policy|udp.*(500|4500)| esp '")%></pre>
 
   <h3>导出 swanctl.conf</h3>
-  <a class="cbi-button cbi-button-action" href="<%=luci.dispatcher.build_url('admin/vpn/ikev2/export')%>">下载 swanctl.conf</a>
+  <a class="cbi-button cbi-button-action" href="<%=luci.dispatcher.build_url('admin/vpn/ipsec-ikev2/export')%>">下载 swanctl.conf</a>
 </div>
 <%+footer%>
