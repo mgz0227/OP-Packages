@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ipsec-ikev2
 PKG_VERSION:=20250919
-PKG_RELEASE:=7
+PKG_RELEASE:=8
 PKG_MAINTAINER:=miaogongzi <miaogongzi0227@gmail.com>
 LUCI_PKGARCH:=all
 
@@ -11,7 +11,7 @@ define Package/$(PKG_NAME)
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
   TITLE:=LuCI: IKEv2 (strongSwan) PSK visual config
-  DEPENDS:=+kmod-tun +luci-lib-jsonc +strongswan +strongswan-minimal \
+  DEPENDS:=+kmod-tun +luci-lib-jsonc +strongswan +strongswan-minimal +luci-base +luci-compat +strongswan-full +kmod-ipt-ipsec +iptables-mod-ipsec +dnsmasq-full \
            +strongswan-mod-kernel-libipsec +strongswan-mod-openssl +strongswan-mod-xauth-generic
 endef
 
