@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ipsec-ikev2
 PKG_VERSION:=20250919
-PKG_RELEASE:=6
+PKG_RELEASE:=7
 PKG_MAINTAINER:=miaogongzi <miaogongzi0227@gmail.com>
 LUCI_PKGARCH:=all
 
@@ -24,3 +24,5 @@ define Package/$(PKG_NAME)/conffiles
 endef
 
 include $(TOPDIR)/feeds/luci/luci.mk
+
+$(eval $(call BuildPackage,$(PKG_NAME)))
