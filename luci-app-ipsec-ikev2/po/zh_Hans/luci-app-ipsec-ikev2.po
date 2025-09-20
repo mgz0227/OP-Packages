@@ -22,8 +22,8 @@ msgstr "PSK 用户"
 msgid "状态/诊断"
 msgstr "状态/诊断"
 
-msgid "导出配置"
-msgstr "导出配置"
+msgid "导出 swanctl.conf"
+msgstr "导出 swanctl.conf"
 
 msgid "业务模式"
 msgstr "业务模式"

@@ -1,5 +1,4 @@
 #!/bin/sh
-    # Generate /etc/swanctl/swanctl.conf from UCI using standard OpenWrt helpers
     set -e
 
     . /lib/functions.sh
@@ -23,21 +22,11 @@
 
     dns_list=""
     split_list=""
-
     pools_conf=""
     secrets_conf=""
 
-    append_dns() {
-        local val="$1"
-        [ -n "$val" ] || return 0
-        if [ -z "$dns_list" ]; then dns_list="$val"; else dns_list="$dns_list $val"; fi
-    }
-
-    append_split() {
-        local val="$1"
-        [ -n "$val" ] || return 0
-        if [ -z "$split_list" ]; then split_list="$val"; else split_list="$split_list $val"; fi
-    }
+    append_dns() { [ -n "$1" ] || return 0; dns_list="${dns_list:+$dns_list }$1"; }
+    append_split(){ [ -n "$1" ] || return 0; split_list="${split_list:+$split_list }$1"; }
 
     load_global() {
         local s="$1"
@@ -60,33 +49,31 @@
         config_get_bool ensure_masq "$s" ensure_wan_masq 1
     }
 
+    _dns_collect() { echo "$1"; }
+
     build_pool() {
         local s="$1"
-        local name="$s"
-        local addrs pdns_list=""
+        local addrs
         config_get addrs "$s" addrs ""
         [ -n "$addrs" ] || return 0
-        local _dns=""
-        config_list_foreach "$s" dns _dns_collect
         local pdns=""
-        for d in $_dns; do
-            if [ -z "$pdns" ]; then pdns="$d"; else pdns="$pdns, $d"; fi
+        local _dns_list=""
+        config_list_foreach "$s" dns _dns_collect | while read d; do
+            _dns_list="${_dns_list:+$_dns_list, }$d"
         done
-        if [ -z "$pdns" ] && [ -n "$dns_list" ]; then
-            for d in $dns_list; do
-                if [ -z "$pdns" ]; then pdns="$d"; else pdns="$pdns, $d"; fi
-            done
+        if [ -z "$_dns_list" ] && [ -n "$dns_list" ]; then
+            for d in $dns_list; do pdns="${pdns:+$pdns, }$d"; done
+        else
+            pdns="$_dns_list"
         fi
         pools_conf="$pools_conf
-  $name {
+  $s {
     addrs = $addrs"
         [ -n "$pdns" ] && pools_conf="$pools_conf
     dns = $pdns"
         pools_conf="$pools_conf
   }"
     }
-
-    _dns_collect() { echo "$1"; }
 
     build_psk() {
         local s="$1"
@@ -105,7 +92,6 @@
         case "$mode" in
             full) echo "0.0.0.0/0, ::/0" ;;
             lan)
-                # Compute LAN IPv4 CIDR
                 local lan_ip lan_mask net prefix
                 lan_ip="$(uci -q get network.lan.ipaddr)"
                 lan_mask="$(uci -q get network.lan.netmask)"
@@ -132,7 +118,6 @@
     config_foreach build_pool  "pool"
     config_foreach build_psk   "psk_user"
 
-    # Global PSK (optional)
     if [ -n "$global_psk" ]; then
         secrets_conf="$secrets_conf
   ike-any {

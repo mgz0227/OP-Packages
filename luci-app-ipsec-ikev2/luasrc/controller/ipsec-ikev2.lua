@@ -17,7 +17,7 @@ function index()
     entry({"admin","vpn","ipsec-ikev2","psk"},      cbi("ipsec-ikev2/psk"),      _("PSK 用户"), 30).leaf = true
     entry({"admin","vpn","ipsec-ikev2","status"},   template("ipsec-ikev2/status"), _("状态/诊断"), 40).leaf = true
 
-    entry({"admin","vpn","ipsec-ikev2","export"}, call("export_conf"), _("导出配置"), 50).leaf = true
+    entry({"admin","vpn","ipsec-ikev2","export"}, call("export_conf"), _("导出 swanctl.conf"), 50).leaf = true
 end
 
 function export_conf()

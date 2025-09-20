@@ -1,6 +1,5 @@
 #!/bin/sh /etc/rc.common
 
-# procd-enabled init for luci-app-ipsec-ikev2
 USE_PROCD=1
 START=96
 STOP=10
@@ -10,25 +9,20 @@ CFG="luci-app-ipsec-ikev2"
 GEN="/usr/libexec/ipsec-ikev2/genconfig.sh"
 
 start_service() {
-    # Generate swanctl.conf
     if ! "$GEN"; then
         echo "$NAME: failed to generate swanctl.conf"
         return 1
     fi
-
-    # Ensure strongSwan is started
     /etc/init.d/strongswan enable >/dev/null 2>&1
     /etc/init.d/strongswan start
     swanctl --load-all >/dev/null 2>&1 || true
 
-    # oneshot instance (no daemon here; charon managed by strongSwan)
     procd_open_instance
     procd_set_param command /bin/true
     procd_close_instance
 }
 
 stop_service() {
-    # Do not stop strongSwan here; leave to its own init script
     return 0
 }
 
@@ -40,7 +34,6 @@ reload_service() {
 }
 
 service_triggers() {
-    # Reload when our UCI or related configs change
     procd_add_reload_trigger "$CFG"
     procd_add_reload_trigger "network" "firewall"
 }

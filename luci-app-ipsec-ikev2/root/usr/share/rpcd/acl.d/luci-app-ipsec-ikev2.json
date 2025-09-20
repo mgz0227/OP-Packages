@@ -1,6 +1,6 @@
 {
   "luci-app-ipsec-ikev2": {
-    "description": "Grant access to LuCI IKEv2 app",
+    "description": "Grant access to LuCI IPsec IKEv2",
     "read": {
       "uci": [ "luci-app-ipsec-ikev2", "firewall", "network" ],
       "ubus": { "service": [ "*" ], "system": [ "board" ] },

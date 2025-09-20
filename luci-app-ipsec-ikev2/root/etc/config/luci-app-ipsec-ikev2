@@ -1,4 +1,4 @@
-config global 'config'
+config config 'config'
     option enabled '0'
     option listen '%any'
     option leftid 'vpn.example.com'
