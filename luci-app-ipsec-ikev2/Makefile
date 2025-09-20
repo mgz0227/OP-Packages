@@ -5,7 +5,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ipsec-ikev2
 PKG_VERSION:=2025.09.20
-PKG_RELEASE:=10
+PKG_RELEASE:=11
 
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=miaogongzi <miaogongzi0227@gmail.com>
@@ -23,8 +23,8 @@ LUCI_DEPENDS:= \
   +PACKAGE_firewall:firewall +PACKAGE_firewall4:firewall4 \
   +PACKAGE_firewall:kmod-ipt-ipsec +PACKAGE_firewall:iptables-mod-ipsec \
   +strongswan-minimal \
-  +strongswan-mod-kernel-libipsec 
-  +kmod-tun
+  +strongswan-mod-kernel-libipsec \
+  +kmod-tun \
   +dnsmasq-full
 
 define Package/$(PKG_NAME)/conffiles
