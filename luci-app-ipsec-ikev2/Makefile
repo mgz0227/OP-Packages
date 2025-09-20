@@ -2,8 +2,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ipsec-ikev2
-PKG_VERSION:=2025.09.21
-PKG_RELEASE:=16
+PKG_VERSION:=20250921
+PKG_RELEASE:=17
 PKG_MAINTAINER:=miaogongzi <miaogongzi0227@gmail.com>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -52,10 +52,9 @@ define Package/$(PKG_NAME)
     +luci-compat \
     +PACKAGE_dnsmasq-full:dnsmasq-full \
     +PACKAGE_strongswan-full:strongswan-full \
-    +PACKAGE_strongswan:strongswan \
-    +PACKAGE_firewall4:firewall4 \
-    +PACKAGE_firewall:firewall \
-    +PACKAGE_firewall:kmod-ipt-ipsec +PACKAGE_firewall:iptables-mod-ipsec \
+    +(firewall||firewall4) \
+    +kmod-ipt-ipsec \
+	+iptables-mod-ipsec \
     +kmod-tun
   MAINTAINER:=$(PKG_MAINTAINER)
 endef
