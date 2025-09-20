@@ -1,5 +1,5 @@
 #!/bin/sh
-# uci-defaults: initial firewall for IPsec IKEv2 + migration from old luci-app-ipsec-server
+# uci-defaults: initial firewall + migrate from old 'luci-app-ipsec-server'
 set -e
 
 # migrate old config if exists
@@ -19,11 +19,16 @@ add_rule() {
     done
 }
 
+# Inbound IKE/ESP
 add_rule "Allow-IPsec-IKE" src 'wan' proto 'udp' dest_port '500' target 'ACCEPT'
 add_rule "Allow-IPsec-NAT-T" src 'wan' proto 'udp' dest_port '4500' target 'ACCEPT'
 add_rule "Allow-IPsec-ESP" src 'wan' proto 'esp' target 'ACCEPT'
+
+# Policy accept
 add_rule "Allow-IPsec-Policy-In"  src '*' proto 'all' target 'ACCEPT' extra '-m policy --pol ipsec --dir in'
 add_rule "Allow-IPsec-Policy-Out" src '*' proto 'all' target 'ACCEPT' extra '-m policy --pol ipsec --dir out'
+
+# Access to LAN and Internet (WAN) from IPsec clients
 add_rule "Allow-IPsec-to-LAN" src '*' dest 'lan' proto 'all' target 'ACCEPT' extra '-m policy --pol ipsec --dir in'
 add_rule "Allow-IPsec-to-WAN" src '*' dest 'wan' proto 'all' target 'ACCEPT' extra '-m policy --pol ipsec --dir in'
 
