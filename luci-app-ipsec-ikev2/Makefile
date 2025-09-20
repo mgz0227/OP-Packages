@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ipsec-ikev2
 PKG_VERSION:=2025.09.20
-PKG_RELEASE:=12
+PKG_RELEASE:=13
 PKG_MAINTAINER:=miaogongzi <miaogongzi0227@gmail.com>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -12,16 +12,24 @@ include $(INCLUDE_DIR)/package.mk
 
 define Package/$(PKG_NAME)/config
 	config PACKAGE_strongswan-full
+		bool "Use strongSwan full"
 		default y if PACKAGE_$(PKG_NAME)
 
 	config PACKAGE_strongswan
-		default y if PACKAGE_$(PKG_NAME) && ! PACKAGE_strongswan-full
+		bool "Use strongSwan minimal"
+		depends on PACKAGE_$(PKG_NAME)
+		depends on !PACKAGE_strongswan-full
+		default y
 
 	config PACKAGE_firewall4
+		bool "Use firewall4"
 		default y if PACKAGE_$(PKG_NAME)
 
 	config PACKAGE_firewall
-		default y if PACKAGE_$(PKG_NAME) && ! PACKAGE_firewall4
+		bool "Use firewall (iptables)"
+		depends on PACKAGE_$(PKG_NAME)
+		depends on !PACKAGE_firewall4
+		default y
 endef
 
 define Package/$(PKG_NAME)
@@ -33,17 +41,16 @@ define Package/$(PKG_NAME)
     +luci-compat +dnsmasq-full \
     +PACKAGE_strongswan-full:strongswan-full \
     +PACKAGE_strongswan:strongswan \
-    +(firewall||firewall4) \
+    +(firewall4||firewall) \
     +PACKAGE_firewall:kmod-ipt-ipsec \
     +PACKAGE_firewall:iptables-mod-ipsec \
     +kmod-tun
-
   MAINTAINER:=miaogongzi <miaogongzi0227@gmail.com>
 endef
 
-
 define Package/$(PKG_NAME)/description
-	OpenWrt LuCI for IPsec IKEv2 (strongSwan). PSK 多身份、地址池、诊断、自动防火墙规则与 NAT 检查。
+	OpenWrt LuCI for IPsec IKEv2 (strongSwan). 
+	支持 PSK 多身份、地址池、诊断、自动防火墙规则与 NAT 检查。
 endef
 
 define Build/Prepare
@@ -54,7 +61,6 @@ define Build/Prepare
 	chmod 0755 $(PKG_BUILD_DIR)/root/etc/init.d/luci-app-ipsec-ikev2
 	chmod 0755 $(PKG_BUILD_DIR)/root/etc/uci-defaults/luci-app-ipsec-ikev2
 	chmod 0755 $(PKG_BUILD_DIR)/root/usr/libexec/ipsec-ikev2/genconfig.sh
-	exit 0
 endef
 
 define Build/Configure
