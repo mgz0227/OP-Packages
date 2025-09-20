@@ -2,8 +2,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ipsec-ikev2
-PKG_VERSION:=2025.09.20
-PKG_RELEASE:=15
+PKG_VERSION:=2025.09.21
+PKG_RELEASE:=16
 PKG_MAINTAINER:=miaogongzi <miaogongzi0227@gmail.com>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -55,15 +55,19 @@ define Package/$(PKG_NAME)
     +PACKAGE_strongswan:strongswan \
     +PACKAGE_firewall4:firewall4 \
     +PACKAGE_firewall:firewall \
-    +PACKAGE_firewall:kmod-ipt-ipsec \
-    +PACKAGE_firewall:iptables-mod-ipsec \
+    +PACKAGE_firewall:kmod-ipt-ipsec +PACKAGE_firewall:iptables-mod-ipsec \
     +kmod-tun
-  MAINTAINER:=miaogongzi <miaogongzi0227@gmail.com>
+  MAINTAINER:=$(PKG_MAINTAINER)
 endef
 
 define Package/$(PKG_NAME)/description
-OpenWrt LuCI for IPsec IKEv2 (strongSwan).
-PSK multi-identity, address pool, diagnostics, auto firewall rules, and NAT checks.
+This LuCI application provides a web interface to manage
+IPsec IKEv2 VPN server (strongSwan). It supports:
+ - PSK multi-identity
+ - Address pool management
+ - Diagnostics and status
+ - Automatic firewall rules
+ - NAT detection and handling
 endef
 
 define Build/Prepare
@@ -85,6 +89,9 @@ endef
 
 define Package/$(PKG_NAME)/conffiles
 /etc/config/luci-app-ipsec-ikev2
+/etc/ipsec.conf
+/etc/ipsec.secrets
+/etc/ipsec.d/*
 endef
 
 define Package/$(PKG_NAME)/install
