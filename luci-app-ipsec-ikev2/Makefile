@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ipsec-ikev2
 PKG_VERSION:=20250921
-PKG_RELEASE:=18
+PKG_RELEASE:=19
 PKG_MAINTAINER:=miaogongzi <miaogongzi0227@gmail.com>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -87,16 +87,16 @@ endef
 define Build/Compile
 endef
 
+# 只保留应用自身的配置文件
 define Package/$(PKG_NAME)/conffiles
 /etc/config/luci-app-ipsec-ikev2
-/etc/ipsec.conf
-/etc/ipsec.secrets
-/etc/ipsec.d/*
 endef
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
-	-$(INSTALL_DATA) $(PKG_BUILD_DIR)/*.*.lmo $(1)/usr/lib/lua/luci/i18n/
+	@if [ -n "$$(wildcard $(PKG_BUILD_DIR)/*.lmo)" ]; then \
+		$(INSTALL_DATA) $(PKG_BUILD_DIR)/*.lmo $(1)/usr/lib/lua/luci/i18n/; \
+	fi
 	$(CP) $(PKG_BUILD_DIR)/root/* $(1)/
 	$(CP) $(PKG_BUILD_DIR)/luasrc/* $(1)/usr/lib/lua/luci/
 endef
