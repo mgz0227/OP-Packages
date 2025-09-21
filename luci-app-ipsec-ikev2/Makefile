@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ipsec-ikev2
 PKG_VERSION:=20250921
-PKG_RELEASE:=19
+PKG_RELEASE:=20
 PKG_MAINTAINER:=miaogongzi <miaogongzi0227@gmail.com>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -25,17 +25,7 @@ define Package/$(PKG_NAME)/config
 		depends on !PACKAGE_strongswan-full
 		default n
 
-	# firewall backend —— 优先 firewall (iptables)
-	config PACKAGE_firewall
-		bool "Use firewall (iptables)"
-		depends on PACKAGE_$(PKG_NAME)
-		default y
 
-	config PACKAGE_firewall4
-		bool "Use firewall4 (nftables)"
-		depends on PACKAGE_$(PKG_NAME)
-		depends on !PACKAGE_firewall
-		default n
 
 	# 默认 dnsmasq-full
 	config PACKAGE_dnsmasq-full
@@ -52,10 +42,6 @@ define Package/$(PKG_NAME)
     +luci-compat \
     +PACKAGE_dnsmasq-full:dnsmasq-full \
     +PACKAGE_strongswan-full:strongswan-full \
-    +PACKAGE_strongswan:strongswan \
-    +PACKAGE_firewall:firewall \
-    +PACKAGE_firewall:kmod-ipt-ipsec +PACKAGE_firewall:iptables-mod-ipsec \
-    +PACKAGE_firewall4:firewall4 \
     +kmod-tun
   MAINTAINER:=$(PKG_MAINTAINER)
 endef
