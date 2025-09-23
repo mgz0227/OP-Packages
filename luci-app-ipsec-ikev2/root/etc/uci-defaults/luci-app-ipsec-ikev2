@@ -17,11 +17,11 @@ EEOF
 }
 
 uci -q batch <<-EOF >/dev/null
-	delete firewall.luci_app_ipsec_server
-	set firewall.luci_app_ipsec_server=include
-	set firewall.luci_app_ipsec_server.type=script
-	set firewall.luci_app_ipsec_server.path=/var/etc/ipsecvpn.include
-	set firewall.luci_app_ipsec_server.reload=1
+	delete firewall.luci_app_ipsec_ikev2
+	set firewall.luci_app_ipsec_ikev2=include
+	set firewall.luci_app_ipsec_ikev2.type=script
+	set firewall.luci_app_ipsec_ikev2.path=/var/etc/ipsecvpn.include
+	set firewall.luci_app_ipsec_ikev2.reload=1
 EOF
 
 uci -q batch <<-EOF >/dev/null

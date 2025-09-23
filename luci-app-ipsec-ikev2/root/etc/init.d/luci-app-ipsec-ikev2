@@ -246,14 +246,14 @@ start() {
 	gen_include
 	
 	uci -q batch <<-EOF >/dev/null
-		set network.ipsec_server.ipaddr="${vt_clientip%.*}.1"
+		set network.ipsec_ikev2.ipaddr="${vt_clientip%.*}.1"
 		commit network
 	EOF
-	ifup ipsec_server > /dev/null 2>&1
+	ifup ipsec_ikev2 > /dev/null 2>&1
 }
 
 stop() {
-	ifdown ipsec_server > /dev/null 2>&1
+	ifdown ipsec_ikev2 > /dev/null 2>&1
 	sed -i '/l2tp-server/d' ${CHAP_SECRETS} 2>/dev/null
 	top -bn1 | grep "${L2TP_PATH}" | grep -v "grep" | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1
 	rm -rf ${L2TP_PATH}
@@ -265,13 +265,13 @@ stop() {
 
 gen_iface_and_firewall() {
 	uci -q batch <<-EOF >/dev/null
-		delete network.ipsec_server
-		set network.ipsec_server=interface
-		set network.ipsec_server.device="ipsec0"
-		set network.ipsec_server.device="ipsec0"
-		set network.ipsec_server.proto="static"
-		set network.ipsec_server.ipaddr="${vt_clientip%.*}.1"
-		set network.ipsec_server.netmask="255.255.255.0"
+		delete network.ipsec_ikev2
+		set network.ipsec_ikev2=interface
+		set network.ipsec_ikev2.device="ipsec0"
+		set network.ipsec_ikev2.device="ipsec0"
+		set network.ipsec_ikev2.proto="static"
+		set network.ipsec_ikev2.ipaddr="${vt_clientip%.*}.1"
+		set network.ipsec_ikev2.netmask="255.255.255.0"
 		commit network
 		
 		delete firewall.ipsecserver
@@ -280,11 +280,11 @@ gen_iface_and_firewall() {
 		set firewall.ipsecserver.input="ACCEPT"
 		set firewall.ipsecserver.forward="ACCEPT"
 		set firewall.ipsecserver.output="ACCEPT"
-		set firewall.ipsecserver.network="ipsec_server"
+		set firewall.ipsecserver.network="ipsec_ikev2"
 		commit firewall
 	EOF
 }
 
-if [ -z "$(uci -q get network.ipsec_server)" ] || [ -z "$(uci -q get firewall.ipsecserver)" ]; then
+if [ -z "$(uci -q get network.ipsec_ikev2)" ] || [ -z "$(uci -q get firewall.ipsecserver)" ]; then
 	gen_iface_and_firewall
 fi

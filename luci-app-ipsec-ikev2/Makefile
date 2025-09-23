@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ipsec-ikev2
 PKG_VERSION:=20250923
-PKG_RELEASE:=23
+PKG_RELEASE:=24
 
 PKG_MAINTAINER:=miaogongzi 
 
