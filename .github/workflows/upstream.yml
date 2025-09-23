@@ -86,7 +86,7 @@ jobs:
         (
         git_clone https://github.com/mgz0227/my-packages && mvdir my-packages
         git_clone https://github.com/mgz0227/luci-theme-rosy && mvdir previews
-        #git_clone https://github.com/mgz0227/luci-app-ipsec-ikev2
+        git_clone https://github.com/mgz0227/luci-app-ipsec-ikev2
         git_clone https://github.com/thinktip/luci-theme-neobird
         #git_clone https://github.com/jerrykuku/luci-theme-argon
         git_clone https://github.com/kiddin9/luci-app-dnsfilter
