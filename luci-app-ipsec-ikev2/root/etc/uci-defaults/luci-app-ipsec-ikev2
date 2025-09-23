@@ -1,0 +1,39 @@
+#!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-luci-app-ipsec-ikev2.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-luci-app-ipsec-ikev2.json << EEOF
+{
+    "config": "luci-app-ipsec-ikev2",
+    "init": "luci-app-ipsec-ikev2"
+}
+EEOF
+}
+[ ! -f "/usr/share/ucitrack/luci-app-luci-app-ipsec-ikev2.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-luci-app-ipsec-ikev2.json << EEOF
+{
+    "config": "luci-app-ipsec-ikev2",
+    "init": "luci-app-ipsec-ikev2"
+}
+EEOF
+}
+
+uci -q batch <<-EOF >/dev/null
+	delete firewall.luci_app_ipsec_server
+	set firewall.luci_app_ipsec_server=include
+	set firewall.luci_app_ipsec_server.type=script
+	set firewall.luci_app_ipsec_server.path=/var/etc/ipsecvpn.include
+	set firewall.luci_app_ipsec_server.reload=1
+EOF
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@luci-app-ipsec-ikev2[-1]
+	add ucitrack luci-app-ipsec-ikev2
+	set ucitrack.@luci-app-ipsec-ikev2[-1].init=luci-app-ipsec-ikev2
+	commit ucitrack
+EOF
+
+/etc/init.d/ipsec disable 2>/dev/null
+/etc/init.d/ipsec stop 2>/dev/null
+/etc/init.d/xl2tpd disable 2>/dev/null
+/etc/init.d/xl2tpd stop 2>/dev/null
+rm -rf /tmp/luci-*cache
+exit 0
