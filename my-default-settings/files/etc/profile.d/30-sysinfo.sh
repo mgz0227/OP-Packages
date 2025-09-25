@@ -102,20 +102,21 @@ sleep 1
 done
 ip_address="$(get_ip_addresses)"
 
-# display info
-display "系统负载" "${load%% *}" "${critical_load}" "0" "" "${load#* }"
-printf "运行时间:  \x1B[92m%s\x1B[0m\t\t" "$time"
-echo "" # fixed newline
+# 系统负载 + 运行时间
+printf "%-14s %-20s %-12s %s\n" \
+  "系统负载:"  "$(echo -e "\e[92m${load%% *}\e[0m ${load#* }")" \
+  "运行时间:"  "$(echo -e "\e[92m$time\e[0m")"
 
+# 内存已用 + IP
+printf "%-14s %-20s %-12s %s\n" \
+  "内存已用:"  "$(echo -e "\e[92m$memory_usage %\e[0m of ${memory_total}MB")" \
+  "IP 地址:"   "$(echo -e "\e[92m$ip_address\e[0m")"
 
-display "内存已用" "$memory_usage" "70" "0" " %" " of ${memory_total}MB"
-display "交换内存" "$swap_usage" "10" "0" " %" " of $swap_total""Mb"
-printf "IP  地址:  \x1B[92m%s\x1B[0m" "$ip_address"
-echo "" # fixed newline
+# 交换内存（保持原来的 display，只有满足条件才显示）
+display "交换内存" "$swap_usage" "10" "0" " %" " of $swap_total""MB"
 
-display "系统存储" "$root_usage" "90" "1" "%" " of $root_total"
-if [ -x /sbin/cpuinfo ]; then
-printf "CPU 信息: \x1B[92m%s\x1B[0m\t" "$(echo `/sbin/cpuinfo | cut -d ' ' -f -4`)"
-fi
-echo ""
-echo ""
+# 系统存储 + CPU
+printf "%-14s %-20s %-12s %s\n" \
+  "系统存储:"  "$(echo -e "\e[92m$root_usage%\e[0m of $root_total")" \
+  "CPU 信息:"  "$(echo -e "\e[92m$(/sbin/cpuinfo | cut -d ' ' -f -4)\e[0m")"
+
