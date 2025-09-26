@@ -8,9 +8,8 @@ function getCurrentVersion() {
         return "Error";
     }
 
-    $parts = explode(' - ', $output);
-    if (count($parts) >= 2) {
-        return cleanVersion($parts[1]);
+    if (preg_match('/(\d+\.\d+\.\d+-(?:r|rc)\d+)/', $output, $matches)) {
+        return $matches[1];
     }
 
     return "Error";
@@ -24,37 +23,71 @@ function getLatestVersion() {
         return "Error";
     }
 
-    preg_match('/\/releases\/tag\/([\d\.]+)/', $html, $matches);
-    if (isset($matches[1])) {
-        return cleanVersion($matches[1]);
+    if (preg_match('/luci-app-nekobox_(\d+\.\d+\.\d+-(?:r|rc)\d+)/', $html, $matches)) {
+        return $matches[1];
     }
 
     return "Error";
 }
 
-function cleanVersion($version) {
-    $version = explode('-', $version)[0];
-    return preg_replace('/[^0-9\.]/', '', $version);
+function compareVersions($ver1, $ver2) {
+    if ($ver1 === $ver2) {
+        return 0;
+    }
+    
+    list($main1, $rel1) = explode('-', $ver1 . '-');
+    list($main2, $rel2) = explode('-', $ver2 . '-');
+    
+    $rel1 = rtrim($rel1, '-');
+    $rel2 = rtrim($rel2, '-');
+    
+    $mainCompare = version_compare($main1, $main2);
+    if ($mainCompare !== 0) {
+        return $mainCompare;
+    }
+    
+    return compareReleases($rel1, $rel2);
+}
+
+function compareReleases($rel1, $rel2) {
+    if (empty($rel1) && empty($rel2)) return 0;
+    if (empty($rel1)) return -1;
+    if (empty($rel2)) return 1;
+    
+    preg_match('/(r|rc)(\d+)/', $rel1, $m1);
+    preg_match('/(r|rc)(\d+)/', $rel2, $m2);
+    
+    $type1 = $m1[1] ?? '';
+    $type2 = $m2[1] ?? '';
+    $num1 = intval($m1[2] ?? 0);
+    $num2 = intval($m2[2] ?? 0);
+    
+    $priority = ['r' => 1, 'rc' => 2];
+    $pri1 = $priority[$type1] ?? 0;
+    $pri2 = $priority[$type2] ?? 0;
+    
+    if ($pri1 !== $pri2) {
+        return $pri1 - $pri2;
+    }
+    
+    return $num1 - $num2;
 }
 
 $currentVersion = getCurrentVersion();
 $latestVersion = getLatestVersion();
 
-if ($currentVersion === "Error" || $latestVersion === "Error") {
-    $response = [
-        'currentVersion' => $currentVersion,
-        'latestVersion' => $latestVersion,
-        'hasUpdate' => false,
-        'error' => 'Failed to fetch version information'
-    ];
-} else {
-    $hasUpdate = (version_compare($currentVersion, $latestVersion, '<')) ? true : false;
+$response = [
+    'currentVersion' => $currentVersion,
+    'latestVersion' => $latestVersion,
+    'hasUpdate' => false
+];
 
-    $response = [
-        'currentVersion' => $currentVersion,
-        'latestVersion' => $latestVersion,
-        'hasUpdate' => $hasUpdate
-    ];
+if ($currentVersion !== "Error" && $latestVersion !== "Error") {
+    $compare = compareVersions($currentVersion, $latestVersion);
+    $response['hasUpdate'] = ($compare < 0);
+    $response['compareResult'] = $compare;
+} else {
+    $response['error'] = 'Version fetch failed';
 }
 
 header('Content-Type: application/json');
