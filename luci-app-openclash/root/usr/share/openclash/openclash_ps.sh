@@ -1,5 +1,5 @@
 #!/bin/sh
-. $IPKG_INSTROOT/usr/share/openclash/uci.sh
+. /usr/share/openclash/uci.sh
 
 JOB_COUNTER_FILE="/tmp/openclash_jobs"
 
