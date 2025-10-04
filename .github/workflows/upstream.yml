@@ -97,7 +97,7 @@ jobs:
         git_clone https://github.com/kiddin9/luci-app-wizard
         git_clone https://github.com/kiddin9/luci-app-adguardhome
         git_clone https://github.com/kiddin9/luci-app-cloudreve
-        git_clone https://github.com/kiddin9/openwrt-clouddrive2 && mvdir openwrt-clouddrive2
+        git_clone https://github.com/kiddin9/openwrt-filebrowser && mvdir openwrt-filebrowser
         # git_clone https://github.com/kiddin9/nginx-ui-openwrt && mvdir nginx-ui-openwrt
         ) &
         (
@@ -150,6 +150,8 @@ jobs:
         git_clone https://github.com/brvphoenix/luci-app-wrtbwmon wrtbwmon1 && mvdir wrtbwmon1
         git_clone https://github.com/brvphoenix/wrtbwmon wrtbwmon2 && mvdir wrtbwmon2
         git_clone https://github.com/muink/openwrt-fastfetch
+        git_clone https://github.com/timsaya/luci-app-bandix bandix1 && mv -f bandix1/luci-app-bandix ./;rm -rf bandix1
+        git_clone https://github.com/timsaya/openwrt-bandix bandix2 && mv -f bandix2/openwrt-bandix ./;rm -rf bandix2
         ) &
         (
         git_clone https://github.com/everburstSun/tencentcloud-openwrt-plugin-ddns && mv -n tencentcloud-openwrt-plugin-ddns/tencentcloud_ddns ./luci-app-tencentddns; rm -rf tencentcloud-openwrt-plugin-ddns
@@ -304,7 +306,7 @@ jobs:
         git_clone https://github.com/hczjxhdyz/luci-app-cns-server
         git_clone https://github.com/tano-systems/luci-app-tn-lldpd
         git_clone https://github.com/DRAWCORE/luci-app-qos-emong
-        git_clone https://github.com/wintbiit/luci-app-sakurafrp
+        # git_clone https://github.com/wintbiit/luci-app-sakurafrp
         git_clone https://github.com/ykxVK8yL5L/luci-app-taskschedule taskschedule && mvdir taskschedule
         git_clone https://github.com/douo/luci-app-tinyfecvpn
         ) &
@@ -360,7 +362,7 @@ jobs:
         git_sparse_clone chawrt/24.10 "https://github.com/liudf0716/luci" applications/luci-app-yt-dlp applications/luci-app-apfree-wifidog applications/luci-app-ss-redir
         git_sparse_clone chawrt/24.10 "https://github.com/liudf0716/packages" net/ss-redir
         ) &
-        git_sparse_clone master "https://github.com/immortalwrt/packages" net/n2n net/dae \
+        git_sparse_clone master "https://github.com/immortalwrt/packages" net/n2n net/dae net/frp \
         net/amule net/cdnspeedtest net/minieap net/ddns-go net/sysuh3c net/3proxy net/cloudreve \
         net/go-nats net/go-wol net/bitsrunlogin-go net/transfer net/daed net/udp2raw net/msd_lite \
         net/subconverter net/ngrokc net/scutclient net/gost net/ua2f net/dufs net/qBittorrent-Enhanced-Edition \
@@ -368,35 +370,33 @@ jobs:
         net/ipset-lists net/ShadowVPN net/nps net/vlmcsd net/dnsforwarder \
         net/ps3netsrv net/brook net/q net/speedtest-cli \
         net/vsftpd net/smartdns net/miniupnpd net/p910nd \
-        net/ariang libs/wxbase libs/rapidjson libs/libcron libs/quickjspp libs/toml11 \
+        net/ariang libs/wxbase libs/rapidjson libs/libcron libs/quickjspp libs/toml11 libs/libdvbcsa \
         libs/libdouble-conversion libs/qt6base libs/jpcre2 libs/alac libs/libcryptopp libs/antileech \
-        utils/qt6tools utils/dockerd utils/cpulimit utils/sendat utils/filebrowser utils/cups-bjnp utils/rhash utils/boltbrowser \
+        utils/qt6tools utils/dockerd utils/cpulimit utils/sendat utils/cups-bjnp utils/rhash utils/boltbrowser \
         utils/phicomm-k3screenctrl utils/joker utils/7z utils/dhrystone utils/supervisor utils/tinymembench utils/pcat-mgr utils/fan2go \
         utils/coremark utils/watchcat multimedia/you-get multimedia/lux multimedia/gmediarender multimedia/ykdl multimedia/gallery-dl \
         sound/spotifyd devel/go-rice admin/gotop \
         lang/lua-periphery lang/lua-neturl lang/lua-maxminddb lang/node-pnpm devel/gn
         git_clone https://github.com/koshev-msk/modemfeed && mv -n modemfeed/*/!(telephony)/* ./; rm -rf modemfeed
         git_sparse_clone openwrt-24.10 "https://github.com/coolsnowwolf/luci" applications themes/luci-theme-design libs/luci-lib-fs
-        mv -f applications luciapp;rm -rf luciapp/luci-app-turboacc
+        mv -f applications luciapp;rm -rf luciapp/{luci-app-turboacc,luci-app-frp*}
         git_sparse_clone master "https://github.com/coolsnowwolf/luci" applications
         mv -n applications/* luciapp/; rm -rf applications
         rm -rf luciapp/{luci-app-qbittorrent,luci-app-zerotier,luci-app-cpufreq,luci-app-e2guardian,luci-app-aliyundrive-fuse,luci-app-syncdial,luci-app-firewall}
-        git_sparse_clone openwrt-24.10 "https://github.com/immortalwrt/luci" applications protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
-        mv -n luciapp/!(luci-app-filetransfer|luci-app-ksmbd) applications/; rm -rf luciapp
+        git_sparse_clone master "https://github.com/immortalwrt/luci" applications protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
+        rm -rf applications/luci-app-frp*;mv -n luciapp/!(luci-app-filetransfer|luci-app-ksmbd) applications/; rm -rf luciapp
 
-        for ipk in $(ls -d applications/!(luci-app-rclone|luci-app-dockerman|luci-app-3ginfo-lite|luci-app-aria2|luci-app-ddns|luci-app-package-manager|luci-app-ksmbd|luci-app-samba4|luci-app-watchcat|luci-app-upnp|luci-app-transmission)/); do
+        for ipk in $(ls -d applications/!(luci-app-rclone|luci-app-dockerman|luci-app-smartdns|luci-app-3ginfo-lite|luci-app-aria2|luci-app-ddns|luci-app-package-manager|luci-app-ksmbd|luci-app-samba4|luci-app-watchcat|luci-app-upnp|luci-app-transmission)/); do
         	if [[ $(ls $ipk/po | wc -l) -gt 4 ]]; then
             rm -rf $ipk
         	fi
         done
-        git clone -b dev --depth 1 https://github.com/vernesong/OpenClash && mv -n OpenClash/luci-app-openclash ./; rm -rf OpenClash
-
 
     - name: Delete duplicated packages
       run: |
         shopt -s extglob
         set +e
-        mv -n applications/!(luci-app-noddos|luci-app-openvpn-server|luci-app-chrony|luci-app-kodexplorer|luci-app-cshark|luci-app-dnscrypt-proxy|luci-app-https-dns-proxy|luci-app-ssr-mudb-server|luci-app-ledtrig-*|luci-app-antiblock) ./ ; rm -Rf applications
+        mv -n applications/!(luci-app-noddos|luci-app-filebrowser-go|luci-app-openvpn-server|luci-app-chrony|luci-app-kodexplorer|luci-app-cshark|luci-app-dnscrypt-proxy|luci-app-https-dns-proxy|luci-app-ssr-mudb-server|luci-app-ledtrig-*|luci-app-antiblock) ./ ; rm -Rf applications
         mv -n lean/!(r8101|r8125|r8126|r8168) ./ ; rm -Rf lean
         mv -n liep/!(luci-app-filebrowser) ./ ; rm -Rf liep
         mv -n openwrt-app-actions/applications/* ./;rm -rf openwrt-app-actions
@@ -426,6 +426,9 @@ jobs:
         sed -i \
         -e "s/\(network\..*\)\.ifname/\1.device/g" \
         `find \( -path "*/root/*" -o -path "*/files/*" -o -path "*/luasrc/*" \) ! -path "./base-files/*" ! -path "./dnsmasq/*" ! -path "./luci-base/*" ! -path "./ppp/*" -type f` &
+        # sed -i -e "s/\(killall .*\)-[0-9] /\1-3 /g" \
+        -e "s/killall \([^-]+*\)/killall -3 \1/g" \
+        `find \( -path "*/files/root/etc/init.d/*" -o -path "*/root/etc/init.d/*" -o -path "*/files/*.init" \) -type f` &
         (
         function latest() {
           (curl -gs -H 'Content-Type: application/json' \
@@ -481,6 +484,7 @@ jobs:
         chmod +x github/diy/*.sh
         bash .github/diy/create_acl_for_luci.sh -a >/dev/null 2>&1 || true
         bash .github/diy/convert_translation.sh -a >/dev/null 2>&1 || true
+        bash .github/diy/create_ucitrack_for_luci.sh -a >/dev/null 2>&1 || true
         bash .github/diy/generate_ucitrack.sh -a >/dev/null 2>&1 || true
         chmod -R +x luci-*/root/etc/init.d/ luci-*/root/bin/ luci-*/root/sbin/ luci-*/root/usr/libexec/ luci-*/root/usr/bin/ luci-*/root/usr/sbin/
         find . -path "./luci-*/root/usr/share/*" -name "*.sh" -type f -exec chmod +x {} \;
