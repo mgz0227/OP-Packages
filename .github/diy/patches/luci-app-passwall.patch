@@ -11,7 +11,7 @@
 
 --- a/luci-app-passwall/Makefile
 +++ b/luci-app-passwall/Makefile
-@@ -37,7 +37,31 @@
+@@ -36,7 +35,30 @@ LUCI_PKGARCH:=all
  LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
  	+chinadns-ng +dns2socks +dnsmasq-full +ip-full \
  	+libuci-lua +lua +luci-compat +luci-lib-jsonc \
@@ -30,7 +30,6 @@
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client:shadowsocksr-libev-ssr-local \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client:shadowsocksr-libev-ssr-redir \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server:shadowsocksr-libev-ssr-server \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs:simple-obfs \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs:simple-obfs-client \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_SingBox:sing-box \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Trojan_Plus:trojan-plus \
@@ -44,7 +43,7 @@
  
  define Package/$(PKG_NAME)/config
  menu "Configuration"
-@@ -72,8 +96,7 @@
+@@ -71,8 +94,7 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Geoview
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy
  	bool "Include Haproxy"
@@ -54,7 +53,7 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Hysteria
  	bool "Include Hysteria"
-@@ -88,19 +111,15 @@
+@@ -87,19 +109,15 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Client
  	bool "Include Shadowsocks Libev Client"
@@ -69,13 +68,12 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Client
  	bool "Include Shadowsocks Rust Client"
--	depends on !i386
+ 	depends on !i386
 -	select PACKAGE_shadowsocks-rust-sslocal
-+	depends on aarch64||arm||i386||mips||mipsel||x86_64
  	default y if aarch64||x86_64
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server
-@@ -111,8 +130,6 @@
+@@ -110,8 +128,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client
  	bool "Include ShadowsocksR Libev Client"
@@ -84,7 +82,7 @@
  	default y
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server
-@@ -128,22 +145,20 @@
+@@ -121,21 +137,19 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs
  	bool "Include Simple-Obfs (Shadowsocks Plugin)"
@@ -109,7 +107,7 @@
  	select PACKAGE_tuic-client
  	default n
  
-@@ -155,14 +170,11 @@
+@@ -148,14 +162,11 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Geodata
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Plugin
  	bool "Include V2ray-Plugin (Shadowsocks Plugin)"
@@ -126,7 +124,6 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Xray_Plugin
  	bool "Include Xray-Plugin (Shadowsocks Plugin)"
-
 
 --- a/luci-app-passwall/luasrc/controller/passwall.lua
 +++ b/luci-app-passwall/luasrc/controller/passwall.lua
@@ -363,7 +360,7 @@ index cc39c00a21..079c9723b3 100755
 --- a/luci-app-passwall/root/usr/share/passwall/0_default_config
 +++ b/luci-app-passwall/root/usr/share/passwall/0_default_config
  	option use_default_dns 'direct'
-@@ -45,12 +46,15 @@ config global_other
+@@ -45,12 +46,18 @@ config global_other
  	option nodes_ping 'auto_ping tcping'
  
  config global_rules
@@ -378,7 +375,10 @@ index cc39c00a21..079c9723b3 100755
 -	option geoip_update '0'
 +	option geoip_update '1'
 +	option enable_geoview '1'
++	option geo2rule '1'
 +	option week_update '7'
 +	option time_update '4'
++	option geoip_url 'https://fastly.jsdelivr.net/gh/Loyalsoldier/geoip@release/geoip.dat'
++	option geosite_url 'https://fastly.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat'
  	list gfwlist_url 'https://fastly.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/gfw.txt'
  	list chnroute_url 'https://ispip.clang.cn/all_cn.txt'
