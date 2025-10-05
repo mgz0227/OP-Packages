@@ -71,6 +71,8 @@ document.addEventListener("DOMContentLoaded", function () {
             'fontNotoSerif': 'Noto Serif',
             'fontComicNeue': 'Comic Neue',
             'fontSettings': 'Font Settings', 
+            'fontNotoSans': 'Noto Sans',
+            'fontCinzelDecorative': 'Cinzel Decorative',
             'fontSize': 'Font Size',
             'fontColor': 'Font Color',
             'black': 'Black',
@@ -121,6 +123,8 @@ document.addEventListener("DOMContentLoaded", function () {
             'fontDMSerif': '衬线字体',
             'fontNotoSerif': '思源宋体',
             'fontComicNeue': '漫画字体',
+            'fontNotoSans': '思源黑体',
+            'fontCinzelDecorative': 'Cinzel 装饰体',
             'fontSettings': '字体设置', 
             'fontSize': '字体大小',
             'fontColor': '字体颜色',
@@ -173,6 +177,8 @@ document.addEventListener("DOMContentLoaded", function () {
             'fontDMSerif': '襯線字體',
             'fontNotoSerif': '思源宋體',
             'fontComicNeue': '漫畫字體',
+            'fontNotoSans': '思源黑體',
+            'fontCinzelDecorative': 'Cinzel 裝飾體',
             'fontSettings': '字型設定', 
             'fontSize': '字體大小',
             'fontColor': '字體顏色',
@@ -225,6 +231,8 @@ document.addEventListener("DOMContentLoaded", function () {
             'fontDMSerif': 'DM Serif',
             'fontNotoSerif': 'Noto Serif',
             'fontComicNeue': 'Comic Neue',
+            'fontNotoSans': '노토 산스',
+            'fontCinzelDecorative': '신젤 장식체',
             'fontSettings': '폰트 설정',
             'fontSize': '폰트 크기',
             'fontColor': '폰트 색상',
@@ -277,6 +285,8 @@ document.addEventListener("DOMContentLoaded", function () {
             'fontDMSerif': 'DM Serif',
             'fontNotoSerif': 'Noto Serif',
             'fontComicNeue': 'Comic Neue',
+            'fontNotoSans': 'Noto Sans',
+            'fontCinzelDecorative': 'Cinzel Decorative',
             'fontSettings': 'フォント設定',
             'fontSize': 'フォントサイズ',
             'fontColor': 'フォント色',
@@ -330,6 +340,8 @@ document.addEventListener("DOMContentLoaded", function () {
             'fontNotoSerif': 'Noto Serif',
             'fontComicNeue': 'Comic Neue',
             'fontSettings': 'Cài đặt phông chữ',
+            'fontNotoSans': 'Noto Sans',
+            'fontCinzelDecorative': 'Cinzel Decorative',
             'fontSize': 'Cỡ chữ',
             'fontColor': 'Màu chữ',
             'black': 'Đen',
@@ -382,6 +394,8 @@ document.addEventListener("DOMContentLoaded", function () {
             'fontNotoSerif': 'Noto Serif',
             'fontComicNeue': 'Comic Neue',
             'fontSettings': 'การตั้งค่าตัวอักษร',
+            'fontNotoSans': 'Noto Sans',
+            'fontCinzelDecorative': 'Cinzel Decorative',
             'fontSize': 'ขนาดตัวอักษร',
             'fontColor': 'สีตัวอักษร',
             'black': 'ดำ',
@@ -436,6 +450,8 @@ document.addEventListener("DOMContentLoaded", function () {
             'fontSettings': 'Настройки шрифта',
             'fontSize': 'Размер шрифта',
             'fontColor': 'Цвет шрифта',
+            'fontNotoSans': 'Noto Sans',
+            'fontCinzelDecorative': 'Cinzel Decorative',
             'black': 'Черный',
             'white': 'Белый',
             'red': 'Красный',
@@ -486,6 +502,8 @@ document.addEventListener("DOMContentLoaded", function () {
             'fontNotoSerif': 'Noto Serif',
             'fontComicNeue': 'Comic Neue',
             'fontSettings': 'Schrifteinstellungen',
+            'fontNotoSans': 'Noto Sans',
+            'fontCinzelDecorative': 'Cinzel Decorative',
             'fontSize': 'Schriftgröße',
             'fontColor': 'Schriftfarbe',
             'black': 'Schwarz',
@@ -540,6 +558,8 @@ document.addEventListener("DOMContentLoaded", function () {
             'fontSettings': 'Paramètres police',
             'fontSize': 'Taille police',
             'fontColor': 'Couleur police',
+            'fontNotoSans': 'Noto Sans',
+            'fontCinzelDecorative': 'Cinzel Decorative',
             'black': 'Noir',
             'white': 'Blanc',
             'red': 'Rouge',
@@ -590,6 +610,8 @@ document.addEventListener("DOMContentLoaded", function () {
             'fontNotoSerif': 'Noto Serif',
             'fontComicNeue': 'Comic Neue',
             'fontSettings': 'إعدادات الخط',
+            'fontNotoSans': 'Noto Sans',
+            'fontCinzelDecorative': 'Cinzel Decorative',
             'fontSize': 'حجم الخط',
             'fontColor': 'لون الخط',
             'black': 'أسود',
@@ -644,6 +666,8 @@ document.addEventListener("DOMContentLoaded", function () {
             'fontSettings': 'Configuración de fuente',
             'fontSize': 'Tamaño de fuente',
             'fontColor': 'Color de fuente',
+            'fontNotoSans': 'Noto Sans',
+            'fontCinzelDecorative': 'Cinzel Decorative',
             'black': 'Negro',
             'white': 'Blanco',
             'red': 'Rojo',
@@ -696,6 +720,8 @@ document.addEventListener("DOMContentLoaded", function () {
             'fontSettings': 'ফন্ট সেটিংস',
             'fontSize': 'ফন্টের আকার',
             'fontColor': 'ফন্টের রঙ',
+            'fontNotoSans': 'Noto Sans',
+            'fontCinzelDecorative': 'Cinzel Decorative',
             'black': 'কালো',
             'white': 'সাদা',
             'red': 'লাল',
@@ -992,6 +1018,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 case 'fredoka': nextFont = 'dmserif'; break;
                 case 'dmserif': nextFont = 'notoserif'; break;
                 case 'notoserif': nextFont = 'comicneue'; break;
+                case 'comicneue': nextFont = 'notosans'; break;
+                case 'notosans': nextFont = 'cinzeldecorative'; break; 
                 default: nextFont = 'default';
             }
     
@@ -1573,14 +1601,14 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             #custom-alert {
-                background: linear-gradient(to bottom, #7dd3fc, #3b82f6, #1d4ed8);
+                background: var(--bg-container);
                 border: 1px solid #333;
                 border-radius: 8px;
                 width: 90%;
-                max-width: 500px;
+                max-width: 550px;
                 padding: 20px;
                 box-shadow: 0 0 20px rgba(0,0,0,0.5);
-                color: #fff;
+                color: var(--text-primary) !important;
             }
 
             .alert-header {
@@ -1594,8 +1622,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
             .alert-header h3 {
                 margin: 0;
-                color: rgb(255, 0, 255) !important;
-                font-size: 1.3em;
+                color: var(--accent-color) !important;
+                font-size: 1.4em;
             }
 
             .alert-content {
@@ -1606,12 +1634,12 @@ document.addEventListener("DOMContentLoaded", function () {
             .alert-content p {
                 line-height: 1.6;
                 margin: 10px 0;
-                color: #ddd;
+                color: var(--text-primary) !important;
                 font-size: 14px;
             }
 
             .alert-content p a.github-link {
-                color: #ff69b4;
+                color: var(--accent-color);
                 text-decoration: none;
                 transition: color 0.3s ease;
             }
@@ -1751,6 +1779,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 break;
             case 'comicneue':
                 fontFamily = "'Comic Neue', cursive";
+                break;
+            case 'notosans':
+                fontFamily = "'Noto Sans', sans-serif";
+                break;
+            case 'cinzeldecorative':
+                fontFamily = "'Cinzel Decorative', cursive";
                 break;
             default:
                 fontFamily = "-apple-system, BlinkMacSystemFont, sans-serif";
@@ -1899,6 +1933,8 @@ document.addEventListener("DOMContentLoaded", function () {
             case 'dmserif': return translateText('fontDMSerif');
             case 'notoserif': return translateText('fontNotoSerif');
             case 'comicneue': return translateText('fontComicNeue');
+            case 'notosans': return translateText('fontNotoSans');
+            case 'cinzeldecorative': return translateText('fontCinzelDecorative');
             default: return translateText('fontDefault');
         }
     }
@@ -2946,7 +2982,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 backdrop-filter: blur(3px);
             }
             #theme-settings-dialog {
-                background: #0f3460;
+                background: var(--bg-container);
                 width: 70%;
                 height: 80vh;
                 margin-top: 0;
