@@ -6,11 +6,11 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=cloudreve
 PKG_VERSION:=4.8.0
-PKG_RELEASE:=60
+PKG_RELEASE:=61
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/cloudreve/Cloudreve.git
-PKG_SOURCE_VERSION:=e3e08a9b7545aed1401c6c1313f8cdc5af0ef1aa
+PKG_SOURCE_VERSION:=e7d6fb25e4647b0d0ad1dc14fd1bd6be2335b050
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-3.0-only
