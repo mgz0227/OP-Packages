@@ -86,6 +86,7 @@ jobs:
         (
         git_clone https://github.com/mgz0227/my-packages && mvdir my-packages
         git_clone https://github.com/mgz0227/luci-theme-rosy && mvdir previews
+        git_clone https://github.com/mgz0227/miniupnp
         git_clone https://github.com/mgz0227/luci-app-ipsec-ikev2
         git_clone https://github.com/thinktip/luci-theme-neobird
         #git_clone https://github.com/jerrykuku/luci-theme-argon
@@ -369,7 +370,7 @@ jobs:
         net/tinyportmapper net/tinyfecvpn net/nexttrace net/rustdesk-server net/tuic-server \
         net/ipset-lists net/ShadowVPN net/nps net/vlmcsd net/dnsforwarder \
         net/ps3netsrv net/brook net/q net/speedtest-cli \
-        net/vsftpd net/smartdns net/miniupnpd net/p910nd \
+        net/vsftpd net/smartdns net/p910nd \
         net/ariang libs/wxbase libs/rapidjson libs/libcron libs/quickjspp libs/toml11 libs/libdvbcsa \
         libs/libdouble-conversion libs/qt6base libs/jpcre2 libs/alac libs/libcryptopp libs/antileech \
         utils/qt6tools utils/dockerd utils/cpulimit utils/sendat utils/cups-bjnp utils/rhash utils/boltbrowser \
