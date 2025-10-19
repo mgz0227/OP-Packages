@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=bandix
-PKG_VERSION:=0.5.4
-PKG_RELEASE:=3
+PKG_VERSION:=0.5.5
+PKG_RELEASE:=4
 
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=timsaya
