@@ -1,0 +1,13 @@
+# Node & package manager
+.dev/node_modules/
+.dev/.pnpm-store/
+.dev/pnpm-debug.log*
+.dev/npm-debug.log*
+.dev/yarn-debug.log*
+.dev/yarn-error.log*
+
+# Env files
+.env
+
+# Build artifacts
+.DS_Store
