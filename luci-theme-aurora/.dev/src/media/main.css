@@ -18,16 +18,17 @@
   --background-mid: oklch(0.984 0.003 247.858);
   --background-end: oklch(0.984 0.003 247.858);
 
-  --primary: oklch(0.6656 0.1055 234.61);
-  --primary-text: #499ecb;
-  --secondary: #0f2e5d;
-  --secondary-text: #0f2e5d;
+  --primary: oklch(0.68 0.11 233);
+  --primary-text: oklch(0.6656 0.1055 234.61);
+  --primary-hover: oklch(0.64 0.1055 234.61);
   --accent: oklch(0.62 0.22 25);
   --accent-text: oklch(0.97 0.02 25);
-  --muted: #0f2e5d;
-  --muted-text: #0f2e5d;
-  --destructive: #0f2e5d;
-  --destructive-text: #0f2e5d;
+  --muted: oklch(0.97 0 0);
+  --muted-text: oklch(0.35 0 0);
+  --muted-hover: oklch(0.94 0 0);
+  --destructive: oklch(0.94 0.05 25);
+  --destructive-text: oklch(0.35 0.12 25);
+  --destructive-hover: oklch(0.92 0.06 25);
   --ring: #0f2e5d;
 
   --success: oklch(0.94 0.05 160);
@@ -99,16 +100,17 @@
   --background-start: oklch(0.2077 0.0398 265.75);
   --background-mid: oklch(0.3861 0.059 188.42);
   --background-end: oklch(0.4318 0.0865 166.91);
-  --primary: oklch(77.9% 0.168 188.745);
-  --primary-text: #499ecb;
-  --secondary: #0f2e5d;
-  --secondary-text: #0f2e5d;
-  --muted: #0f2e5d;
-  --muted-text: #0f2e5d;
+  --primary: oklch(0.534 0.118 190.485);
+  --primary-text: oklch(0.779 0.168 188.745);
+  --primary-hover: oklch(0.58 0.13 189.632);
+  --muted: oklch(0.27 0 0);
+  --muted-text: oklch(0.92 0 0);
+  --muted-hover: oklch(0.32 0 0);
   --accent: oklch(0.35 0.12 25);
   --accent-text: oklch(0.88 0.14 25);
-  --destructive: #0f2e5d;
-  --destructive-text: #0f2e5d;
+  --destructive: oklch(0.28 0.12 25/0.3);
+  --destructive-text: oklch(0.88 0.14 25);
+  --destructive-hover: oklch(0.32 0.14 25/0.4);
   --ring: #0f2e5d;
   --border: oklch(0.8699 0 0);
 
@@ -263,15 +265,22 @@
 
   --color-primary: var(--primary);
   --color-primary-text: var(--primary-text);
+  --color-primary-hover: var(--primary-hover);
+
   --color-secondary: var(--secondary);
   --color-secondary-text: var(--secondary-text);
+  --color-secondary-hover: var(--secondary-hover);
 
   --color-muted: var(--muted);
   --color-muted-text: var(--muted-text);
-  --color-accent: var(--accent);
-  --color-accent-text: var(--accent-text);
+  --color-muted-hover: var(--muted-hover);
+
   --color-destructive: var(--destructive);
   --color-destructive-text: var(--destructive-text);
+  --color-destructive-hover: var(--destructive-hover);
+
+  --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
   --color-ring: var(--ring);
   --color-border: var(--border);
 
@@ -456,7 +465,7 @@
       }
 
       .brand {
-        @apply hover:text-aurora-sky dark:hover:text-primary inline-block flex-shrink-0 text-xl font-semibold tracking-tight text-slate-900 no-underline transition-all duration-200 hover:-translate-y-0.5 max-md:order-1 max-md:flex-1 max-md:text-lg dark:text-slate-100;
+        @apply hover:text-primary inline-block flex-shrink-0 text-xl font-semibold tracking-tight text-slate-900 no-underline transition-all duration-200 hover:-translate-y-0.5 max-md:order-1 max-md:flex-1 max-md:text-lg dark:text-slate-100;
       }
 
       .nav {
@@ -623,7 +632,7 @@
       @apply mt-2 flex min-h-16 flex-wrap items-center justify-between text-xs text-slate-500 dark:text-slate-400;
 
       & a {
-        @apply text-aurora-sky dark:text-primary;
+        @apply text-primary-text;
       }
 
       & span {
@@ -719,9 +728,8 @@
 
   @layer button {
     button,
-    .btn,
-    .cbi-button {
-      @apply bg-aurora-sky hover:bg-aurora-sky-600 dark:bg-aurora-teal-700 dark:hover:bg-aurora-teal-600 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-2xl px-3 py-1.5 text-sm font-medium text-white antialiased shadow-sm transition-all duration-200 max-md:text-base max-md:font-medium;
+    .btn {
+      @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-2xl border px-3 py-1.5 text-sm font-medium antialiased transition-all duration-200 max-md:text-base max-md:font-medium;
       &[disabled] {
         @apply cursor-not-allowed opacity-40 dark:opacity-30;
       }
@@ -730,20 +738,39 @@
       }
     }
 
-    .cbi-button-positive,
-    .cbi-button-apply {
-      @apply border-aurora-sky/40 bg-aurora-sky/8 text-aurora-sky hover:border-aurora-sky/60 hover:bg-aurora-sky/12 hover:text-aurora-sky-600 dark:border-aurora-teal-600/50 dark:bg-aurora-teal-600/15 dark:text-primary dark:hover:border-aurora-teal-600/70 dark:hover:bg-aurora-teal-600/20 dark:hover:text-aurora-teal-300 border shadow-none;
+    .btn,
+    .cbi-button,
+    .cbi-button-neutral,
+    .cbi-button-download,
+    .cbi-button-find,
+    .cbi-button-link,
+    .cbi-button-up,
+    .cbi-button-down,
+    .btn-secondary,
+    .drag-handle {
+      @apply border-muted bg-muted text-muted-text hover:bg-muted-hover;
     }
 
-    .btn-secondary,
-    .cbi-button-reset,
+    .btn.primary,
+    .cbi-button-action,
+    .cbi-button-apply,
+    .cbi-button-reload,
+    .cbi-button-add,
+    .cbi-button-edit {
+      @apply border-primary bg-primary hover:bg-primary-hover text-white;
+    }
+
+    .cbi-button-positive,
+    .cbi-button-fieldadd,
+    .cbi-button-save {
+      @apply border-primary/15 bg-primary/15 text-primary-text hover:bg-primary-hover/20;
+    }
+
     .cbi-button-negative,
-    .cbi-button-stop,
-    .cbi-button-neutral,
-    .cbi-button-remove,
-    .cbi-button-kill,
-    .drag-handle {
-      @apply border border-slate-300/60 bg-slate-50 text-slate-700 shadow-none hover:border-slate-400/60 hover:bg-slate-100 hover:text-slate-800 dark:border-gray-600/60 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-gray-500/60 dark:hover:bg-gray-700 dark:hover:text-gray-50;
+    .cbi-section-remove .cbi-button,
+    .cbi-button-reset,
+    .cbi-button-remove {
+      @apply border-destructive bg-destructive text-destructive-text hover:bg-destructive-hover;
     }
   }
 
@@ -810,7 +837,7 @@
 
   @layer dropdown {
     .cbi-dropdown {
-      @apply focus:border-aurora-sky focus:ring-aurora-sky/20 dark:focus:border-primary dark:focus:ring-primary/30 inline-flex h-fit max-w-full min-w-fit flex-shrink-0 items-center p-0 whitespace-nowrap shadow-sm transition-all duration-200 focus:ring-2 focus:outline-none;
+      @apply inline-flex h-fit max-w-full min-w-fit flex-shrink-0 items-center p-0 whitespace-nowrap shadow-sm transition-all duration-200;
 
       &[disabled] {
         @apply pointer-events-none opacity-40 dark:opacity-30;
