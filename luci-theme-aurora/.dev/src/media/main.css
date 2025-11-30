@@ -17,7 +17,8 @@
   --background-start: oklch(0.984 0.003 247.858);
   --background-mid: oklch(0.984 0.003 247.858);
   --background-end: oklch(0.984 0.003 247.858);
-
+  --progress-start: oklch(0.68 0.11 233);
+  --progress-end: oklch(0.7535 0.1034 198.37);
   --primary: oklch(0.68 0.11 233);
   --primary-text: oklch(0.6656 0.1055 234.61);
   --primary-hover: oklch(0.64 0.1055 234.61);
@@ -100,6 +101,8 @@
   --background-start: oklch(0.2077 0.0398 265.75);
   --background-mid: oklch(0.3861 0.059 188.42);
   --background-end: oklch(0.4318 0.0865 166.91);
+  --progress-start: oklch(0.4318 0.0865 166.91);
+  --progress-end: oklch(62.1% 0.145 189.632);
   --primary: oklch(0.534 0.118 190.485);
   --primary-text: oklch(0.779 0.168 188.745);
   --primary-hover: oklch(0.58 0.13 189.632);
@@ -177,91 +180,15 @@
   --spacing: 0.25rem;
 }
 
-@theme {
-  --color-aurora-green: #6ee7b7;
-  --color-aurora-green-50: oklch(97.2% 0.019 158.743);
-  --color-aurora-green-100: oklch(94.8% 0.045 159.652);
-  --color-aurora-green-200: oklch(90.5% 0.089 160.125);
-  --color-aurora-green-300: oklch(84.7% 0.148 160.742);
-  --color-aurora-green-400: oklch(89.6% 0.143 162.4);
-  --color-aurora-green-500: oklch(77.1% 0.198 161.205);
-  --color-aurora-green-600: oklch(64.3% 0.175 161.428);
-  --color-aurora-green-700: oklch(55.2% 0.142 162.113);
-  --color-aurora-green-800: oklch(47.1% 0.112 162.895);
-  --color-aurora-green-900: oklch(40.8% 0.089 163.742);
-  --color-aurora-green-950: oklch(27.9% 0.061 165.128);
-
-  --color-aurora-teal: #4fc3c7;
-  --color-aurora-teal-50: oklch(97.8% 0.016 185.234);
-  --color-aurora-teal-100: oklch(95.1% 0.041 186.152);
-  --color-aurora-teal-200: oklch(90.8% 0.079 187.063);
-  --color-aurora-teal-300: oklch(85.2% 0.128 187.894);
-  --color-aurora-teal-500: oklch(75.8% 0.145 188.2);
-  --color-aurora-teal-600: oklch(62.1% 0.145 189.632);
-  --color-aurora-teal-700: oklch(53.4% 0.118 190.485);
-  --color-aurora-teal-800: oklch(45.8% 0.094 191.328);
-  --color-aurora-teal-900: oklch(39.7% 0.074 192.156);
-  --color-aurora-teal-950: oklch(28.2% 0.052 193.864);
-
-  --color-aurora-sky: #499ecb;
-  --color-aurora-sky-50: oklch(97.8% 0.012 214.3);
-  --color-aurora-sky-100: oklch(95.2% 0.025 214.3);
-  --color-aurora-sky-200: oklch(90.1% 0.051 214.3);
-  --color-aurora-sky-300: oklch(82.8% 0.085 214.3);
-  --color-aurora-sky-400: oklch(73.5% 0.128 214.3);
-  --color-aurora-sky-500: oklch(68.5% 0.142 214.3);
-  --color-aurora-sky-600: oklch(58.2% 0.135 214.3);
-  --color-aurora-sky-700: oklch(49.8% 0.118 214.3);
-  --color-aurora-sky-800: oklch(42.6% 0.095 214.3);
-  --color-aurora-sky-900: oklch(36.1% 0.072 214.3);
-  --color-aurora-sky-950: oklch(25.8% 0.048 214.3);
-
-  --color-aurora-night-slate: #0f172a;
-  --color-aurora-night-slate-50: oklch(96.8% 0.008 245.123);
-  --color-aurora-night-slate-100: oklch(93.2% 0.018 246.084);
-  --color-aurora-night-slate-200: oklch(86.4% 0.035 247.159);
-  --color-aurora-night-slate-300: oklch(76.8% 0.062 248.347);
-  --color-aurora-night-slate-400: oklch(64.2% 0.098 249.638);
-  --color-aurora-night-slate-500: oklch(52.1% 0.128 250.942);
-  --color-aurora-night-slate-600: oklch(41.8% 0.145 252.258);
-  --color-aurora-night-slate-700: oklch(33.6% 0.142 253.586);
-  --color-aurora-night-slate-800: oklch(26.8% 0.128 254.926);
-  --color-aurora-night-slate-900: oklch(11.8% 0.042 264.7);
-  --color-aurora-night-slate-950: oklch(11.2% 0.089 257.847);
-
-  --color-aurora-night-teal: #134e4a;
-  --color-aurora-night-teal-50: oklch(96.9% 0.012 168.245);
-  --color-aurora-night-teal-100: oklch(92.8% 0.028 169.137);
-  --color-aurora-night-teal-200: oklch(85.6% 0.055 170.029);
-  --color-aurora-night-teal-300: oklch(75.4% 0.089 170.921);
-  --color-aurora-night-teal-400: oklch(62.8% 0.128 171.813);
-  --color-aurora-night-teal-500: oklch(51.2% 0.156 172.705);
-  --color-aurora-night-teal-600: oklch(41.5% 0.172 173.597);
-  --color-aurora-night-teal-700: oklch(33.8% 0.168 174.489);
-  --color-aurora-night-teal-800: oklch(27.6% 0.148 175.381);
-  --color-aurora-night-teal-900: oklch(29.5% 0.074 175.4);
-  --color-aurora-night-teal-950: oklch(18.9% 0.089 177.165);
-
-  --color-aurora-night-emerald: #065f46;
-  --color-aurora-night-emerald-50: oklch(97.1% 0.015 155.743);
-  --color-aurora-night-emerald-100: oklch(94.2% 0.035 156.652);
-  --color-aurora-night-emerald-200: oklch(88.9% 0.068 157.561);
-  --color-aurora-night-emerald-300: oklch(81.3% 0.112 158.47);
-  --color-aurora-night-emerald-400: oklch(71.8% 0.158 159.379);
-  --color-aurora-night-emerald-500: oklch(61.2% 0.189 160.288);
-  --color-aurora-night-emerald-600: oklch(51.8% 0.198 161.197);
-  --color-aurora-night-emerald-700: oklch(43.6% 0.185 162.106);
-  --color-aurora-night-emerald-800: oklch(36.8% 0.156 163.015);
-  --color-aurora-night-emerald-900: oklch(34.2% 0.118 163.2);
-  --color-aurora-night-emerald-950: oklch(22.1% 0.089 164.833);
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-text: var(--text);
   --color-aurora-start: var(--background-start);
   --color-aurora-mid: var(--background-mid);
   --color-aurora-end: var(--background-end);
+
+  --color-progress-start: var(--progress-start);
+  --color-progress-end: var(--progress-end);
 
   --color-primary: var(--primary);
   --color-primary-text: var(--primary-text);
@@ -355,9 +282,8 @@
 
   html {
     @apply scrollbar-thumb-rounded-full scrollbar-thin scrollbar-track-slate-100 scrollbar-thumb-slate-500/70 dark:scrollbar-track-slate-900 dark:scrollbar-thumb-slate-300/65;
-    @apply max-md:dark:bg-aurora-night-teal relative h-full font-sans max-md:bg-slate-100;
-    @apply md:before:pointer-events-none md:before:fixed md:before:inset-0 md:before:-z-10;
-    @apply md:before:from-aurora-start md:before:via-aurora-mid md:before:to-aurora-end md:before:bg-gradient-to-br;
+    @apply relative h-full font-sans md:before:pointer-events-none md:before:fixed md:before:inset-0 md:before:-z-10;
+    @apply md:before:from-aurora-start md:before:via-aurora-mid md:before:to-aurora-end max-md:bg-aurora-mid md:before:bg-gradient-to-br;
 
     body {
       @apply flex flex-col bg-transparent text-sm leading-relaxed font-normal text-slate-900 transition-all duration-300 dark:text-slate-100;
@@ -624,7 +550,7 @@
       }
 
       #syslog {
-        @apply bg-aurora-night-slate rounded-3xl border border-slate-400/25 p-6 text-slate-200 shadow-lg max-md:p-3 dark:border-gray-600/40 dark:bg-gray-900 dark:text-gray-100 dark:shadow-black/50;
+        @apply rounded-3xl border border-slate-400/25 bg-slate-900 p-6 text-slate-100 shadow-lg max-md:p-3 dark:border-slate-600/40;
       }
     }
 
@@ -729,7 +655,7 @@
   @layer button {
     button,
     .btn {
-      @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-2xl border px-3 py-1.5 text-sm font-medium antialiased transition-all duration-200 max-md:text-base max-md:font-medium;
+      @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-2xl border px-3 py-1.5 text-sm font-medium antialiased shadow-sm transition-all duration-200 max-md:text-base max-md:font-medium;
       &[disabled] {
         @apply cursor-not-allowed opacity-40 dark:opacity-30;
       }
@@ -783,7 +709,7 @@
     input[type="password"],
     .cbi-input-text,
     .cbi-input {
-      @apply focus:border-aurora-sky focus:ring-aurora-sky/20 dark:focus:border-primary dark:focus:ring-primary/30 relative rounded-2xl border border-slate-300/70 bg-white px-3 py-1.5 text-sm font-normal text-slate-900 placeholder-slate-400 shadow-sm transition-all duration-200 focus:ring-2 focus:outline-none dark:border-slate-600/60 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-400;
+      @apply focus:border-primary focus:ring-primary/20 relative rounded-2xl border border-slate-300/70 bg-white px-3 py-1.5 text-sm font-normal text-slate-900 placeholder-slate-400 shadow-sm transition-all duration-200 focus:ring-2 focus:outline-none dark:border-slate-600/60 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-400;
 
       .table.cbi-section-table & {
         @apply w-full;
@@ -800,7 +726,7 @@
 
     input[type="radio"],
     input[type="checkbox"] {
-      @apply focus:before:border-aurora-sky focus:before:ring-aurora-sky/20 checked:before:border-aurora-sky checked:before:bg-aurora-sky dark:focus:before:border-primary dark:focus:before:ring-primary/30 dark:checked:before:border-aurora-teal-600 dark:checked:before:bg-aurora-teal-600 relative mr-3 inline-block h-4 w-4 cursor-pointer appearance-none before:absolute before:top-0 before:left-0 before:h-4 before:w-4 before:border before:border-slate-300/70 before:bg-white before:transition-all before:duration-200 after:absolute after:top-0.5 after:left-0.5 after:h-3 after:w-3 after:bg-white after:opacity-0 after:transition-opacity after:duration-200 checked:after:opacity-100 hover:before:border-slate-400/60 focus:before:ring-2 focus:before:outline-none disabled:cursor-not-allowed dark:before:border-slate-600/60 dark:before:bg-slate-900 dark:hover:before:border-slate-500/60;
+      @apply focus:before:border-primary focus:before:ring-primary/20 checked:before:border-primary checked:before:bg-primary relative mr-3 inline-block h-4 w-4 cursor-pointer appearance-none before:absolute before:top-0 before:left-0 before:h-4 before:w-4 before:border before:border-slate-300/70 before:bg-white before:transition-all before:duration-200 after:absolute after:top-0.5 after:left-0.5 after:h-3 after:w-3 after:bg-white after:opacity-0 after:transition-opacity after:duration-200 checked:after:opacity-100 hover:before:border-slate-400/60 focus:before:ring-2 focus:before:outline-none disabled:cursor-not-allowed dark:before:border-slate-600/60 dark:before:bg-slate-900 dark:hover:before:border-slate-500/60;
     }
 
     input[type="radio"] {
@@ -818,7 +744,7 @@
 
   @layer textarea {
     textarea {
-      @apply focus:border-aurora-sky focus:ring-aurora-sky/20 dark:focus:border-primary dark:focus:ring-primary/30 min-h-24 w-full resize-y rounded-2xl border border-slate-300/70 bg-white px-3 py-2 text-sm font-normal text-slate-900 placeholder-slate-400 shadow-sm transition-all duration-200 focus:ring-2 focus:outline-none dark:border-slate-600/60 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-400;
+      @apply focus:border-primary focus:ring-primary/20 min-h-24 w-full resize-y rounded-2xl border border-slate-300/70 bg-white px-3 py-2 text-sm font-normal text-slate-900 placeholder-slate-400 shadow-sm transition-all duration-200 focus:ring-2 focus:outline-none dark:border-slate-600/60 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-400;
       &[disabled] {
         @apply cursor-not-allowed opacity-40 dark:opacity-30;
       }
@@ -827,7 +753,7 @@
 
   @layer select {
     select {
-      @apply focus:border-aurora-sky focus:ring-aurora-sky/20 dark:focus:border-primary dark:focus:ring-primary/30 appearance-none rounded-2xl border border-slate-300/70 bg-white px-3 py-1.5 pr-10 text-sm font-normal text-slate-900 shadow-sm transition-all duration-200 focus:ring-2 focus:outline-none dark:border-slate-600/60 dark:bg-slate-900 dark:text-slate-100;
+      @apply focus:border-primary focus:ring-primary/20 appearance-none rounded-2xl border border-slate-300/70 bg-white px-3 py-1.5 pr-10 text-sm font-normal text-slate-900 shadow-sm transition-all duration-200 focus:ring-2 focus:outline-none dark:border-slate-600/60 dark:bg-slate-900 dark:text-slate-100;
       @apply bg-[url('@assets/icons/arrow-down.svg')] bg-[length:16px] bg-[right_0.75rem_center] bg-no-repeat dark:bg-[url('@assets/icons/arrow-down-dark.svg')];
       &[disabled] {
         @apply cursor-not-allowed opacity-40 dark:opacity-30;
@@ -891,7 +817,7 @@
           @apply absolute left-0 z-60 w-fit min-w-full overflow-y-auto rounded-lg border border-slate-200/60 bg-white/95 shadow-xl backdrop-blur-sm dark:border-slate-600/40 dark:bg-slate-800/95;
 
           & > li {
-            @apply hover:bg-aurora-sky/8 dark:hover:bg-aurora-teal-600/15 min-h-9 w-full cursor-pointer px-3 py-1.5 font-medium text-slate-600 dark:text-slate-300;
+            @apply hover:bg-primary/15 min-h-9 w-full cursor-pointer px-3 py-1.5 font-medium text-slate-600 dark:text-slate-300;
           }
         }
 
@@ -915,7 +841,7 @@
       }
 
       &[open] {
-        @apply border-aurora-sky ring-aurora-sky/20 dark:border-primary dark:ring-primary/30 relative ring-2;
+        @apply border-primary ring-primary/20 relative ring-2;
 
         & > ul.dropdown {
           @apply block w-auto max-w-none;
@@ -924,7 +850,7 @@
             @apply flex;
 
             &[selected] {
-              @apply bg-aurora-sky/20 text-aurora-sky-800 dark:bg-aurora-teal-600/25 dark:text-aurora-teal-200;
+              @apply bg-primary/20 text-primary-text;
             }
 
             &[unselectable] {
@@ -1064,10 +990,10 @@
 
   @layer progress {
     .cbi-progressbar {
-      @apply relative h-3.5 w-full cursor-help overflow-hidden rounded-full bg-slate-300 before:absolute before:top-1/2 before:left-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:rounded-2xl before:text-xs/normal before:whitespace-nowrap before:text-slate-900 before:shadow-lg before:content-[attr(title)] max-md:h-4 max-md:rounded-2xl max-md:before:text-xs max-md:before:leading-normal dark:bg-slate-700 before:dark:border-slate-600 before:dark:text-slate-100 dark:before:text-slate-100 before:dark:shadow-black/40;
+      @apply relative h-3.5 w-full cursor-help overflow-hidden rounded-full bg-slate-300 before:absolute before:top-1/2 before:left-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:rounded-2xl before:text-xs/normal before:whitespace-nowrap before:text-slate-900 before:content-[attr(title)] max-md:h-4 max-md:rounded-2xl max-md:before:text-xs max-md:before:leading-normal dark:bg-slate-700 before:dark:border-slate-600 before:dark:text-slate-100 dark:before:text-slate-100;
 
       & > div {
-        @apply from-aurora-sky to-aurora-teal dark:from-aurora-night-emerald dark:to-aurora-teal-600 dark:text-shadow-aurora-night-slate-800 h-full bg-gradient-to-r transition-all duration-300;
+        @apply from-progress-start to-progress-end h-full bg-gradient-to-r transition-all duration-300;
       }
     }
   }
@@ -1132,7 +1058,7 @@
       }
 
       &.ifacebadge-active {
-        @apply border-aurora-sky dark:border-primary font-semibold;
+        @apply border-primary font-semibold;
       }
 
       &.large {
@@ -1229,7 +1155,7 @@
         }
 
         &.active {
-          @apply border-aurora-sky bg-aurora-sky dark:border-aurora-teal-600 dark:bg-aurora-teal-600 text-white;
+          @apply border-primary bg-primary text-white;
         }
       }
 
@@ -1828,7 +1754,7 @@
         }
 
         &.drag-over {
-          @apply border-aurora-sky/60 bg-aurora-sky/5 ring-aurora-sky/30 dark:border-primary/60 dark:bg-aurora-teal-600/10 dark:ring-primary/30 scale-105 shadow-lg ring-2;
+          @apply border-primary/60 bg-primary/5 ring-primary/30 scale-105 shadow-lg ring-2;
         }
 
         & > span,
