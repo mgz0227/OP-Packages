@@ -15,9 +15,7 @@
 
 	const boardinfo = ubus.call('system', 'board');
 	const uci = cursor();
-	uci.load('aurora');
 	const colors = uci.get_all('aurora', 'colors') || {};
-	const dark_colors = uci.get_all('aurora', 'dark_colors') || {};
 
 	http.prepare_content('text/html; charset=UTF-8');
 -%}
@@ -72,16 +70,20 @@
 		{% if (css): %}
 		<style title="text/css">{{ css }}</style>
 		{% endif %}
-		{% if (length(colors) || length(dark_colors)): %}
+		{% if (length(colors)): %}
 		<style>
 			:root {
 				{% for (let key in colors): %}
+				{% if (index(key, 'dark_') != 0): %}
 				--{{ replace(key, '_', '-') }}: {{ colors[key] }};
+				{% endif %}
 				{% endfor %}
 			}
 			[data-darkmode="true"] {
-				{% for (let key in dark_colors): %}
-				--{{ replace(key, '_', '-') }}: {{ dark_colors[key] }};
+				{% for (let key in colors): %}
+				{% if (index(key, 'dark_') == 0): %}
+				--{{ replace(substr(key, 5), '_', '-') }}: {{ colors[key] }};
+				{% endif %}
 				{% endfor %}
 			}
 		</style>
