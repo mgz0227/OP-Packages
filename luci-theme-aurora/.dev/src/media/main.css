@@ -12,8 +12,6 @@
 }
 
 :root {
-  --background: oklch(0.9824 0.0013 286.3757);
-  --text: oklch(0.3211 0 0);
   --background-start: oklch(0.984 0.003 247.858);
   --background-mid: oklch(0.968 0.007 247.896);
   --background-end: oklch(0.929 0.013 255.508);
@@ -30,7 +28,6 @@
   --destructive: oklch(0.94 0.05 25);
   --destructive-text: oklch(0.35 0.12 25);
   --destructive-hover: oklch(0.92 0.06 25);
-  --ring: #0f2e5d;
 
   --success: oklch(0.94 0.05 160);
   --success-text: oklch(0.32 0.09 165);
@@ -96,8 +93,6 @@
 }
 
 [data-darkmode="true"] {
-  --background: oklch(0.9824 0.0013 286.3757);
-  --text: oklch(0.3211 0 0);
   --background-start: oklch(0.2077 0.0398 265.75);
   --background-mid: oklch(0.3861 0.059 188.42);
   --background-end: oklch(0.4318 0.0865 166.91);
@@ -114,8 +109,6 @@
   --destructive: oklch(0.28 0.12 25/0.3);
   --destructive-text: oklch(0.88 0.14 25);
   --destructive-hover: oklch(0.32 0.14 25/0.4);
-  --ring: #0f2e5d;
-  --border: oklch(0.8699 0 0);
 
   --success: oklch(0.28 0.09 165/0.3);
   --success-text: oklch(0.92 0.09 160);
@@ -181,8 +174,6 @@
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-text: var(--text);
   --color-aurora-start: var(--background-start);
   --color-aurora-mid: var(--background-mid);
   --color-aurora-end: var(--background-end);
@@ -208,8 +199,6 @@
 
   --color-accent: var(--accent);
   --color-accent-text: var(--accent-text);
-  --color-ring: var(--ring);
-  --color-border: var(--border);
 
   --color-success: var(--success);
   --color-success-text: var(--success-text);
