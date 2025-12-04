@@ -74,8 +74,8 @@
 		<style>
 			:root {
 				{% for (let key in tokens): %}
-				{% if (index(key, 'dark_') != 0): %}
-				--{{ replace(key, '_', '-') }}: {{ tokens[key] }};
+				{% if (index(key, 'light_') == 0 || index(key, 'struct_') == 0): %}
+				--{{ replace(substr(key, index(key, 'light_') == 0 ? 6 : 7), '_', '-') }}: {{ tokens[key] }};
 				{% endif %}
 				{% endfor %}
 			}

@@ -15,19 +15,24 @@
   --background-start: oklch(0.984 0.003 247.858);
   --background-mid: oklch(0.968 0.007 247.896);
   --background-end: oklch(0.929 0.013 255.508);
+
   --progress-start: oklch(0.68 0.11 233);
   --progress-end: oklch(0.7535 0.1034 198.37);
+
   --primary: oklch(0.68 0.11 233);
   --primary-text: oklch(0.6656 0.1055 234.61);
   --primary-hover: oklch(0.64 0.1055 234.61);
-  --accent: oklch(0.62 0.22 25);
-  --accent-text: oklch(0.97 0.02 25);
+
   --muted: oklch(0.97 0 0);
   --muted-text: oklch(0.35 0 0);
   --muted-hover: oklch(0.94 0 0);
+
   --destructive: oklch(0.94 0.05 25);
   --destructive-text: oklch(0.35 0.12 25);
   --destructive-hover: oklch(0.92 0.06 25);
+
+  --accent: oklch(0.62 0.22 25);
+  --accent-text: oklch(0.97 0.02 25);
 
   --success: oklch(0.94 0.05 160);
   --success-text: oklch(0.32 0.09 165);
@@ -36,6 +41,7 @@
   --success-start: oklch(0.97 0.02 160);
   --success-mid: oklch(0.94 0.05 160);
   --success-end: oklch(0.97 0.02 160);
+
   --info: oklch(0.94 0.05 230);
   --info-text: oklch(0.35 0.08 240);
   --info-border: oklch(0.62 0.19 240/0.4);
@@ -43,6 +49,7 @@
   --info-start: oklch(0.97 0.02 230);
   --info-mid: oklch(0.94 0.05 230);
   --info-end: oklch(0.97 0.02 230);
+
   --warning: oklch(0.95 0.05 90);
   --warning-text: oklch(0.35 0.08 60);
   --warning-border: oklch(0.68 0.18 75/0.4);
@@ -50,6 +57,7 @@
   --warning-start: oklch(0.98 0.02 90);
   --warning-mid: oklch(0.95 0.05 90);
   --warning-end: oklch(0.98 0.02 90);
+
   --error: oklch(0.94 0.05 25);
   --error-text: oklch(0.35 0.12 25);
   --error-border: oklch(0.62 0.22 25/0.3);
@@ -69,26 +77,7 @@
 
   --font-sans: "Lato", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
-  --radius: 0.625rem;
-  --shadow-x: 0;
-  --shadow-y: 1px;
-  --shadow-blur: 3px;
-  --shadow-spread: 0px;
-  --shadow-opacity: 0.1;
-  --shadow-color: oklch(0 0 0);
-  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow-md:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-  --shadow-lg:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-  --shadow-xl:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
-  --tracking-normal: 0em;
+
   --spacing: 0.25rem;
 }
 
@@ -96,19 +85,24 @@
   --background-start: oklch(0.2077 0.0398 265.75);
   --background-mid: oklch(0.3861 0.059 188.42);
   --background-end: oklch(0.4318 0.0865 166.91);
+
   --progress-start: oklch(0.4318 0.0865 166.91);
   --progress-end: oklch(62.1% 0.145 189.632);
+
   --primary: oklch(0.534 0.118 190.485);
   --primary-text: oklch(0.779 0.168 188.745);
   --primary-hover: oklch(0.58 0.13 189.632);
+
   --muted: oklch(0.27 0 0);
   --muted-text: oklch(0.92 0 0);
   --muted-hover: oklch(0.32 0 0);
-  --accent: oklch(0.35 0.12 25);
-  --accent-text: oklch(0.88 0.14 25);
+
   --destructive: oklch(0.28 0.12 25/0.3);
   --destructive-text: oklch(0.88 0.14 25);
   --destructive-hover: oklch(0.32 0.14 25/0.4);
+
+  --accent: oklch(0.35 0.12 25);
+  --accent-text: oklch(0.88 0.14 25);
 
   --success: oklch(0.28 0.09 165/0.3);
   --success-text: oklch(0.92 0.09 160);
@@ -117,6 +111,7 @@
   --success-start: oklch(0.32 0.09 165/0.4);
   --success-mid: oklch(0.28 0.09 165/0.3);
   --success-end: oklch(0.32 0.09 165/0.4);
+
   --info: oklch(0.28 0.08 240/0.3);
   --info-text: oklch(0.88 0.06 230);
   --info-border: oklch(0.62 0.19 240/0.3);
@@ -124,6 +119,7 @@
   --info-start: oklch(0.35 0.08 240/0.4);
   --info-mid: oklch(0.28 0.08 240/0.3);
   --info-end: oklch(0.35 0.08 240/0.4);
+
   --warning: oklch(0.28 0.08 60/0.3);
   --warning-text: oklch(0.9 0.12 90);
   --warning-border: oklch(0.68 0.18 75/0.3);
@@ -131,6 +127,7 @@
   --warning-start: oklch(0.35 0.08 60/0.4);
   --warning-mid: oklch(0.28 0.08 60/0.3);
   --warning-end: oklch(0.35 0.08 60/0.4);
+
   --error: oklch(0.28 0.12 25/0.3);
   --error-text: oklch(0.88 0.14 25);
   --error-border: oklch(0.62 0.22 25/0.3);
@@ -147,30 +144,6 @@
   --default-start: oklch(0.28 0 0/0.8);
   --default-mid: oklch(0.26 0 0/0.6);
   --default-end: oklch(0.28 0 0/0.8);
-
-  --font-sans: "Lato", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
-  --radius: 0.625rem;
-  --shadow-x: 0;
-  --shadow-y: 1px;
-  --shadow-blur: 3px;
-  --shadow-spread: 0px;
-  --shadow-opacity: 0.1;
-  --shadow-color: oklch(0 0 0);
-  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow-md:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-  --shadow-lg:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-  --shadow-xl:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
-  --tracking-normal: 0em;
-  --spacing: 0.25rem;
 }
 
 @theme inline {
@@ -184,10 +157,6 @@
   --color-primary: var(--primary);
   --color-primary-text: var(--primary-text);
   --color-primary-hover: var(--primary-hover);
-
-  --color-secondary: var(--secondary);
-  --color-secondary-text: var(--secondary-text);
-  --color-secondary-hover: var(--secondary-hover);
 
   --color-muted: var(--muted);
   --color-muted-text: var(--muted-text);
@@ -207,6 +176,7 @@
   --color-success-start: var(--success-start);
   --color-success-mid: var(--success-mid);
   --color-success-end: var(--success-end);
+
   --color-info: var(--info);
   --color-info-text: var(--info-text);
   --color-info-border: var(--info-border);
@@ -214,6 +184,7 @@
   --color-info-start: var(--info-start);
   --color-info-mid: var(--info-mid);
   --color-info-end: var(--info-end);
+
   --color-warning: var(--warning);
   --color-warning-text: var(--warning-text);
   --color-warning-border: var(--warning-border);
@@ -221,6 +192,7 @@
   --color-warning-start: var(--warning-start);
   --color-warning-mid: var(--warning-mid);
   --color-warning-end: var(--warning-end);
+
   --color-error: var(--error);
   --color-error-text: var(--error-text);
   --color-error-border: var(--error-border);
@@ -229,6 +201,7 @@
   --color-error-start: var(--error-start);
   --color-error-mid: var(--error-mid);
   --color-error-end: var(--error-end);
+
   --color-default: var(--default);
   --color-default-text: var(--default-text);
   --color-default-border: var(--default-border);
@@ -239,21 +212,8 @@
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --font-serif: var(--font-serif);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-
-  --shadow-2xs: var(--shadow-2xs);
-  --shadow-xs: var(--shadow-xs);
-  --shadow-sm: var(--shadow-sm);
-  --shadow: var(--shadow);
-  --shadow-md: var(--shadow-md);
-  --shadow-lg: var(--shadow-lg);
-  --shadow-xl: var(--shadow-xl);
-  --shadow-2xl: var(--shadow-2xl);
+  --spacing: var(--spacing);
 }
 
 @layer base {
@@ -643,7 +603,8 @@
 
   @layer button {
     button,
-    .btn {
+    .btn,
+    .cbi-button {
       @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-2xl border px-3 py-1.5 text-sm font-medium antialiased shadow-sm transition-all duration-200 max-md:text-base max-md:font-medium;
       &[disabled] {
         @apply cursor-not-allowed opacity-40 dark:opacity-30;
@@ -661,7 +622,6 @@
     .cbi-button-link,
     .cbi-button-up,
     .cbi-button-down,
-    .btn-secondary,
     .drag-handle {
       @apply border-muted bg-muted text-muted-text hover:bg-muted-hover;
     }
@@ -1822,10 +1782,6 @@
 
     .cbi-section-node-tabbed {
       @apply mt-6;
-    }
-
-    [id^="container."] {
-      @apply relative;
     }
   }
 }
