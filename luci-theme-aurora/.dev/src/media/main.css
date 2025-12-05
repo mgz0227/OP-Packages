@@ -319,23 +319,19 @@
 @layer components {
   @layer layout {
     header {
-      @apply sticky top-0 z-60 mb-2 transition-all duration-300 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-white/10 before:backdrop-blur-xl before:backdrop-saturate-150 before:transition-all before:duration-300 dark:before:bg-gray-900/90;
+      @apply sticky top-0 z-60 mb-2 transition-all duration-300 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-white/20 before:backdrop-blur-xl before:backdrop-saturate-150 before:transition-all before:duration-300 dark:before:bg-gray-900/90;
 
       & .header-content {
         @apply relative flex h-14 items-center justify-between px-6 py-3 max-md:px-4 max-md:py-2;
       }
 
-      & .desktop-menu-container {
-        @apply pointer-events-none absolute inset-x-0 top-0 z-30 h-0 w-full overflow-hidden opacity-0 transition-all duration-150 ease-in-out before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-full before:min-h-full before:bg-white/40 before:backdrop-blur-xl before:backdrop-saturate-150 max-md:hidden dark:before:bg-gray-900/90;
-
-        &.active {
-          @apply pointer-events-auto opacity-100;
-        }
-      }
-
-      &.has-desktop-nav {
+      [data-nav-type="mega-menu"] & {
         & .desktop-menu-container {
-          @apply pointer-events-auto opacity-100;
+          @apply pointer-events-none absolute inset-x-0 top-0 z-30 h-0 w-full overflow-hidden opacity-0 transition-all duration-150 ease-in-out before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-full before:min-h-full before:bg-white/40 before:backdrop-blur-xl before:backdrop-saturate-150 max-md:hidden dark:before:bg-gray-900/90;
+
+          &.active {
+            @apply pointer-events-auto opacity-100;
+          }
         }
       }
 
@@ -350,28 +346,51 @@
           @apply relative;
 
           .menu {
-            @apply block px-3.5 py-1.5 font-medium text-slate-700 no-underline transition-all duration-150 hover:text-slate-900 dark:text-slate-200 hover:dark:text-slate-100;
+            @apply block rounded-xl px-3.5 py-1.5 font-medium text-slate-700 no-underline transition-all duration-150 dark:text-slate-200;
 
             &.menu-active {
-              @apply text-slate-900 underline decoration-2 underline-offset-4 dark:text-slate-100;
+              @apply text-slate-900 dark:text-slate-100;
+              [data-nav-type="mega-menu"] & {
+                @apply underline decoration-2 underline-offset-4;
+              }
+              [data-nav-type="boxed-dropdown"] & {
+                @apply bg-slate-200/90 dark:bg-slate-700;
+              }
             }
           }
 
           & .desktop-nav {
-            @apply pointer-events-none fixed top-14 left-0 z-40 px-0 pt-0 pb-6 opacity-0 transition-all duration-150 max-md:hidden;
-
+            @apply pointer-events-none left-0 z-40 px-0 pt-0 opacity-0 transition-all duration-150;
+            [data-nav-type="mega-menu"] & {
+              @apply fixed top-14 pb-6;
+            }
+            [data-nav-type="boxed-dropdown"] & {
+              @apply absolute top-full mt-2 min-w-48;
+            }
             &.active {
               @apply pointer-events-auto opacity-100;
             }
 
             & .desktop-nav-list {
-              @apply grid w-max list-none grid-cols-4 gap-x-4 gap-y-2;
+              [data-nav-type="mega-menu"] & {
+                @apply grid w-max grid-cols-4 gap-x-4 gap-y-2;
+              }
 
+              [data-nav-type="boxed-dropdown"] & {
+                @apply flex flex-col gap-y-1 rounded-3xl border border-slate-200/70 bg-white/80 py-2 shadow-lg backdrop-blur-md backdrop-saturate-150 transition-all duration-200 dark:border-gray-700/70 dark:bg-gray-900/90;
+              }
               & > li {
                 @apply m-0 list-none;
 
                 & > a {
-                  @apply block px-4 py-3 whitespace-nowrap text-slate-700 no-underline hover:text-slate-900 hover:underline hover:decoration-2 hover:underline-offset-4 dark:text-slate-300 hover:dark:text-slate-100;
+                  @apply block px-4 whitespace-nowrap text-slate-700 no-underline hover:text-slate-900 dark:text-slate-300 hover:dark:text-slate-100;
+
+                  [data-nav-type="mega-menu"] & {
+                    @apply py-3 hover:underline hover:decoration-2 hover:underline-offset-4;
+                  }
+                  [data-nav-type="boxed-dropdown"] & {
+                    @apply mx-2 rounded-2xl py-2 hover:bg-slate-200/60 dark:hover:bg-slate-700/70;
+                  }
                 }
               }
             }
@@ -1422,11 +1441,13 @@
       }
     }
 
-    .desktop-menu-overlay {
-      @apply pointer-events-none fixed inset-0 z-50 bg-black/20 opacity-0 transition-all duration-300 max-md:hidden;
+    [data-nav-type="mega-menu"] {
+      & .desktop-menu-overlay {
+        @apply pointer-events-none fixed inset-0 z-50 bg-black/20 opacity-0 transition-all duration-300 max-md:hidden;
 
-      &.active {
-        @apply pointer-events-auto opacity-100 backdrop-blur-sm;
+        &.active {
+          @apply pointer-events-auto opacity-100 backdrop-blur-sm;
+        }
       }
     }
   }
