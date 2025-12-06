@@ -959,6 +959,9 @@
   @layer progress {
     .cbi-progressbar {
       @apply relative h-3.5 w-full cursor-help overflow-hidden rounded-full bg-slate-300 before:absolute before:top-1/2 before:left-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:rounded-2xl before:text-xs/normal before:whitespace-nowrap before:text-slate-900 before:content-[attr(title)] max-md:h-4 max-md:rounded-2xl max-md:before:text-xs max-md:before:leading-normal dark:bg-slate-700 before:dark:border-slate-600 before:dark:text-slate-100 dark:before:text-slate-100;
+      [data-page="admin-system-package-manager"] & {
+        @apply max-sm:before:text-[10px];
+      }
 
       & > div {
         @apply from-progress-start to-progress-end h-full bg-gradient-to-r transition-all duration-300;
