@@ -25,7 +25,7 @@
 <html lang="{{ dispatcher.lang }}">
 	<head>
 		<meta charset="utf-8">
-		<title>{{ striptags(`${boardinfo.hostname ?? '?'}${node ? ` - ${node.title}` : ''}`) }} - LuCI</title>
+		<title>{{ striptags(`${dispatched ? `${dispatched.title} - ` : ''}${boardinfo.hostname ?? '?'}`) }}</title>
 		<script>
 			const setTheme = (theme) => {
 				const current = ['light', 'dark', 'device'].includes(theme) ? theme : 'device';
