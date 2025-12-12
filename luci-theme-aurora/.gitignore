@@ -1,13 +1,10 @@
 # Node & package manager
-.dev/node_modules/
-.dev/.pnpm-store/
-.dev/pnpm-debug.log*
-.dev/npm-debug.log*
-.dev/yarn-debug.log*
-.dev/yarn-error.log*
+node_modules
+package-lock.json
+yarn.lock
 
 # Env files
 .env
 
-# Build artifacts
+# System Configuration File
 .DS_Store

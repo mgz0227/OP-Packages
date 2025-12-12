@@ -1605,6 +1605,12 @@
         }
       }
 
+      &[id*="status_leases"] {
+        & .td {
+          @apply max-w-62 max-md:max-w-full;
+        }
+      }
+
       & td,
       & .td {
         @apply table-cell border-b border-gray-200 px-3 py-3 align-middle text-base break-words whitespace-normal text-gray-700 max-md:flex-[1_1_50%] max-md:border-0 max-md:px-1 max-md:py-1 max-md:text-sm dark:border-gray-600/40 dark:text-gray-200;

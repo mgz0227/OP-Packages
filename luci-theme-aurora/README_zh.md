@@ -8,9 +8,9 @@
 主题的设计灵感源自 **Aurora（极光）** —— 在挪威北部特罗姆瑟，白天映入眼帘的是洁白纯净的雪山，夜幕降临则是天际舞动的极光。
 同样在主题中，我希望白天模式呈现雪山般纯净，暗夜模式展现极光般迷人。
 
-> ⚠️ **提示**  
-> 主题处于 Beta 阶段，版本更新频繁，发布的版本可能不是最新的。  
-> 有编译环境可自行编译，无编译环境可 fork 仓库使用 [GitHub Actions 工作流](https://github.com/eamonxg/luci-theme-aurora/actions/workflows/build-and-release-aurora.yml) 自动生成主题安装包。  
+> ⚠️ **提示**
+> 主题处于 Beta 阶段，版本更新频繁，发布的版本可能不是最新的。
+> 有编译环境可自行编译，无编译环境可 fork 仓库使用 [GitHub Actions 工作流](https://github.com/eamonxg/luci-theme-aurora/actions/workflows/build-and-release-aurora.yml) 自动生成主题安装包。
 > 遇到 Bug 欢迎提交 Issue 🙏💖。
 
 ## 兼容性
@@ -32,22 +32,22 @@
 
 ![mobile](./.dev/docs/preview/mobile.png)
 
-## 关于开发
+## [关于开发](.dev/docs/DEVELOPMENT.md)
 
-步入 2025 年，市面上的 OpenWrt 主题开发方式仍然比较原始，而前端工具链已相当成熟且先进。  
-所以全面拥抱现代前端生态，是 Aurora 主题开发的核心理念。  
-Aurora 选择 Vite 作为构建工具，  
-在开发阶段，可以自由选择并使用 CSS 任何工具链；  
-在生产阶段，可以选择多种手段优化打包资源；  
+步入 2025 年，市面上的 OpenWrt 主题开发方式仍然比较原始，而前端工具链已相当成熟且先进。
+所以全面拥抱现代前端生态，是 Aurora 主题开发的核心理念。
+Aurora 选择 Vite 作为构建工具，
+在开发阶段，可以自由选择并使用 CSS 任何工具链；
+在生产阶段，可以选择多种手段优化打包资源；
 最重要的是，通过本地代理服务器，可以做到样式修改实时预览！
 
 ## 版权与致谢
 
-本项目生产目录结构基于 OpenWrt 官方主题  
+本项目生产目录结构基于 OpenWrt 官方主题
 [luci-theme-bootstrap](https://github.com/openwrt/luci/tree/master/themes/luci-theme-bootstrap)。
 
-视觉风格及部分实现借鉴自  
+视觉风格及部分实现借鉴自
 [Apple](https://www.apple.com/) 和 [Vercel](https://vercel.com/docs/dashboard-features)。
 
-项目使用现代前端技术栈开发，包括  
+项目使用现代前端技术栈开发，包括
 [Vite](https://vitejs.dev/) 和 [Tailwind CSS](https://tailwindcss.com/)。

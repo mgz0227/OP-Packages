@@ -268,6 +268,11 @@ const languageTranslations = {
         'update_now': '立即更新',
         'toggle_visualizer': '切换可视化效果',
         'switch_interface': '切换界面',
+        'message_add_card_layout': '添加卡片布局',
+        'message_remove_card_layout': '删除卡片布局',
+        'message_processing': '处理中...',
+        'message_card_layout_added': '已添加卡片布局',
+        'message_card_layout_removed': '已删除卡片布局',
         'command_install_label': '命令安装'
     },
     'hk': {
@@ -539,6 +544,11 @@ const languageTranslations = {
         'update_now': '立即更新',
         'toggle_visualizer': '切換視覺效果',
         'switch_interface': '切換介面',
+        'message_add_card_layout': '添加卡片佈局',
+        'message_remove_card_layout': '刪除卡片佈局',
+        'message_processing': '處理中...',
+        'message_card_layout_added': '已添加卡片佈局',
+        'message_card_layout_removed': '已刪除卡片佈局',
         'theme_download': '主題下載'
     },
     'en': {
@@ -814,6 +824,11 @@ const languageTranslations = {
         'update_now': 'Update Now',
         'toggle_visualizer': 'Toggle Visualizer',
         'switch_interface': 'Switch Interface',
+        'message_add_card_layout': 'Add Card Layout',
+        'message_remove_card_layout': 'Remove Card Layout',
+        'message_processing': 'Processing...',
+        'message_card_layout_added': 'Card layout added',
+        'message_card_layout_removed': 'Card layout removed',
         'theme_download': 'Theme download'
     },
     'ko': {
@@ -1080,6 +1095,11 @@ const languageTranslations = {
         'update_now': '지금 업데이트',
         'toggle_visualizer': '비주얼라이저 전환',
         'switch_interface': '인터페이스 전환',
+        'message_add_card_layout': '카드 레이아웃 추가',
+        'message_remove_card_layout': '카드 레이아웃 삭제',
+        'message_processing': '처리 중...',
+        'message_card_layout_added': '카드 레이아웃이 추가되었습니다',
+        'message_card_layout_removed': '카드 레이아웃이 삭제되었습니다',
         'theme_download': '테마 다운로드'
     },
     'vi': {
@@ -1346,6 +1366,11 @@ const languageTranslations = {
         'update_now': 'Cập nhật ngay',
         'toggle_visualizer': 'Chuyển trình trực quan',
         'switch_interface': 'Chuyển giao diện',
+        'message_add_card_layout': 'Thêm bố cục thẻ',
+        'message_remove_card_layout': 'Xóa bố cục thẻ',
+        'message_processing': 'Đang xử lý...',
+        'message_card_layout_added': 'Đã thêm bố cục thẻ',
+        'message_card_layout_removed': 'Đã xóa bố cục thẻ',
         'theme_download': 'Tải chủ đề'
     },
     'th': {
@@ -1612,6 +1637,11 @@ const languageTranslations = {
         'update_now': 'อัปเดตทันที',
         'toggle_visualizer': 'สลับตัวแสดงภาพ',
         'switch_interface': 'สลับอินเทอร์เฟซ',
+        'message_add_card_layout': 'เพิ่มเค้าโครงการ์ด',
+        'message_remove_card_layout': 'ลบเค้าโครงการ์ด',
+        'message_processing': 'กำลังประมวลผล...',
+        'message_card_layout_added': 'เพิ่มเค้าโครงการ์ดแล้ว',
+        'message_card_layout_removed': 'ลบเค้าโครงการ์ดแล้ว',
         'theme_download': 'ดาวน์โหลดธีม'
     },
     'ja': {
@@ -1878,6 +1908,11 @@ const languageTranslations = {
         'update_now': '今すぐ更新',
         'toggle_visualizer': 'ビジュアライザー切替',
         'switch_interface': 'インターフェース切替',
+        'message_add_card_layout': 'カードレイアウトを追加',
+        'message_remove_card_layout': 'カードレイアウトを削除',
+        'message_processing': '処理中...',
+        'message_card_layout_added': 'カードレ이アウトが追加されました',
+        'message_card_layout_removed': 'カードレイ아ウトが削除されました',
         'theme_download': 'テーマダウンロード'
     },
     'ru': {
@@ -2144,6 +2179,11 @@ const languageTranslations = {
         'update_now': 'Обновить сейчас',
         'toggle_visualizer': 'Переключить визуализатор',
         'switch_interface': 'Сменить интерфейс',
+        'message_add_card_layout': 'Добавить карточный макет',
+        'message_remove_card_layout': 'Удалить карточный макет',
+        'message_processing': 'Обработка...',
+        'message_card_layout_added': 'Карточный макет добавлен',
+        'message_card_layout_removed': 'Карточный макет удален',
         'theme_download': 'Скачать тему'
     },
     'ar': {
@@ -2410,6 +2450,11 @@ const languageTranslations = {
         'update_now': 'تحديث الآن',
         'toggle_visualizer': 'تبديل المؤثرات البصرية',
         'switch_interface': 'تبديل الواجهة',
+        'message_add_card_layout': 'إضافة تخطيط البطاقة',
+        'message_remove_card_layout': 'إزالة تخطيط البطاقة',
+        'message_processing': 'جاري المعالجة...',
+        'message_card_layout_added': 'تمت إضافة تخطيط البطاقات',
+        'message_card_layout_removed': 'تمت إزالة تخطيط البطاقات',
         'theme_download': 'تحميل السمة'
     },
     'es': {
@@ -2676,6 +2721,11 @@ const languageTranslations = {
         'update_now': 'Actualizar ahora',
         'toggle_visualizer': 'Cambiar visualizador',
         'switch_interface': 'Cambiar interfaz',
+        'message_add_card_layout': 'Añadir diseño de tarjeta',
+        'message_remove_card_layout': 'Eliminar diseño de tarjeta',
+        'message_processing': 'Procesando...',
+        'message_card_layout_added': 'Diseño de tarjeta añadido',
+        'message_card_layout_removed': 'Diseño de tarjeta eliminado',
         'theme_download': 'Descarga del tema'
     },
     'de': {
@@ -2942,6 +2992,11 @@ const languageTranslations = {
         'update_now': 'Jetzt aktualisieren',
         'toggle_visualizer': 'Visualizer umschalten',
         'switch_interface': 'Schnittstelle wechseln',
+        'message_add_card_layout': 'Kartenlayout hinzufügen',
+        'message_remove_card_layout': 'Kartenlayout entfernen',
+        'message_processing': 'Verarbeitung...',
+        'message_card_layout_added': 'Kartenlayout hinzugefügt',
+        'message_card_layout_removed': 'Kartenlayout entfernt',
         'theme_download': 'Thema herunterladen'
     },
     'fr': {
@@ -3208,6 +3263,11 @@ const languageTranslations = {
         'update_now': 'Mettre à jour maintenant',
         'toggle_visualizer': 'Basculer le visualiseur',
         'switch_interface': 'Changer d\'interface',
+        'message_add_card_layout': 'Ajouter la mise en page des cartes',
+        'message_remove_card_layout': 'Supprimer la mise en page des cartes',
+        'message_processing': 'Traitement en cours...',
+        'message_card_layout_added': 'Mise en page des cartes ajoutée',
+        'message_card_layout_removed': 'Mise en page des cartes supprimée',
         'theme_download': 'Télécharger le thème'
     },
     'bn': {
@@ -3475,6 +3535,11 @@ const languageTranslations = {
         'update_now': 'এখনই আপডেট করুন',
         'toggle_visualizer': 'ভিজুয়ালাইজার টগল করুন',
         'switch_interface': 'ইন্টারফেস পরিবর্তন করুন',
+        'message_add_card_layout': 'কার্ড লেআউট যোগ করুন',
+        'message_remove_card_layout': 'কার্ড লেআউট সরান',
+        'message_processing': 'প্রক্রিয়াকরণ হচ্ছে...',
+        'message_card_layout_added': 'কার্ড লেআউট যুক্ত হয়েছে',
+        'message_card_layout_removed': 'কার্ড লেআউট অপসারণ করা হয়েছে',
         'theme_download': 'থিম ডাউনলোড'
     }
 };
@@ -3873,6 +3938,9 @@ function saveLanguage() {
         
         if (colorVoiceEnabled) {
             const utterance = new SpeechSynthesisUtterance(msg);
+            utterance.volume = 1.0;
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
             const voice = getCurrentVoice();
             if (voice) {
                 utterance.voice = voice;
@@ -3884,13 +3952,17 @@ function saveLanguage() {
             currentLang = language;
             updateUIText();
             UIkit.modal('#languageModal').hide();
+            
+            loadVoices().then(() => {
+                if (document.getElementById('voiceSelectContainer')) {
+                    populateVoiceSelect(currentLang);
+                }
+            });
         }
     });
 }
 
-function openLanguageModal() {
-    UIkit.modal('#languageModal').show();
-    
+function initLanguage() {
     fetch('/luci-static/spectra/bgm/save_language.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -3898,30 +3970,47 @@ function openLanguageModal() {
     })
     .then(response => response.json())
     .then(data => {
-        let selectedLanguage = 'zh';
         if (data.success && data.language) {
-            selectedLanguage = data.language;
-            document.getElementById('languageSelect').value = selectedLanguage;
+            currentLang = data.language;
+            updateUIText();
+            
+            const languageSelect = document.getElementById('languageSelect');
+            if (languageSelect) {
+                languageSelect.value = currentLang;
+                updateFlagIcon(currentLang);
+            }
+            
+            loadVoices().then(() => {
+                if (document.getElementById('voiceSelectContainer')) {
+                    populateVoiceSelect(currentLang);
+                }
+            });
+        } else {
+            currentLang = 'zh';
+            updateUIText();
         }
-        
-        currentLang = selectedLanguage;
-        updateUIText();
-
-        const voiceToggle = document.getElementById('voiceToggle');
-        voiceToggle.checked = colorVoiceEnabled;
-
-        loadVoices().then(() => {
-            const voiceSelectContainer = document.getElementById('voiceSelectContainer');
-            voiceSelectContainer.style.display = 'block';
-            populateVoiceSelect(selectedLanguage);
-        });
     })
-    .catch(() => {
-        loadVoices().then(() => {
-            const voiceSelectContainer = document.getElementById('voiceSelectContainer');
+    .catch(error => {
+        currentLang = 'zh';
+        updateUIText();
+    });
+}
+
+function openLanguageModal() {
+    UIkit.modal('#languageModal').show();
+    
+    document.getElementById('languageSelect').value = currentLang;
+    updateFlagIcon(currentLang);
+    
+    const voiceToggle = document.getElementById('voiceToggle');
+    voiceToggle.checked = colorVoiceEnabled;
+    
+    loadVoices().then(() => {
+        const voiceSelectContainer = document.getElementById('voiceSelectContainer');
+        if (voiceSelectContainer) {
             voiceSelectContainer.style.display = 'block';
             populateVoiceSelect(currentLang);
-        });
+        }
     });
 }
 
@@ -3976,6 +4065,9 @@ function speakMessage(message) {
     //console.log('Speaking message with voice:', voice);
     if (voice) {
         const utterance = new SpeechSynthesisUtterance(message);
+        utterance.volume = 1.0;
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
         utterance.voice = voice;
         speechSynthesis.speak(utterance);
     }
@@ -4001,6 +4093,8 @@ function getOptionTranslationKey(value) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    initLanguage();
+    
     const languageSelect = document.getElementById('languageSelect');
     if (languageSelect) {
         languageSelect.addEventListener('change', function() {
@@ -4030,6 +4124,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     localStorage.setItem(voiceKey, this.value);
                     
                     const utterance = new SpeechSynthesisUtterance(msg);
+                    utterance.volume = 1.0;
+                    utterance.rate = 1.0;
+                    utterance.pitch = 1.0;
                     utterance.voice = selectedVoice;
                     speechSynthesis.speak(utterance);
                 }
@@ -4141,6 +4238,28 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         const [R, G, B] = [r, g, bLinear].map(v => Math.round(toSRGB(v) * 255));
         return `#${[R, G, B].map(x => x.toString(16).padStart(2, '0')).join('')}`.toUpperCase();
+    };
+
+    window.calculateContrastRatioForText = (bgHex, textHex) => {
+        const rgb = (hex) => {
+            const { r, g, b } = window.hexToRgb(hex);
+            return { r, g, b };
+        };
+    
+        const getLuminance = (c) => {
+            c = c / 255;
+            return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        };
+
+        const bg = rgb(bgHex);
+        const text = rgb(textHex);
+
+        const Lbg = 0.2126 * getLuminance(bg.r) + 0.7152 * getLuminance(bg.g) + 0.0722 * getLuminance(bg.b);
+        const Ltext = 0.2126 * getLuminance(text.r) + 0.7152 * getLuminance(text.g) + 0.0722 * getLuminance(text.b);
+
+        return Lbg > Ltext
+            ? (Lbg + 0.05) / (Ltext + 0.05)
+            : (Ltext + 0.05) / (Lbg + 0.05);
     };
 
     window.calculateContrastRatio = function(hexColor) {

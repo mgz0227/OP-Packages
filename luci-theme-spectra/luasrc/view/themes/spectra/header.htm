@@ -167,7 +167,7 @@
 	class="lang_<%=luci.i18n.context.lang%> <% if node then %><%= striptags( node.title ) %><% end %> <% if luci.dispatcher.context.authsession then %>logged-in<% end %>"
 	data-page="<%= table.concat(disp.context.requestpath, "-") %>">
 
-<div class="wrapper">
+<div class="wrapper animation-spans">
 		<span></span>
 		<span></span>
 		<span></span>
@@ -659,7 +659,7 @@
                             <div class="preset-color-circle" style="background-color: oklch(85% 0.18 56);"></div>
                         </button>
 
-                        <button class="preset-color-btn" data-hue="160" data-chroma="0.09" data-lightness="data-tooltip-title="mint">
+                        <button class="preset-color-btn" data-hue="160" data-chroma="0.09" data-lightness="66" data-tooltip-title="mint">
                             <div class="preset-color-circle" style="background-color: oklch(66% 0.09 160);"></div>
                         </button>
                         <button class="preset-color-btn" data-hue="130" data-chroma="0.11" data-lightness="70" data-tooltip-title="emerald">
@@ -746,8 +746,14 @@
 
             .control-card:hover {
                 transform: scale(1.06);
+                background-color: color-mix(in oklch, var(--accent-secondary), transparent 10%)  !important;
+                color: var(--color-white-strong) !important;
                 box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
                 z-index: 2;
+            }
+
+            .control-card:hover .text-container span {
+                color: var(--color-white-strong) !important;
             }
 
             .control-card.disabled {
@@ -945,7 +951,7 @@
                 <div class="uk-card uk-card-small uk-card-default uk-card-hover uk-card-body uk-text-center control-card" 
                      id="themeLoaderToggle" style="cursor: pointer;">
                     <div class="icon-container">
-                        <i id="themeLoaderIcon" class="bi bi-gear-fill" style="font-size: 1.8rem;"></i>
+                        <i id="themeLoaderIcon" class="bi bi-x-circle" style="font-size: 1.8rem;"></i>
                     </div>
                     <div class="text-container">
                         <span data-translate="theme_loader_btn_title">Theme Loader</span>
@@ -1452,23 +1458,22 @@ const advancedColorControl = {
             const textColor = currentLightness > 60 ? '#000000' : '#ffffff';
             preview.style.color = textColor;
             preview.textContent = hexColor;
+            const ratio = window.calculateContrastRatioForText(hexColor, textColor);
+
+            if (contrastBadge) {
+                this.updateContrastBadge(contrastBadge, ratio);
+                const contrastValue = document.getElementById('advancedContrastValue');
+
+                if (!contrastValue) {
+                    this.createContrastValueDisplay();
+                } else {
+                    contrastValue.textContent = ratio.toFixed(2) + ':1';
+                }
+            }
         }
 
         if (oklchValue) {
             oklchValue.textContent = `oklch(${Math.round(currentLightness)}% ${currentChroma.toFixed(2)} ${Math.round(currentHue)}°)`;
-        }
-
-        if (contrastBadge) {
-            const hexColor = oklchToHex(currentHue, currentChroma, currentLightness);
-            const ratio = window.calculateContrastRatio(hexColor);
-            this.updateContrastBadge(contrastBadge, ratio);
-            
-            const contrastValue = document.getElementById('advancedContrastValue');
-            if (!contrastValue) {
-                this.createContrastValueDisplay();
-            } else {
-                contrastValue.textContent = ratio.toFixed(2) + ':1';
-            }
         }
     },
 
@@ -2308,175 +2313,145 @@ let currentLanguage = 'zh-CN';
 const translationsIP = {
     zh: {
         unknown: '未知',
-        panel: '控制面板',
         clickRefresh: '点击刷新 IP 地址',
         failedUpdate: '更新 IP 信息失败',
         checking: '获取中...',
         failed: '获取 IP 信息失败',
         translate: '翻译',
-        spectraConfig: "Spectra 主题设置",
         home: "首页",
-        manager: "文件助手",
-        editDatabase: '编辑数据库',
-        login: '登录'
+        manager: "文件助手"
     },
+
     en: {
         unknown: 'Unknown',
-        panel: 'Control Panel',
         clickRefresh: 'Click to refresh IP address',
         failedUpdate: 'Failed to update IP information',
         checking: 'Checking...',
         failed: 'Failed to get IP information',
         translate: 'Translate',
-        spectraConfig: 'Spectra Config',
-        home: 'Home',
-        manager: 'Manager',
-        editDatabase: 'Edit Database',
-        login: 'Login'
+        home: "Home",
+        manager: "File Manager"
     },
+
     hk: {
         unknown: '未知',
-        panel: '控制面板',
         clickRefresh: '點擊刷新 IP 地址',
         failedUpdate: '更新 IP 資訊失敗',
         checking: '獲取中...',
         failed: '獲取 IP 資訊失敗',
         translate: '翻譯',
-        spectraConfig: 'Spectra 主題設定',
-        home: '首頁',
-        manager: '檔案管理',
-        editDatabase: '編輯資料庫',
-        login: '登入'
+        home: "首頁",
+        manager: "文件助手"
     },
-    de: {
-        unknown: 'Unbekannt',
-        panel: 'Systemsteuerung',
-        clickRefresh: 'Klicken, um die IP-Adresse zu aktualisieren',
-        failedUpdate: 'IP-Informationen konnten nicht aktualisiert werden',
-        checking: 'Überprüfung...',
-        failed: 'IP-Informationen konnten nicht abgerufen werden',
-        translate: 'Übersetzen',
-        spectraConfig: 'Spectra Konfiguration',
-        home: 'Startseite',
-        manager: 'Dateimanager',
-        editDatabase: 'Datenbank bearbeiten'
-    },
-    fr: {
-        unknown: 'Inconnu',
-        panel: 'Panneau de configuration',
-        clickRefresh: 'Cliquez pour actualiser l\'adresse IP',
-        failedUpdate: 'Échec de la mise à jour des informations IP',
-        checking: 'Vérification...',
-        failed: 'Impossible d\'obtenir les informations IP',
-        translate: 'Traduire',
-        spectraConfig: 'Configuration Spectra',
-        home: 'Accueil',
-        manager: 'Gestionnaire de fichiers',
-        editDatabase: 'Modifier la base de données'
-    },
+
     ko: {
         unknown: '알 수 없음',
-        panel: '제어판',
-        clickRefresh: 'IP 주소를 새로 고치려면 클릭',
+        clickRefresh: 'IP 주소 새로고침',
         failedUpdate: 'IP 정보 업데이트 실패',
-        checking: '확인 중...',
-        failed: 'IP 정보 가져오기 실패',
+        checking: '가져오는 중...',
+        failed: 'IP 정보를 가져오지 못했습니다',
         translate: '번역',
-        spectraConfig: 'Spectra 설정',
-        home: '홈',
-        manager: '파일 관리자',
-        editDatabase: '데이터베이스 편집'
+        home: "홈",
+        manager: "파일 관리자"
     },
+
     ja: {
         unknown: '不明',
-        panel: 'コントロールパネル',
-        clickRefresh: 'クリックして IP アドレスを更新',
+        clickRefresh: 'IP アドレスを更新',
         failedUpdate: 'IP 情報の更新に失敗しました',
-        checking: '確認中...',
+        checking: '取得中...',
         failed: 'IP 情報の取得に失敗しました',
         translate: '翻訳',
-        spectraConfig: 'Spectra 設定',
-        home: 'ホーム',
-        manager: 'ファイルマネージャー',
-        editDatabase: 'データベースを編集'
+        home: "ホーム",
+        manager: "ファイルマネージャー"
     },
-    bn: {
-        unknown: 'অজানা',
-        panel: 'কন্ট্রোল প্যানেল',
-        clickRefresh: 'IP ঠিকানা রিফ্রেশ করতে ক্লিক করুন',
-        failedUpdate: 'IP তথ্য আপডেট করতে ব্যর্থ',
-        checking: 'চেক করা হচ্ছে...',
-        failed: 'IP তথ্য পেতে ব্যর্থ',
-        translate: 'অনুবাদ',
-        spectraConfig: 'Spectra কনফিগারেশন',
-        home: 'হোম',
-        manager: 'ফাইল ম্যানেজার',
-        editDatabase: 'ডাটাবেস সম্পাদনা করুন'
-    },
+
     vi: {
         unknown: 'Không xác định',
-        panel: 'Bảng điều khiển',
         clickRefresh: 'Nhấn để làm mới địa chỉ IP',
         failedUpdate: 'Cập nhật thông tin IP thất bại',
-        checking: 'Đang kiểm tra...',
-        failed: 'Không thể lấy thông tin IP',
+        checking: 'Đang lấy...',
+        failed: 'Lấy thông tin IP thất bại',
         translate: 'Dịch',
-        spectraConfig: 'Cấu hình Spectra',
-        home: 'Trang chủ',
-        manager: 'Trình quản lý tệp',
-        editDatabase: 'Chỉnh sửa cơ sở dữ liệu'
+        home: "Trang chủ",
+        manager: "Trình quản lý tệp"
     },
+
     th: {
         unknown: 'ไม่ทราบ',
-        panel: 'แผงควบคุม',
         clickRefresh: 'คลิกเพื่อรีเฟรชที่อยู่ IP',
         failedUpdate: 'อัปเดตข้อมูล IP ล้มเหลว',
-        checking: 'กำลังตรวจสอบ...',
-        failed: 'ไม่สามารถรับข้อมูล IP ได้',
+        checking: 'กำลังดึงข้อมูล...',
+        failed: 'ไม่สามารถดึงข้อมูล IP',
         translate: 'แปล',
-        spectraConfig: 'การตั้งค่า Spectra',
-        home: 'หน้าหลัก',
-        manager: 'ตัวจัดการไฟล์',
-        editDatabase: 'แก้ไขฐานข้อมูล'
+        home: "หน้าแรก",
+        manager: "ตัวจัดการไฟล์"
     },
-    ar: {
-        unknown: 'غير معروف',
-        panel: 'لوحة التحكم',
-        clickRefresh: 'انقر لتحديث عنوان IP',
-        failedUpdate: 'فشل تحديث معلومات IP',
-        checking: 'جارٍ التحقق...',
-        failed: 'فشل الحصول على معلومات IP',
-        translate: 'ترجمة',
-        spectraConfig: 'إعدادات Spectra',
-        home: 'الصفحة الرئيسية',
-        manager: 'مدير الملفات',
-        editDatabase: 'تحرير قاعدة البيانات'
-    },
+
     ru: {
         unknown: 'Неизвестно',
-        panel: 'Панель управления',
         clickRefresh: 'Нажмите, чтобы обновить IP-адрес',
         failedUpdate: 'Не удалось обновить информацию об IP',
-        checking: 'Проверка...',
+        checking: 'Получение...',
         failed: 'Не удалось получить информацию об IP',
         translate: 'Перевести',
-        spectraConfig: 'Конфигурация Spectra',
-        home: 'Главная',
-        manager: 'Файловый менеджер',
-        editDatabase: 'Редактировать базу данных'
+        home: "Главная",
+        manager: "Файловый менеджер"
     },
+
+    ar: {
+        unknown: 'غير معروف',
+        clickRefresh: 'اضغط لتحديث عنوان الـ IP',
+        failedUpdate: 'فشل تحديث معلومات الـ IP',
+        checking: 'جارٍ الجلب...',
+        failed: 'فشل في جلب معلومات الـ IP',
+        translate: 'ترجمة',
+        home: "الرئيسية",
+        manager: "مدير الملفات"
+    },
+
     es: {
         unknown: 'Desconocido',
-        panel: 'Panel de control',
         clickRefresh: 'Haga clic para actualizar la dirección IP',
-        failedUpdate: 'Error al actualizar la información IP',
-        checking: 'Comprobando...',
-        failed: 'Error al obtener información IP',
+        failedUpdate: 'Error al actualizar la información de IP',
+        checking: 'Obteniendo...',
+        failed: 'Error al obtener la información de IP',
         translate: 'Traducir',
-        spectraConfig: 'Configuración de Spectra',
-        home: 'Inicio',
-        manager: 'Administrador de archivos',
-        editDatabase: 'Editar base de datos'
+        home: "Inicio",
+        manager: "Administrador de archivos"
+    },
+
+    de: {
+        unknown: 'Unbekannt',
+        clickRefresh: 'Klicken, um die IP-Adresse zu aktualisieren',
+        failedUpdate: 'Aktualisieren der IP-Informationen fehlgeschlagen',
+        checking: 'Wird abgerufen...',
+        failed: 'Abrufen der IP-Informationen fehlgeschlagen',
+        translate: 'Übersetzen',
+        home: "Startseite",
+        manager: "Dateimanager"
+    },
+
+    fr: {
+        unknown: 'Inconnu',
+        clickRefresh: 'Cliquez pour actualiser l’adresse IP',
+        failedUpdate: 'Échec de la mise à jour des informations IP',
+        checking: 'Récupération...',
+        failed: 'Échec de la récupération des informations IP',
+        translate: 'Traduire',
+        home: "Accueil",
+        manager: "Gestionnaire de fichiers"
+    },
+
+    bn: {
+        unknown: 'অজানা',
+        clickRefresh: 'IP ঠিকানা রিফ্রেশ করতে ক্লিক করুন',
+        failedUpdate: 'IP তথ্য আপডেট ব্যর্থ হয়েছে',
+        checking: 'আনছে...',
+        failed: 'IP তথ্য আনতে ব্যর্থ হয়েছে',
+        translate: 'অনুবাদ',
+        home: "হোম",
+        manager: "ফাইল ম্যানেজার"
     }
 };
 
@@ -2487,17 +2462,6 @@ async function initIPDisplay() {
 
     const flag = document.getElementById('flag');
     if (flag) flag.title = text.clickRefresh || 'Click to Refresh';
-
-    const wifiIcon = document.getElementById('settings-icon');
-    if (wifiIcon) wifiIcon.title = text.panel || 'Panel';
-
-    const setCityBtn = document.getElementById('setCityBtn');
-    if (setCityBtn) setCityBtn.title = modalText.modalTitle || 'Set City';
-
-    const spectraConfigLink = document.querySelector('a[href*="/spectra"][data-title="Spectra_Config"], a[data-title="Spectra_Config"]');
-    if (spectraConfigLink && text.spectraConfig) {
-        spectraConfigLink.textContent = text.spectraConfig;
-    }
 
     const homeLink = document.querySelector('a[href$="/spectra/index"], a[href*="/spectra/index"]');
     if (homeLink && text.home) {
@@ -4957,8 +4921,12 @@ function initThemeLoaderControl() {
 }
 
 function updateToggleIcon(icon) {
-    if (icon) {
-        icon.style.color = themeLoaderEnabled ? '#0fcc45' : '#666666';
+    if (!icon) return;
+
+    if (themeLoaderEnabled) {
+        icon.className = 'bi bi-check-circle';
+    } else {
+        icon.className = 'bi bi-x-circle';
     }
 }
 
@@ -5299,8 +5267,11 @@ document.addEventListener("DOMContentLoaded", function () {
             localStorage.setItem('backgroundMode', 'auto');
         }
 
-        const isAnimationEnabled = localStorage.getItem('animationEnabled') !== 'false';
-        toggleAnimation(isAnimationEnabled);
+        const isAnimationEnabled = localStorage.getItem('animationSpansEnabled') === 'true';
+        const spans = document.querySelectorAll('.animation-spans span');
+        spans.forEach(span => {
+            span.style.display = isAnimationEnabled ? 'block' : 'none';
+        });
 
         const savedFont = localStorage.getItem('selectedFont') || 'default';
         applyFont(savedFont);
@@ -5405,7 +5376,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const translations = languageTranslations[currentLang] || languageTranslations['en'];
             const animationText = document.getElementById('animation-text');
             const animationIcon = document.getElementById('animation-icon');
-            const isAnimationEnabled = localStorage.getItem('animationEnabled') !== 'false';
+            const isAnimationEnabled = localStorage.getItem('animationSpansEnabled') === 'true';
 
             if (animationText) {
                 animationText.textContent = isAnimationEnabled ? 
@@ -5599,9 +5570,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
             document.getElementById('animation-toggle')?.addEventListener('click', function() {
                 const translations = languageTranslations[currentLang] || languageTranslations['en'];
-                const isAnimationEnabled = localStorage.getItem('animationEnabled') !== 'false';
+                const isAnimationEnabled = localStorage.getItem('animationSpansEnabled') === 'true';
                 const newState = !isAnimationEnabled;
-                localStorage.setItem('animationEnabled', newState);
+                localStorage.setItem('animationSpansEnabled', newState);
+
+                const spans = document.querySelectorAll('.animation-spans span');
+                spans.forEach(span => {
+                    span.style.display = newState ? 'block' : 'none';
+                });
 
                 updateAnimationToggle();
                 const message = newState ? 
@@ -5610,7 +5586,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 showLogMessage(message);
                 speakMessage(message);
                 
-                toggleAnimation(newState);
+                toggleAnimationSpans(newState);
             });
 
             document.getElementById('font-toggle')?.addEventListener('click', function() {
@@ -5817,9 +5793,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         background-size: cover !important;
                         transition: background 1s ease-in-out;
                     }
-                    .wrapper span {
-                        display: none !important;
-                    }
                 `;
             } else {
                 styleTag.innerHTML = `
@@ -5827,9 +5800,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         background: #111 !important;
                         background-image: none !important;
                         background-size: auto !important;
-                    }
-                    .wrapper span {
-                        display: block !important;
                     }
                 `;
             }
@@ -5877,9 +5847,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     transform: translate(-50%, -50%);
                     z-index: -1;
                 }
-                .video-background + .wrapper span {
-                    display: none !important;
-                }
             `;
         }
 
@@ -5923,9 +5890,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     transition: background 1s ease-in-out;
                 }
                 body:before {
-                    display: none !important;
-                }
-                .wrapper span {
                     display: none !important;
                 }
             `;
@@ -6012,10 +5976,14 @@ document.addEventListener("DOMContentLoaded", function () {
             updateSoundToggle();
         }
  
-        function toggleAnimation(enabled) {
-            const wrapper = document.querySelector('.wrapper');
-            if (wrapper) {
-                wrapper.style.display = enabled ? 'block' : 'none';
+        function toggleAnimationSpans(enabled) {
+            const animationContainer = document.querySelector('.animation-spans');
+            if (animationContainer) {
+                if (enabled) {
+                    animationContainer.classList.add('animation-enabled');
+                } else {
+                    animationContainer.classList.remove('animation-enabled');
+                }
             }
         }
 
@@ -6071,6 +6039,117 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
     });
+});
+</script>
+
+<script>
+let cardLayoutActive = false;
+
+function toggleCardLayout() {
+    const translations = languageTranslations[currentLang] || languageTranslations['zh'];
+    const routerIP = window.location.hostname || window.location.host.split(':')[0];
+    const phpFile = 'scp add_js.php';
+    const encodedFile = phpFile.replace(' ', '%20');
+    
+    const button = document.getElementById('card-layout-btn');
+    
+    const action = cardLayoutActive ? 'remove' : 'add';
+    
+    const originalText = button.textContent;
+    button.textContent = translations['message_processing'] || 'Processing...';
+    button.disabled = true;
+    
+    const xhr = new XMLHttpRequest();
+    const url = `http://${routerIP}/luci-static/spectra/bgm/${encodedFile}?action=${action}`;
+    
+    xhr.open('GET', url, true);
+    xhr.timeout = 10000;
+    
+    xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 300) {
+            cardLayoutActive = !cardLayoutActive;
+            
+            const newText = cardLayoutActive 
+                ? (translations['message_remove_card_layout'] || 'Remove Card Layout') 
+                : (translations['message_add_card_layout'] || 'Add Card Layout');
+            
+            button.textContent = newText;
+            button.disabled = false;
+            
+            localStorage.setItem('cardLayoutStatus', cardLayoutActive ? 'active' : 'inactive');
+            
+            const successMsg = action === 'remove' 
+                ? (translations['message_card_layout_removed'] || 'Card layout removed, please refresh page to see changes') 
+                : (translations['message_card_layout_added'] || 'Card layout added, please refresh page to see changes');
+            
+            if (typeof showLogMessage === 'function') {
+                showLogMessage(successMsg);
+            }
+            if (typeof colorVoiceEnabled !== 'undefined' && colorVoiceEnabled) {
+                speakMessage(successMsg);
+            }
+
+            setTimeout(() => location.reload(), 3000);
+
+        } else {
+            button.textContent = originalText;
+            button.disabled = false;
+        }
+    };
+    
+    xhr.onerror = function() {
+        button.textContent = originalText;
+        button.disabled = false;
+    };
+    
+    xhr.ontimeout = function() {
+        button.textContent = originalText;
+        button.disabled = false;
+    };
+    
+    xhr.send();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const translations = languageTranslations[currentLang] || languageTranslations['zh'];
+    const toolbar = document.querySelector('.pw-toolbar-field');
+    
+    if (toolbar) {
+        if (!document.getElementById('card-layout-btn')) {
+            const applyBtn = toolbar.querySelector('input[name="cbi.apply"]');
+            const buttonHTML = `<button class="btn cbi-button cbi-button-edit" id="card-layout-btn">${translations['message_add_card_layout'] || 'message_add_card_layout'}</button>`;
+            
+            if (applyBtn) {
+                applyBtn.insertAdjacentHTML('beforebegin', buttonHTML);
+            } else {
+                toolbar.insertAdjacentHTML('beforeend', buttonHTML);
+            }
+            
+            const newBtn = document.getElementById('card-layout-btn');
+            if (newBtn) {
+                const savedStatus = localStorage.getItem('cardLayoutStatus');
+                cardLayoutActive = savedStatus === 'active';
+                
+                newBtn.textContent = cardLayoutActive 
+                    ? translations['message_remove_card_layout'] || 'Remove Card Layout'
+                    : translations['message_add_card_layout'] || 'Add Card Layout';
+                
+                newBtn.addEventListener('click', function() {
+                    toggleCardLayout();
+                });
+            }
+        } else {
+            const existingBtn = document.getElementById('card-layout-btn');
+            if (existingBtn) {
+                const savedStatus = localStorage.getItem('cardLayoutStatus');
+                cardLayoutActive = savedStatus === 'active';
+                
+                existingBtn.textContent = cardLayoutActive 
+                    ? translations['message_remove_card_layout'] || 'Remove Card Layout'
+                    : translations['message_add_card_layout'] || 'Add Card Layout';
+            }
+        }
+    }
 });
 </script>
 

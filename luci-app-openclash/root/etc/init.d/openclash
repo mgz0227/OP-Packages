@@ -313,6 +313,8 @@ kill_clash()
 
 start_fail()
 {
+   uci -q set openclash.config.enable=0
+   uci -q commit openclash
    kill_clash
    stop
    exit 0
