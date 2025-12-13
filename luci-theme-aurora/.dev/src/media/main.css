@@ -1139,7 +1139,7 @@
 
         & > span {
           @apply space-y-1.5 text-slate-800 max-md:space-y-1 max-md:text-sm max-md:leading-5 dark:text-slate-200;
-          @apply has-[.cbi-tooltip-container]:flex has-[.cbi-tooltip-container]:flex-wrap has-[.cbi-tooltip-container]:items-center has-[.cbi-tooltip-container]:justify-center;
+          @apply has-[>.cbi-tooltip-container]:flex has-[>.cbi-tooltip-container]:flex-wrap has-[>.cbi-tooltip-container]:items-center has-[>.cbi-tooltip-container]:justify-center;
 
           .network-status-table & {
             @apply w-full;
@@ -1177,7 +1177,7 @@
         }
 
         & .cbi-tooltip-container {
-          @apply static flex cursor-help items-center justify-center text-slate-800 dark:text-slate-200;
+          @apply static inline-flex cursor-help items-center justify-center text-slate-800 dark:text-slate-200;
 
           & .cbi-tooltip {
             @apply bottom-0 md:left-0;
