@@ -93,9 +93,9 @@
   --primary-text: oklch(0.779 0.168 188.745);
   --primary-hover: oklch(0.58 0.13 189.632);
 
-  --muted: oklch(0.27 0 0);
-  --muted-text: oklch(0.92 0 0);
-  --muted-hover: oklch(0.32 0 0);
+  --muted: oklch(0.373 0.026 259.733);
+  --muted-text: oklch(0.92 0.01 259.733);
+  --muted-hover: oklch(0.395 0.026 259.733);
 
   --destructive: oklch(0.28 0.12 25/0.3);
   --destructive-text: oklch(0.88 0.14 25);
@@ -137,13 +137,13 @@
   --error-mid: oklch(0.28 0.12 25/0.3);
   --error-end: oklch(0.35 0.12 25/0.4);
 
-  --default: oklch(0.269 0 0);
-  --default-text: oklch(0.985 0 0);
-  --default-border: oklch(0.275 0 0/0.3);
-  --default-shadow: oklch(0 0 0/0.3);
-  --default-start: oklch(0.28 0 0/0.8);
-  --default-mid: oklch(0.26 0 0/0.6);
-  --default-end: oklch(0.28 0 0/0.8);
+  --default: oklch(0.372 0.044 257.287);
+  --default-text: oklch(0.985 0.01 257.287);
+  --default-border: oklch(0.39 0.044 257.287 / 0.3);
+  --default-shadow: oklch(0 0 0 / 0.3);
+  --default-start: oklch(0.39 0.044 257.287 / 0.8);
+  --default-mid: oklch(0.355 0.044 257.287 / 0.6);
+  --default-end: oklch(0.39 0.044 257.287 / 0.8);
 }
 
 @theme inline {
@@ -1304,15 +1304,15 @@
           }
 
           & ins {
-            @apply border border-emerald-300/60 bg-emerald-100 text-emerald-800 dark:border-emerald-600/40 dark:bg-emerald-900/20 dark:text-emerald-200;
+            @apply border-success-border bg-success text-success-text border;
           }
 
           & del {
-            @apply border border-red-300/60 bg-red-100 text-red-800 dark:border-red-600/40 dark:bg-red-900/20 dark:text-red-200;
+            @apply border-error-border bg-error text-error-text border;
           }
 
           & var {
-            @apply border border-blue-300/60 bg-blue-100 text-blue-800 dark:border-blue-600/40 dark:bg-blue-900/20 dark:text-blue-200;
+            @apply border-info-border bg-info text-info-text border;
           }
 
           & .uci-change-legend {
@@ -1332,14 +1332,6 @@
                 & del {
                   @apply ml-1 h-4 min-w-4 px-1;
                 }
-
-                & ins {
-                  @apply border-emerald-400/60 bg-emerald-200 dark:border-emerald-500/40 dark:bg-emerald-800/40;
-                }
-
-                & del {
-                  @apply border-red-400/60 bg-red-200 dark:border-red-500/40 dark:bg-red-800/40;
-                }
               }
             }
           }
@@ -1348,7 +1340,7 @@
             @apply mt-4 space-y-3;
 
             & h5 {
-              @apply mt-6 mb-2 rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-800 first:mt-0 dark:bg-slate-700/60 dark:text-slate-200;
+              @apply bg-default text-default-text mt-6 mb-2 rounded-xl px-3 py-2 text-sm font-semibold first:mt-0;
             }
 
             & ins,
@@ -1356,16 +1348,8 @@
               @apply block rounded-xl px-4 py-3 text-sm;
 
               & strong {
-                @apply font-bold;
+                @apply text-sm;
               }
-            }
-
-            & ins strong {
-              @apply text-emerald-700 dark:text-emerald-300;
-            }
-
-            & del strong {
-              @apply text-red-700 dark:text-red-300;
             }
 
             & var {
@@ -1374,14 +1358,6 @@
               & ins,
               & del {
                 @apply ml-1 inline-block px-1.5 py-0.5 text-xs;
-              }
-
-              & ins {
-                @apply border-emerald-300/60 bg-emerald-100 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-800/40 dark:text-emerald-200;
-              }
-
-              & del {
-                @apply border-red-300/60 bg-red-100 text-red-800 dark:border-red-500/40 dark:bg-red-800/40 dark:text-red-200;
               }
             }
           }
