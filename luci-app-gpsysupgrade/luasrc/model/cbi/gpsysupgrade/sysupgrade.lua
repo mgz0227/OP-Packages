@@ -12,8 +12,8 @@ end
 
 function check_update()
 		needs_update, notice, md5 = false, false, false
-		remote_version = luci.sys.exec("curl -skfL https://op.miaogongzi.cc/24.10/targets/x86/64/version.txt")
-		updatelogs = luci.sys.exec("curl -skfL https://op.miaogongzi.cc/24.10/targets/x86/64/updatelogs.txt")
+		remote_version = luci.sys.exec("curl -skfL https://op.miaogongzi.cc/25.12/targets/x86/64/version.txt")
+		updatelogs = luci.sys.exec("curl -skfL https://op.miaogongzi.cc/25.12/targets/x86/64/updatelogs.txt")
 		remoteformat = luci.sys.exec("date -d $(echo \"" ..remote_version.. "\" | tr '\r\n' ',' | awk -F, '{printf $1}' | awk -F. '{printf $3\"-\"$1\"-\"$2}') +%s")
 		fnotice = luci.sys.exec("echo \"" ..remote_version.. "\" | tr '\r\n' ',' | awk -F, '{printf $(NF-1)}'")
 		md5 = luci.sys.exec("echo \"" ..remote_version.. "\" | tr '\r\n' ',' | awk -F, '{printf $2}'")
