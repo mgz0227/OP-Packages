@@ -11,7 +11,7 @@ PKG_NAME:=qt6base
 PKG_BASE:=6.9
 PKG_BUGFIX:=1
 PKG_VERSION:=$(PKG_BASE).$(PKG_BUGFIX)
-PKG_RELEASE:=14
+PKG_RELEASE:=15
 
 PKG_SOURCE:=qtbase-everywhere-src-$(PKG_VERSION).tar.xz
 PKG_SOURCE_URL:=https://mirrors.tencent.com/qt/archive/qt/$(PKG_BASE)/$(PKG_VERSION)/submodules/ \
@@ -37,6 +37,16 @@ include $(INCLUDE_DIR)/host-build.mk
 include $(INCLUDE_DIR)/cmake.mk
 
 STRIP:=$(TARGET_CROSS)strip $(call qstrip,$(CONFIG_STRIP_ARGS))
+
+define Host/Prepare
+	$(call Host/Prepare/Default)
+	$(SED) 's/^qt_internal_check_if_path_has_symlinks/# &/' $(HOST_BUILD_DIR)/CMakeLists.txt
+endef
+
+define Build/Prepare
+	$(call Build/Prepare/Default)
+	$(SED) 's/^qt_internal_check_if_path_has_symlinks/# &/' $(PKG_BUILD_DIR)/CMakeLists.txt
+endef
 
 define Package/libQt6/Default
   SECTION:=libs
