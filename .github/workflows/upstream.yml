@@ -226,7 +226,7 @@ jobs:
         (
         git_clone https://github.com/Diciya/luci-app-broadbandacc
         git_clone https://github.com/wiwizcom/WiFiPortal && mvdir WiFiPortal
-        git_clone https://github.com/vinewx/NanoHatOLED && mv NanoHatOLED/nanohatoled ./ && rm -rf NanoHatOLED
+        # git_clone https://github.com/vinewx/NanoHatOLED && mv NanoHatOLED/nanohatoled ./ && rm -rf NanoHatOLED
         git_clone https://github.com/zerolabnet/luci-app-torbp
         git_clone https://github.com/sbwml/luci-app-airconnect airconnect1 && mv airconnect1/* ./ && rm -rf airconnect1
         git_clone https://github.com/openwrtdiy/luci-app-pppoe-user
@@ -268,9 +268,9 @@ jobs:
         git_clone https://github.com/gSpotx2f/luci-app-interfaces-statistics
         git_clone https://github.com/gSpotx2f/luci-app-cpu-status-mini
         git_clone https://github.com/gSpotx2f/luci-app-cpu-status
-        git_clone https://github.com/Carseason/openwrt-packages Carseason && mv -n Carseason/*/* ./;mv services/routergo ./;rm -rf Carseason
+        git_clone https://github.com/Carseason/openwrt-packages Carseason1 && mv -n Carseason1/*/* ./;mv services/* ./;rm -rf Carseason1 services
         git_clone https://github.com/Carseason/openwrt-themedog && mv -n openwrt-themedog/luci/* ./;rm -rf openwrt-themedog
-        git_clone https://github.com/Carseason/openwrt-app-actions Carseason && mv -n Carseason/applications/* ./;rm -rf Carseason
+        git_clone https://github.com/Carseason/openwrt-app-actions Carseason2 && mv -n Carseason2/applications/* ./;rm -rf Carseason2
         git_clone https://github.com/Thaolga/openwrt-nekobox && mv openwrt-nekobox/luci-* ./;rm -rf openwrt-nekobox
         git_clone https://github.com/nosignals/openwrt-neko && mv openwrt-neko/luci-app-neko ./;rm -rf openwrt-neko
         ) &
@@ -312,7 +312,7 @@ jobs:
         git_clone https://github.com/DRAWCORE/luci-app-qos-emong
         # git_clone https://github.com/wintbiit/luci-app-sakurafrp
         git_clone https://github.com/ykxVK8yL5L/luci-app-taskschedule taskschedule && mvdir taskschedule
-        git_clone https://github.com/douo/luci-app-tinyfecvpn
+        #git_clone https://github.com/douo/luci-app-tinyfecvpn
         ) &
         (
         git_clone https://github.com/ttimasdf/luci-app-jederproxy
@@ -338,7 +338,8 @@ jobs:
         git_clone https://github.com/calfeche13/luci-app-public-ip-monitor
         # git_clone https://github.com/vison-v/luci-app-nginx-proxy
         git_clone https://github.com/tty228/luci-app-wechatpush
-        git_clone https://github.com/natpierce/luci-app-natpierce natpierce && mv natpierce/luci-app-natpierce ./;rm -rf natpierce
+        git_clone https://github.com/sbwml/luci-app-mentohust mentohust1 && mvdir mentohust1
+        # git_clone https://github.com/natpierce/luci-app-natpierce natpierce && mv natpierce/luci-app-natpierce ./;rm -rf natpierce
         ) &
         (
         git_sparse_clone master "https://github.com/coolsnowwolf/packages" multimedia/UnblockNeteaseMusic-Go \
@@ -352,7 +353,7 @@ jobs:
         ) &
         (
         git_sparse_clone master "https://github.com/xiaoqingfengATGH/feeds-xiaoqingfeng" homeredirect luci-app-homeredirect
-        git_sparse_clone master "https://github.com/immortalwrt/immortalwrt" \
+        git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/immortalwrt" \
         package/kernel/rtl8189es package/emortal/autocore package/emortal/automount \
         package/emortal/cpufreq package/network/utils/fullconenat package/network/utils/fullconenat-nft \
         package/utils/mhz package/utils/pcat-manager
@@ -363,15 +364,15 @@ jobs:
         ) &
         (
         git_sparse_clone develop "https://github.com/Ysurac/openmptcprouter-feeds" \
-        dsvpn glorytun-udp glorytun grpcurl ipcalc luci-app-dsvpn luci-app-glorytun-tcp luci-app-glorytun-udp luci-app-mail luci-app-mlvpn luci-app-mptcp luci-app-nginx-ha luci-app-sqm-autorate luci-app-packet-capture luci-app-iperf luci-theme-openmptcprouter sqm-autorate speedtestc mlvpn mptcp systemtap tcptraceroute tracebox tsping atinout z8102
+        dsvpn glorytun-udp glorytun grpcurl ipcalc luci-app-dsvpn luci-app-glorytun-tcp luci-app-glorytun-udp luci-app-mail luci-app-mlvpn luci-app-mptcp luci-app-nginx-ha luci-app-sqm-autorate luci-app-packet-capture luci-app-iperf luci-theme-openmptcprouter sqm-autorate speedtestc mlvpn mptcp tcptraceroute tracebox tsping atinout z8102
         git_sparse_clone chawrt/24.10 "https://github.com/liudf0716/luci" applications/luci-app-yt-dlp applications/luci-app-apfree-wifidog applications/luci-app-ss-redir
         git_sparse_clone chawrt/24.10 "https://github.com/liudf0716/packages" net/ss-redir
         ) &
-        git_sparse_clone master "https://github.com/immortalwrt/packages" net/n2n net/dae net/frp \
+        git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/packages" net/n2n net/dae net/frp \
         net/amule net/cdnspeedtest net/minieap net/ddns-go net/sysuh3c net/3proxy net/cloudreve \
         net/go-nats net/go-wol net/bitsrunlogin-go net/transfer net/daed net/udp2raw net/msd_lite \
         net/subconverter net/ngrokc net/scutclient net/gost net/ua2f net/dufs net/qBittorrent-Enhanced-Edition \
-        net/tinyportmapper net/tinyfecvpn net/nexttrace net/rustdesk-server net/tuic-server \
+        net/tinyportmapper net/nexttrace net/rustdesk-server net/tuic-server \
         net/ipset-lists net/ShadowVPN net/nps net/vlmcsd net/dnsforwarder \
         net/ps3netsrv net/brook net/q net/speedtest-cli \
         net/vsftpd net/smartdns net/miniupnpd net/p910nd \
@@ -381,14 +382,14 @@ jobs:
         utils/phicomm-k3screenctrl utils/joker utils/7z utils/dhrystone utils/supervisor utils/tinymembench utils/pcat-mgr utils/fan2go \
         utils/coremark utils/watchcat multimedia/you-get multimedia/lux multimedia/gmediarender multimedia/ykdl multimedia/gallery-dl \
         sound/spotifyd devel/go-rice devel/rust-bindgen admin/gotop \
-        lang/lua-periphery lang/lua-neturl lang/lua-maxminddb lang/node-pnpm devel/gn
+        lang/lua-periphery lang/lua-neturl lang/lua-maxminddb devel/gn
         git_clone https://github.com/koshev-msk/modemfeed && mv -n modemfeed/*/!(telephony)/* ./; rm -rf modemfeed
         git_sparse_clone openwrt-25.12 "https://github.com/coolsnowwolf/luci" applications themes/luci-theme-design libs/luci-lib-fs
         mv -f applications luciapp;rm -rf luciapp/{luci-app-turboacc,luci-app-frp*}
         git_sparse_clone master "https://github.com/coolsnowwolf/luci" applications
         mv -n applications/* luciapp/; rm -rf applications
         rm -rf luciapp/{luci-app-qbittorrent,luci-app-zerotier,luci-app-cpufreq,luci-app-e2guardian,luci-app-aliyundrive-fuse,luci-app-syncdial,luci-app-firewall}
-        git_sparse_clone master "https://github.com/immortalwrt/luci" applications protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
+        git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/luci" applications collections/luci-nginx protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
         rm -rf applications/luci-app-frp*;mv -n luciapp/!(luci-app-filetransfer|luci-app-ksmbd) applications/; rm -rf luciapp
 
         for ipk in $(ls -d applications/!(luci-app-rclone|luci-app-dockerman|luci-app-smartdns|luci-app-3ginfo-lite|luci-app-aria2|luci-app-ddns|luci-app-package-manager|luci-app-ksmbd|luci-app-samba4|luci-app-watchcat|luci-app-upnp|luci-app-transmission)/); do
@@ -397,6 +398,7 @@ jobs:
         	fi
         done
         git clone -b dev --depth 1 https://github.com/vernesong/OpenClash && mv -n OpenClash/luci-app-openclash ./; rm -rf OpenClash
+
 
     - name: Delete duplicated packages
       run: |
@@ -442,7 +444,7 @@ jobs:
              -H "Authorization: Bearer ${{ secrets.TOKEN_MGZ0227 }}" \
              -X POST -d '{ "query": "query {repository(owner: \"'"$1"'\", name: \"'"$2"'\"){latestRelease{tagName tagCommit{oid}}refs(refPrefix:\"refs/tags/\",last:1,orderBy:{field:TAG_COMMIT_DATE,direction:ASC}){edges{node{name target{oid}}}}defaultBranchRef{target{...on Commit {oid}}}}}"}' https://api.github.com/graphql)
         }
-        for pkg in $(ls !(luci-*|nikki|openwrt-einat-ebpf|glorytun|openwrt-Toolkit|systemtap|libdouble-conversion|wxbase|3proxy|ucode|mergerfs|openwrt-nezhav1|homebox|sub-web|tcptraceroute|systemtap|frp|openwrt-caddy|mentohust|brlaser|rapidjson|smartdns|hysteria|gecoosac|hickory-dns|libcryptopp|naiveproxy|rustdesk-server|shadowsocksr-libev|tuic-server|joker|ps3netsrv|natter|netmaker|openwrt-ympd|subconverter|sms-tool)/Makefile); do
+        for pkg in $(ls !(luci-*|nikki|openwrt-einat-ebpf|glorytun|spotifyd|qBittorrent-Enhanced-Edition|openwrt-Toolkit|libdouble-conversion|wxbase|3proxy|ucode|mergerfs|openwrt-nezhav1|homebox|sub-web|tcptraceroute|frp|openwrt-caddy|mentohust|brlaser|rapidjson|smartdns|hysteria|gecoosac|hickory-dns|libcryptopp|naiveproxy|rustdesk-server|shadowsocksr-libev|tuic-server|joker|ps3netsrv|natter|netmaker|openwrt-ympd|subconverter|sms-tool)/Makefile); do
           repo="$(grep ^PKG_SOURCE_URL $pkg | grep github | cut -f 4-5 -d '/' | sed -e 's/.git//' | grep -E '[0-9a-zA-Z_-]+$')" || true
           if [ "$repo" ]; then
             owner="$(echo $repo | cut -f 1 -d '/')"
@@ -502,7 +504,7 @@ jobs:
         cp -rf luci-app-bypass/root/www/luci-static/bypass/* luci-app-passwall/root/www/luci-static/passwall/
         cp -rf luci-app-bypass/root/www/luci-static/bypass/* luci-app-passwall2/root/www/luci-static/passwall2/
         cp -rf luci-app-bypass/root/www/luci-static/bypass/* luci-app-ssr-plus/root/www/luci-static/shadowsocksr/
-        echo ".page-container>div:first-child{display:none}" >>luci-app-quickstart/htdocs/luci-static/quickstart/style.css
+        echo ".page-container>div>div>a:first-child{display:none}" >>luci-app-quickstart/htdocs/luci-static/quickstart/style.css
         sed -i 's/icon!=="baby"/icon!==""/' luci-app-quickstart/htdocs/luci-static/quickstart/index.js
         sed -i 's/+php8-cgi /+php8-cgi +php8-fpm /' luci-theme-spectra/Makefile
 
