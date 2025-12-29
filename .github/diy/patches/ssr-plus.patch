@@ -225,3 +225,14 @@ index 000000000000..a00fff9c79b3
 +window.addEventListener('resize', resize);
 +</script>
 
+--- a/luci-app-ssr-plus/root/etc/uci-defaults/luci-ssr-plus
++++ b/luci-app-ssr-plus/root/etc/uci-defaults/luci-ssr-plus
+@@ -43,5 +43,8 @@ if [ -s "/etc/uwsgi/vassals/luci-webui.ini" ];then
+ 	/etc/init.d/uwsgi restart
+ fi
+ 
++grep -q ip-api.com /etc/ssrplus/black.list ||
++	sed -i '$a ip-api.com' /etc/ssrplus/black.list
++
+ rm -f /tmp/luci-indexcache /tmp/luci-indexcache.*
+ rm -rf /tmp/luci-modulecache/
