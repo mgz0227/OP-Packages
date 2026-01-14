@@ -1,13 +1,13 @@
 --- a/luci-app-passwall/root/etc/uci-defaults/luci-passwall
 +++ b/luci-app-passwall/root/etc/uci-defaults/luci-passwall
-@@ -41,6 +41,7 @@ chmod +x /usr/share/passwall/*.sh
+@@ -47,6 +47,7 @@ chmod +x /usr/share/passwall/*.sh
  [ "$(uci -q get passwall.@global_xray[0].sniffing)" == "1" ] && [ "$(uci -q get passwall.@global_xray[0].route_only)" != "1" ] && uci -q set passwall.@global_xray[0].sniffing_override_dest=1
  uci -q delete passwall.@global_xray[0].sniffing
  uci -q delete passwall.@global_xray[0].route_only
 +[ "`which nft`" ] && uci -q set passwall.@global_forwarding[0].use_nft=1
  uci -q commit passwall
  
- rm -f /tmp/luci-indexcache
+ sed -i "s#add_from#group#g" /etc/config/passwall 2>/dev/null
 
 --- a/luci-app-passwall/Makefile
 +++ b/luci-app-passwall/Makefile
