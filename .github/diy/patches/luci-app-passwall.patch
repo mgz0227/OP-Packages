@@ -344,18 +344,18 @@ index 000000000000..a00fff9c79b3
 +window.addEventListener('resize', resize);
 +</script>
 diff --git a/luci-app-passwall/root/etc/uci-defaults/luci-passwall b/luci-app-passwall/root/etc/uci-defaults/luci-passwall
-index cc39c00a21..079c9723b3 100755
+index 4c6a0c388f..02063f57b9 100755
 --- a/luci-app-passwall/root/etc/uci-defaults/luci-passwall
 +++ b/luci-app-passwall/root/etc/uci-defaults/luci-passwall
-@@ -1,5 +1,8 @@
- #!/bin/sh
+@@ -12,6 +12,8 @@ if [ -e "/etc/config/ucitrack" ]; then
+ EOF
+ fi
  
-+grep -q ip-api.com /usr/share/passwall/rules/proxy_host ||
-+	sed -i '$a ip-api.com' /usr/share/passwall/rules/proxy_host
++grep -q ip-api.com /usr/share/passwall/rules/proxy_host ||sed -i '$a ip-api.com' /usr/share/passwall/rules/proxy_host
 +
- uci -q batch <<-EOF >/dev/null
- 	set dhcp.@dnsmasq[0].localuse=1
- 	commit dhcp
+ uci -q batch <<-EOF
+ 	delete firewall.passwall
+ 	set firewall.passwall=include
 
 --- a/luci-app-passwall/root/usr/share/passwall/0_default_config
 +++ b/luci-app-passwall/root/usr/share/passwall/0_default_config
