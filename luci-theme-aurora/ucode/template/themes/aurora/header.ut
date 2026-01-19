@@ -91,9 +91,6 @@
 				const toolbarToggle = document.getElementById('toolbar-toggle');
 				const floatingToolbar = document.getElementById('floating-toolbar');
 				if (toolbarToggle && floatingToolbar) {
-					const isCollapsed = localStorage.getItem('aurora.toolbarCollapsed') === 'true';
-					isCollapsed && floatingToolbar.classList.add('collapsed');
-
 					toolbarToggle.addEventListener('click', () => {
 						const collapsed = floatingToolbar.classList.toggle('collapsed');
 						localStorage.setItem('aurora.toolbarCollapsed', collapsed);
@@ -218,6 +215,14 @@
 				</span>
 			</button>
 		</div>
+		<script>
+			(function() {
+				const toolbar = document.getElementById('floating-toolbar');
+				if (toolbar && localStorage.getItem('aurora.toolbarCollapsed') === 'true') {
+					toolbar.classList.add('collapsed');
+				}
+			})();
+		</script>
 		{% endif %}
 
 		<div id="maincontent">
