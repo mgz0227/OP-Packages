@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-nginx
 PKG_VERSION:=20230323
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 PKG_ARCH:=all
 PKG_MAINTAINER:=Zhang Hua <zhanghuadedn@gmail.com>
 PKG_LICENSE:=WTFPL
