@@ -167,15 +167,6 @@
  	luci.sys.call('/etc/init.d/passwall2 stop')
  	luci.sys.call('[ -f "/usr/share/passwall2/0_default_config" ] && cp -f /usr/share/passwall2/0_default_config /etc/config/passwall2')
 
---- a/luci-app-passwall2/luasrc/model/cbi/passwall2/client/global.lua
-+++ b/luci-app-passwall2/luasrc/model/cbi/passwall2/client/global.lua
-@@ -411,5 +411,6 @@ for k, v in pairs(nodes_table) do
- end
- 
- m:append(Template(appname .. "/global/footer"))
-+m:append(Template(appname .. "/global/status_bottom"))
- 
- return m
 
 diff --git a/luci-app-passwall2/luasrc/view/passwall2/global/status_bottom.htm b/luci-app-passwall2/luasrc/view/passwall2/global/status_bottom.htm
 new file mode 100644
