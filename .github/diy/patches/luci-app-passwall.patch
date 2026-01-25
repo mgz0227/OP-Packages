@@ -197,18 +197,7 @@
  function index_status()
  	local e = {}
  	e.dns_mode_status = luci.sys.call("netstat -apn | grep ':15353 ' >/dev/null") == 0
-diff --git a/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua b/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua
-index 0c33ccd90f..258da6a551 100644
---- a/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua
-+++ b/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua
-@@ -431,6 +431,7 @@ for k, v in pairs(nodes_table) do
-     end
- end
- 
-+m:append(Template(appname .. "/global/status_bottom"))
- m:append(Template(appname .. "/global/footer"))
- 
- return m
+  
 diff --git a/luci-app-passwall/luasrc/view/passwall/global/status_bottom.htm b/luci-app-passwall/luasrc/view/passwall/global/status_bottom.htm
 new file mode 100644
 index 000000000000..a00fff9c79b3
