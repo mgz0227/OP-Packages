@@ -9,9 +9,9 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=miniupnpd
 PKG_VERSION:=2.3.9
-PKG_RELEASE:=20
+PKG_RELEASE:=22
 
-PKG_SOURCE_URL:=https://miniupnp.tuxfamily.org/files
+PKG_SOURCE_URL:=https://github.com/miniupnp/miniupnp/releases/download/miniupnpd_$(subst .,_,$(PKG_VERSION))
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_HASH:=skip
 
@@ -58,6 +58,7 @@ define Package/miniupnpd-nftables
   TITLE+= (nftables)
   VARIANT:=nftables
   DEFAULT_VARIANT:=1
+  CONFLICTS:=miniupnpd-iptables
 endef
 
 define Package/miniupnpd/conffiles/Default
@@ -73,19 +74,23 @@ define Build/Prepare
 endef
 
 CONFIGURE_ARGS = \
-	$(if $(CONFIG_IPV6),--ipv6) \
+	--disable-fork \
+	--disable-pppconn \
+	--firewall=$(BUILD_VARIANT) \
 	--igd2 \
+	$(if $(CONFIG_IPV6),--ipv6) \
 	--leasefile \
 	--portinuse \
-	--firewall=$(BUILD_VARIANT) \
-	--disable-fork \
-	--regex
+	--regex \
+	--vendorcfg
 
 TARGET_CFLAGS += $(FPIC)
 TARGET_LDFLAGS += -Wl,--gc-sections,--as-needed
 
 ifeq ($(BUILD_VARIANT),iptables)
+ifeq ($(filter $(ARCH),mips mipsel),)
 	TARGET_CFLAGS += -flto
+endif
 endif
 
 define Package/miniupnpd/install/Default

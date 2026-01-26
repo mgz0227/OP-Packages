@@ -217,10 +217,12 @@ if (has_singbox or has_xray) and #nodes_table > 0 then
 						for k1, v1 in pairs(balancing_list) do
 							o:value(v1.id, v1.remark)
 							o.group[#o.group+1] = (v1.group and v1.group ~= "") and v1.group or translate("default")
+							fakedns_tag:depends({ [node_option] = v1.id, [vid .. "-fakedns"] = "1" })
 						end
 						for k1, v1 in pairs(urltest_list) do
 							o:value(v1.id, v1.remark)
 							o.group[#o.group+1] = (v1.group and v1.group ~= "") and v1.group or translate("default")
+							fakedns_tag:depends({ [node_option] = v1.id, [vid .. "-fakedns"] = "1" })
 						end
 						for k1, v1 in pairs(iface_list) do
 							o:value(v1.id, v1.remark)
@@ -547,5 +549,6 @@ footer.global_cfgid = global_cfgid
 footer.shunt_list = api.jsonc.stringify(shunt_list)
 
 m:append(footer)
+m:append(Template(appname .. "/global/status_bottom"))
 
 return m
