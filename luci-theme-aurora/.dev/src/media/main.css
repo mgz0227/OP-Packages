@@ -1458,10 +1458,18 @@
         @apply w-1/3;
       }
 
+      & .cbi-value-first-field {
+        @apply font-bold;
+      }
+
       & .cbi-section-table-titles.named,
       & .cbi-section-table-descr.named,
       & .cbi-section-table-row[data-title] {
         @apply before:table-cell before:border-gray-200 before:px-3 before:py-3 before:align-middle before:text-base before:font-semibold before:text-gray-900 before:content-[attr(data-title)] before:max-md:flex before:max-md:flex-[0_0_100%] before:max-md:px-3 before:max-md:py-2.5 before:max-md:text-sm before:md:border-b dark:before:border-gray-600/40 dark:before:text-gray-100;
+        &.cbi-value-first-field,
+        &:has(.cbi-value-first-field) {
+          @apply before:content-none;
+        }
       }
 
       & .cbi-section-table-titles.named {
