@@ -6,10 +6,10 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=dns2socks
 PKG_VERSION:=2.1
-PKG_RELEASE:=12
+PKG_RELEASE:=13
 
 PKG_SOURCE:=SourceCode.zip
-PKG_SOURCE_URL:=https://github.com/xiaorouji/openwrt-passwall-packages/releases/download/dns2socks
+PKG_SOURCE_URL:=https://github.com/Openwrt-Passwall/openwrt-passwall-packages/releases/download/dns2socks
 PKG_SOURCE_DATE:=2020-02-18
 PKG_HASH:=skip
 
