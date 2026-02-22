@@ -7,11 +7,11 @@
 -			dest.pkgs[pkg.name] = pkg;
 +			dest.pkgs[pkg.name] = dest.pkgs[pkg.name] ? dest.pkgs[pkg.name] : pkg;
  
- 			var provides = dest.providers[pkg.name] ? [] : [ pkg.name ];
+ 			const provides = dest.providers[pkg.name] ? [] : [ pkg.name ];
  
 @@ -248,7 +248,7 @@ function display(pattern)
- 			var avail = packages.available.pkgs[name],
- 			    inst  = packages.installed.pkgs[name];
+ 			const avail = packages.available.pkgs[name];
+ 			const inst  = packages.installed.pkgs[name];
  
 -			if (!inst || !inst.installed)
 +			if (!inst || !inst.installed || pkg.name.includes('kmod-') || pkg.name.includes('busybox') || pkg.name.includes('base-files'))
@@ -41,7 +41,7 @@
  			if (res.pkmcmd)
  				dlg.appendChild(E('pre', [ res.pkmcmd ]));
  
-+			var showModalFlag = (cmd !== 'update' && pkg) || res.stderr;
++			const showModalFlag = (cmd !== 'update' && pkg) || res.stderr;
 +			if (showModalFlag) {
  			if (res.stdout)
  				dlg.appendChild(E('pre', [ res.stdout ]));
@@ -57,37 +57,32 @@
  		}).catch(function(err) {
  			ui.addNotification(null, E('p', _('Unable to execute <em>%s %s</em> command: %s').format(L.hasSystemFeature('apk') ? 'apk' : 'opkg', cmd, err)));
  			ui.hideModal();
-@@ -1150,6 +1157,42 @@ return view.extend({
+@@ -1152,6 +1152,36 @@ return view.extend({
  	},
  
- 	render: function(listData) {
-+		var checkUpdateNeeded = function() {
+ 	render(listData) {
++ 		const checkUpdateNeeded = function() {
 +            return Promise.all([
 +                L.resolveDefault(fs.stat('/tmp/opkg-lists'), null),
-+                L.resolveDefault(fs.list('/tmp/opkg-lists'), []),
 +                L.resolveDefault(fs.read('/tmp/resolv.conf.d/resolv.conf.auto'), '')
 +            ]).then(function(results) {
-+                var stat = results[0];
-+				var files = results[1];
-+                var resolvContent = results[2];
++                const stat = results[0];
++                const resolvContent = results[1];
 +
-+				var isEmpty = files.length === 0;
-+                var needUpdate = false;
++                let needUpdate = false;
 +
-+                if (isEmpty) {
-+                    needUpdate = true;
-+                } else if (stat) {
-+                    var currentDate = new Date();
-+                    var lastUpdateDate = new Date(stat.mtime * 1000);  // Convert seconds to milliseconds
++                if (stat) {
++                    const currentDate = new Date();
++                    const lastUpdateDate = new Date(stat.mtime * 1000);  // Convert seconds to milliseconds
 +                    // 检查是否在今天的零点之后更新过
-+                    var today = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
++                    const today = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
 +                    needUpdate = lastUpdateDate < today;
 +                } else {
 +                    needUpdate = true;
 +                }
 +
 +                // 检查 resolv.conf.auto 文件内容
-+                var hasResolvContent = resolvContent && resolvContent.trim().length > 0;
++                const hasResolvContent = resolvContent && resolvContent.trim().length > 0;
 +
 +                // 只有当需要更新且 resolv.conf.auto 不为空时，才返回 true
 +                return needUpdate && hasResolvContent;
@@ -96,10 +91,9 @@
 +                return false; // 如果出错，不执行更新
 +            });
 +        };
-+
- 		var query = decodeURIComponent(L.toArray(location.search.match(/\bquery=([^=]+)\b/))[1] || '');
+ 		const query = decodeURIComponent(L.toArray(location.search.match(/\bquery=([^=]+)\b/))[1] || '');
  
- 		var view = E([], [
+ 		const view = E([], [
 @@ -1191,6 +1234,7 @@ return view.extend({
  					E('label', {}, _('Actions') + ':'), ' ',
  					E('span', { 'class': 'control-group' }, [
@@ -117,7 +111,7 @@
 +            checkUpdateNeeded().then(function(needUpdate) {
 +                if (needUpdate) {
 +		setTimeout(function() {
-+                    var updateButton = document.querySelector('button[data-command="update"]');
++                    const updateButton = document.querySelector('button[data-command="update"]');
 +                    if (updateButton) {
 +                        updateButton.click();
 +                    }
