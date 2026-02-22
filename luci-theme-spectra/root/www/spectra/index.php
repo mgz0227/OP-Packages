@@ -5804,7 +5804,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="searchModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="searchModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
@@ -5848,7 +5848,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="filePropertiesModal" tabindex="-1" aria-labelledby="filePropertiesModalLabel" aria-hidden="true">
+<div class="modal fade" id="filePropertiesModal" tabindex="-1" aria-labelledby="filePropertiesModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
@@ -5878,7 +5878,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="chmodModal" tabindex="-1" aria-labelledby="chmodModalLabel" aria-hidden="true">
+<div class="modal fade" id="chmodModal" tabindex="-1" aria-labelledby="chmodModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-lg">
     <form method="post" onsubmit="return validateChmod()" class="modal-content no-loader">
       <div class="modal-header">
@@ -5919,7 +5919,7 @@ list-group:hover {
   </div>
 </div>
 
-<div class="modal fade" id="createTypeModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="createTypeModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -5972,7 +5972,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="createFolderModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="createFolderModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -6002,7 +6002,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="createFileModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="createFileModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -6032,7 +6032,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -6068,7 +6068,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="renameModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="renameModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -6106,7 +6106,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="moveModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="moveModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -6153,7 +6153,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="copyModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="copyModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -6200,7 +6200,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="terminalModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="terminalModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-xl">
         <div class="modal-content" style="height: 80vh;">
             <div class="modal-header">
@@ -6227,7 +6227,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="compressModal" tabindex="-1" aria-labelledby="compressModalLabel" aria-hidden="true">
+<div class="modal fade" id="compressModal" tabindex="-1" aria-labelledby="compressModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -6291,7 +6291,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="fileHashModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="fileHashModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -6381,7 +6381,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="installModal" tabindex="-1" aria-labelledby="installModalLabel" aria-hidden="true">
+<div class="modal fade" id="installModal" tabindex="-1" aria-labelledby="installModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -6441,7 +6441,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="batchRenameModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="batchRenameModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
@@ -6513,7 +6513,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="convertModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="convertModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
@@ -6604,7 +6604,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="playlistModal" tabindex="-1">
+<div class="modal fade" id="playlistModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
@@ -6639,7 +6639,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="scanModal" tabindex="-1" aria-labelledby="scanModalLabel" aria-hidden="true">
+<div class="modal fade" id="scanModal" tabindex="-1" aria-labelledby="scanModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -6755,7 +6755,7 @@ list-group:hover {
     </div>
 </div>
 
-<div class="modal fade" id="qrcodeModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="qrcodeModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -8801,6 +8801,15 @@ function handleRightClick(event) {
             }
         }
 
+        const qrcodeItem = document.getElementById('fileQrcodeItem');
+        if (qrcodeItem) {
+            if (!isDir && selectedFiles.size === 1) {
+                qrcodeItem.style.display = 'flex';
+            } else {
+                qrcodeItem.style.display = 'none';
+            }
+        }
+
         const hashItem = document.getElementById('fileHashItem');
         if (hashItem) {
             if (!isDir && selectedFiles.size === 1) {
@@ -9523,7 +9532,7 @@ function hideAllContextMenuItems() {
         'emptyRefreshItem', 'emptySelectAllItem', 'fileCopyPathItem',
         'globalPasteItem', 'fileBatchRenameItem',
         'archiveMenuItem', 'fileConvertItem',
-        'fileInstallItem', 'fileHashItem'
+        'fileInstallItem', 'fileHashItem', 'fileQrcodeItem'
     ];
     
     allMenuItems.forEach(id => {
@@ -9562,13 +9571,6 @@ function showFileMenuItems(isDir, ext) {
     showMenuItem('filePropertiesItem');
     showMenuItem('fileTerminalItem');
 
-    const qrcodeItem = document.getElementById('fileQrcodeItem');
-    if (!isDir) {
-        qrcodeItem.style.display = 'flex';
-    } else {
-        qrcodeItem.style.display = 'none';
-    }
-    
     const mediaExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 
                        'mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv', 'webm',
                        '3gp', '3g2', 'ogv', 'mpg', 'mpeg',
@@ -10189,6 +10191,10 @@ function showExtractDialog() {
     const dialog = document.createElement('div');
     dialog.className = 'modal fade';
     dialog.id = 'extractModal';
+    dialog.setAttribute('tabindex', '-1');
+    dialog.setAttribute('aria-hidden', 'true');
+    dialog.setAttribute('data-bs-backdrop', 'static');
+    dialog.setAttribute('data-bs-keyboard', 'false');
     dialog.innerHTML = `
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -10853,40 +10859,56 @@ function getMimeType(ext) {
     if (!ext) return 'application/octet-stream';
     
     const mimeMap = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg', 
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'bmp': 'image/bmp',
-        'webp': 'image/webp',
-        'svg': 'image/svg+xml',
-        'ico': 'image/x-icon',
+        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'jpe': 'image/jpeg', 'jfif': 'image/jpeg',
+        'png': 'image/png', 'gif': 'image/gif', 'bmp': 'image/bmp', 'webp': 'image/webp',
+        'svg': 'image/svg+xml', 'svgz': 'image/svg+xml', 'ico': 'image/x-icon', 'cur': 'image/x-icon',
+        'tiff': 'image/tiff', 'tif': 'image/tiff', 'psd': 'image/vnd.adobe.photoshop',
+        'heic': 'image/heic', 'heif': 'image/heif', 'avif': 'image/avif',
+        'raw': 'image/x-raw', 'cr2': 'image/x-canon-cr2', 'nef': 'image/x-nikon-nef',
+        'arw': 'image/x-sony-arw', 'dng': 'image/x-adobe-dng', 'orf': 'image/x-olympus-orf',
         
-        'mp3': 'audio/mpeg',
-        'wav': 'audio/wav',
-        'ogg': 'audio/ogg',
-        'flac': 'audio/flac',
-        'm4a': 'audio/mp4',
-        'aac': 'audio/aac',
+        'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'ogg': 'audio/ogg', 'flac': 'audio/flac',
+        'm4a': 'audio/mp4', 'aac': 'audio/aac', 'wma': 'audio/x-ms-wma', 'opus': 'audio/opus',
+        'mp2': 'audio/mpeg', 'ac3': 'audio/ac3', 'dts': 'audio/vnd.dts', 'eac3': 'audio/eac3',
+        'ape': 'audio/ape', 'wv': 'audio/wavpack', 'tta': 'audio/tta', 'tak': 'audio/tak',
+        'dsf': 'audio/dsd', 'dff': 'audio/dsd', 'sacd': 'audio/sacd',
+        'mid': 'audio/midi', 'midi': 'audio/midi', 'rmi': 'audio/midi',
+        'amr': 'audio/amr', 'awb': 'audio/amr-wb', 'sln': 'audio/speex',
+        'ra': 'audio/vnd.rn-realaudio', 'ram': 'audio/vnd.rn-realaudio',
+        'aiff': 'audio/aiff', 'aif': 'audio/aiff', 'aifc': 'audio/aiff',
+        'caf': 'audio/x-caf', 'm4r': 'audio/mp4', 'xmf': 'audio/mobile-xmf',
+        'weba': 'audio/webm', 'mka': 'audio/x-matroska', 'spx': 'audio/speex',
         
-        'mp4': 'video/mp4',
-        'avi': 'video/x-msvideo',
-        'mkv': 'video/x-matroska',
-        'mov': 'video/quicktime',
-        'wmv': 'video/x-ms-wmv',
-        'flv': 'video/x-flv',
-        'webm': 'video/webm',
-        '3gp': 'video/3gpp',
-        '3g2': 'video/3gpp2',
-        'ogv': 'video/ogg',
-        'mpg': 'video/mpeg',
-        'mpeg': 'video/mpeg',
-        'm4v': 'video/x-m4v',
-        'ts': 'video/mp2t',
-        'mts': 'video/mpeg',
-        'm2ts': 'video/mpeg',
+        'mp4': 'video/mp4', 'm4v': 'video/x-m4v', 'avi': 'video/x-msvideo',
+        'mkv': 'video/x-matroska', 'mov': 'video/quicktime', 'wmv': 'video/x-ms-wmv',
+        'flv': 'video/x-flv', 'webm': 'video/webm', '3gp': 'video/3gpp', '3g2': 'video/3gpp2',
+        'ogv': 'video/ogg', 'mpg': 'video/mpeg', 'mpeg': 'video/mpeg', 'mpe': 'video/mpeg',
+        'ts': 'video/mp2t', 'm2ts': 'video/mp2t', 'mts': 'video/mp2t', 'm2t': 'video/mp2t',
+        'vob': 'video/dvd', 'ifo': 'video/dvd', 'bup': 'video/dvd',
+        'rm': 'video/vnd.rn-realvideo', 'rmvb': 'video/vnd.rn-realvideo',
+        'qt': 'video/quicktime', 'hdmov': 'video/quicktime', 'dv': 'video/dv',
+        'asf': 'video/x-ms-asf', 'asx': 'video/x-ms-asf',
+        'divx': 'video/divx', 'xvid': 'video/xvid',
+        'f4v': 'video/mp4', 'f4p': 'video/mp4', 'f4a': 'video/mp4', 'f4b': 'video/mp4',
+        'avchd': 'video/avchd', 'mxf': 'video/mxf', 'gxf': 'video/gxf',
+        'mj2': 'video/mj2', 'drc': 'video/vnd.dlna.mpeg-tts',
+        'dnxhd': 'video/dnxhd', 'prores': 'video/prores',
+        'vp8': 'video/vp8', 'vp9': 'video/vp9', 'av1': 'video/av1',
+        'hevc': 'video/hevc', 'h264': 'video/h264', 'h265': 'video/h265',
         
         'pdf': 'application/pdf',
+        'doc': 'application/msword',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls': 'application/vnd.ms-excel',
+        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'ppt': 'application/vnd.ms-powerpoint',
+        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'odt': 'application/vnd.oasis.opendocument.text',
+        'ods': 'application/vnd.oasis.opendocument.spreadsheet',
+        'odp': 'application/vnd.oasis.opendocument.presentation',
+        'rtf': 'application/rtf',
+        'epub': 'application/epub+zip',
+        'mobi': 'application/x-mobipocket-ebook',
         
         'zip': 'application/zip',
         'tar': 'application/x-tar',
@@ -10894,21 +10916,75 @@ function getMimeType(ext) {
         'bz2': 'application/x-bzip2',
         '7z': 'application/x-7z-compressed',
         'rar': 'application/x-rar-compressed',
+        'xz': 'application/x-xz',
+        'lz': 'application/x-lzip',
+        'lzma': 'application/x-lzma',
+        'zst': 'application/zstd',
+        'cab': 'application/vnd.ms-cab-compressed',
+        'iso': 'application/x-iso9660-image',
         
         'txt': 'text/plain',
         'log': 'text/plain',
         'conf': 'text/plain',
         'ini': 'text/plain',
+        'cfg': 'text/plain',
         'json': 'application/json',
         'xml': 'application/xml',
         'html': 'text/html',
         'htm': 'text/html',
+        'xhtml': 'application/xhtml+xml',
         'css': 'text/css',
         'js': 'application/javascript',
+        'jsx': 'text/jsx',
+        'ts': 'application/typescript',
+        'tsx': 'text/typescript-jsx',
+        'vue': 'text/x-vue',
         'php': 'application/x-httpd-php',
         'py': 'text/x-python',
+        'rb': 'text/x-ruby',
+        'pl': 'text/x-perl',
+        'lua': 'text/x-lua',
+        'go': 'text/x-go',
+        'rs': 'text/x-rust',
+        'swift': 'text/x-swift',
+        'kt': 'text/x-kotlin',
+        'scala': 'text/x-scala',
         'sh': 'application/x-sh',
-        'md': 'text/markdown'
+        'bash': 'application/x-sh',
+        'zsh': 'text/x-script.zsh',
+        'fish': 'text/x-script.fish',
+        'bat': 'application/x-bat',
+        'cmd': 'application/x-bat',
+        'ps1': 'application/x-powershell',
+        'md': 'text/markdown',
+        'markdown': 'text/markdown',
+        'yaml': 'application/x-yaml',
+        'yml': 'application/x-yaml',
+        'toml': 'application/toml',
+        'sql': 'application/sql',
+        'csv': 'text/csv',
+        'tsv': 'text/tab-separated-values',
+        
+        'ttf': 'font/ttf',
+        'otf': 'font/otf',
+        'woff': 'font/woff',
+        'woff2': 'font/woff2',
+        'eot': 'application/vnd.ms-fontobject',
+        
+        'exe': 'application/x-msdownload',
+        'msi': 'application/x-msi',
+        'deb': 'application/x-deb',
+        'rpm': 'application/x-rpm',
+        'apk': 'application/vnd.android.package-archive',
+        'ipk': 'application/x-ipk',
+        'bin': 'application/octet-stream',
+        'dat': 'application/octet-stream',
+        'db': 'application/octet-stream',
+        'sqlite': 'application/x-sqlite3',
+        'pem': 'application/x-pem-file',
+        'crt': 'application/x-x509-ca-cert',
+        'key': 'application/x-pem-file',
+        'torrent': 'application/x-bittorrent'
     };
     
     const lowerExt = ext.toLowerCase();
@@ -13704,6 +13780,10 @@ function createDiffEditorDialog(filename, content, tabId) {
     const dialog = document.createElement('div');
     dialog.className = 'modal fade';
     dialog.id = 'diffEditorModal';
+    dialog.setAttribute('tabindex', '-1');
+    dialog.setAttribute('aria-hidden', 'true');
+    dialog.setAttribute('data-bs-backdrop', 'static');
+    dialog.setAttribute('data-bs-keyboard', 'false');
     dialog.innerHTML = `
         <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-lg-down">
             <div class="modal-content" style="height: 80vh;">
