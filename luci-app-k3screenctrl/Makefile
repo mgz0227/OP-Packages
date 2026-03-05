@@ -8,7 +8,7 @@ LUCI_DEPENDS:=+luci-compat +phicomm-k3screenctrl
 
 PKG_NAME:=luci-app-k3screenctrl
 PKG_VERSION:=1.1.0
-PKG_RELEASE:=2
+PKG_RELEASE:=20
 
 PKG_LICENSE:=GPLv3
 PKG_LICENSE_FILES:=LICENSE

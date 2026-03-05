@@ -11,7 +11,7 @@ LUCI_PKGARCH:=all
 
 PKG_NAME:=luci-app-unblockneteasemusic
 PKG_VERSION:=3.4
-PKG_RELEASE:=2
+PKG_RELEASE:=17
 
 PKG_MAINTAINER:=Tianling Shen <cnsztl@immortalwrt.org>
 

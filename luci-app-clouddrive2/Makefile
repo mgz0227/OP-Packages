@@ -13,7 +13,7 @@ LUCI_PKGARCH:=all
 
 PKG_NAME:=luci-app-clouddrive2
 PKG_VERSION:=1
-PKG_RELEASE:=2
+PKG_RELEASE:=5
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

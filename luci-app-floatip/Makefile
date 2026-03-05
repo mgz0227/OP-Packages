@@ -10,7 +10,7 @@ LUCI_DEPENDS:=+floatip
 LUCI_PKGARCH:=all
 PKG_VERSION:=0.1.3-r2
 # PKG_RELEASE MUST be empty for luci.mk
-PKG_RELEASE:=2
+PKG_RELEASE:=7
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

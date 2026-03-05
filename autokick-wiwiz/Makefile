@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=autokick-wiwiz
 PKG_VERSION:=20250205
-PKG_RELEASE:=2
+PKG_RELEASE:=17
 LUCI_DIR:=/usr/lib/lua/luci
 
 include $(INCLUDE_DIR)/package.mk
