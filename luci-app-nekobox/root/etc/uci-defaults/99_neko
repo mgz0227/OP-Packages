@@ -11,7 +11,8 @@ echo "[ `date +%T` ] - Checking Files..."
 files_check() {
     if [ -n "$(command -v nginx)" ];then
 cat << 'EOF' > /etc/nginx/conf.d/nekobox.locations
-location /nekobox/ {
+location /nekobox {
+    alias /www/nekobox;
     index index.php index.html index.htm;
 
     location ~ \.php$ {

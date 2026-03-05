@@ -8,6 +8,11 @@
 EEOF
 }
 
+[ "`which nft`" ] && {
+uci -q set passwall2.@global_forwarding[0].use_nft=1
+uci -q commit passwall2
+}
+
 if [ -e "/etc/config/ucitrack" ]; then
     uci -q batch <<-EOF
  		delete ucitrack.@passwall2[-1]
@@ -53,11 +58,6 @@ uci commit firewall
 [ ! -s "/etc/config/passwall2" ] && cp -f /usr/share/passwall2/0_default_config /etc/config/passwall2
 
 chmod +x /usr/share/passwall2/*.sh
-
-[ "`which nft`" ] && {
-uci -q set passwall2.@global_forwarding[0].use_nft=1
-uci -q commit passwall2
-}
 
 [ "$(uci -q get passwall2.@global_xray[0].sniffing)" == "1" ] && [ "$(uci -q get passwall2.@global_xray[0].route_only)" != "1" ] && uci -q set passwall2.@global_xray[0].sniffing_override_dest=1
 uci -q delete passwall2.@global_xray[0].sniffing

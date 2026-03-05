@@ -5,12 +5,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=phicomm-k3screenctrl
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/lwz322/k3screenctrl.git
 PKG_SOURCE_DATE:=2020-09-18
-PKG_SOURCE_VERSION:=d8896cfad4bdf39f58999f9420807f986300bada
+PKG_SOURCE_VERSION:=a2b0678ae85cbe6fd88be5f23deb17e4b656d8ae
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0
