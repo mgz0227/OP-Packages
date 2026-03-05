@@ -9,7 +9,7 @@ LUCI_DEPENDS:=+tailscale
 LUCI_PKGARCH:=all
 
 PKG_VERSION:=1.2.6
-PKG_RELEASE:=21
+PKG_RELEASE:=4
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

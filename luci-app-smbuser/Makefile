@@ -8,7 +8,7 @@ LUCI_TITLE:=LuCI support for Samba4 Users Management
 LUCI_DEPENDS:=+samba4-server +shadow-utils +shadow-useradd +shadow-groupadd +shadow-userdel +shadow-groupdel
 LUCI_PKGARCH:=all
 PKG_VERSION:=1.0
-PKG_RELEASE:=5
+PKG_RELEASE:=4
 
 PKG_MAINTAINER:=sbwml <admin@cooluc.com>
 

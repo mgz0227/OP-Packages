@@ -10,7 +10,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=brlaser
 PKG_VERSION:=v3
-PKG_RELEASE:=13
+PKG_RELEASE:=4
 
 PKG_SOURCE_URL:=https://github.com/pdewacht/brlaser.git
 PKG_SOURCE_PROTO:=git

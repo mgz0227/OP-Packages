@@ -9,7 +9,7 @@ include $(INCLUDE_DIR)/package.mk
 LLUCI_TITLE:=Luci for OpenFog Pear P2P CDN
 LUCI_PKGARCH:=all
 PKG_VERSION:=7
-PKG_RELEASE:=5
+PKG_RELEASE:=4
 LUCI_DEPENDS:=+luci-compat +fogvdn +jq +lsblk
 
 include $(TOPDIR)/feeds/luci/luci.mk
