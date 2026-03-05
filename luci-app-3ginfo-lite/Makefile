@@ -12,7 +12,7 @@ LUCI_DEPENDS:=+sms-tool +comgt +kmod-usb-serial-option
 
 PKG_NAME:=luci-app-3ginfo-lite
 PKG_VERSION:=1.0.76
-PKG_RELEASE:=17
+PKG_RELEASE:=2
 PKG_MAINTAINER:=Rafał Wabik <4Rafal@gmail.com>
 
 include $(TOPDIR)/feeds/luci/luci.mk

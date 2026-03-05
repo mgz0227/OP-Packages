@@ -3,7 +3,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_VERSION:=1.0.8-20250207
-PKG_RELEASE:=4
+PKG_RELEASE:=2
 
 LUCI_TITLE:=LuCI support for OpenWebUI
 LUCI_PKGARCH:=all

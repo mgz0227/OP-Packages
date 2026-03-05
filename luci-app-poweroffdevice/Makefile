@@ -12,7 +12,7 @@ LUCI_DESCRIPTION:=provides Web UI to shut down (power off) your device.
 
 LUCI_PKGARCH:=all
 PKG_VERSION:=2
-PKG_RELEASE:=7
+PKG_RELEASE:=2
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

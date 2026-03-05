@@ -13,7 +13,7 @@ LUCI_DESCRIPTION:=LuCI JS interface for the lite-watchdog scripts.
 LUCI_DEPENDS:=+sms-tool +kmod-usb-serial +kmod-usb-serial-option +comgt
 LUCI_PKGARCH:=all
 PKG_VERSION:=1.0.15
-PKG_RELEASE:=7
+PKG_RELEASE:=2
 
 define Package/luci-app-lite-watchdog/conffiles
 /etc/modem/log.txt

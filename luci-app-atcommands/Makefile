@@ -13,7 +13,7 @@ LUCI_DESCRIPTION:=LuCI JS interface for the sms-tool. The user interface support
 LUCI_DEPENDS:=+sms-tool
 LUCI_PKGARCH:=all
 PKG_VERSION:=1.0.9
-PKG_RELEASE:=6
+PKG_RELEASE:=2
 
 define Package/luci-app-atcommands/conffiles
 /etc/config/atcommands

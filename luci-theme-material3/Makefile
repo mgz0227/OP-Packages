@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 LUCI_TITLE:=Material3 Theme
 LUCI_DEPENDS:=
 PKG_VERSION:=1.0
-PKG_RELEASE:=6
+PKG_RELEASE:=2
 
 PKG_LICENSE:=Apache-2.0
 

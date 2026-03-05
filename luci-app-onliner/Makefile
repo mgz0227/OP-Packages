@@ -9,7 +9,7 @@ LUCI_TITLE:=LuCI support arp online
 LUCI_PKGARCH:=all
 PKG_NAME:=luci-app-onliner
 PKG_VERSION:=1.2
-PKG_RELEASE:=4
+PKG_RELEASE:=2
 
 define Package/luci-app-onliner/install
     $(INSTALL_DIR) $(1)/usr/lib/lua/luci

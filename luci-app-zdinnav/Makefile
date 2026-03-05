@@ -10,7 +10,7 @@ LUCI_DEPENDS:=+lsblk +docker +dockerd +luci-lib-taskd +luci-lib-docker +docker-c
 PKG_MAINTAINER:=tkme <tkme@qq.com>
 
 PKG_VERSION:=1.1.1
-PKG_RELEASE:=3
+PKG_RELEASE:=2
 
 define Package/luci-app-zdinnav/conffiles
 /etc/config/zdinnav
