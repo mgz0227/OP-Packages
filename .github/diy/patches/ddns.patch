@@ -8,4 +8,3 @@
 +LUCI_DEPENDS:=+luci-base +ddns-scripts +ddns-scripts-aliyun +ddns-scripts-dnspod-v3 +ddns-scripts-cloudflare
  
  include ../../luci.mk
- 

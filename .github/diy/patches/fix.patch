@@ -113,4 +113,3 @@
 -  killall rtorrent
 +  kill `pidof rtorrent | sed "s/$$//g"`
  }
-
