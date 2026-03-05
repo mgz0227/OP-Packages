@@ -7,12 +7,12 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=alac
 PKG_VERSION:=0.0.7
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/mikebrady/alac.git
 PKG_SOURCE_DATE:=2019-02-13
-PKG_SOURCE_VERSION:=null
+PKG_SOURCE_VERSION:=5d6d836ee5b025a5e538cfa62c88bc5bced506ed
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=Apache-2.0
