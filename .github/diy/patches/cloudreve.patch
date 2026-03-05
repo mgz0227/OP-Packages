@@ -1,0 +1,11 @@
+--- a/cloudreve/Makefile
++++ b/cloudreve/Makefile
+@@ -51,6 +51,7 @@
+ 		yarn run build ; \
+ 		cd .. ; \
+ 		zip -r - assets/build > application/statics/assets.zip ; \
++		mv assets.zip application/statics ; \
+ 		popd ; \
+ 		$(call GoPackage/Build/Compile) ; \
+ 	)
+  

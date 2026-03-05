@@ -1,0 +1,22 @@
+--- a/luci-app-advancedplus/root/etc/init.d/advancedplus
++++ b/luci-app-advancedplus/root/etc/init.d/advancedplus
+@@ -112,7 +112,6 @@ start() {
+     [ -f $LOCK ] && exit
+     [ "x$XBOOT" = "x1" ] && exit 0
+     touch $LOCK
+-    advancedset
+     rm -rf /tmp/luci-*
+     rm -f $LOCK 2>/dev/null
+ }
+
+--- a/luci-app-advancedplus/luasrc/controller/advancedplus.lua
++++ b/luci-app-advancedplus/luasrc/controller/advancedplus.lua
+@@ -20,8 +20,6 @@ function index()
+ 	page.acl_depends = { "luci-app-advancedplus" }
+ 	
+ 	entry({"admin","system","advancedplus","advancededit"},cbi("advancedplus/advancededit"),_("Advanced Edit"),10).leaf = true
+-	entry({"admin","system","advancedplus","advancedset"},cbi("advancedplus/advancedset"),_("Advanced Setting"),20).leaf = true
+-	entry({"admin","system","advancedplus","advancedipk"},cbi("advancedplus/advancedipk", {hideapplybtn=true, hidesavebtn=true, hideresetbtn=true}),_("Loading plugins"),30).leaf = true
+ 	entry({"admin", "system", "advancedplus", "advancedrun"}, call("advanced_run"))
+ 	entry({"admin", "system", "advancedplus", "check"}, call("act_check"))
+ end
