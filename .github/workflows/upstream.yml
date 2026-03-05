@@ -447,27 +447,38 @@ jobs:
              -X POST -d '{ "query": "query {repository(owner: \"'"$1"'\", name: \"'"$2"'\"){latestRelease{tagName tagCommit{oid}}refs(refPrefix:\"refs/tags/\",last:1,orderBy:{field:TAG_COMMIT_DATE,direction:ASC}){edges{node{name target{oid}}}}defaultBranchRef{target{...on Commit {oid}}}}}"}' https://api.github.com/graphql)
         }
         for pkg in $(ls !(luci-*|nikki|openwrt-einat-ebpf|glorytun|mosdns|fullconenat|spotifyd|miniupnpd|qBittorrent-Enhanced-Edition|openwrt-Toolkit|libdouble-conversion|wxbase|3proxy|ucode|mergerfs|openwrt-nezhav1|homebox|sub-web|tcptraceroute|frp|openwrt-caddy|mentohust|brlaser|rapidjson|smartdns|hysteria|gecoosac|hickory-dns|libcryptopp|naiveproxy|rustdesk-server|shadowsocksr-libev|tuic-server|joker|ps3netsrv|natter|netmaker|openwrt-ympd|subconverter|sms-tool)/Makefile); do
-          repo="$(grep ^PKG_SOURCE_URL $pkg | grep github | cut -f 4-5 -d '/' | sed -e 's/.git//' | grep -E '[0-9a-zA-Z_-]+$')" || true
-          if [ "$repo" ]; then
-            owner="$(echo $repo | cut -f 1 -d '/')"
-            name="$(echo $repo | cut -f 2 -d '/')"
-            latest="$(latest $owner $name)"
-            sed -i "s/PKG_SOURCE_VERSION:=.*/PKG_SOURCE_VERSION:=$(echo $latest | jq -r '.data.repository.defaultBranchRef.target.oid')/" $pkg || true
-            over="$(grep -E PKG_VERSION:=.*$ $pkg | cut -f 2 -d '=' | sed -e 's/^\(v\|release-\)//' | grep -E "[0-9]")" || true
-            if [ "$over" ]; then
-              ver="$(echo $latest | jq -r '.data.repository.latestRelease.tagName' | sed -e 's/^\(v\|release-\)//' | grep -E "^[^()]*$" | grep -E "[0-9]")" || true
-              # [ "$ver" ] || ver="$(git ls-remote --tags git://github.com/$repo | cut -d/ -f3- | sort -t. -nk1,3 | awk '/^[^{]*$/{version=$1}END{print version}' | grep -o -E "[0-9].*")" || true
-              echo "$repo-$over-$ver"
-              if [ "$ver" ]; then
-                function version_lt() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" != "$1"; }
-                if version_lt "$over" "$ver"; then
-                  latest="$(echo $latest | jq -r '.data.repository.latestRelease.tagCommit.oid' || echo $latest | jq -r '.data.repository.refs.edges[-1].node.target.oid')"
-                  sed -i -e "s/PKG_SOURCE_VERSION:=.*/PKG_SOURCE_VERSION:=$latest/" \
-                         -e "s/PKG_VERSION:=.*/PKG_VERSION:=$ver/" $pkg || true
-                fi || true
-              fi
+            repo="$(grep ^PKG_SOURCE_URL $pkg | grep github | cut -f 4-5 -d '/' | sed -e 's/.git//' | grep -E '[0-9a-zA-Z_-]+$')" || true
+            if [ "$repo" ]; then
+                owner="$(echo $repo | cut -f 1 -d '/')"
+                name="$(echo $repo | cut -f 2 -d '/')"
+                
+                # 获取最新的版本信息
+                latest="$(latest $owner $name)"
+                
+                # 如果 latest 不为空且包含有效的 oid，则更新 PKG_SOURCE_VERSION
+                if [ "$latest" ] && [ "$(echo $latest | jq -r '.data.repository.defaultBranchRef.target.oid')" != "null" ]; then
+                    commit_oid=$(echo $latest | jq -r '.data.repository.defaultBranchRef.target.oid')
+                    sed -i "s/PKG_SOURCE_VERSION:=.*/PKG_SOURCE_VERSION:=$commit_oid/" $pkg || true
+                else
+                    echo "Warning: No valid source version for $pkg"
+                fi
+                
+                over="$(grep -E PKG_VERSION:=.*$ $pkg | cut -f 2 -d '=' | sed -e 's/^\(v\|release-\)//' | grep -E "[0-9]")" || true
+                
+                if [ "$over" ]; then
+                    ver="$(echo $latest | jq -r '.data.repository.latestRelease.tagName' | sed -e 's/^\(v\|release-\)//' | grep -E "^[^()]*$" | grep -E "[0-9]")" || true
+                    if [ "$ver" ]; then
+                        function version_lt() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" != "$1"; }
+                        if version_lt "$over" "$ver"; then
+                            # 获取最新的 commit oid
+                            latest_commit_oid="$(echo $latest | jq -r '.data.repository.latestRelease.tagCommit.oid' || echo $latest | jq -r '.data.repository.refs.edges[-1].node.target.oid')"
+                            # 更新 PKG_VERSION 和 PKG_SOURCE_VERSION
+                            sed -i -e "s/PKG_SOURCE_VERSION:=.*/PKG_SOURCE_VERSION:=$latest_commit_oid/" \
+                                  -e "s/PKG_VERSION:=.*/PKG_VERSION:=$ver/" $pkg || true
+                        fi
+                    fi
+                fi
             fi
-          fi
         done
         touch /tmp/ok
         ) &
