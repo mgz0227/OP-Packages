@@ -8,8 +8,8 @@ include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=kai
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=3
-LUCI_DEPENDS:=+kai +kai_session
+PKG_RELEASE:=4
+LUCI_DEPENDS:=+kai +kai_session +luci-compat
 LUCI_MINIFY_CSS:=0
 LUCI_MINIFY_JS:=0
 
