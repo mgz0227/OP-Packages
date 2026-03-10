@@ -223,7 +223,7 @@ export function parseListener(cfg, isClient, label) {
 		} : {}),
 
 		/* HTTP / SOCKS / VMess / VLESS / Trojan / AnyTLS / Tuic / Hysteria2 */
-		users: (cfg.type in ['http', 'socks', 'mixed', 'vmess', 'vless', 'trojan']) ? [
+		users: (cfg.type in ['http', 'socks', 'mixed', 'vmess', 'vless', 'trojan', 'trusttunnel']) ? [
 			{
 				/* HTTP / SOCKS */
 				username: cfg.username,
@@ -269,15 +269,16 @@ export function parseListener(cfg, isClient, label) {
 		"custom-tables": cfg.sudoku_custom_tables,
 		"handshake-timeout": strToInt(cfg.sudoku_handshake_timeout) ?? null,
 		"enable-pure-downlink": (cfg.sudoku_enable_pure_downlink === '0') ? false : null,
-		httpmask: (cfg.sudoku_http_mask === '0') ? { disable: true } : {
-			disable: false,
-			mode: cfg.sudoku_http_mask_mode,
-			path_root: cfg.sudoku_path_root,
-		},
+		...(cfg.type === 'sudoku' ? {
+			httpmask: (cfg.sudoku_http_mask === '0') ? { disable: true } : {
+				disable: false,
+				mode: cfg.sudoku_http_mask_mode,
+				path_root: cfg.sudoku_path_root,
+			}
+		} : {}),
 		fallback: (cfg.sudoku_http_mask === '0') ? null : cfg.sudoku_fallback,
 
 		/* Tuic */
-		"congestion-controller": cfg.tuic_congestion_controller,
 		"max-idle-time": durationToSecond(cfg.tuic_max_idle_time),
 		"authentication-timeout": durationToSecond(cfg.tuic_authentication_timeout),
 		"max-udp-relay-packet-size": strToInt(cfg.tuic_max_udp_relay_packet_size),
@@ -296,7 +297,6 @@ export function parseListener(cfg, isClient, label) {
 		decryption: cfg.vless_decryption === '1' ? parseVlessEncryption(cfg.vless_encryption_hmpayload, 'server') : null,
 
 		/* Tunnel */
-		network: cfg.tunnel_network,
 		target: cfg.tunnel_target,
 
 		/* Plugin fields */
@@ -320,6 +320,8 @@ export function parseListener(cfg, isClient, label) {
 		} : {}),
 
 		/* Extra fields */
+		"congestion-controller": cfg.congestion_controller,
+		network: cfg.network,
 		udp: strToBool(cfg.udp),
 
 		/* TLS fields */
