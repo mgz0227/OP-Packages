@@ -10,7 +10,7 @@ include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=my-default-settings
 PKG_VERSION:=2
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -37,6 +37,8 @@ endef
 
 define Package/$(PKG_NAME)/install
 	$(CP) ./files/* $(1)/
+	$(if $(CONFIG_PACKAGE_open-vm-tools),rm -f $(1)/sbin/shutdown)
+
 	echo $(BOARD)$(TARGETID)
 	if [ -d ./diy/$(BOARD)/base-files/. ]; then \
 		$(CP) ./diy/$(BOARD)/base-files/* $(1)/; \
@@ -46,7 +48,6 @@ define Package/$(PKG_NAME)/install
 	fi; \
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
 	po2lmo ./po/zh_Hans/default.po $(1)/usr/lib/lua/luci/i18n/default.zh-cn.lmo
-
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
