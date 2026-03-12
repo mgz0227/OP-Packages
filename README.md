@@ -7,4 +7,9 @@
 
 | CPU架构           | 下载地址                                             | 适用设备    | 软件源    | 更新频率    |
 |----------------|-----------------------------------------------------|--------------------------------------|-----------|-----------|
-| X86_64         | [📥](https://op.miaogongzi.cc/23.05/packages/x86_64/miaogongzi)         |          64位PC软路由    | src/gz openwrt_miaogongzi https://https://op.miaogongzi.cc/23.05/packages/x86_64//miaogongzi | 日更  |
+| X86_64（ipk包）         | [📥](https://op.miaogongzi.cc/24.10/packages/x86_64/miaogongzi)         |          64位PC软路由    | src/gz openwrt_miaogongzi https://https://op.miaogongzi.cc/24.10/packages/x86_64//miaogongzi | 日更  |
+
+
+| CPU架构           | 下载地址                                             | 适用设备    | 软件源    | 更新频率    |
+|----------------|-----------------------------------------------------|--------------------------------------|-----------|-----------|
+| X86_64（apk包）         | [📥](https://op.miaogongzi.cc/25.12/packages/x86_64/miaogongzi)         |          64位PC软路由    | src/gz openwrt_miaogongzi https://https://op.miaogongzi.cc/25.12/packages/x86_64//miaogongzi | 日更  |
