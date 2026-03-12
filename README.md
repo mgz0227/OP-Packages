@@ -5,11 +5,11 @@
 ### 使用软件源请删除 opkg配置(/etc/opkg.conf) 中的 option check_signature
 
 
-| CPU架构           | 下载地址                                             | 适用设备    | 软件源    | 更新频率    |
+| CPU架构           | 下载地址                                             | 适用设备    | 软件源（ipk包）    | 更新频率    |
 |----------------|-----------------------------------------------------|--------------------------------------|-----------|-----------|
-| X86_64（ipk包）         | [📥](https://op.miaogongzi.cc/24.10/packages/x86_64/miaogongzi)         |          64位PC软路由    | src/gz openwrt_miaogongzi https://https://op.miaogongzi.cc/24.10/packages/x86_64//miaogongzi | 日更  |
+| X86_64         | [📥](https://op.miaogongzi.cc/24.10/packages/x86_64/miaogongzi)         |          64位PC软路由    | src/gz openwrt_miaogongzi https://https://op.miaogongzi.cc/24.10/packages/x86_64//miaogongzi | 日更  |
 
 
-| CPU架构           | 下载地址                                             | 适用设备    | 软件源    | 更新频率    |
+| CPU架构           | 下载地址                                             | 适用设备    | 软件源（apk包）    | 更新频率    |
 |----------------|-----------------------------------------------------|--------------------------------------|-----------|-----------|
-| X86_64（apk包）         | [📥](https://op.miaogongzi.cc/25.12/packages/x86_64/miaogongzi)         |          64位PC软路由    | src/gz openwrt_miaogongzi https://https://op.miaogongzi.cc/25.12/packages/x86_64//miaogongzi | 日更  |
+| X86_64         | [📥](https://op.miaogongzi.cc/25.12/packages/x86_64/miaogongzi)         |          64位PC软路由    | src/gz openwrt_miaogongzi https://https://op.miaogongzi.cc/25.12/packages/x86_64//miaogongzi | 日更  |
