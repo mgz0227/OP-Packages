@@ -89,11 +89,20 @@ esac
 
 # memory and swap
 mem_info=$(LC_ALL=C free -w 2>/dev/null | grep "^Mem" || LC_ALL=C free | grep "^Mem")
-memory_usage=$(awk '{printf("%.0f",(($2-($4+$6))/$2) * 100)}' <<<${mem_info})
-memory_total=$(awk '{printf("%d",$2/1024)}' <<<${mem_info})
-swap_info=$(LC_ALL=C free -m | grep "^Swap")
-swap_usage=$( (awk '/Swap/ { printf("%3.0f", $3/$2*100) }' <<<${swap_info} 2>/dev/null || echo 0) | tr -c -d '[:digit:]')
-swap_total=$(awk '{print $(2)}' <<<${swap_info})
+memory_usage=$(awk '{printf("%.0f", (($2-($4+$6))/$2) * 100)}' <<< "$mem_info")
+memory_total=$(awk '{printf("%d", $2/1024)}' <<< "$mem_info")
+
+swap_info=$(LC_ALL=C free | awk '/^Swap:/')
+swap_total_kb=$(awk '{print $2}' <<< "$swap_info")
+swap_used_kb=$(awk '{print $3}' <<< "$swap_info")
+
+if [[ -n "$swap_total_kb" && "$swap_total_kb" -gt 0 ]] 2>/dev/null; then
+    swap_total=$(awk -v v="$swap_total_kb" 'BEGIN{printf("%d", v/1024)}')
+    swap_usage=$(awk -v used="$swap_used_kb" -v total="$swap_total_kb" 'BEGIN{printf("%.0f", used/total*100)}')
+else
+    swap_total=0
+    swap_usage=0
+fi
 
 c=0
 while [ ! -n "$(get_ip_addresses)" ];do
@@ -102,27 +111,67 @@ sleep 1
 done
 ip_address="$(get_ip_addresses)"
 
-printf "────────────────────────────────────────────────────\n"
 
-# 系统负载 + 运行时间
-printf "%-12s %s    %-10s %s\n" \
-  "系统负载 :" "$(echo -e "\e[92m${load}\e[0m")" \
-  "运行时间 :" "$(echo -e "\e[92m$time\e[0m")"
+printf "\n"
 
-# 内存已用 + IP 地址
-printf "%-12s %s    %-10s %s\n" \
-  "内存已用 :" "$(echo -e "\e[92m${memory_usage}%\e[0m of ${memory_total}MB")" \
-  "IP 地址 :"  "$(echo -e "\e[92m$ip_address\e[0m")"
+LEFT_VALUE_WIDTH=18
 
-# 交换内存
+cpu_info="$(/sbin/cpuinfo | cut -d ' ' -f -4)"
+
+# 先生成“纯文本行”，用于计算最长宽度
+line1=$(printf "%-12s %-18s    %-10s %s" \
+  "系统负载 :" "$load" \
+  "运行时间 :" "$time")
+
+line2=$(printf "%-12s %-18s    %-10s %s" \
+  "内存已用 :" "${memory_usage}% of ${memory_total}MB" \
+  "IP 地址 :" "$ip_address")
+
+line4=$(printf "%-12s %-18s    %-10s %s" \
+  "系统存储 :" "${root_usage}% of ${root_total}" \
+  "CPU 信息 :" "$cpu_info")
+
 if [[ -n "$swap_total" && "$swap_total" != "0" ]]; then
-  printf "%-12s %s\n" \
-    "交换内存 :" "$(echo -e "\e[92m${swap_usage}%\e[0m of ${swap_total}MB")"
+  line3=$(printf "%-12s %-18s" \
+    "交换内存 :" "${swap_usage}% of ${swap_total}MB")
+else
+  line3=""
 fi
 
-# 系统存储 + CPU 信息
-printf "%-12s %s    %-10s %s\n" \
-  "系统存储 :" "$(echo -e "\e[92m${root_usage}%\e[0m of ${root_total}")" \
-  "CPU 信息 :" "$(echo -e "\e[92m$(/sbin/cpuinfo | cut -d ' ' -f -4)\e[0m")"
+# 计算最长行长度
+max_len=0
+for line in "$line1" "$line2" "$line3" "$line4"; do
+  [ -z "$line" ] && continue
+  len=$(printf "%s" "$line" | awk '{print length}')
+  [ "$len" -gt "$max_len" ] && max_len="$len"
+done
 
-printf "────────────────────────────────────────────────────\n"
+max_len=$((max_len + 2))
+
+# 生成横线
+separator=""
+i=1
+while [ "$i" -le "$max_len" ]; do
+  separator="${separator}─"
+  i=$((i + 1))
+done
+
+# 正式输出（带颜色）
+printf "%-12s \e[92m%-18s\e[0m    %-10s \e[92m%s\e[0m\n" \
+  "系统负载 :" "$load" \
+  "运行时间 :" "$time"
+
+printf "%-12s \e[92m%-18s\e[0m    %-10s \e[92m%s\e[0m\n" \
+  "内存已用 :" "${memory_usage}% of ${memory_total}MB" \
+  "IP 地址 :" "$ip_address"
+
+if [[ -n "$swap_total" && "$swap_total" != "0" ]]; then
+  printf "%-12s \e[92m%-18s\e[0m\n" \
+    "交换内存 :" "${swap_usage}% of ${swap_total}MB"
+fi
+
+printf "%-12s \e[92m%-18s\e[0m    %-10s \e[92m%s\e[0m\n" \
+  "系统存储 :" "${root_usage}% of ${root_total}" \
+  "CPU 信息 :" "$cpu_info"
+
+printf "%s\n" "$separator"
