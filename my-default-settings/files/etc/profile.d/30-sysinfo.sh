@@ -102,21 +102,27 @@ sleep 1
 done
 ip_address="$(get_ip_addresses)"
 
+printf "────────────────────────────────────────────────────\n"
+
 # 系统负载 + 运行时间
-printf "%-14s %-20s %-12s %s\n" \
-  "系统负载:"  "$(echo -e "\e[92m${load%% *}\e[0m ${load#* }")" \
-  "运行时间:"  "$(echo -e "\e[92m$time\e[0m")"
+printf "%-12s %s    %-10s %s\n" \
+  "系统负载 :" "$(echo -e "\e[92m${load}\e[0m")" \
+  "运行时间 :" "$(echo -e "\e[92m$time\e[0m")"
 
-# 内存已用 + IP
-printf "%-14s %-20s %-12s %s\n" \
-  "内存已用:"  "$(echo -e "\e[92m$memory_usage %\e[0m of ${memory_total}MB")" \
-  "IP 地址:"   "$(echo -e "\e[92m$ip_address\e[0m")"
+# 内存已用 + IP 地址
+printf "%-12s %s    %-10s %s\n" \
+  "内存已用 :" "$(echo -e "\e[92m${memory_usage}%\e[0m of ${memory_total}MB")" \
+  "IP 地址 :"  "$(echo -e "\e[92m$ip_address\e[0m")"
 
-# 交换内存（保持原来的 display，只有满足条件才显示）
-display "交换内存" "$swap_usage" "10" "0" " %" " of $swap_total""MB"
+# 交换内存
+if [[ -n "$swap_total" && "$swap_total" != "0" ]]; then
+  printf "%-12s %s\n" \
+    "交换内存 :" "$(echo -e "\e[92m${swap_usage}%\e[0m of ${swap_total}MB")"
+fi
 
-# 系统存储 + CPU
-printf "%-14s %-20s %-12s %s\n" \
-  "系统存储:"  "$(echo -e "\e[92m$root_usage%\e[0m of $root_total")" \
-  "CPU 信息:"  "$(echo -e "\e[92m$(/sbin/cpuinfo | cut -d ' ' -f -4)\e[0m")"
+# 系统存储 + CPU 信息
+printf "%-12s %s    %-10s %s\n" \
+  "系统存储 :" "$(echo -e "\e[92m${root_usage}%\e[0m of ${root_total}")" \
+  "CPU 信息 :" "$(echo -e "\e[92m$(/sbin/cpuinfo | cut -d ' ' -f -4)\e[0m")"
 
+printf "────────────────────────────────────────────────────\n"
