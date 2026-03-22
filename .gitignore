@@ -30,7 +30,6 @@
 /default-settings
 /luci-proto-bonding
 /rclone
-/luci-lib-docker
 /rclone-*
 /mtk-eip93
 /ndpi-netfilter
@@ -62,6 +61,7 @@
 /speedtestc
 /srelay
 /fibocom-dial
+luci-app-tailscale*
 
 /shortcut-fe
 /xtables-wgobfs

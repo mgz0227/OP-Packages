@@ -87,7 +87,6 @@ jobs:
         git_clone https://github.com/mgz0227/my-packages && mvdir my-packages
         git_clone https://github.com/mgz0227/luci-theme-rosy && mvdir previews
         git_clone https://github.com/thinktip/luci-theme-neobird
-        #git_clone https://github.com/jerrykuku/luci-theme-argon
         git_clone https://github.com/kiddin9/luci-app-dnsfilter
         git_clone https://github.com/kiddin9/aria2
         git_clone https://github.com/kiddin9/luci-theme-edge
@@ -125,13 +124,11 @@ jobs:
         git_clone https://github.com/hudra0/luci-app-qosmate
         ) &
         (
-        #git_clone https://github.com/jerrykuku/luci-app-vssr
-        #git_clone https://github.com/jerrykuku/luci-app-ttnode
         git_clone https://github.com/sirpdboy/luci-app-advancedplus
         git_clone https://github.com/sirpdboy/luci-app-taskplan taskplan && mvdir taskplan
         git_clone https://github.com/sirpdboy/luci-app-lucky oplucky && mvdir oplucky
         git_clone https://github.com/sirpdboy/luci-app-partexp partexp && mvdir partexp
-        #git_clone https://github.com/sirpdboy/luci-app-netspeedtest speedtest && rm -rf speedtest/{iperf*,演示.gif};mvdir speedtest
+        git_clone https://github.com/sirpdboy/netspeedtest speedtest && mvdir speedtest
         git_clone https://github.com/sirpdboy/luci-app-parentcontrol
         git_clone https://github.com/sirpdboy/luci-app-poweroffdevice poweroffdevice && mvdir poweroffdevice
         git_clone https://github.com/sirpdboy/luci-app-watchdog watchdog1 && mvdir watchdog1
@@ -141,7 +138,7 @@ jobs:
         git_clone https://github.com/sirpdboy/luci-app-kucat-config
         git_clone https://github.com/sirpdboy/luci-app-chatgpt-web
         git_clone https://github.com/sirpdboy/luci-app-eqosplus
-        # git_clone https://github.com/muink/luci-app-homeproxy
+        git_clone https://github.com/sirpdboy/luci-app-netdata lucinetdata && mv lucinetdata/luci-app-netdata ./;rm -rf lucinetdata
         ) &
         (
         git_clone https://github.com/destan19/OpenAppFilter && mvdir OpenAppFilter
@@ -173,15 +170,15 @@ jobs:
         git_clone https://github.com/linkease/istore && mv -n istore/luci/* ./; rm -rf istore
         #git_clone https://github.com/linkease/lcdsimple lcdsimple1 && mvdir lcdsimple1
         git_clone https://github.com/fcshark-org/openwrt-fchomo && mvdir openwrt-fchomo
-        git_clone https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community tailscalec && mv -n tailscalec/luci-app-tailscale-community ./;rm -rf tailscalec
         ) &
         (
         git_clone https://github.com/frainzy1477/luci-app-clash
         git_clone https://github.com/peter-tank/luci-app-fullconenat
         git_clone https://github.com/KFERMercer/luci-app-tcpdump
         git_clone https://github.com/ykxVK8yL5L/pikpak-webdav pikpak && mv -n pikpak/openwrt/* ./;rm -rf pikpak
-        git_clone https://github.com/jjm2473/openwrt-apps && rm -rf openwrt-apps/{luci-app-cpufreq,luci-app-ota,luci-alias.mk} && sed -i "s/luci-alias.mk/..\/luci.mk/" openwrt-apps/*/Makefile && mvdir openwrt-apps
+        git_clone https://github.com/jjm2473/openwrt-apps && rm -rf openwrt-apps/{luci-app-cpufreq,luci-app-ota,homebox,luci-alias.mk} && sed -i "s/luci-alias.mk/..\/luci.mk/" openwrt-apps/*/Makefile && mvdir openwrt-apps
         git_clone https://github.com/nikkinikki-org/OpenWrt-nikki && mv -f OpenWrt-nikki/{luci-app-nikki,nikki} ./;rm -rf OpenWrt-nikki
+        git_clone https://github.com/nikkinikki-org/OpenWrt-momo && mv -f OpenWrt-momo/{luci-app-momo,momo} ./;rm -rf OpenWrt-momo
         ) &
         (
         git_clone https://github.com/ZeaKyX/speedtest-web
@@ -283,6 +280,7 @@ jobs:
         git_clone https://github.com/EkkoG/openwrt-natmap
         git_clone https://github.com/EkkoG/luci-app-natmap
         git_clone https://github.com/yichya/openwrt-hv-tools
+        git_clone https://github.com/papagaye744/luci-theme-design
         ) &
         (
         git_clone https://github.com/EasyTier/luci-app-easytier luci-app-easytier1 && mvdir luci-app-easytier1
@@ -330,7 +328,6 @@ jobs:
         #git_clone https://github.com/bobbyunknown/luci-app-insomclash
         git_clone https://github.com/muink/luci-app-ssrust
         git_clone https://github.com/hudra0/qosmate
-        git_clone https://github.com/muink/luci-app-netdata
         git_clone https://github.com/xptsp/luci-app-ympd
         git_clone https://github.com/xptsp/openwrt-ympd
         git_clone https://github.com/xptsp/openwrt-peanut
@@ -360,13 +357,13 @@ jobs:
         (
         git_sparse_clone master "https://github.com/x-wrt/com.x-wrt" luci-app-macvlan luci-app-xwan
         git_sparse_clone master "https://github.com/obsy/packages" oscam luci-proto-wwan 3ginfo modemband
+        git_sparse_clone istoreos-24.10 "https://github.com/jjm2473/packages" utils/dockerd
         ) &
         (
         git_sparse_clone develop "https://github.com/Ysurac/openmptcprouter-feeds" \
         dsvpn glorytun-udp glorytun grpcurl ipcalc luci-app-dsvpn luci-app-glorytun-tcp luci-app-glorytun-udp luci-app-mail luci-app-mlvpn luci-app-mptcp luci-app-nginx-ha luci-app-sqm-autorate luci-app-packet-capture luci-app-iperf luci-theme-openmptcprouter sqm-autorate speedtestc mlvpn mptcp tcptraceroute tracebox tsping atinout z8102
         git_sparse_clone chawrt/24.10 "https://github.com/liudf0716/luci" applications/luci-app-yt-dlp applications/luci-app-apfree-wifidog applications/luci-app-ss-redir
         git_sparse_clone chawrt/24.10 "https://github.com/liudf0716/packages" net/ss-redir
-        git_sparse_clone istoreos-24.10 "https://github.com/jjm2473/luci" applications/luci-app-dockerman
         ) &
         git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/packages" net/n2n net/dae net/frp \
         net/amule net/cdnspeedtest net/minieap net/ddns-go net/sysuh3c net/3proxy net/cloudreve \
@@ -374,25 +371,25 @@ jobs:
         net/subconverter net/ngrokc net/scutclient net/gost net/ua2f net/dufs net/qBittorrent-Enhanced-Edition \
         net/tinyportmapper net/nexttrace net/rustdesk-server net/tuic-server \
         net/ipset-lists net/ShadowVPN net/nps net/vlmcsd net/dnsforwarder \
-        net/ps3netsrv net/brook net/q net/speedtest-cli \
+        net/ps3netsrv net/brook net/q \
         net/vsftpd net/smartdns net/miniupnpd net/p910nd \
         net/ariang libs/wxbase libs/rapidjson libs/libcron libs/quickjspp libs/toml11 libs/libdvbcsa \
         libs/libdouble-conversion libs/qt6base libs/jpcre2 libs/alac libs/libcryptopp libs/antileech \
-        utils/qt6tools utils/dockerd utils/cpulimit utils/sendat utils/cups-bjnp utils/rhash utils/boltbrowser \
+        utils/qt6tools utils/cpulimit utils/sendat utils/cups-bjnp utils/rhash utils/boltbrowser \
         utils/phicomm-k3screenctrl utils/joker utils/7z utils/dhrystone utils/supervisor utils/tinymembench utils/pcat-mgr utils/fan2go \
         utils/coremark utils/watchcat multimedia/you-get multimedia/lux multimedia/gmediarender multimedia/ykdl multimedia/gallery-dl \
         sound/spotifyd devel/go-rice devel/rust-bindgen admin/gotop \
-        lang/lua-periphery lang/lua-neturl lang/lua-maxminddb devel/gn
+        lang/lua/lua-periphery lang/lua/lua-neturl lang/lua/lua-maxminddb devel/gn
         git_clone https://github.com/koshev-msk/modemfeed && mv -n modemfeed/*/!(telephony)/* ./; rm -rf modemfeed
-        git_sparse_clone openwrt-25.12 "https://github.com/coolsnowwolf/luci" applications themes/luci-theme-design libs/luci-lib-fs
+        git_sparse_clone openwrt-25.12 "https://github.com/coolsnowwolf/luci" applications libs/luci-lib-fs
         mv -f applications luciapp;rm -rf luciapp/{luci-app-turboacc,luci-app-frp*}
-        git_sparse_clone master "https://github.com/coolsnowwolf/luci" applications
+        git_sparse_clone master "https://github.com/coolsnowwolf/luci" applications collections/luci-lib-docker
         mv -n applications/* luciapp/; rm -rf applications
         rm -rf luciapp/{luci-app-qbittorrent,luci-app-zerotier,luci-app-cpufreq,luci-app-e2guardian,luci-app-aliyundrive-fuse,luci-app-syncdial,luci-app-firewall}
         git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/luci" applications collections/luci-nginx protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
         rm -rf applications/luci-app-frp*;mv -n luciapp/!(luci-app-filetransfer|luci-app-ksmbd) applications/; rm -rf luciapp
 
-        for ipk in $(ls -d applications/!(luci-app-rclone|luci-app-smartdns|luci-app-3ginfo-lite|luci-app-aria2|luci-app-ddns|luci-app-ksmbd|luci-app-samba4|luci-app-watchcat|luci-app-upnp|luci-app-transmission)/); do
+        for ipk in $(ls -d applications/!(luci-app-rclone|luci-app-dockerman|luci-app-smartdns|luci-app-3ginfo-lite|luci-app-aria2|luci-app-ddns|luci-app-ksmbd|luci-app-samba4|luci-app-watchcat|luci-app-upnp|luci-app-transmission)/); do
         	if [[ $(ls $ipk/po | wc -l) -gt 4 ]]; then
             rm -rf $ipk
         	fi
@@ -425,7 +422,7 @@ jobs:
 
     - name: Apply patches
       run: |
-        find ".github/diy/patches" -type f -name '*.patch' -print0 | sort -z | xargs -I % -t -0 -n 1 sh -c "cat '%'  | patch -d './' -p1 -E --forward --no-backup-if-mismatch" || (curl -k --data chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" --data "text=❌ 软件包更新失败 😂 https://github.com/mgz0227/OP-Packages/actions" "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage";exit 1)
+        find ".github/diy/patches" -type f -name '*.patch' -print0 | sort -z | xargs -I % -t -0 -n 1 sh -c "patch -d './' -p1 -E -f -F 1 --no-backup-if-mismatch -i '%'" || (curl -k --data chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" --data "text=❌ 软件包更新失败 😂 https://github.com/mgz0227/OP-Packages/actions" "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage";exit 1)
 
     - name: Modify
       run: |
@@ -443,7 +440,7 @@ jobs:
              -H "Authorization: Bearer ${{ secrets.TOKEN_MGZ0227 }}" \
              -X POST -d '{ "query": "query {repository(owner: \"'"$1"'\", name: \"'"$2"'\"){latestRelease{tagName tagCommit{oid}}refs(refPrefix:\"refs/tags/\",last:1,orderBy:{field:TAG_COMMIT_DATE,direction:ASC}){edges{node{name target{oid}}}}defaultBranchRef{target{...on Commit {oid}}}}}"}' https://api.github.com/graphql)
         }
-        for pkg in $(ls !(luci-*|nikki|openwrt-einat-ebpf|glorytun|mosdns|spotifyd|miniupnpd|qBittorrent-Enhanced-Edition|openwrt-Toolkit|libdouble-conversion|wxbase|3proxy|ucode|mergerfs|openwrt-nezhav1|homebox|sub-web|tcptraceroute|frp|openwrt-caddy|mentohust|brlaser|rapidjson|smartdns|hysteria|gecoosac|hickory-dns|libcryptopp|naiveproxy|rustdesk-server|shadowsocksr-libev|tuic-server|joker|ps3netsrv|natter|netmaker|openwrt-ympd|subconverter|sms-tool)/Makefile); do
+        for pkg in $(ls !(luci-*|nikki|openwrt-einat-ebpf|glorytun|shadowsocks-libev|mosdns|spotifyd|miniupnpd|qBittorrent-Enhanced-Edition|openwrt-Toolkit|libdouble-conversion|wxbase|3proxy|ucode|mergerfs|openwrt-nezhav1|homebox|sub-web|tcptraceroute|frp|openwrt-caddy|mentohust|brlaser|rapidjson|smartdns|hysteria|gecoosac|hickory-dns|libcryptopp|naiveproxy|rustdesk-server|shadowsocksr-libev|tuic-server|joker|ps3netsrv|natter|netmaker|openwrt-ympd|subconverter|sms-tool)/Makefile); do
           repo="$(grep ^PKG_SOURCE_URL $pkg | grep github | cut -f 4-5 -d '/' | sed -e 's/.git//' | grep -E '[0-9a-zA-Z_-]+$')" || true
           if [ "$repo" ]; then
             owner="$(echo $repo | cut -f 1 -d '/')"
@@ -485,9 +482,9 @@ jobs:
         sed -i \
           -e 's?include \.\./\.\./\(lang\|devel\)?include $(TOPDIR)/feeds/packages/\1?' \
           -e "s/\(\(^\| \|	\)\(PKG_HASH\|PKG_MD5SUM\|PKG_MIRROR_HASH\|HASH\):=\).*/\1skip/" \
-          -e 's/+docker\( \|$\)/+docker +dockerd /g' \
           -e 's?include .*/luci.mk?include $(TOPDIR)/feeds/luci/luci.mk?' \
           */Makefile
+        sed -i 's/+docker\( \|$\)/+docker +dockerd /' luci-app-!(docker*)/Makefile
 
         chmod +x github/diy/*.sh
         bash .github/diy/create_acl_for_luci.sh -a >/dev/null 2>&1 || true
@@ -523,7 +520,7 @@ jobs:
           fi
         done
         #sed -i 's/^\(PKG_RELEASE:=\).*/\1beta/' ./luci-app-openclash/Makefile
-        sed -i '/PKG_RELEASE:=/d' ./luci-app-openclash/Makefile
+        #sed -i '/PKG_RELEASE:=/d' ./luci-app-openclash/Makefile
         git reset --soft HEAD^
         git add .
         if ! git diff-index --quiet HEAD --; then

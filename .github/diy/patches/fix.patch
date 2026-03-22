@@ -10,15 +10,13 @@
 
 --- a/totd/root/etc/init.d/totd
 +++ b/totd/root/etc/init.d/totd
-@@ -55,7 +55,7 @@ start_service(){
+@@ -55,5 +55,5 @@ start_service(){
  }
  
  stop_service(){
 -	killall $PROG > /dev/null 2>&1
 +	kill `pgrep -f $PROG` > /dev/null 2>&1
  }
- 
- reload_service() {
 
 --- a/gowebdav/files/webdav.init
 +++ b/gowebdav/files/webdav.init
@@ -113,3 +111,14 @@
 -  killall rtorrent
 +  kill `pidof rtorrent | sed "s/$$//g"`
  }
+
+--- a/quectel_MHI/Makefile
++++ b/quectel_MHI/Makefile
+@@ -17,6 +17,7 @@ include $(INCLUDE_DIR)/package.mk
+ define KernelPackage/pcie_mhi
+   SUBMENU:=WWAN Support
+   TITLE:=Kernel pcie driver for MHI device
++  DEPENDS:=@PCIE_SUPPORT
+   FILES:=$(PKG_BUILD_DIR)/pcie_mhi.ko
+   AUTOLOAD:=$(call AutoLoad,90,pcie_mhi)
+ endef

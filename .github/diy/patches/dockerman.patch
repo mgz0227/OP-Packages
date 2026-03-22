@@ -1,133 +1,176 @@
---- a/luci-app-dockerman/luasrc/model/cbi/dockerman/container.lua
-+++ b/luci-app-dockerman/luasrc/model/cbi/dockerman/container.lua
-@@ -37,7 +37,15 @@ local get_ports = function(d)
- 
- 	if d.HostConfig and d.HostConfig.PortBindings then
- 		for inter, out in pairs(d.HostConfig.PortBindings) do
--			data = (data and (data .. "<br />") or "") .. out[1]["HostPort"] .. ":" .. inter
-+			if out[1] and out[1]["HostPort"] then
-+				local host_ip = ""
-+				if out[1].HostIp and out[1].HostIp ~= "" then
-+					host_ip = out[1].HostIp
-+				else
-+					host_ip = "*"
-+				end
-+				local line = host_ip  .. ":" .. out[1]["HostPort"] .. ":" .. inter
-+				data = (data and (data .. "<br />") or "") .. line
- 		end
- 	end
- 
-
---- a/luci-app-dockerman/luasrc/model/cbi/dockerman/containers.lua
-+++ b/luci-app-dockerman/luasrc/model/cbi/dockerman/containers.lua
-@@ -67,17 +67,38 @@ function get_containers()
- 
- 		if v.Ports and next(v.Ports) ~= nil then
- 			data[index]["_ports"] = nil
--			for _,v2 in ipairs(v.Ports) do
--				data[index]["_ports"] = (data[index]["_ports"] and (data[index]["_ports"] .. ", ") or "")
--					.. ((v2.PublicPort and v2.Type and v2.Type == "tcp") and ('<a href="javascript:void(0);" onclick="window.open((window.location.origin.match(/^(.+):\\d+$/) && window.location.origin.match(/^(.+):\\d+$/)[1] || window.location.origin) + \':\' + '.. v2.PublicPort ..', \'_blank\');">') or "")
--					.. (v2.PublicPort and (v2.PublicPort .. ":") or "")  .. (v2.PrivatePort and (v2.PrivatePort .."/") or "") .. (v2.Type and v2.Type or "")
--					.. ((v2.PublicPort and v2.Type and v2.Type == "tcp")and "</a>" or "")
-+			for _, v2 in ipairs(v.Ports) do
-+				local port_string = ""
-+			
-+				-- Add clickable link for TCP ports
-+				if v2.PublicPort and v2.Type == "tcp" then
-+					local url = (v2.IP and v2.IP ~= "" and v2.IP ~= "0.0.0.0" and v2.IP ~= "::") 
-+						and ("'http://" .. (v2.IP:find(":") and ("[" .. v2.IP .. "]") or v2.IP) .. ":" .. v2.PublicPort .. "'")
-+						or ("(window.location.origin.match(/^(.+):\\\\d+$/) && window.location.origin.match(/^(.+):\\\\d+$/)[1] || window.location.origin) + ':" .. v2.PublicPort .. "'")
-+					port_string = '<a href="javascript:void(0);" onclick="window.open(' .. url .. ', \'_blank\');">'
-+				end
-+			
-+				-- Build display string: IP:PublicPort:PrivatePort/Type
-+				port_string = port_string .. (v2.IP and v2.IP ~= "" 
-+					 and v2.IP ~= "0.0.0.0" and v2.IP ~= "::" and (v2.IP .. ":") or "*:")
-+					.. (v2.PublicPort and (v2.PublicPort .. ":") or "")
-+					.. (v2.PrivatePort and (v2.PrivatePort .. "/") or "")
-+					.. (v2.Type or "")
-+					.. (v2.PublicPort and v2.Type == "tcp" and "</a>" or "")
-+			
-+				data[index]["_ports"] = (data[index]["_ports"] and (data[index]["_ports"] .. ", ") or "") .. port_string
- 			end
- 		end
- 
- 		for ii,iv in ipairs(images) do
- 			if iv.Id == v.ImageID then
--				data[index]["_image"] = iv.RepoTags and iv.RepoTags[1] or (next(iv.RepoDigests) and (iv.RepoDigests[1]:gsub("(.-)@.+", "%1") .. ":&lt;none&gt;")) or ""
-+				if iv.RepoTags and iv.RepoTags[1] then
-+					data[index]["_image"] = iv.RepoTags[1]
-+				elseif iv.RepoDigests and iv.RepoDigests[1] then
-+					data[index]["_image"] = iv.RepoDigests[1]:gsub("(.-)@.+", "%1") .. ":<none>"
-+				else
-+					data[index]["_image"] = "<none>"
-+				end
- 			end
- 		end
- 
-
---- a/luci-app-dockerman/luasrc/model/cbi/dockerman/newcontainer.lua
-+++ b/luci-app-dockerman/luasrc/model/cbi/dockerman/newcontainer.lua
-@@ -408,7 +408,14 @@ elseif cmd_line and cmd_line:match("^duplicate/[^/]+$") then
- 		if create_body.HostConfig.PortBindings and type(create_body.HostConfig.PortBindings) == "table" then
- 			default_config.publish = {}
- 			for k, v in pairs(create_body.HostConfig.PortBindings) do
--				table.insert( default_config.publish, v[1].HostPort..":"..k:match("^(%d+)/.+").."/"..k:match("^%d+/(.+)") )
-+				local host_ip = ""
-+				if v[1].HostIp and v[1].HostIp ~= "" then
-+					host_ip = v[1].HostIp .. ":"
-+				end
-+				local host_port = v[1].HostPort
-+				local container_port = k:match("^(%d+)/.+")
-+				local protocol = k:match("^%d+/(.+)")
-+				table.insert(default_config.publish, host_ip .. host_port .. ":" .. container_port .. "/" .. protocol)
- 			end
- 		end
- 
-@@ -544,7 +551,7 @@ o.default = default_config.volume or nil
- local d_publish = s:option(DynamicList, "publish",
- 	translate("Exposed Ports(-p)"),
- 	translate("Publish container's port(s) to the host"))
--d_publish.placeholder = "2200:22/tcp"
-+d_publish.placeholder = "[192.168.1.0:]2200:22/tcp"
- d_publish.rmempty = true
- d_publish.default = default_config.publish or nil
- 
-@@ -768,13 +775,22 @@ m.handle = function(self, state, data)
- 
- 	tmp = data.publish or {}
- 	for i, v in ipairs(tmp) do
--		for v1 ,v2 in string.gmatch(v, "(%d+):([^%s]+)") do
--			local _,_,p= v2:find("^%d+/(%w+)")
--			if p == nil then
--				v2=v2..'/tcp'
-+		local ip, host_port, container_port = v:match("^([^:]+):(%d+):([^%s]+)$")
-+		if not container_port then
-+			host_port, container_port = v:match("^(%d+):([^%s]+)$")
-+		end
-+
-+		if container_port then
-+			if not container_port:match("^%d+/(%w+)$") then
-+				container_port = container_port .. "/tcp"
- 			end
--			portbindings[v2] = {{HostPort=v1}}
--			exposedports[v2] = {HostPort=v1}
-+			local binding = { HostPort = host_port }
-+			if ip then
-+				binding["HostIp"] = ip
-+			end
-+
-+			portbindings[container_port] = { binding }
-+			exposedports[container_port] = {HostPort = host_port}
- 		end
- 	end
- 
---- a/luci-app-dockerman/root/etc/uci-defaults/luci-app-dockerman
+--- /dev/null
 +++ b/luci-app-dockerman/root/etc/uci-defaults/luci-app-dockerman
-@@ -4,3 +4,6 @@ uci -q batch <<-EOF >/dev/null
- 	set uhttpd.main.script_timeout="360"
- 	commit uhttpd
- EOF
+@@ -0,0 +1,8 @@
++#!/bin/sh
++
++uci -q batch <<-EOF >/dev/null
++	set uhttpd.main.script_timeout="360"
++	commit uhttpd
++EOF
 +
 +/etc/init.d/dockerd restart
+
+--- a/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js
++++ b/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js
+@@ -66,6 +66,7 @@ return L.view.extend({
+ 		o.value('https://docker.io');
+ 		o.value('https://ghcr.io');
+ 		o.value('https://hub-mirror.c.163.com');
++		o.value('https://ustc-edu-cn.mirror.aliyuncs.com');
+ 
+ 		o = s.taboption('globals', form.ListValue, 'log_level',
+ 			_('Log Level'),
+
+--- a/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js
++++ b/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js
+@@ -73,7 +73,8 @@ return dm2.dv.extend({
+ 			const hostConfig = c.HostConfig || {};
+ 			const resolvedImage = resolveImageId(c.Image) || resolveImageId(c.Config?.Image) || c.Image || c.Config?.Image || '';
+ 			const builtInNetworks = new Set(['none', 'bridge', 'host']);
+-			const [netnames, nets] = Object.entries(c.NetworkSettings?.Networks || {});
++			// Object.entries returns [[name, obj], ...] — pick the first network
++			const [[firstName, firstNet] = []] = Object.entries(c.NetworkSettings?.Networks || {});
+ 
+ 			containerData.container = {
+ 				name: c.Name?.substring(1) || '',
+@@ -82,20 +83,18 @@ return dm2.dv.extend({
+ 				image: resolvedImage,
+ 				privileged: hostConfig.Privileged ? 1 : 0,
+ 				restart_policy: hostConfig.RestartPolicy?.Name || 'unless-stopped',
+-				network: (() => {
+-					return (netnames && (netnames.length > 0)) ? netnames[0] : '';
+-				})(),
++				network: firstName || '',
+ 				ipv4: (() => {
+-					if (builtInNetworks.has(netnames[0])) return '';
+-					return (nets && (nets.length > 0)) ? nets[0]?.IPAddress || '' : '';
++					if (!firstName || builtInNetworks.has(firstName)) return '';
++					return firstNet?.IPAddress || '';
+ 				})(),
+ 				ipv6: (() => {
+-					if (builtInNetworks.has(netnames[0])) return '';
+-					return (nets && (nets.length > 0)) ? nets[0]?.GlobalIPv6Address || '' : '';
++					if (!firstName || builtInNetworks.has(firstName)) return '';
++					return firstNet?.GlobalIPv6Address || '';
+ 				})(),
+ 				ipv6_lla: (() => {
+-					if (builtInNetworks.has(netnames[0])) return '';
+-					return (nets && (nets.length > 0)) ? nets[0]?.LinkLocalIPv6Address || '' : '';
++					if (!firstName || builtInNetworks.has(firstName)) return '';
++					return firstNet?.LinkLocalIPv6Address || '';
+ 				})(),
+ 				link: hostConfig.Links || [],
+ 				dns: hostConfig.Dns || [],
+@@ -135,9 +134,12 @@ return dm2.dv.extend({
+ 				publish: (() => {
+ 					const ports = [];
+ 					for (const [containerPort, bindings] of Object.entries(hostConfig.PortBindings || {})) {
+-						if (Array.isArray(bindings) && bindings.length > 0 && bindings[0]?.HostPort) {
+-							const hostPort = bindings[0].HostPort;
+-							ports.push(hostPort + ':' + containerPort);
++						if (Array.isArray(bindings) && bindings.length > 0) {
++							for (const b of bindings) {
++								if (!b?.HostPort) continue;
++								const ip = b.HostIp || '';
++								ports.push((ip ? ip + ':' : '') + b.HostPort + ':' + containerPort);
++							}
+ 						}
+ 					}
+ 					return ports;
+@@ -801,9 +803,15 @@ return dm2.dv.extend({
+ 							(Array.isArray(publish) ? publish : [publish])
+ 							.filter(p => p && typeof p === 'string' && p.trim().length > 0)
+ 							.map(p => {
+-								const m = p.match(/^(\d+):(\d+)\/(tcp|udp)$/);
+-								if (m) return [`${m[2]}/${m[3]}`, [{ HostPort: m[1] }]];
+-								return null;
++								// formats: hostPort:cPort/proto  or  hostIp:hostPort:cPort/proto
++								const m = p.match(/^(?:([^:]+):(\d+)|(\d+)):(\d+)\/(tcp|udp)$/);
++								if (!m) return null;
++								const hostIp   = m[1] || '';
++								const hostPort = m[2] || m[3];
++								const cPort    = m[4];
++								const proto    = m[5];
++								const binding  = hostIp ? { HostIp: hostIp, HostPort: hostPort } : { HostPort: hostPort };
++								return [`${cPort}/${proto}`, [binding]];
+ 							}).filter(Boolean)
+ 						) : undefined,
+ 						Mounts: undefined,
+
+--- a/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/containers.js
++++ b/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/containers.js
+@@ -308,6 +308,56 @@ return dm2.dv.extend({
+ 		}, E('div', btns));
+ 	},
+ 
++	buildPortLinks(ports) {
++		// cont.Ports[] from GET /containers/json — flat array.
++		// Published ports have {IP, PrivatePort, PublicPort, Type}.
++		// Exposed-only ports omit IP and PublicPort: {PrivatePort, Type}.
++		if (!Array.isArray(ports) || ports.length === 0) return '';
 +
++		const LOCAL_IPS = new Set(['0.0.0.0', '::']);
++
++		// Sort: published (has PublicPort) before exposed-only, then by PrivatePort
++		const sorted = [...ports].sort((a, b) => {
++			const aHasPub = a.PublicPort ? 1 : 0;
++			const bHasPub = b.PublicPort ? 1 : 0;
++			if (aHasPub !== bHasPub) return bHasPub - aHasPub;
++			return (a.PrivatePort || 0) - (b.PrivatePort || 0);
++		});
++
++		const lines = sorted.map(p => {
++			const ip   = p.IP || '';
++			const pub  = p.PublicPort || '';
++			const priv = p.PrivatePort || '';
++			const type = p.Type || '';
++
++			const isIPv6    = ip.includes(':');
++			const isLocal   = LOCAL_IPS.has(ip);
++			const displayIp = isIPv6 ? `[${ip}]` : ip;
++
++			let label;
++			if (pub && ip)  label = `${displayIp}:${pub}->${priv}/${type}`;
++			else if (pub)   label = `${pub}->${priv}/${type}`;
++			else            label = `${priv}/${type}`;
++
++			// Clickable link for published TCP ports only
++			if (type === 'tcp' && pub) {
++				const host = isLocal ? window.location.hostname : displayIp;
++				return E('div', {}, [
++					E('a', {
++						href: `http://${host}:${pub}`,
++						target: '_blank',
++						rel: 'noopener noreferrer',
++						title: _('Open in browser'),
++					}, [label]),
++				]);
++			}
++
++			return E('div', {}, [label]);
++		});
++
++		return E('div', {}, lines);
++	},
++
+ 	handleSave: null,
+ 	handleSaveApply: null,
+ 	handleReset: null,
+@@ -342,16 +392,7 @@ return dm2.dv.extend({
+ 				_shortId: (cont?.Id || '').substring(0, 12),
+ 				Networks: this.parseNetworkLinksForContainer(network_list, cont?.NetworkSettings?.Networks || {}, true),
+ 				Created: this.buildTimeString(cont?.Created) || '',
+-				Ports: (Array.isArray(cont.Ports) && cont.Ports.length > 0)
+-						? cont.Ports.map(p => {
+-							// const ip = p.IP || '';
+-							const pub = p.PublicPort || '';
+-							const priv = p.PrivatePort || '';
+-							const type = p.Type || '';
+-							return `${pub ? pub + ':' : ''}${priv}/${type}`;
+-							// return `${ip ? ip + ':' : ''}${pub} -> ${priv} (${type})`;
+-						}).join('<br/>')
+-						: '',
++				Ports: this.buildPortLinks(cont.Ports),
+ 			});
+ 		}
+ 
