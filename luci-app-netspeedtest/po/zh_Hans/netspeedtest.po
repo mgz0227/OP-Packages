@@ -1,0 +1,150 @@
+#
+# Copyright (C) 2020-2026 sirpdboy  herboy2008@gmail.com  https://github.com/sirpdboy/netspeedtest
+# This is free software, licensed under the GNU General Public License v3.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: LuCi Chinese Translation\n"
+"Report-Msgid-Bugs-To: \n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Pootle 2.0.6\n"
+
+msgid "NetSpeedtest"
+msgstr "网速测试"
+
+msgid "A tool for testing network speed in multiple aspects"
+msgstr "一个用于从多方面测试本地和宽带网络速度的测速工具"
+
+msgid "Throughput speedtest Iperf3"
+msgstr "吞吐iperf3测速"
+
+msgid "Throughput speedtest Homebox"
+msgstr "吞吐homebox测速"
+
+msgid "Wan SpeedTest"
+msgstr "宽带测速"
+
+msgid "Select Test Version"
+msgstr "选择测速版本"
+
+msgid "Select Server"
+msgstr "选择测速服务节点"
+
+msgid "Auto (Let speedtest decide)"
+msgstr "自动（由速度测试决定）"
+
+msgid "Server not obtained"
+msgstr "未获取到测速服务节点"
+
+msgid "View detailed results"
+msgstr "查看详细结果"
+
+msgid "Online SpeedTest"
+msgstr "在线宽带测速"
+
+msgid "Log"
+msgstr "日志"
+
+msgid "Start Server"
+msgstr "启动服务"
+
+msgid "Stop Server"
+msgstr "停止服务"
+
+msgid "Loading..."
+msgstr "装载中..."
+
+msgid "RUNNING"
+msgstr "运行中"
+
+msgid "NOT RUNNING"
+msgstr "未运行"
+
+msgid "Iperf3 Server"
+msgstr "Iperf3服务端"
+
+msgid "Command failed"
+msgstr "命令无效"
+
+
+msgid "Error: "
+msgstr "错误: "
+
+msgid "Service Control"
+msgstr "服务控制"
+
+
+
+msgid "Download iperf3 client"
+msgstr "下载iperf3客户端"
+
+msgid "Refresh every %s seconds."
+msgstr "每 %s 秒刷新"
+
+msgid "Clear logs"
+msgstr "清除日志"
+
+msgid "Official Website"
+msgstr "官方网站"
+
+msgid "Please start the Homebox service"
+msgstr "请启动homebox服务"
+
+msgid "Homebox service control"
+msgstr "Homebox服务控制"
+
+msgid "Homebox Server"
+msgstr "Homebox服务端"
+
+msgid "Homebox Service Not Running"
+msgstr "Homebox服务端未运行"
+
+msgid "Open Web Interface"
+msgstr "打开WEB页面"
+
+msgid "Start Speed Test"
+msgstr "开始测速"
+
+msgid "Click to start speed test"
+msgstr "点击开始测速"
+
+msgid "Speed testing in progress..."
+msgstr "测速中,请稍候..."
+
+msgid "Test Failed"
+msgstr "测速失败"
+
+msgid "No test results yet."
+msgstr "还没有测试结果"
+
+msgid "Test Script"
+msgstr "测速脚本"
+
+msgid "Homebox Control panel"
+msgstr "Homebox控制台"
+
+msgid "Due to browser security policies, the Homebox interface https cannot be embedded directly."
+msgstr "由于浏览器安全策略，Homebox接口https不能直接嵌入。"
+
+msgid "Select speed measurement station"
+msgstr "选择测速站点"
+
+msgid "Iperf3 Port"
+msgstr "Iperf3监听端口"
+
+msgid "Port range must be 1024-65535"
+msgstr "端口范围1024-65535"
+
+msgid "Auto Start"
+msgstr "自动启动"
+
+msgid "Port Setting"
+msgstr "监听端口"
+
+msgid ""
+msgstr ""
+
