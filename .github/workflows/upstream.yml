@@ -138,7 +138,7 @@ jobs:
         git_clone https://github.com/sirpdboy/luci-app-kucat-config
         git_clone https://github.com/sirpdboy/luci-app-chatgpt-web
         git_clone https://github.com/sirpdboy/luci-app-eqosplus
-        git_clone https://github.com/sirpdboy/luci-app-netdata lucinetdata && mv lucinetdata/luci-app-netdata ./;rm -rf lucinetdata
+        # git_clone https://github.com/sirpdboy/luci-app-netdata lucinetdata && mv lucinetdata/luci-app-netdata ./;rm -rf lucinetdata
         ) &
         (
         git_clone https://github.com/destan19/OpenAppFilter && mvdir OpenAppFilter
@@ -147,7 +147,6 @@ jobs:
         git_clone https://github.com/peter-tank/luci-app-autorepeater
         git_clone https://github.com/brvphoenix/luci-app-wrtbwmon wrtbwmon1 && mvdir wrtbwmon1
         git_clone https://github.com/brvphoenix/wrtbwmon wrtbwmon2 && mvdir wrtbwmon2
-        git_clone https://github.com/muink/openwrt-fastfetch
         git_clone https://github.com/timsaya/luci-app-bandix bandix1 && mv -f bandix1/luci-app-bandix ./;rm -rf bandix1
         git_clone https://github.com/timsaya/openwrt-bandix bandix2 && mv -f bandix2/openwrt-bandix ./;rm -rf bandix2
         ) &
@@ -223,7 +222,7 @@ jobs:
         # git_clone https://github.com/vinewx/NanoHatOLED && mv NanoHatOLED/nanohatoled ./ && rm -rf NanoHatOLED
         git_clone https://github.com/zerolabnet/luci-app-torbp
         git_clone https://github.com/sbwml/luci-app-airconnect airconnect1 && mv airconnect1/* ./ && rm -rf airconnect1
-        git_clone https://github.com/openwrtdiy/luci-app-pppoe-user
+        # git_clone https://github.com/openwrtdiy/luci-app-pppoe-user
         git_clone https://github.com/derisamedia/luci-theme-alpha
         git_clone https://github.com/animegasan/luci-app-alpha-config
         git_clone https://github.com/gofly/openwrt-luci-proto-tinc
@@ -252,6 +251,8 @@ jobs:
         git_clone https://github.com/muink/openwrt-go-stun
         git_clone https://github.com/muink/luci-app-tinyfilemanager
         git_clone https://github.com/muink/openwrt-Toolkit
+        git_clone https://github.com/muink/openwrt-fastfetch
+        git_clone https://github.com/muink/luci-app-netdata
         ) &
         (
         git_clone https://github.com/gSpotx2f/luci-app-temp-status
@@ -389,7 +390,7 @@ jobs:
         git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/luci" applications collections/luci-nginx protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
         rm -rf applications/luci-app-frp*;mv -n luciapp/!(luci-app-filetransfer|luci-app-ksmbd) applications/; rm -rf luciapp
 
-        for ipk in $(ls -d applications/!(luci-app-rclone|luci-app-dockerman|luci-app-smartdns|luci-app-3ginfo-lite|luci-app-aria2|luci-app-ddns|luci-app-ksmbd|luci-app-samba4|luci-app-watchcat|luci-app-upnp|luci-app-transmission)/); do
+        for ipk in $(ls -d applications/!(luci-app-rclone|luci-app-dockerman|luci-app-smartdns|luci-app-3ginfo-lite|luci-app-ddns|luci-app-ksmbd|luci-app-samba4|luci-app-watchcat|luci-app-transmission)/); do
         	if [[ $(ls $ipk/po | wc -l) -gt 4 ]]; then
             rm -rf $ipk
         	fi
@@ -467,7 +468,7 @@ jobs:
         ) &
 
         (
-        for pkg in $(ls -d */ | grep -v "naiveproxy" | grep -v "luci-app-passwall"); do
+        for pkg in $(ls -d */ | grep -v "naiveproxy" | grep -v "luci-app-passwall" | grep -v "luci-app-store" | grep -v "luci-app-quickstart"); do
           if [[ "$(grep "PKG_VERSION" $pkg/Makefile)" && ! "$(grep "PKG_RELEASE" $pkg/Makefile)" ]]; then
             sed -i "s/\(PKG_VERSION:=.*\)/\1\nPKG_RELEASE:=/" $pkg/Makefile || true
           fi
@@ -514,13 +515,11 @@ jobs:
         Emoji=("🎉" "🤞" "✨" "🎁" "🎈" "🎄" "🎨" "💋" "🍓" "🍕" "🍉" "💐" "🌴" "🚀" "🛸" "🗽" "⛅" "🌈" "🔥" "⛄" "🐶" "🏅" "🦄" "🐤")
         git add .
         git commit -m "${Emoji[$[$RANDOM % ${#Emoji[@]}]]} Sync $(date +%Y-%m-%d" "%H:%M:%S)"
-        for pkg in $(git diff-tree --no-commit-id --name-only HEAD | grep -v "naiveproxy" | grep -v "luci-app-passwall"); do
+        for pkg in $(git diff-tree --no-commit-id --name-only HEAD | grep -v "naiveproxy" | grep -v "luci-app-passwall" | grep -v "luci-app-store" | grep -v "luci-app-quickstart"); do
           if [ "$(grep "PKG_RELEASE" $pkg/Makefile)" ]; then
             sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=$(git rev-list --count main $pkg)/" $pkg/Makefile || true
           fi
         done
-        #sed -i 's/^\(PKG_RELEASE:=\).*/\1beta/' ./luci-app-openclash/Makefile
-        #sed -i '/PKG_RELEASE:=/d' ./luci-app-openclash/Makefile
         git reset --soft HEAD^
         git add .
         if ! git diff-index --quiet HEAD --; then

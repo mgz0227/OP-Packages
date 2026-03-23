@@ -1,9 +1,23 @@
 --- a/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js
 +++ b/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js
-@@ -113,6 +113,10 @@ return view.extend({
+@@ -54,6 +54,11 @@ return view.extend({
+ 		o = s.taboption('general', form.Value, 'description', _('Description'));
+ 		o.placeholder = 'Samba4 on OpenWrt';
+ 
++		o = s.taboption('general', form.Flag, 'autoshare', _('Auto Share'),
++			_('Auto share local disk which connected'));
++		o.default = 'yes';
++		o.rmempty = false;
++
+ 		s.taboption('general', form.Flag, 'enable_extra_tuning', _('Enable extra Tuning'),
+ 			_('Enable some community driven tuning parameters, that may improve write speeds and better operation via WiFi.\
+ 			Not recommend if multiple clients write to the same files, at the same time!'));
+@@ -112,7 +117,11 @@ return view.extend({
+ 		o.default = 'no'; // smb.conf default is 'yes'
  		o.rmempty = false;
  
- 		s.option(form.Flag, 'force_root', _('Force Root'));
+-		s.option(form.Flag, 'force_root', _('Force Root'));
++		o = s.option(form.Flag, 'force_root', _('Force Root'));
 +		o.enabled = 'yes';
 +		o.disabled = 'no';
 +		o.default = 'yes';
