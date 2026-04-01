@@ -1092,36 +1092,35 @@ configure_model() {
 			prompt_with_default "请输入 SiliconFlow API Key" "" api_key
 			if [ -n "$api_key" ]; then
 				echo ""
-				echo -e "  ${CYAN}可用模型 (选定分类):${NC}"
+				echo -e "  ${CYAN}可用模型分类说明:${NC}"
+				echo -e "  ${YELLOW}* Pro模型 (带 Pro/ 前缀): 仅支持充值余额支付，并发与速率(Rate Limits)可变。${NC}"
+				echo -e "  ${YELLOW}* 非Pro模型 (无 Pro/ 前缀): 支持赠费余额（代金券）和充值余额支付，Rate Limits 固定。${NC}"
+				echo -e "  ${GREEN}【建议】如果您是代金券/赠送余额用户，请务必选择【非Pro模型】。${NC}"
 				echo ""
-				echo -e "  ${CYAN}── 高性能模型 (旗舰 / Pro) ──${NC}"
-				echo -e "    ${CYAN}1)${NC} Pro/zai-org/GLM-5             — 智谱 GLM-5"
-				echo -e "    ${CYAN}2)${NC} Pro/moonshotai/Kimi-K2.5      — 月之暗面 Kimi K2.5"
-				echo -e "    ${CYAN}3)${NC} Pro/MiniMaxAI/MiniMax-M2.5    — 稀宇科技 MiniMax M2.5"
-				echo -e "    ${CYAN}4)${NC} Pro/deepseek-ai/DeepSeek-V3   — DeepSeek-V3 (官方满血)"
+				echo -e "  ${CYAN}── 非Pro模型 (支持代金券/免费额度) ──${NC}"
+				echo -e "    ${CYAN}1)${NC} deepseek-ai/DeepSeek-V3       — DeepSeek-V3 (推荐)"
+				echo -e "    ${CYAN}2)${NC} deepseek-ai/DeepSeek-R1       — DeepSeek-R1 (推理模型)"
+				echo -e "    ${CYAN}3)${NC} Qwen/Qwen2.5-72B-Instruct     — 通义千问 2.5 72B"
+				echo -e "    ${CYAN}4)${NC} Qwen/Qwen2.5-7B-Instruct      — 通义千问 2.5 7B"
+				echo -e "    ${CYAN}5)${NC} THUDM/glm-4-9b-chat           — 智谱 GLM-4 9B"
+				echo -e "    ${CYAN}6)${NC} 01-ai/Yi-1.5-34B-Chat-16K     — 零一万物 Yi-1.5 34B"
 				echo ""
-				echo -e "  ${CYAN}── 性价比模型 (平衡 / 普惠) ──${NC}"
-				echo -e "    ${CYAN}5)${NC} Pro/zai-org/GLM-4.7           — 智谱 GLM-4.7 进阶版"
-				echo -e "    ${CYAN}6)${NC} deepseek-ai/DeepSeek-V3       — DeepSeek-V3 (普惠版, 推荐)"
-				echo -e "    ${CYAN}7)${NC} deepseek-ai/DeepSeek-R1       — DeepSeek-R1 (推理模型)"
-				echo ""
-				echo -e "  ${CYAN}── 免费模型 (受限于账号 RPM / 并发限制) ──${NC}"
-				echo -e "    ${CYAN}8)${NC} Qwen/Qwen2.5-7B-Instruct      — 通义千问 2.5 7B"
-				echo -e "    ${CYAN}9)${NC} THUDM/glm-4-9b-chat           — 智谱 GLM-4 9B"
+				echo -e "  ${CYAN}── Pro模型 (仅支持充值余额) ──${NC}"
+				echo -e "    ${CYAN}7)${NC} Pro/deepseek-ai/DeepSeek-V3   — DeepSeek-V3 (Pro增强侧)"
+				echo -e "    ${CYAN}8)${NC} Pro/zai-org/GLM-5             — 智谱 GLM-5"
 				echo ""
 				echo -e "    ${CYAN}0)${NC} 手动输入其他任意模型名称"
 				echo ""
-				prompt_with_default "请选择模型 [0-9]" "6" model_choice
+				prompt_with_default "请选择模型 [0-8]" "1" model_choice
 				case "$model_choice" in
-					1) model_name="Pro/zai-org/GLM-5" ;;
-					2) model_name="Pro/moonshotai/Kimi-K2.5" ;;
-					3) model_name="Pro/MiniMaxAI/MiniMax-M2.5" ;;
-					4) model_name="Pro/deepseek-ai/DeepSeek-V3" ;;
-					5) model_name="Pro/zai-org/GLM-4.7" ;;
-					6) model_name="deepseek-ai/DeepSeek-V3" ;;
-					7) model_name="deepseek-ai/DeepSeek-R1" ;;
-					8) model_name="Qwen/Qwen2.5-7B-Instruct" ;;
-					9) model_name="THUDM/glm-4-9b-chat" ;;
+					1) model_name="deepseek-ai/DeepSeek-V3" ;;
+					2) model_name="deepseek-ai/DeepSeek-R1" ;;
+					3) model_name="Qwen/Qwen2.5-72B-Instruct" ;;
+					4) model_name="Qwen/Qwen2.5-7B-Instruct" ;;
+					5) model_name="THUDM/glm-4-9b-chat" ;;
+					6) model_name="01-ai/Yi-1.5-34B-Chat-16K" ;;
+					7) model_name="Pro/deepseek-ai/DeepSeek-V3" ;;
+					8) model_name="Pro/zai-org/GLM-5" ;;
 					0) prompt_with_default "请输入模型详细名称" "deepseek-ai/DeepSeek-V3" model_name ;;
 					*) model_name="deepseek-ai/DeepSeek-V3" ;;
 				esac
