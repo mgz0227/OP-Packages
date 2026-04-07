@@ -15,6 +15,8 @@ del_lock() {
 }
 
 set_lock
+inc_job_counter
+restart=0
 
 if [ -n "$1" ] && [ "$1" != "one_key_update" ]; then
    /usr/share/openclash/openclash_version.sh "$1" 2>/dev/null
@@ -27,6 +29,7 @@ fi
 if [ ! -f "/tmp/openclash_last_version" ]; then
    LOG_ERROR "Failed to get version information, please try again later..."
    SLOG_CLEAN
+   dec_job_counter_and_restart "$restart"
    del_lock
    exit 0
 fi
@@ -66,14 +69,12 @@ if [ "$1" = "one_key_update" ]; then
       LOG_TIP "If the download fails, try setting the CDN in Overwrite Settings - General Settings - Github Address Modify Options"
    fi
    if [ -n "$2" ]; then
-      /usr/share/openclash/openclash_core.sh "Meta" "$1" "$2" >/dev/null 2>&1 &
+      /usr/share/openclash/openclash_core.sh "Meta" "$1" "$2" >/dev/null 2>&1
       github_address_mod="$2"
    else
-      /usr/share/openclash/openclash_core.sh "Meta" "$1" >/dev/null 2>&1 &
+      /usr/share/openclash/openclash_core.sh "Meta" "$1" >/dev/null 2>&1
       github_address_mod=0
    fi
-
-   wait
 else
    if [ "$github_address_mod" = "0" ]; then
       LOG_TIP "If the download fails, try setting the CDN in Overwrite Settings - General Settings - Github Address Modify Options"
@@ -172,8 +173,8 @@ if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ 
                elif [ -x "/usr/bin/apk" ]; then
                   LOG_ERROR "【OpenClash - v$LAST_VER】Pre update test failed after 3 attempts, the file is saved in /tmp/openclash.apk, please try to update manually with【apk add -q --force-overwrite --clean-protected --allow-untrusted /tmp/openclash.apk】"
                fi
-
                SLOG_CLEAN
+               dec_job_counter_and_restart "$restart"
                del_lock
                exit 0
             fi
@@ -187,6 +188,7 @@ if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ 
             LOG_ERROR "【OpenClash - v$LAST_VER】Download Failed after 3 attempts, please check the network or try again later!"
             rm -rf /tmp/openclash.ipk >/dev/null 2>&1
             rm -rf /tmp/openclash.apk >/dev/null 2>&1
+            dec_job_counter_and_restart "$restart"
             SLOG_CLEAN
             del_lock
             exit 0
@@ -400,6 +402,7 @@ else
    else
       LOG_TIP "OpenClash has not been updated, stop continuing!"
    fi
+   dec_job_counter_and_restart "$restart"
    SLOG_CLEAN
 fi
 
