@@ -2,11 +2,11 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=lua-periphery
 PKG_VERSION:=2.5.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/vsergeev/lua-periphery.git
-PKG_SOURCE_VERSION:=e91d515ebbf04bd4cfc10a3f4c7e1f12736350af
+PKG_SOURCE_VERSION:=null
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=MIT

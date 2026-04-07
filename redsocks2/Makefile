@@ -6,12 +6,12 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=redsocks2
 PKG_VERSION:=0.71
-PKG_RELEASE:=7
+PKG_RELEASE:=8
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/semigodking/redsocks.git
 PKG_SOURCE_DATE:=2025-12-12
-PKG_SOURCE_VERSION:=43ba8a3cb1b5f8c44b2a827b924375f1de733370
+PKG_SOURCE_VERSION:=null
 PKG_MIRROR_HASH:=skip
 
 PKG_MAINTAINER:=semigodking <semigodking@gmail.com>
