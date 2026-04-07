@@ -16,7 +16,6 @@ del_lock() {
 
 set_lock
 inc_job_counter
-restart=0
 
 if [ -n "$1" ] && [ "$1" != "one_key_update" ]; then
    /usr/share/openclash/openclash_version.sh "$1" 2>/dev/null
@@ -29,7 +28,7 @@ fi
 if [ ! -f "/tmp/openclash_last_version" ]; then
    LOG_ERROR "Failed to get version information, please try again later..."
    SLOG_CLEAN
-   dec_job_counter_and_restart "$restart"
+   dec_job_counter_and_restart "0"
    del_lock
    exit 0
 fi
@@ -174,7 +173,7 @@ if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ 
                   LOG_ERROR "【OpenClash - v$LAST_VER】Pre update test failed after 3 attempts, the file is saved in /tmp/openclash.apk, please try to update manually with【apk add -q --force-overwrite --clean-protected --allow-untrusted /tmp/openclash.apk】"
                fi
                SLOG_CLEAN
-               dec_job_counter_and_restart "$restart"
+               dec_job_counter_and_restart "0"
                del_lock
                exit 0
             fi
@@ -188,7 +187,7 @@ if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ 
             LOG_ERROR "【OpenClash - v$LAST_VER】Download Failed after 3 attempts, please check the network or try again later!"
             rm -rf /tmp/openclash.ipk >/dev/null 2>&1
             rm -rf /tmp/openclash.apk >/dev/null 2>&1
-            dec_job_counter_and_restart "$restart"
+            dec_job_counter_and_restart "0"
             SLOG_CLEAN
             del_lock
             exit 0
@@ -197,9 +196,8 @@ if [ -n "$OP_CV" ] && [ -n "$OP_LV" ] && version_compare "$OP_CV" "$OP_LV" && [ 
    done
    cat > /tmp/openclash_update.sh <<"EOF"
 #!/bin/sh
-START_LOG="/tmp/openclash_start.log"
-LOG_FILE="/tmp/openclash.log"
-LOGTIME=$(date "+%Y-%m-%d %H:%M:%S")
+. /usr/share/openclash/log.sh
+. /usr/share/openclash/openclash_ps.sh
 
 UPDATE_LOCK="/tmp/lock/openclash_update_install.lock"
 mkdir -p /tmp/lock
@@ -220,27 +218,6 @@ if ! set_update_lock; then
 fi
 
 trap 'del_update_lock; exit' INT TERM EXIT
-
-LOG_ERROR()
-{
-	if [ -n "${1}" ]; then
-		echo -e "${1}" > $START_LOG
-		echo -e "${LOGTIME} [Error] ${1}" >> $LOG_FILE
-	fi
-}
-
-LOG_TIP()
-{
-	if [ -n "${1}" ]; then
-		echo -e "${1}" > $START_LOG
-		echo -e "${LOGTIME} [Tip] ${1}" >> $LOG_FILE
-	fi
-}
-
-SLOG_CLEAN()
-{
-   echo "" > $START_LOG
-}
 
 check_install_success()
 {
@@ -354,9 +331,9 @@ else
    elif [ -x "/usr/bin/apk" ]; then
       LOG_ERROR "OpenClash update failed after 3 attempts, the file is saved in /tmp/openclash.apk, please try to update manually with【apk add -q --force-overwrite --clean-protected --allow-untrusted /tmp/openclash.apk】"
    fi
-   SLOG_CLEAN
 fi
-
+dec_job_counter_and_restart "0"
+SLOG_CLEAN
 del_update_lock
 EOF
    chmod 4755 /tmp/openclash_update.sh
@@ -364,6 +341,8 @@ EOF
    if [ ! -f "/tmp/openclash_update.sh" ] || [ ! -s "/tmp/openclash_update.sh" ] || [ ! -x "/tmp/openclash_update.sh" ]; then
       LOG_ERROR "Failed to create update script!"
       rm -rf /tmp/openclash_update.sh
+      dec_job_counter_and_restart "0"
+      SLOG_CLEAN
       del_lock
       exit 1
    fi
@@ -402,7 +381,7 @@ else
    else
       LOG_TIP "OpenClash has not been updated, stop continuing!"
    fi
-   dec_job_counter_and_restart "$restart"
+   dec_job_counter_and_restart "0"
    SLOG_CLEAN
 fi
 
