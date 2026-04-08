@@ -13,7 +13,7 @@ o.cfgvalue = function(t, n)
 end
 
 enabled = s:option(Flag, "enabled", translate("Enable"))
-enabled.description = translate("Use a client that supports IPSec Xauth PSK (iOS or Android) to connect to this server.")
+enabled.description = translate("Enable the IPSec VPN server and optionally expose the VPN services configured below.")
 enabled.default = 0
 enabled.rmempty = false
 
@@ -25,6 +25,35 @@ clientip.rmempty = false
 
 secret = s:option(Value, "secret", translate("Secret Pre-Shared Key"))
 secret.password = true
+
+o = s:option(Flag, "ikev2_psk_enable", translate("Enable IKEv2 PSK"))
+o.description = translate("Use a client that supports IKEv2 PSK to connect to this server.")
+o.default = 0
+o.rmempty = false
+
+o = s:option(Flag, "ikev2_eap_enable", translate("Enable IKEv2 EAP"))
+o.description = translate("Use a client that supports IKEv2 EAP-MSCHAPv2 to connect to this server. A local CA and gateway certificate will be generated automatically when the service starts.")
+o.default = 0
+o.rmempty = false
+
+o = s:option(Value, "ikev2_eap_id", translate("IKEv2 EAP Server ID"))
+o.description = translate("Used as the gateway identity and certificate subjectAltName for IKEv2 EAP. Enter the public domain name or public IP address that clients connect to.")
+o.placeholder = "vpn.example.com"
+o.rmempty = false
+o:depends("ikev2_eap_enable", "1")
+function o.validate(self, value, section)
+	if m:get(section, "ikev2_eap_enable") == "1" and (not value or value == "") then
+		return nil, translate("This field is required when IKEv2 EAP is enabled.")
+	end
+	return value
+end
+
+o = s:option(DummyValue, "_ikev2_eap_ca_cert", translate("IKEv2 EAP CA Certificate"))
+o.description = translate("Import this CA certificate into IKEv2 EAP clients so they can trust the gateway certificate.")
+o.cfgvalue = function(t, n)
+	return "/etc/ipsec.d/cacerts/ikev2-eap-ca-cert.pem"
+end
+o:depends("ikev2_eap_enable", "1")
 
 if sys.call("command -v xl2tpd > /dev/null") == 0 then
 	o = s:option(DummyValue, "l2tp_status", "L2TP " .. translate("Current Condition"))

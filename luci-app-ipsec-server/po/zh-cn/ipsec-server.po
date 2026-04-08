@@ -75,3 +75,39 @@ msgstr "未运行"
 
 msgid "RUNNING"
 msgstr "运行中"
+
+msgid "Enable the IPSec VPN server and optionally expose the VPN services configured below."
+msgstr "启用 IPSec VPN 服务器，并按下方配置选择性开放对应的 VPN 服务。"
+
+msgid "Enable IKEv2 PSK"
+msgstr "启用 IKEv2 PSK"
+
+msgid "Use a client that supports IKEv2 PSK to connect to this server."
+msgstr "使用支持 IKEv2 PSK 的客户端连接到此服务端。"
+
+msgid "Enable IKEv2 EAP"
+msgstr "启用 IKEv2 EAP"
+
+msgid "Use a client that supports IKEv2 EAP-MSCHAPv2 to connect to this server. A local CA and gateway certificate will be generated automatically when the service starts."
+msgstr "使用支持 IKEv2 EAP-MSCHAPv2 的客户端连接到此服务端。服务启动时会自动生成本地 CA 和网关证书。"
+
+msgid "IKEv2 EAP Server ID"
+msgstr "IKEv2 EAP 服务端 ID"
+
+msgid "Used as the gateway identity and certificate subjectAltName for IKEv2 EAP. Enter the public domain name or public IP address that clients connect to."
+msgstr "用作 IKEv2 EAP 的网关身份和证书 subjectAltName。请输入客户端连接时使用的公网域名或公网 IP 地址。"
+
+msgid "This field is required when IKEv2 EAP is enabled."
+msgstr "启用 IKEv2 EAP 时，此项不能为空。"
+
+msgid "IKEv2 EAP CA Certificate"
+msgstr "IKEv2 EAP CA 证书"
+
+msgid "Import this CA certificate into IKEv2 EAP clients so they can trust the gateway certificate."
+msgstr "请将此 CA 证书导入 IKEv2 EAP 客户端，以信任网关证书。"
+
+msgid "IPSec Xauth PSK / IKEv2 EAP Users Manager"
+msgstr "IPSec Xauth PSK / IKEv2 EAP 用户管理"
+
+msgid "These accounts can be used for both IPSec Xauth PSK and IKEv2 EAP-MSCHAPv2."
+msgstr "这些账号可同时用于 IPSec Xauth PSK 和 IKEv2 EAP-MSCHAPv2。"

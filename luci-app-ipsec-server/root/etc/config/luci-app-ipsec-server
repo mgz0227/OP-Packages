@@ -3,5 +3,6 @@ config service 'ipsec'
 	option enabled '0'
 	option secret 'ipsec'
 	option clientip '192.168.100.10/24'
-
-
+	option ikev2_psk_enable '0'
+	option ikev2_eap_enable '0'
+	option ikev2_eap_id ''
