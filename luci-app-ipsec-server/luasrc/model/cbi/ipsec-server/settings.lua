@@ -34,6 +34,41 @@ o.description = translate("Use a client that supports IKEv2 EAP-MSCHAPv2 to conn
 o.default = 0
 o.rmempty = false
 
+o = s:option(Flag, "ikev2_ipv6_enable", translate("Enable IPv6 for IKEv2"))
+o.description = translate("Provide IPv6 virtual addresses to IKEv2 clients. Android and other dual-stack clients may request INTERNAL_IP6_ADDRESS during IKEv2. This option only affects IKEv2 PSK/EAP and does not change legacy IKEv1 Xauth.")
+o.default = 0
+o.rmempty = false
+
+o = s:option(Value, "ikev2_clientip6", translate("IKEv2 IPv6 Client IP"))
+o.description = translate("IPv6 starting address/prefix used for IKEv2 virtual IP assignment, such as: fd42:42:42::10/120")
+o.placeholder = "fd42:42:42::10/120"
+o.rmempty = false
+o:depends("ikev2_ipv6_enable", "1")
+function o.validate(self, value, section)
+	if m:get(section, "ikev2_ipv6_enable") == "1" and (not value or value == "") then
+		return nil, translate("This field is required when IKEv2 IPv6 is enabled.")
+	end
+	return value
+end
+
+o = s:option(Value, "ikev2_serverip6", translate("IKEv2 IPv6 Server IP"))
+o.description = translate("IPv6 address/prefix configured on ipsec0 when IKEv2 IPv6 is enabled, such as: fd42:42:42::1/120. The address part is also sent to clients as INTERNAL_IP6_DNS.")
+o.placeholder = "fd42:42:42::1/120"
+o.rmempty = false
+o:depends("ikev2_ipv6_enable", "1")
+function o.validate(self, value, section)
+	if m:get(section, "ikev2_ipv6_enable") == "1" and (not value or value == "") then
+		return nil, translate("This field is required when IKEv2 IPv6 is enabled.")
+	end
+	return value
+end
+
+o = s:option(Flag, "ikev2_ipv6_nat6_enable", translate("Enable IPv6 masquerading for IKEv2"))
+o.description = translate("Masquerade IPv6 traffic from the IKEv2 IPv6 pool so ULA/private IPv6 clients can still access the Internet through the router. Disable this if you route a public IPv6 prefix to the VPN pool instead.")
+o.default = 1
+o.rmempty = false
+o:depends("ikev2_ipv6_enable", "1")
+
 o = s:option(Value, "ikev2_eap_id", translate("IKEv2 EAP Server ID"))
 o.description = translate("Used as the gateway identity for IKEv2 EAP and should match a subjectAltName on the ACME certificate. Enter the public domain name clients connect to.")
 o.placeholder = "vpn.example.com"

@@ -16,6 +16,8 @@ IKEV2_EAP_SERVER_KEY=${IPSEC_PRIVATE_DIR}/ikev2-eap-server-key.pem
 LEGACY_L2TP_PATH=/var/etc/xl2tpd
 
 vt_clientip=$(uci -q get ${CONFIG}.@service[0].clientip)
+vt_ikev2_ipv6_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_ipv6_enable)
+vt_ikev2_serverip6=$(uci -q get ${CONFIG}.@service[0].ikev2_serverip6)
 
 ipt_flag="IPSec VPN Server"
 
@@ -25,6 +27,10 @@ log() {
 
 ipsec_escape() {
 	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+strip_cidr() {
+	printf '%s' "${1%%/*}"
 }
 
 prepare_ikev2_eap_acme_certificates() {
@@ -66,6 +72,13 @@ get_enabled_anonymous_secs() {
 }
 
 ipt_rule() {
+	local ikev2_ipv6_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_ipv6_enable)
+	local ikev2_clientip6=$(uci -q get ${CONFIG}.@service[0].ikev2_clientip6)
+	local ikev2_ipv6_nat6_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_ipv6_nat6_enable)
+
+	[ -n "${ikev2_ipv6_enable}" ] || ikev2_ipv6_enable=0
+	[ -n "${ikev2_ipv6_nat6_enable}" ] || ikev2_ipv6_nat6_enable=1
+
 	if [ "$1" = "add" ]; then
 		iptables -t nat -I POSTROUTING -s ${vt_clientip} -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
 		iptables -I forwarding_rule -s ${vt_clientip} -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
@@ -74,10 +87,21 @@ ipt_rule() {
 		iptables -I INPUT -p udp -m multiport --dports 500,4500 -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I INPUT -p esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -t mangle -I OUTPUT -p udp -m multiport --sports 500,4500 -m comment --comment "${ipt_flag}" -j RETURN 2>/dev/null
+
+		if [ "${ikev2_ipv6_enable}" = 1 ] && [ -n "${ikev2_clientip6}" ] && command -v ip6tables >/dev/null 2>&1; then
+			[ "${ikev2_ipv6_nat6_enable}" = 1 ] && ip6tables -t nat -I POSTROUTING -s ${ikev2_clientip6} -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
+			ip6tables -I forwarding_rule -s ${ikev2_clientip6} -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
+			ip6tables -I forwarding_rule -m policy --dir in --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
+			ip6tables -I forwarding_rule -m policy --dir out --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
+			ip6tables -I INPUT -p udp -m multiport --dports 500,4500 -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
+			ip6tables -I INPUT -p esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
+			ip6tables -t mangle -I OUTPUT -p udp -m multiport --sports 500,4500 -m comment --comment "${ipt_flag}" -j RETURN 2>/dev/null
+		fi
 	else
 		ipt_del() {
-			for i in $(seq 1 $($1 -nL $2 | grep -c "${ipt_flag}")); do
-				local index=$($1 --line-number -nL $2 | grep "${ipt_flag}" | head -1 | awk '{print $1}')
+			for i in $(seq 1 $($1 -nL $2 2>/dev/null | grep -c "${ipt_flag}")); do
+				local index=$($1 --line-number -nL $2 2>/dev/null | grep "${ipt_flag}" | head -1 | awk '{print $1}')
+				[ -n "${index}" ] || break
 				$1 -w -D $2 $index 2>/dev/null
 			done
 		}
@@ -85,24 +109,50 @@ ipt_rule() {
 		ipt_del "iptables" "INPUT"
 		ipt_del "iptables -t nat" "POSTROUTING"
 		ipt_del "iptables -t mangle" "OUTPUT"
+		if command -v ip6tables >/dev/null 2>&1; then
+			ipt_del "ip6tables" "forwarding_rule"
+			ipt_del "ip6tables" "INPUT"
+			ipt_del "ip6tables -t nat" "POSTROUTING"
+			ipt_del "ip6tables -t mangle" "OUTPUT"
+		fi
 	fi
 }
 
 gen_include() {
 	echo '#!/bin/sh' > /var/etc/ipsecvpn.include
 	extract_rules() {
-		echo "*$1"
-		iptables-save -t $1 | grep "${ipt_flag}" | \
-		sed -e "s/^-A \(INPUT\)/-I \1 1/"
+		local save_cmd="$1"
+		local table="$2"
+		local rules
+		rules=$($save_cmd -t "$table" 2>/dev/null | grep "${ipt_flag}" | \
+			sed -e 's/^-A \(INPUT\)/-I \1 1/' \
+			    -e 's/^-A \(forwarding_rule\)/-I \1 1/' \
+			    -e 's/^-A \(POSTROUTING\)/-I \1 1/' \
+			    -e 's/^-A \(OUTPUT\)/-I \1 1/')
+		[ -n "${rules}" ] || return 0
+		echo "*${table}"
+		echo "${rules}"
 		echo 'COMMIT'
 	}
 	cat <<-EOF2 >> /var/etc/ipsecvpn.include
-		iptables-save -c | grep -v "${ipt_flag}" | iptables-restore -c
-		iptables-restore -n <<-EOT
-		$(extract_rules filter)
-		$(extract_rules nat)
-		EOT
+		if command -v iptables-save >/dev/null 2>&1 && command -v iptables-restore >/dev/null 2>&1; then
+			iptables-save -c 2>/dev/null | grep -v "${ipt_flag}" | iptables-restore -c 2>/dev/null
+			iptables-restore -n <<-EOT
+			$(extract_rules iptables-save filter)
+			$(extract_rules iptables-save nat)
+			$(extract_rules iptables-save mangle)
+			EOT
+		fi
+		if command -v ip6tables-save >/dev/null 2>&1 && command -v ip6tables-restore >/dev/null 2>&1; then
+			ip6tables-save -c 2>/dev/null | grep -v "${ipt_flag}" | ip6tables-restore -c 2>/dev/null
+			ip6tables-restore -n <<-EOT
+			$(extract_rules ip6tables-save filter)
+			$(extract_rules ip6tables-save nat)
+			$(extract_rules ip6tables-save mangle)
+			EOT
+		fi
 	EOF2
+	chmod 0755 /var/etc/ipsecvpn.include
 	return 0
 }
 
@@ -117,28 +167,48 @@ start() {
 	local ikev2_eap_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_eap_enable)
 	local ikev2_eap_id=$(uci -q get ${CONFIG}.@service[0].ikev2_eap_id)
 	local ikev2_eap_acme_name=$(uci -q get ${CONFIG}.@service[0].ikev2_eap_acme_name)
+	local ikev2_ipv6_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_ipv6_enable)
+	local ikev2_clientip6=$(uci -q get ${CONFIG}.@service[0].ikev2_clientip6)
+	local ikev2_serverip6=$(uci -q get ${CONFIG}.@service[0].ikev2_serverip6)
+	local ikev2_ipv6_nat6_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_ipv6_nat6_enable)
+	local ikev2_any_enable=0
 	local ikev2_eap_ready=0
+	local ikev2_gateway6=""
+	local ipsec_rightdns="${vt_gateway}"
+	local ipsec_remoteaccess_ikev2_leftsubnet="0.0.0.0/0"
+	local ipsec_remoteaccess_ikev2_rightsourceip="${vt_clientip}"
 	local ipsec_ikev2_psk_config=""
 	local ipsec_ikev2_eap_config=""
 	local ipsec_extra_secrets=""
 
 	[ -n "${ikev2_psk_enable}" ] || ikev2_psk_enable=0
 	[ -n "${ikev2_eap_enable}" ] || ikev2_eap_enable=0
+	[ -n "${ikev2_ipv6_enable}" ] || ikev2_ipv6_enable=0
+	[ -n "${ikev2_ipv6_nat6_enable}" ] || ikev2_ipv6_nat6_enable=1
 	[ -n "${ikev2_eap_acme_name}" ] || ikev2_eap_acme_name="${ikev2_eap_id}"
+
+	[ "${ikev2_psk_enable}" = 1 ] && ikev2_any_enable=1
+	[ "${ikev2_eap_enable}" = 1 ] && ikev2_any_enable=1
+
+	if [ "${ikev2_ipv6_enable}" = 1 ]; then
+		if [ "${ikev2_any_enable}" != 1 ]; then
+			log "IKEv2 IPv6 is enabled but all IKEv2 connection types are disabled, skipping IKEv2 IPv6"
+			ikev2_ipv6_enable=0
+		elif [ -z "${ikev2_clientip6}" ] || [ -z "${ikev2_serverip6}" ]; then
+			log "IKEv2 IPv6 is enabled but the IPv6 client/server addresses are incomplete, skipping IKEv2 IPv6"
+			ikev2_ipv6_enable=0
+		else
+			ikev2_gateway6=$(strip_cidr "${ikev2_serverip6}")
+			ipsec_rightdns="${vt_gateway},${ikev2_gateway6}"
+			ipsec_remoteaccess_ikev2_leftsubnet="0.0.0.0/0,::/0"
+			ipsec_remoteaccess_ikev2_rightsourceip="${vt_clientip},${ikev2_clientip6}"
+		fi
+	fi
 
 	if [ "${ikev2_psk_enable}" = 1 ]; then
 		ipsec_ikev2_psk_config=$(cat <<-EOF2
-		#######################################
-		# IKEv2 Connections
-		#######################################
-
 		conn IKEv2-PSK
-		  also=RemoteAccess
-		  keyexchange=ikev2
-		  fragmentation=yes
-		  forceencaps=yes
-		  ike=aes256-sha256-modp2048,aes128-sha256-modp2048,aes256-sha1-modp2048,aes128-sha1-modp2048,3des-sha1-modp1024
-		  esp=aes256-sha1,aes128-sha1,aes256-sha256,aes128-sha256,3des-sha1
+		  also=RemoteAccess-IKEv2
 		  leftauth=psk
 		  rightauth=psk
 		EOF2
@@ -157,12 +227,7 @@ start() {
 			ipsec_ikev2_eap_config=$(cat <<-EOF2
 
 		conn IKEv2-EAP
-		  also=RemoteAccess
-		  keyexchange=ikev2
-		  fragmentation=yes
-		  forceencaps=yes
-		  ike=aes256-sha256-modp2048,aes128-sha256-modp2048,aes256-sha1-modp2048,aes128-sha1-modp2048,3des-sha1-modp1024
-		  esp=aes256-sha1,aes128-sha1,aes256-sha256,aes128-sha256,3des-sha1
+		  also=RemoteAccess-IKEv2
 		  leftauth=pubkey
 		  leftid=${ikev2_eap_id}
 		  leftcert=ikev2-eap-server-cert.pem
@@ -201,17 +266,28 @@ start() {
 		#######################################
 
 		conn RemoteAccess
-		  leftsubnet=0.0.0.0/0
-		  rightsubnet=${vt_clientip}
-		  rightsourceip=${vt_clientip}
-		  rightdns=${vt_gateway}
 		  ike=aes256-sha256-modp2048,aes128-sha256-modp2048,aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024,3des-sha1-modp1536
 		  esp=aes256-sha256,aes128-sha256,aes128-sha1,3des-sha1
 
-		# Cisco IPSec
-		conn IKEv1-PSK-XAuth
+		conn RemoteAccess-IKEv1
 		  also=RemoteAccess
 		  keyexchange=ikev1
+		  leftsubnet=0.0.0.0/0
+		  rightsourceip=${vt_clientip}
+		  rightdns=${vt_gateway}
+
+		conn RemoteAccess-IKEv2
+		  also=RemoteAccess
+		  keyexchange=ikev2
+		  fragmentation=yes
+		  forceencaps=yes
+		  leftsubnet=${ipsec_remoteaccess_ikev2_leftsubnet}
+		  rightsourceip=${ipsec_remoteaccess_ikev2_rightsourceip}
+		  rightdns=${ipsec_rightdns}
+
+		# Cisco IPSec
+		conn IKEv1-PSK-XAuth
+		  also=RemoteAccess-IKEv1
 		  leftauth=psk
 		  rightauth=psk
 		  rightauth2=xauth
@@ -244,15 +320,25 @@ start() {
 	}
 	unset user
 
+	sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
+	if [ "${ikev2_ipv6_enable}" = 1 ]; then
+		sysctl -w net.ipv6.conf.all.forwarding=1 >/dev/null 2>&1
+		[ -n "${ikev2_ipv6_nat6_enable}" ] || ikev2_ipv6_nat6_enable=1
+	fi
+
 	ipt_rule add
 
 	/usr/lib/ipsec/starter --daemon charon --nofork > /dev/null 2>&1 &
 	gen_include
 
-	uci -q batch <<-EOF2 >/dev/null
-		set network.ipsec_server.ipaddr="${vt_clientip%.*}.1"
-		commit network
-	EOF2
+	uci -q set network.ipsec_server.ipaddr="${vt_clientip%.*}.1"
+	uci -q set network.ipsec_server.netmask="255.255.255.0"
+	if [ "${ikev2_ipv6_enable}" = 1 ] && [ -n "${ikev2_serverip6}" ]; then
+		uci -q set network.ipsec_server.ip6addr="${ikev2_serverip6}"
+	else
+		uci -q delete network.ipsec_server.ip6addr >/dev/null 2>&1
+	fi
+	uci -q commit network >/dev/null
 	ifup ipsec_server > /dev/null 2>&1
 }
 
@@ -266,25 +352,29 @@ stop() {
 }
 
 gen_iface_and_firewall() {
-	uci -q batch <<-EOF2 >/dev/null
-		delete network.ipsec_server
-		set network.ipsec_server=interface
-		set network.ipsec_server.device="ipsec0"
-		set network.ipsec_server.device="ipsec0"
-		set network.ipsec_server.proto="static"
-		set network.ipsec_server.ipaddr="${vt_clientip%.*}.1"
-		set network.ipsec_server.netmask="255.255.255.0"
-		commit network
+	local vt_gateway4="${vt_clientip%.*}.1"
 
-		delete firewall.ipsecserver
-		set firewall.ipsecserver=zone
-		set firewall.ipsecserver.name="ipsecserver"
-		set firewall.ipsecserver.input="ACCEPT"
-		set firewall.ipsecserver.forward="ACCEPT"
-		set firewall.ipsecserver.output="ACCEPT"
-		set firewall.ipsecserver.network="ipsec_server"
-		commit firewall
-	EOF2
+	uci -q delete network.ipsec_server
+	uci -q set network.ipsec_server=interface
+	uci -q set network.ipsec_server.device="ipsec0"
+	uci -q set network.ipsec_server.proto="static"
+	uci -q set network.ipsec_server.ipaddr="${vt_gateway4}"
+	uci -q set network.ipsec_server.netmask="255.255.255.0"
+	if [ "${vt_ikev2_ipv6_enable}" = 1 ] && [ -n "${vt_ikev2_serverip6}" ]; then
+		uci -q set network.ipsec_server.ip6addr="${vt_ikev2_serverip6}"
+	else
+		uci -q delete network.ipsec_server.ip6addr >/dev/null 2>&1
+	fi
+	uci -q commit network >/dev/null
+
+	uci -q delete firewall.ipsecserver
+	uci -q set firewall.ipsecserver=zone
+	uci -q set firewall.ipsecserver.name="ipsecserver"
+	uci -q set firewall.ipsecserver.input="ACCEPT"
+	uci -q set firewall.ipsecserver.forward="ACCEPT"
+	uci -q set firewall.ipsecserver.output="ACCEPT"
+	uci -q set firewall.ipsecserver.network="ipsec_server"
+	uci -q commit firewall >/dev/null
 }
 
 if [ -z "$(uci -q get network.ipsec_server)" ] || [ -z "$(uci -q get firewall.ipsecserver)" ]; then

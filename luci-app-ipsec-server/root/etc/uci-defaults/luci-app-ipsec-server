@@ -42,6 +42,12 @@ while uci -q delete luci-app-ipsec-server.@l2tp_users[0] >/dev/null 2>&1; do
 	uci -q commit luci-app-ipsec-server
 done
 
+[ -z "$(uci -q get luci-app-ipsec-server.@service[0].ikev2_ipv6_enable)" ] && uci -q set luci-app-ipsec-server.@service[0].ikev2_ipv6_enable='0'
+[ -z "$(uci -q get luci-app-ipsec-server.@service[0].ikev2_clientip6)" ] && uci -q set luci-app-ipsec-server.@service[0].ikev2_clientip6='fd42:42:42::10/120'
+[ -z "$(uci -q get luci-app-ipsec-server.@service[0].ikev2_serverip6)" ] && uci -q set luci-app-ipsec-server.@service[0].ikev2_serverip6='fd42:42:42::1/120'
+[ -z "$(uci -q get luci-app-ipsec-server.@service[0].ikev2_ipv6_nat6_enable)" ] && uci -q set luci-app-ipsec-server.@service[0].ikev2_ipv6_nat6_enable='1'
+uci -q commit luci-app-ipsec-server >/dev/null
+
 /etc/init.d/ipsec disable 2>/dev/null
 /etc/init.d/ipsec stop 2>/dev/null
 rm -rf /tmp/luci-*cache
