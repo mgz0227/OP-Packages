@@ -9,21 +9,13 @@ IPSEC_CERT_DIR=/etc/ipsec.d
 IPSEC_CERTS_DIR=${IPSEC_CERT_DIR}/certs
 IPSEC_CACERTS_DIR=${IPSEC_CERT_DIR}/cacerts
 IPSEC_PRIVATE_DIR=${IPSEC_CERT_DIR}/private
-IKEV2_EAP_CA_KEY=${IPSEC_PRIVATE_DIR}/ikev2-eap-ca-key.pem
-IKEV2_EAP_CA_CERT=${IPSEC_CACERTS_DIR}/ikev2-eap-ca-cert.pem
-IKEV2_EAP_SERVER_KEY=${IPSEC_PRIVATE_DIR}/ikev2-eap-server-key.pem
+ACME_CERT_DIR=/etc/ssl/acme
 IKEV2_EAP_SERVER_CERT=${IPSEC_CERTS_DIR}/ikev2-eap-server-cert.pem
-IKEV2_EAP_SERVER_ID_FILE=${IPSEC_CERT_DIR}/ikev2-eap-server.id
-CHAP_SECRETS=/etc/ppp/chap-secrets
-L2TP_PATH=/var/etc/xl2tpd
-L2TP_CONTROL_FILE=${L2TP_PATH}/control
-L2TP_CONFIG_FILE=${L2TP_PATH}/xl2tpd.conf
-L2TP_OPTIONS_FILE=${L2TP_PATH}/options.xl2tpd
-L2TP_LOG_FILE=${L2TP_PATH}/xl2tpd.log
+IKEV2_EAP_SERVER_CHAIN=${IPSEC_CACERTS_DIR}/ikev2-eap-chain.pem
+IKEV2_EAP_SERVER_KEY=${IPSEC_PRIVATE_DIR}/ikev2-eap-server-key.pem
+LEGACY_L2TP_PATH=/var/etc/xl2tpd
 
 vt_clientip=$(uci -q get ${CONFIG}.@service[0].clientip)
-l2tp_enabled=$(uci -q get ${CONFIG}.@service[0].l2tp_enable)
-l2tp_localip=$(uci -q get ${CONFIG}.@service[0].l2tp_localip)
 
 ipt_flag="IPSec VPN Server"
 
@@ -35,70 +27,37 @@ ipsec_escape() {
 	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
-is_ip_address() {
-	echo "$1" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$|:'
-}
+prepare_ikev2_eap_acme_certificates() {
+	local acme_name="$1"
+	local cert_file
+	local fullchain_file
+	local chain_file
+	local key_file
 
-gen_ikev2_eap_certificates() {
-	local serverid="$1"
-	[ -n "${serverid}" ] || return 1
-	command -v pki >/dev/null 2>&1 || {
-		log "pki command not found, skipping IKEv2 EAP certificate generation"
+	[ -n "${acme_name}" ] || return 1
+
+	cert_file="${ACME_CERT_DIR}/${acme_name}.crt"
+	fullchain_file="${ACME_CERT_DIR}/${acme_name}.fullchain.crt"
+	chain_file="${ACME_CERT_DIR}/${acme_name}.chain.crt"
+	key_file="${ACME_CERT_DIR}/${acme_name}.key"
+
+	[ -s "${cert_file}" ] || cert_file="${fullchain_file}"
+
+	if [ ! -s "${cert_file}" ] || [ ! -s "${key_file}" ]; then
+		log "ACME certificate files for ${acme_name} were not found under ${ACME_CERT_DIR}; configure luci-app-acme and run /etc/init.d/acme renew first"
 		return 1
-	}
+	fi
 
 	mkdir -p ${IPSEC_CERTS_DIR} ${IPSEC_CACERTS_DIR} ${IPSEC_PRIVATE_DIR}
-	umask 077
+	ln -sfn "${cert_file}" ${IKEV2_EAP_SERVER_CERT} || return 1
+	ln -sfn "${key_file}" ${IKEV2_EAP_SERVER_KEY} || return 1
 
-	if [ ! -s "${IKEV2_EAP_CA_KEY}" ] || [ ! -s "${IKEV2_EAP_CA_CERT}" ]; then
-		pki --gen --type rsa --size 3072 --outform pem > ${IKEV2_EAP_CA_KEY} || return 1
-		pki --self --ca --lifetime 3652 --in ${IKEV2_EAP_CA_KEY} --type rsa \
-			--dn "CN=IKEv2 EAP Root CA" --outform pem > ${IKEV2_EAP_CA_CERT} || return 1
+	if [ -s "${chain_file}" ]; then
+		ln -sfn "${chain_file}" ${IKEV2_EAP_SERVER_CHAIN} || return 1
+	else
+		rm -f ${IKEV2_EAP_SERVER_CHAIN}
 	fi
 
-	local current_serverid=""
-	[ -s "${IKEV2_EAP_SERVER_ID_FILE}" ] && current_serverid=$(cat ${IKEV2_EAP_SERVER_ID_FILE} 2>/dev/null)
-
-	if [ ! -s "${IKEV2_EAP_SERVER_KEY}" ] || [ ! -s "${IKEV2_EAP_SERVER_CERT}" ] || [ "${current_serverid}" != "${serverid}" ]; then
-		local req_file
-		local escaped_serverid
-		req_file=$(mktemp /tmp/ikev2-eap-req.XXXXXX.pem) || return 1
-		escaped_serverid=$(printf '%s' "${serverid}" | sed 's/[\\"]/\\&/g')
-
-		pki --gen --type rsa --size 3072 --outform pem > ${IKEV2_EAP_SERVER_KEY} || {
-			rm -f "${req_file}"
-			return 1
-		}
-
-		if is_ip_address "${serverid}"; then
-			pki --req --type priv --in ${IKEV2_EAP_SERVER_KEY} \
-				--dn "CN=${escaped_serverid}" \
-				--san "dns:${serverid}" --san "${serverid}" --outform pem > "${req_file}" || {
-				rm -f "${req_file}"
-				return 1
-			}
-		else
-			pki --req --type priv --in ${IKEV2_EAP_SERVER_KEY} \
-				--dn "CN=${escaped_serverid}" \
-				--san "${serverid}" --outform pem > "${req_file}" || {
-				rm -f "${req_file}"
-				return 1
-			}
-		fi
-
-		pki --issue --cacert ${IKEV2_EAP_CA_CERT} --cakey ${IKEV2_EAP_CA_KEY} \
-			--type pkcs10 --in "${req_file}" --lifetime 1826 \
-			--flag serverAuth --flag ikeIntermediate --outform pem > ${IKEV2_EAP_SERVER_CERT} || {
-			rm -f "${req_file}"
-			return 1
-		}
-
-		printf '%s' "${serverid}" > ${IKEV2_EAP_SERVER_ID_FILE}
-		rm -f "${req_file}"
-	fi
-
-	chmod 600 ${IKEV2_EAP_CA_KEY} ${IKEV2_EAP_SERVER_KEY} 2>/dev/null
-	chmod 644 ${IKEV2_EAP_CA_CERT} ${IKEV2_EAP_SERVER_CERT} 2>/dev/null
 	return 0
 }
 
@@ -113,13 +72,8 @@ ipt_rule() {
 		iptables -I forwarding_rule -m policy --dir in --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I forwarding_rule -m policy --dir out --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I INPUT -p udp -m multiport --dports 500,4500 -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
+		iptables -I INPUT -p esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -t mangle -I OUTPUT -p udp -m multiport --sports 500,4500 -m comment --comment "${ipt_flag}" -j RETURN 2>/dev/null
-		[ "${l2tp_enabled}" = 1 ] && {
-			iptables -t nat -I POSTROUTING -s ${l2tp_localip%.*}.0/24 -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
-			iptables -I forwarding_rule -s ${l2tp_localip%.*}.0/24 -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
-			iptables -I INPUT -p udp --dport 1701 -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
-			iptables -t mangle -I OUTPUT -p udp --sport 1701 -m comment --comment "${ipt_flag}" -j RETURN 2>/dev/null
-		}
 	else
 		ipt_del() {
 			for i in $(seq 1 $($1 -nL $2 | grep -c "${ipt_flag}")); do
@@ -142,13 +96,13 @@ gen_include() {
 		sed -e "s/^-A \(INPUT\)/-I \1 1/"
 		echo 'COMMIT'
 	}
-	cat <<-EOF >> /var/etc/ipsecvpn.include
+	cat <<-EOF2 >> /var/etc/ipsecvpn.include
 		iptables-save -c | grep -v "${ipt_flag}" | iptables-restore -c
 		iptables-restore -n <<-EOT
 		$(extract_rules filter)
 		$(extract_rules nat)
 		EOT
-	EOF
+	EOF2
 	return 0
 }
 
@@ -162,144 +116,67 @@ start() {
 	local ikev2_psk_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_psk_enable)
 	local ikev2_eap_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_eap_enable)
 	local ikev2_eap_id=$(uci -q get ${CONFIG}.@service[0].ikev2_eap_id)
+	local ikev2_eap_acme_name=$(uci -q get ${CONFIG}.@service[0].ikev2_eap_acme_name)
 	local ikev2_eap_ready=0
-	local ipsec_l2tp_config=""
 	local ipsec_ikev2_psk_config=""
 	local ipsec_ikev2_eap_config=""
 	local ipsec_extra_secrets=""
 
 	[ -n "${ikev2_psk_enable}" ] || ikev2_psk_enable=0
 	[ -n "${ikev2_eap_enable}" ] || ikev2_eap_enable=0
-
-	local l2tp_enabled=$(uci -q get ${CONFIG}.@service[0].l2tp_enable)
-	[ "${l2tp_enabled}" = 1 ] && {
-		touch ${CHAP_SECRETS}
-		local vt_remoteip=$(uci -q get ${CONFIG}.@service[0].l2tp_remoteip)
-		ipsec_l2tp_config=$(cat <<-EOF
-		#######################################
-		# L2TP Connections
-		#######################################
-
-		conn L2TP-IKEv1-PSK
-		  type=transport
-		  keyexchange=ikev1
-		  authby=secret
-		  leftprotoport=udp/l2tp
-		  left=%any
-		  right=%any
-		  rekey=no
-		  forceencaps=yes
-		  ike=aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024,3des-sha1-modp1536
-		  esp=aes128-sha1,3des-sha1
-		EOF
-		)
-
-		mkdir -p ${L2TP_PATH}
-		cat > ${L2TP_OPTIONS_FILE} <<-EOF
-			name "l2tp-server"
-			ipcp-accept-local
-			ipcp-accept-remote
-			ms-dns ${l2tp_localip}
-			noccp
-			auth
-			idle 1800
-			mtu 1400
-			mru 1400
-			lcp-echo-failure 10
-			lcp-echo-interval 60
-			connect-delay 5000
-		EOF
-		cat > ${L2TP_CONFIG_FILE} <<-EOF
-			[global]
-			port = 1701
-			;debug avp = yes
-			;debug network = yes
-			;debug state = yes
-			;debug tunnel = yes
-			[lns default]
-			ip range = ${vt_remoteip}
-			local ip = ${l2tp_localip}
-			require chap = yes
-			refuse pap = yes
-			require authentication = no
-			name = l2tp-server
-			;ppp debug = yes
-			pppoptfile = ${L2TP_OPTIONS_FILE}
-			length bit = yes
-		EOF
-
-		local l2tp_users=$(get_enabled_anonymous_secs "@l2tp_users")
-		[ -n "${l2tp_users}" ] && {
-			for _user in ${l2tp_users}; do
-				local u_enabled=$(uci -q get ${CONFIG}.${_user}.enabled)
-				[ "${u_enabled}" -eq 1 ] || continue
-
-				local u_username=$(uci -q get ${CONFIG}.${_user}.username)
-				[ -n "${u_username}" ] || continue
-
-				local u_password=$(uci -q get ${CONFIG}.${_user}.password)
-				[ -n "${u_password}" ] || continue
-
-				local u_ipaddress=$(uci -q get ${CONFIG}.${_user}.ipaddress)
-				[ -n "${u_ipaddress}" ] || u_ipaddress="*"
-
-				echo "${u_username} l2tp-server ${u_password} ${u_ipaddress}" >> ${CHAP_SECRETS}
-			done
-		}
-		unset user
-
-		echo "ip-up-script /usr/share/xl2tpd/ip-up" >> ${L2TP_OPTIONS_FILE}
-		echo "ip-down-script /usr/share/xl2tpd/ip-down" >> ${L2TP_OPTIONS_FILE}
-
-		xl2tpd -c ${L2TP_CONFIG_FILE} -C ${L2TP_CONTROL_FILE} -D >${L2TP_LOG_FILE} 2>&1 &
-		rm -f "/usr/lib/ipsec/libipsec.so.0"
-	}
+	[ -n "${ikev2_eap_acme_name}" ] || ikev2_eap_acme_name="${ikev2_eap_id}"
 
 	if [ "${ikev2_psk_enable}" = 1 ]; then
-		ipsec_ikev2_psk_config=$(cat <<-EOF
+		ipsec_ikev2_psk_config=$(cat <<-EOF2
 		#######################################
 		# IKEv2 Connections
 		#######################################
 
 		conn IKEv2-PSK
-		  also=Non-L2TP
+		  also=RemoteAccess
 		  keyexchange=ikev2
 		  fragmentation=yes
+		  forceencaps=yes
+		  ike=aes256-sha256-modp2048,aes128-sha256-modp2048,aes256-sha1-modp2048,aes128-sha1-modp2048,3des-sha1-modp1024
+		  esp=aes256-sha1,aes128-sha1,aes256-sha256,aes128-sha256,3des-sha1
 		  leftauth=psk
 		  rightauth=psk
-		EOF
+		EOF2
 		)
 	fi
 
 	if [ "${ikev2_eap_enable}" = 1 ]; then
 		if [ -z "${ikev2_eap_id}" ]; then
 			log "IKEv2 EAP is enabled but the server ID is empty, skipping IKEv2 EAP"
-		elif gen_ikev2_eap_certificates "${ikev2_eap_id}"; then
+		elif prepare_ikev2_eap_acme_certificates "${ikev2_eap_acme_name}"; then
 			ikev2_eap_ready=1
-			ipsec_extra_secrets=$(cat <<-EOF
+			ipsec_extra_secrets=$(cat <<-EOF2
 		: RSA ikev2-eap-server-key.pem
-		EOF
+		EOF2
 			)
-			ipsec_ikev2_eap_config=$(cat <<-EOF
+			ipsec_ikev2_eap_config=$(cat <<-EOF2
 
 		conn IKEv2-EAP
-		  also=Non-L2TP
+		  also=RemoteAccess
 		  keyexchange=ikev2
 		  fragmentation=yes
+		  forceencaps=yes
+		  ike=aes256-sha256-modp2048,aes128-sha256-modp2048,aes256-sha1-modp2048,aes128-sha1-modp2048,3des-sha1-modp1024
+		  esp=aes256-sha1,aes128-sha1,aes256-sha256,aes128-sha256,3des-sha1
 		  leftauth=pubkey
 		  leftid=${ikev2_eap_id}
 		  leftcert=ikev2-eap-server-cert.pem
 		  leftsendcert=always
 		  rightauth=eap-mschapv2
 		  eap_identity=%identity
-		EOF
+		EOF2
 			)
 		else
-			log "Failed to generate IKEv2 EAP certificates, skipping IKEv2 EAP"
+			log "Failed to prepare IKEv2 EAP ACME certificate links, skipping IKEv2 EAP"
 		fi
 	fi
 
-	cat > ${IPSEC_CONN_FILE} <<-EOF
+	cat > ${IPSEC_CONN_FILE} <<-EOF2
 		# ipsec.conf - strongSwan IPsec configuration file
 
 		config setup
@@ -320,10 +197,10 @@ start() {
 		  auto=add
 
 		#######################################
-		# Default non L2TP Connections
+		# Remote Access Connections
 		#######################################
 
-		conn Non-L2TP
+		conn RemoteAccess
 		  leftsubnet=0.0.0.0/0
 		  rightsubnet=${vt_clientip}
 		  rightsourceip=${vt_clientip}
@@ -333,22 +210,20 @@ start() {
 
 		# Cisco IPSec
 		conn IKEv1-PSK-XAuth
-		  also=Non-L2TP
+		  also=RemoteAccess
 		  keyexchange=ikev1
 		  leftauth=psk
 		  rightauth=psk
 		  rightauth2=xauth
 
 		${ipsec_ikev2_psk_config}${ipsec_ikev2_eap_config}
+	EOF2
 
-		$ipsec_l2tp_config
-	EOF
-
-	cat > ${IPSEC_SECRETS_FILE} <<-EOF
+	cat > ${IPSEC_SECRETS_FILE} <<-EOF2
 	# /etc/ipsec.secrets - strongSwan IPsec secrets file
 	: PSK "${vt_secret_escaped}"
 	${ipsec_extra_secrets}
-	EOF
+	EOF2
 
 	local ipsec_users=$(get_enabled_anonymous_secs "@ipsec_users")
 	[ -n "${ipsec_users}" ] && {
@@ -374,26 +249,24 @@ start() {
 	/usr/lib/ipsec/starter --daemon charon --nofork > /dev/null 2>&1 &
 	gen_include
 
-	uci -q batch <<-EOF >/dev/null
+	uci -q batch <<-EOF2 >/dev/null
 		set network.ipsec_server.ipaddr="${vt_clientip%.*}.1"
 		commit network
-	EOF
+	EOF2
 	ifup ipsec_server > /dev/null 2>&1
 }
 
 stop() {
 	ifdown ipsec_server > /dev/null 2>&1
-	sed -i '/l2tp-server/d' ${CHAP_SECRETS} 2>/dev/null
-	top -bn1 | grep "${L2TP_PATH}" | grep -v "grep" | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1
-	rm -rf ${L2TP_PATH}
+	top -bn1 | grep "${LEGACY_L2TP_PATH}" | grep -v "grep" | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1
+	rm -rf ${LEGACY_L2TP_PATH}
 	ps -w | grep "/usr/lib/ipsec" | grep -v "grep" | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1
 	ipt_rule del
 	rm -rf /var/etc/ipsecvpn.include
-	ln -s "libipsec.so.0.0.0" "/usr/lib/ipsec/libipsec.so.0" >/dev/null 2>&1
 }
 
 gen_iface_and_firewall() {
-	uci -q batch <<-EOF >/dev/null
+	uci -q batch <<-EOF2 >/dev/null
 		delete network.ipsec_server
 		set network.ipsec_server=interface
 		set network.ipsec_server.device="ipsec0"
@@ -411,7 +284,7 @@ gen_iface_and_firewall() {
 		set firewall.ipsecserver.output="ACCEPT"
 		set firewall.ipsecserver.network="ipsec_server"
 		commit firewall
-	EOF
+	EOF2
 }
 
 if [ -z "$(uci -q get network.ipsec_server)" ] || [ -z "$(uci -q get firewall.ipsecserver)" ]; then

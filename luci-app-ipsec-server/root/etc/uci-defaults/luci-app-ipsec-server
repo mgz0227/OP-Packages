@@ -31,9 +31,18 @@ uci -q batch <<-EOF >/dev/null
 	commit ucitrack
 EOF
 
+uci -q batch <<-EOF >/dev/null
+	delete luci-app-ipsec-server.@service[0].l2tp_enable
+	delete luci-app-ipsec-server.@service[0].l2tp_localip
+	delete luci-app-ipsec-server.@service[0].l2tp_remoteip
+	commit luci-app-ipsec-server
+EOF
+
+while uci -q delete luci-app-ipsec-server.@l2tp_users[0] >/dev/null 2>&1; do
+	uci -q commit luci-app-ipsec-server
+done
+
 /etc/init.d/ipsec disable 2>/dev/null
 /etc/init.d/ipsec stop 2>/dev/null
-/etc/init.d/xl2tpd disable 2>/dev/null
-/etc/init.d/xl2tpd stop 2>/dev/null
 rm -rf /tmp/luci-*cache
 exit 0
