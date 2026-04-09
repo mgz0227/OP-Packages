@@ -186,8 +186,8 @@ start() {
 
 		conn Non-L2TP
 		  leftsubnet=0.0.0.0/0
-		  rightsubnet=${vt_clientip}
-		  rightsourceip=${vt_clientip}
+		  rightsubnet=${vt_serverip}
+		  rightsourceip=${vt_serverip}
 		  rightdns=${vt_gateway}
 		  ike=aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024,3des-sha1-modp1536
 		  esp=aes128-sha1,3des-sha1
