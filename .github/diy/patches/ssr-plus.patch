@@ -80,14 +80,6 @@
  	luci.sys.call("/usr/bin/lua /usr/share/shadowsocksr/subscribe.lua >>/var/log/ssrplus.log")
  	luci.http.prepare_content("application/json")
 
---- a/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua
-+++ b/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua
-@@ -168,5 +168,6 @@ if is_finded("chinadns-ng") then
- 	end
- end
- 
-+m:section(SimpleSection).template = "shadowsocksr/status_bottom"
- return m
 
 diff --git a/luci-app-ssr-plus/luasrc/view/shadowsocksr/status_bottom.htm b/luci-app-passwall/luasrc/view/shadowsocksr/status_bottom.htm
 new file mode 100644
