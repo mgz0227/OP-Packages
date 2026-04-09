@@ -1,56 +1,41 @@
 msgid "IPSec VPN Server"
 msgstr "IPSec VPN 服务器"
 
-msgid "General Settings"
-msgstr "基本设置"
+msgid "IPSec VPN connectivity using the native built-in VPN Client on iOS or Andriod (IKEv2 PSK & IKEv1 Xauth PSK)<br />IKEv2 Client Mention:<br />Android Client Plsease Set IPsec Identifier With PSK<br />IOS Client Plsease Set Remote ID With PSK"
+msgstr "使用iOS 或者 Andriod (IKEv2 PSK & IKEv1 Xauth PSK) 原生内置 IPSec VPN 客户端进行连接<br />IKEv2 客户端使用须知:<br />安卓客户端请将IPsec标识符设置为PSK密钥<br />苹果客户端请将远程ID设置为PSK密钥"
 
-msgid "Users Manager"
-msgstr "用户管理"
+msgid "Use a client that supports L2TP over IPSec PSK to connect to this server."
+msgstr "使用支持 L2TP over IPSec PSK 的客户端连接到此服务端。"
 
 msgid "Current Condition"
 msgstr "当前状态"
 
-msgid "Enable"
-msgstr "启用"
+msgid "General settings"
+msgstr "基本设置"
 
 msgid "Enabled"
 msgstr "启用"
 
 msgid "VPN Client IP"
-msgstr "VPN 客户端 IPv4 地址池"
+msgstr "VPN客户端地址段"
 
-msgid "VPN client IPv4 pool start address and subnet mask, such as: 192.168.100.10/24"
-msgstr "VPN 客户端 IPv4 地址池起始地址和子网掩码，例如：192.168.100.10/24"
+msgid "VPN Client reserved started IP addresses with the same subnet mask, such as: 192.168.100.10/24"
+msgstr "VPN客户端获取IP的起始地址，例如：192.168.100.10/24"
 
 msgid "Secret Pre-Shared Key"
-msgstr "PSK 密钥"
+msgstr "PSK密钥"
 
-msgid "This PSK is shared by both IKEv1 Xauth PSK and IKEv2 PSK clients."
-msgstr "该 PSK 同时用于 IKEv1 Xauth PSK 和 IKEv2 PSK 客户端。"
+msgid "VPN Server IP address, such as: 192.168.101.1"
+msgstr "VPN服务端IP地址，例如：192.168.101.1"
 
-msgid "Enable the IPSec VPN server. This service keeps the original IPSec Xauth PSK (IKEv1) support and also exposes pure IKEv2 PSK remote-access support."
-msgstr "启用 IPSec VPN 服务。该服务保留原有的 IPSec Xauth PSK（IKEv1）支持，并新增纯 IKEv2 PSK 远程接入支持。"
+msgid "VPN Client IP address range, such as: 192.168.101.10-20"
+msgstr "VPN客户端获取IP范围，例如：192.168.101.10-20"
 
-msgid "IKEv2 Support"
-msgstr "IKEv2 支持"
+msgid "L2TP/IPSec is not compatible with kernel-libipsec, which will disable this module."
+msgstr "L2TP/IPSec不兼容kernel-libipsec，开启将会禁用此模块。"
 
-msgid "IKEv2 PSK is enabled automatically together with the IPSec service. Unlike IKEv1 Xauth PSK, pure IKEv2 PSK does not use the per-user username/password list below."
-msgstr "启用 IPSec 服务后会自动开启 IKEv2 PSK。与 IKEv1 Xauth PSK 不同，纯 IKEv2 PSK 不使用下面的每用户账号密码列表。"
-
-msgid "Enable IPv6 for IKEv2"
-msgstr "为 IKEv2 启用 IPv6"
-
-msgid "Assign IPv6 virtual addresses to IKEv2 clients. Android and other dual-stack clients may request INTERNAL_IP6_ADDRESS during IKEv2, so enabling this avoids INTERNAL_ADDRESS_FAILURE when clients ask for IPv6."
-msgstr "为 IKEv2 客户端分配 IPv6 虚拟地址。Android 等双栈客户端在 IKEv2 过程中可能会请求 INTERNAL_IP6_ADDRESS，因此启用后可避免客户端请求 IPv6 时出现 INTERNAL_ADDRESS_FAILURE。"
-
-msgid "IKEv2 IPv6 Client IP"
-msgstr "IKEv2 IPv6 客户端地址池"
-
-msgid "VPN client IPv6 pool start address and prefix, such as: fd42:42:42::10/120"
-msgstr "VPN 客户端 IPv6 地址池起始地址和前缀，例如：fd42:42:42::10/120"
-
-msgid "These accounts are used by IPSec Xauth PSK (IKEv1) clients. Pure IKEv2 PSK clients authenticate with the global pre-shared key only."
-msgstr "这些账号用于 IPSec Xauth PSK（IKEv1）客户端。纯 IKEv2 PSK 客户端只使用全局预共享密钥认证。"
+msgid "Users Manager"
+msgstr "用户管理"
 
 msgid "Username"
 msgstr "用户名"
@@ -58,20 +43,35 @@ msgstr "用户名"
 msgid "Password"
 msgstr "密码"
 
-msgid "RUNNING"
-msgstr "运行中"
+msgid "IP address"
+msgstr "IP 地址"
+
+msgid "Automatically"
+msgstr "自动分配"
+
+msgid "Online Users"
+msgstr "在线用户"
+
+msgid "L2TP Online Users"
+msgstr "L2TP 在线用户"
+
+msgid "Login Time"
+msgstr "登录时间"
+
+msgid "Blacklist"
+msgstr "黑名单"
+
+msgid "Add to Blacklist"
+msgstr "加入黑名单"
+
+msgid "Remove from Blacklist"
+msgstr "移出黑名单"
+
+msgid "Forced offline"
+msgstr "强制下线"
 
 msgid "NOT RUNNING"
 msgstr "未运行"
 
-msgid "This field is required."
-msgstr "此字段不能为空。"
-
-msgid "This field is required when IKEv2 IPv6 is enabled."
-msgstr "启用 IKEv2 IPv6 时，此字段不能为空。"
-
-msgid "Expecting a valid IPv4 CIDR value, such as 192.168.100.10/24."
-msgstr "需要填写有效的 IPv4 CIDR 值，例如：192.168.100.10/24。"
-
-msgid "Expecting a valid IPv6 CIDR value, such as fd42:42:42::10/120."
-msgstr "需要填写有效的 IPv6 CIDR 值，例如：fd42:42:42::10/120。"
+msgid "RUNNING"
+msgstr "运行中"

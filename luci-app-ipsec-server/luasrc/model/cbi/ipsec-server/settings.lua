@@ -1,77 +1,64 @@
-local ip = require "luci.ip"
+local sys = require "luci.sys"
 
 m = Map("luci-app-ipsec-server", translate("IPSec VPN Server"))
 m.template = "ipsec-server/ipsec-server_status"
 
-local function validate_ipv4_cidr(self, value)
-	if not value or value == "" then
-		return nil, translate("This field is required.")
-	end
-
-	local cidr = ip.new(value)
-	if not cidr or not cidr:is4() then
-		return nil, translate("Expecting a valid IPv4 CIDR value, such as 192.168.100.10/24.")
-	end
-
-	return value
-end
-
-local function validate_ipv6_cidr(self, value, section)
-	if m:get(section, "ikev2_ipv6_enable") == "1" and (not value or value == "") then
-		return nil, translate("This field is required when IKEv2 IPv6 is enabled.")
-	end
-
-	if value and value ~= "" then
-		local cidr = ip.new(value)
-		if not cidr or not cidr:is6() then
-			return nil, translate("Expecting a valid IPv6 CIDR value, such as fd42:42:42::10/120.")
-		end
-	end
-
-	return value
-end
-
 s = m:section(TypedSection, "service")
 s.anonymous = true
 
-local o = s:option(DummyValue, "ipsec-server_status", translate("Current Condition"))
+o = s:option(DummyValue, "ipsec-server_status", translate("Current Condition"))
 o.rawhtml = true
 o.cfgvalue = function(t, n)
 	return '<font class="ipsec-server_status"></font>'
 end
 
 enabled = s:option(Flag, "enabled", translate("Enable"))
-enabled.description = translate("Enable the IPSec VPN server. This service keeps the original IPSec Xauth PSK (IKEv1) support and also exposes pure IKEv2 PSK remote-access support.")
+enabled.description = translate("IPSec VPN connectivity using the native built-in VPN Client on iOS or Andriod (IKEv2 PSK & IKEv1 Xauth PSK)<br />IKEv2 Client Mention:<br />Android Client Plsease Set IPsec Identifier With PSK<br />IOS Client Plsease Set Remote ID With PSK")
 enabled.default = 0
 enabled.rmempty = false
 
 clientip = s:option(Value, "clientip", translate("VPN Client IP"))
-clientip.description = translate("VPN client IPv4 pool start address and subnet mask, such as: 192.168.100.10/24")
+clientip.description = translate("VPN Client reserved started IP addresses with the same subnet mask, such as: 192.168.100.10/24")
+clientip.datatype = "ip4addr"
 clientip.optional = false
 clientip.rmempty = false
-clientip.validate = validate_ipv4_cidr
 
 secret = s:option(Value, "secret", translate("Secret Pre-Shared Key"))
-secret.description = translate("This PSK is shared by both IKEv1 Xauth PSK and IKEv2 PSK clients.")
 secret.password = true
-secret.rmempty = false
 
-local note = s:option(DummyValue, "_ikev2_note", translate("IKEv2 Support"))
-note.rawhtml = true
-note.cfgvalue = function()
-	return translate("IKEv2 PSK is enabled automatically together with the IPSec service. Unlike IKEv1 Xauth PSK, pure IKEv2 PSK does not use the per-user username/password list below.")
+if sys.call("command -v xl2tpd > /dev/null") == 0 then
+	o = s:option(DummyValue, "l2tp_status", "L2TP " .. translate("Current Condition"))
+	o.rawhtml = true
+	o.cfgvalue = function(t, n)
+		return '<font class="l2tp_status"></font>'
+	end
+
+	o = s:option(Flag, "l2tp_enable", "L2TP " .. translate("Enable"))
+	o.description = translate("Use a client that supports L2TP over IPSec PSK to connect to this server.")
+	o.default = 0
+	o.rmempty = false
+
+	o = s:option(Value, "l2tp_localip", "L2TP " .. translate("Server IP"))
+	o.description = translate("VPN Server IP address, such as: 192.168.101.1")
+	o.datatype = "ip4addr"
+	o.rmempty = true
+	o.default = "192.168.101.1"
+	o.placeholder = o.default
+
+	o = s:option(Value, "l2tp_remoteip", "L2TP " .. translate("Client IP"))
+	o.description = translate("VPN Client IP address range, such as: 192.168.101.10-20")
+	o.rmempty = true
+	o.default = "192.168.101.10-20"
+	o.placeholder = o.default
+
+	if sys.call("ls -L /usr/lib/ipsec/libipsec* 2>/dev/null >/dev/null") == 0 then 
+		o = s:option(DummyValue, "_o", " ")
+		o.rawhtml = true
+		o.cfgvalue = function(t, n)
+			return string.format('<a style="color: red">%s</a>', translate("L2TP/IPSec is not compatible with kernel-libipsec, which will disable this module."))
+		end
+		o:depends("l2tp_enable", true)
+	end
 end
-
-local ipv6 = s:option(Flag, "ikev2_ipv6_enable", translate("Enable IPv6 for IKEv2"))
-ipv6.description = translate("Assign IPv6 virtual addresses to IKEv2 clients. Android and other dual-stack clients may request INTERNAL_IP6_ADDRESS during IKEv2, so enabling this avoids INTERNAL_ADDRESS_FAILURE when clients ask for IPv6.")
-ipv6.default = 1
-ipv6.rmempty = false
-
-local clientip6 = s:option(Value, "clientip6", translate("IKEv2 IPv6 Client IP"))
-clientip6.description = translate("VPN client IPv6 pool start address and prefix, such as: fd42:42:42::10/120")
-clientip6.placeholder = "fd42:42:42::10/120"
-clientip6.rmempty = true
-clientip6:depends("ikev2_ipv6_enable", "1")
-clientip6.validate = validate_ipv6_cidr
 
 return m

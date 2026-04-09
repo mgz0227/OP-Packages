@@ -5,158 +5,41 @@ START=99
 CONFIG="luci-app-ipsec-server"
 IPSEC_SECRETS_FILE=/etc/ipsec.secrets
 IPSEC_CONN_FILE=/etc/ipsec.conf
-LEGACY_L2TP_PATH=/var/etc/xl2tpd
+CHAP_SECRETS=/etc/ppp/chap-secrets
+L2TP_PATH=/var/etc/xl2tpd
+L2TP_CONTROL_FILE=${L2TP_PATH}/control
+L2TP_CONFIG_FILE=${L2TP_PATH}/xl2tpd.conf
+L2TP_OPTIONS_FILE=${L2TP_PATH}/options.xl2tpd
+L2TP_LOG_FILE=${L2TP_PATH}/xl2tpd.log
 
 vt_clientip=$(uci -q get ${CONFIG}.@service[0].clientip)
-vt_ikev2_ipv6_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_ipv6_enable)
-vt_clientip6=$(uci -q get ${CONFIG}.@service[0].clientip6)
+l2tp_enabled=$(uci -q get ${CONFIG}.@service[0].l2tp_enable)
+l2tp_localip=$(uci -q get ${CONFIG}.@service[0].l2tp_localip)
 
 ipt_flag="IPSec VPN Server"
-
-log() {
-	logger -t "${CONFIG}" "$*"
-}
-
-ipsec_escape() {
-	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
-}
-
-find_lua() {
-	local bin
-	for bin in lua lua5.1 lua5.3 lua5.4; do
-		command -v "$bin" >/dev/null 2>&1 && {
-			echo "$bin"
-			return 0
-		}
-	done
-	return 1
-}
-
-LUA_BIN=$(find_lua)
-
-cidr_eval() {
-	local action="$1"
-	local value="$2"
-
-	[ -n "${LUA_BIN}" ] || {
-		log "lua runtime not found, unable to derive IPSec address pools"
-		return 1
-	}
-
-	"${LUA_BIN}" - "$action" "$value" <<'EOFLUA'
-local ip = require "luci.ip"
-local action = arg[1]
-local value = arg[2] or ""
-local cidr = ip.new(value)
-
-if not cidr then
-	os.exit(1)
-end
-
-local function pool_start(c)
-	local start = ip.new((value:match("^([^/]+)") or ""))
-	local server = c:minhost()
-	local maxhost = c:maxhost()
-	local first_client
-
-	if not start or not server or not maxhost then
-		os.exit(1)
-	end
-
-	first_client = server:add(1)
-	if not first_client or first_client:higher(maxhost) then
-		os.exit(1)
-	end
-
-	start = start:host()
-	if start:lower(first_client) then
-		start = first_client
-	elseif start:higher(maxhost) then
-		os.exit(1)
-	end
-
-	return start, maxhost
-end
-
-if action == "network" then
-	io.write(cidr:network():string(), "/", tostring(cidr:prefix()))
-elseif action == "mask" then
-	io.write(cidr:mask():string())
-elseif action == "prefix" then
-	io.write(tostring(cidr:prefix()))
-elseif action == "server" then
-	local server = cidr:minhost()
-	if not server then
-		os.exit(1)
-	end
-	io.write(server:host():string())
-elseif action == "range" then
-	local start, maxhost = pool_start(cidr)
-	io.write(start:string(), "-", maxhost:string())
-else
-	os.exit(1)
-end
-EOFLUA
-}
-
-cidr_network() {
-	cidr_eval network "$1"
-}
-
-cidr_netmask() {
-	cidr_eval mask "$1"
-}
-
-cidr_prefix() {
-	cidr_eval prefix "$1"
-}
-
-cidr_server() {
-	cidr_eval server "$1"
-}
-
-cidr_range() {
-	cidr_eval range "$1"
-}
 
 get_enabled_anonymous_secs() {
 	uci -q show "${CONFIG}" | grep "${1}\[.*\.enabled='1'" | cut -d '.' -sf2
 }
 
 ipt_rule() {
-	local clientsubnet4
-	local clientsubnet6=""
-
-	clientsubnet4=$(cidr_network "${vt_clientip}" 2>/dev/null)
-	[ -n "${clientsubnet4}" ] || clientsubnet4="${vt_clientip}"
-
-	if [ "${vt_ikev2_ipv6_enable}" = 1 ] && [ -n "${vt_clientip6}" ]; then
-		clientsubnet6=$(cidr_network "${vt_clientip6}" 2>/dev/null)
-	fi
-
 	if [ "$1" = "add" ]; then
-		iptables -t nat -I POSTROUTING -s ${clientsubnet4} -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
-		iptables -I forwarding_rule -s ${clientsubnet4} -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
+		iptables -t nat -I POSTROUTING -s ${vt_clientip} -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
+		iptables -I forwarding_rule -s ${vt_clientip} -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I forwarding_rule -m policy --dir in --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I forwarding_rule -m policy --dir out --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I INPUT -p udp -m multiport --dports 500,4500 -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
-		iptables -I INPUT -p esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -t mangle -I OUTPUT -p udp -m multiport --sports 500,4500 -m comment --comment "${ipt_flag}" -j RETURN 2>/dev/null
-
-		if [ -n "${clientsubnet6}" ] && command -v ip6tables >/dev/null 2>&1; then
-			ip6tables -t nat -I POSTROUTING -s ${clientsubnet6} -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
-			ip6tables -I forwarding_rule -s ${clientsubnet6} -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
-			ip6tables -I forwarding_rule -m policy --dir in --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
-			ip6tables -I forwarding_rule -m policy --dir out --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
-			ip6tables -I INPUT -p udp -m multiport --dports 500,4500 -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
-			ip6tables -I INPUT -p esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
-			ip6tables -t mangle -I OUTPUT -p udp -m multiport --sports 500,4500 -m comment --comment "${ipt_flag}" -j RETURN 2>/dev/null
-		fi
+		[ "${l2tp_enabled}" = 1 ] && {
+			iptables -t nat -I POSTROUTING -s ${l2tp_localip%.*}.0/24 -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
+			iptables -I forwarding_rule -s ${l2tp_localip%.*}.0/24 -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
+			iptables -I INPUT -p udp --dport 1701 -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
+			iptables -t mangle -I OUTPUT -p udp --sport 1701 -m comment --comment "${ipt_flag}" -j RETURN 2>/dev/null
+		}
 	else
 		ipt_del() {
-			for i in $(seq 1 $($1 -nL $2 2>/dev/null | grep -c "${ipt_flag}")); do
-				local index=$($1 --line-number -nL $2 2>/dev/null | grep "${ipt_flag}" | head -1 | awk '{print $1}')
-				[ -n "${index}" ] || break
+			for i in $(seq 1 $($1 -nL $2 | grep -c "${ipt_flag}")); do
+				local index=$($1 --line-number -nL $2 | grep "${ipt_flag}" | head -1 | awk '{print $1}')
 				$1 -w -D $2 $index 2>/dev/null
 			done
 		}
@@ -164,134 +47,119 @@ ipt_rule() {
 		ipt_del "iptables" "INPUT"
 		ipt_del "iptables -t nat" "POSTROUTING"
 		ipt_del "iptables -t mangle" "OUTPUT"
-		if command -v ip6tables >/dev/null 2>&1; then
-			ipt_del "ip6tables" "forwarding_rule"
-			ipt_del "ip6tables" "INPUT"
-			ipt_del "ip6tables -t nat" "POSTROUTING"
-			ipt_del "ip6tables -t mangle" "OUTPUT"
-		fi
 	fi
 }
 
 gen_include() {
 	echo '#!/bin/sh' > /var/etc/ipsecvpn.include
 	extract_rules() {
-		local save_cmd="$1"
-		local table="$2"
-		local rules
-		rules=$($save_cmd -t "$table" 2>/dev/null | grep "${ipt_flag}" | \
-			sed -e 's/^-A \(INPUT\)/-I \1 1/' \
-			    -e 's/^-A \(forwarding_rule\)/-I \1 1/' \
-			    -e 's/^-A \(POSTROUTING\)/-I \1 1/' \
-			    -e 's/^-A \(OUTPUT\)/-I \1 1/')
-		[ -n "${rules}" ] || return 0
-		echo "*${table}"
-		echo "${rules}"
+		echo "*$1"
+		iptables-save -t $1 | grep "${ipt_flag}" | \
+		sed -e "s/^-A \(INPUT\)/-I \1 1/"
 		echo 'COMMIT'
 	}
-	cat <<-EOF2 >> /var/etc/ipsecvpn.include
-		if command -v iptables-save >/dev/null 2>&1 && command -v iptables-restore >/dev/null 2>&1; then
-			iptables-save -c | grep -v "${ipt_flag}" | iptables-restore -c
-			iptables-restore -n <<-'EOT4'
-$(extract_rules iptables-save filter)
-$(extract_rules iptables-save nat)
-$(extract_rules iptables-save mangle)
-EOT4
-		fi
-		if command -v ip6tables-save >/dev/null 2>&1 && command -v ip6tables-restore >/dev/null 2>&1; then
-			ip6tables-save -c | grep -v "${ipt_flag}" | ip6tables-restore -c
-			ip6tables-restore -n <<-'EOT6'
-$(extract_rules ip6tables-save filter)
-$(extract_rules ip6tables-save nat)
-$(extract_rules ip6tables-save mangle)
-EOT6
-		fi
-	EOF2
-	chmod +x /var/etc/ipsecvpn.include
+	cat <<-EOF >> /var/etc/ipsecvpn.include
+		iptables-save -c | grep -v "${ipt_flag}" | iptables-restore -c
+		iptables-restore -n <<-EOT
+		$(extract_rules filter)
+		$(extract_rules nat)
+		EOT
+	EOF
 	return 0
 }
 
 start() {
 	local vt_enabled=$(uci -q get ${CONFIG}.@service[0].enabled)
-	[ "${vt_enabled}" = 1 ] || return 1
-
+	[ "$vt_enabled" = 0 ] && return 1
+	
+	local vt_gateway="${vt_clientip%.*}.1"
 	local vt_secret=$(uci -q get ${CONFIG}.@service[0].secret)
-	local vt_gateway
-	local vt_netmask
-	local vt_clientsubnet
-	local vt_clientrange
-	local ikev2_leftsubnet
-	local ikev2_rightsubnet
-	local ikev2_rightsourceip
-	local ikev2_rightdns
-	local vt_gateway6=""
-	local vt_clientsubnet6=""
-	local vt_clientrange6=""
-	local vt_prefix6=""
-	local ipsec_users
+	
+	local l2tp_enabled=$(uci -q get ${CONFIG}.@service[0].l2tp_enable)
+	[ "${l2tp_enabled}" = 1 ] && {
+		touch ${CHAP_SECRETS}
+		local vt_remoteip=$(uci -q get ${CONFIG}.@service[0].l2tp_remoteip)
+		local ipsec_l2tp_config=$(cat <<-EOF
+		#######################################
+		# L2TP Connections
+		#######################################
 
-	[ -n "${vt_clientip}" ] || {
-		log "VPN client IPv4 pool is empty"
-		return 1
-	}
-	[ -n "${vt_secret}" ] || {
-		log "IPSec pre-shared key is empty"
-		return 1
-	}
-
-	vt_gateway=$(cidr_server "${vt_clientip}") || {
-		log "invalid IPv4 client pool: ${vt_clientip}"
-		return 1
-	}
-	vt_netmask=$(cidr_netmask "${vt_clientip}") || {
-		log "invalid IPv4 client pool netmask: ${vt_clientip}"
-		return 1
-	}
-	vt_clientsubnet=$(cidr_network "${vt_clientip}") || {
-		log "invalid IPv4 client subnet: ${vt_clientip}"
-		return 1
-	}
-	vt_clientrange=$(cidr_range "${vt_clientip}") || {
-		log "invalid IPv4 client pool range: ${vt_clientip}"
-		return 1
-	}
-
-	ikev2_leftsubnet="0.0.0.0/0"
-	ikev2_rightsubnet="${vt_clientsubnet}"
-	ikev2_rightsourceip="${vt_clientrange}"
-	ikev2_rightdns="${vt_gateway}"
-
-	if [ "${vt_ikev2_ipv6_enable}" = 1 ]; then
-		[ -n "${vt_clientip6}" ] || {
-			log "IKEv2 IPv6 is enabled but no IPv6 pool is configured"
-			return 1
+		conn L2TP-IKEv1-PSK
+		  type=transport
+		  keyexchange=ikev1
+		  authby=secret
+		  leftprotoport=udp/l2tp
+		  left=%any
+		  right=%any
+		  rekey=no
+		  forceencaps=yes
+		  ike=aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024,3des-sha1-modp1536
+		  esp=aes128-sha1,3des-sha1
+		EOF
+		)
+		
+		mkdir -p ${L2TP_PATH}
+		cat > ${L2TP_OPTIONS_FILE} <<-EOF
+			name "l2tp-server"
+			ipcp-accept-local
+			ipcp-accept-remote
+			ms-dns ${l2tp_localip}
+			noccp
+			auth
+			idle 1800
+			mtu 1400
+			mru 1400
+			lcp-echo-failure 10
+			lcp-echo-interval 60
+			connect-delay 5000
+		EOF
+		cat > ${L2TP_CONFIG_FILE} <<-EOF
+			[global]
+			port = 1701
+			;debug avp = yes
+			;debug network = yes
+			;debug state = yes
+			;debug tunnel = yes
+			[lns default]
+			ip range = ${vt_remoteip}
+			local ip = ${l2tp_localip}
+			require chap = yes
+			refuse pap = yes
+			require authentication = no
+			name = l2tp-server
+			;ppp debug = yes
+			pppoptfile = ${L2TP_OPTIONS_FILE}
+			length bit = yes
+		EOF
+		
+		local l2tp_users=$(get_enabled_anonymous_secs "@l2tp_users")
+		[ -n "${l2tp_users}" ] && {
+			for _user in ${l2tp_users}; do
+				local u_enabled=$(uci -q get ${CONFIG}.${_user}.enabled)
+				[ "${u_enabled}" -eq 1 ] || continue
+				
+				local u_username=$(uci -q get ${CONFIG}.${_user}.username)
+				[ -n "${u_username}" ] || continue
+				
+				local u_password=$(uci -q get ${CONFIG}.${_user}.password)
+				[ -n "${u_password}" ] || continue
+				
+				local u_ipaddress=$(uci -q get ${CONFIG}.${_user}.ipaddress)
+				[ -n "${u_ipaddress}" ] || u_ipaddress="*"
+				
+				echo "${u_username} l2tp-server ${u_password} ${u_ipaddress}" >> ${CHAP_SECRETS}
+			done
 		}
-		vt_gateway6=$(cidr_server "${vt_clientip6}") || {
-			log "invalid IPv6 client pool: ${vt_clientip6}"
-			return 1
-		}
-		vt_prefix6=$(cidr_prefix "${vt_clientip6}") || {
-			log "invalid IPv6 client prefix: ${vt_clientip6}"
-			return 1
-		}
-		vt_clientsubnet6=$(cidr_network "${vt_clientip6}") || {
-			log "invalid IPv6 client subnet: ${vt_clientip6}"
-			return 1
-		}
-		vt_clientrange6=$(cidr_range "${vt_clientip6}") || {
-			log "invalid IPv6 client pool range: ${vt_clientip6}"
-			return 1
-		}
-		ikev2_leftsubnet="${ikev2_leftsubnet},::/0"
-		ikev2_rightsubnet="${ikev2_rightsubnet},${vt_clientsubnet6}"
-		ikev2_rightsourceip="${ikev2_rightsourceip},${vt_clientrange6}"
-		ikev2_rightdns="${ikev2_rightdns},${vt_gateway6}"
-	fi
+		unset user
+		
+		echo "ip-up-script /usr/share/xl2tpd/ip-up" >> ${L2TP_OPTIONS_FILE}
+		echo "ip-down-script /usr/share/xl2tpd/ip-down" >> ${L2TP_OPTIONS_FILE}
 
-	top -bn1 | grep "${LEGACY_L2TP_PATH}" | grep -v "grep" | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1
-	rm -rf ${LEGACY_L2TP_PATH}
-
-	cat > ${IPSEC_CONN_FILE} <<-EOF2
+		xl2tpd -c ${L2TP_CONFIG_FILE} -C ${L2TP_CONTROL_FILE} -D >${L2TP_LOG_FILE} 2>&1 &
+		rm -f "/usr/lib/ipsec/libipsec.so.0"
+	}
+	
+	cat > ${IPSEC_CONN_FILE} <<-EOF
 		# ipsec.conf - strongSwan IPsec configuration file
 
 		config setup
@@ -310,116 +178,92 @@ start() {
 		  rekeymargin=3m
 		  keyingtries=1
 		  auto=add
-
+		  
 		#######################################
-		# IKEv1 Xauth PSK
+		# Default non L2TP Connections
 		#######################################
 
-		conn IKEv1-Base
+		conn Non-L2TP
 		  leftsubnet=0.0.0.0/0
-		  rightsubnet=${vt_clientsubnet}
-		  rightsourceip=${vt_clientrange}
+		  rightsubnet=${vt_clientip}
+		  rightsourceip=${vt_clientip}
 		  rightdns=${vt_gateway}
-		  ike=aes256-sha256-modp2048,aes128-sha256-modp2048,aes256-sha1-modp1536,aes128-sha1-modp1024,3des-sha1-modp1024
-		  esp=aes256-sha256,aes128-sha256,aes256-sha1,aes128-sha1,3des-sha1
-		  auto=ignore
+		  ike=aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024,3des-sha1-modp1536
+		  esp=aes128-sha1,3des-sha1
 
+		# Cisco IPSec
 		conn IKEv1-PSK-XAuth
-		  also=IKEv1-Base
+		  also=Non-L2TP
 		  keyexchange=ikev1
 		  leftauth=psk
 		  rightauth=psk
 		  rightauth2=xauth
-
-		#######################################
-		# IKEv2 PSK
-		#######################################
-
-		conn IKEv2-Base
-		  leftsubnet=${ikev2_leftsubnet}
-		  rightsubnet=${ikev2_rightsubnet}
-		  rightsourceip=${ikev2_rightsourceip}
-		  rightdns=${ikev2_rightdns}
-		  ike=aes256-sha256-modp2048,aes128-sha256-modp2048,aes256-sha1-modp1536,aes128-sha1-modp1024,3des-sha1-modp1024
-		  esp=aes256-sha256,aes128-sha256,aes256-sha1,aes128-sha1,3des-sha1
-		  auto=ignore
-
+		  
 		conn IKEv2-PSK
-		  also=IKEv2-Base
+		  also=Non-L2TP
 		  keyexchange=ikev2
-		  fragmentation=yes
 		  leftauth=psk
 		  rightauth=psk
-		  rightid=%any
-	EOF2
 
-	cat > ${IPSEC_SECRETS_FILE} <<-EOF2
-		# /etc/ipsec.secrets - strongSwan IPsec secrets file
-		: PSK "$(ipsec_escape "${vt_secret}")"
-	EOF2
+		$ipsec_l2tp_config
+	EOF
 
-	ipsec_users=$(get_enabled_anonymous_secs "@ipsec_users")
+	cat > /etc/ipsec.secrets <<-EOF
+	# /etc/ipsec.secrets - strongSwan IPsec secrets file
+	: PSK "$vt_secret"
+	EOF
+	
+	local ipsec_users=$(get_enabled_anonymous_secs "@ipsec_users")
 	[ -n "${ipsec_users}" ] && {
 		for _user in ${ipsec_users}; do
 			local u_enabled=$(uci -q get ${CONFIG}.${_user}.enabled)
 			[ "${u_enabled}" -eq 1 ] || continue
-
+			
 			local u_username=$(uci -q get ${CONFIG}.${_user}.username)
 			[ -n "${u_username}" ] || continue
-
+			
 			local u_password=$(uci -q get ${CONFIG}.${_user}.password)
 			[ -n "${u_password}" ] || continue
-
-			echo "\"$(ipsec_escape "${u_username}")\" : XAUTH \"$(ipsec_escape "${u_password}")\"" >> ${IPSEC_SECRETS_FILE}
+			
+			echo "${u_username} : XAUTH '${u_password}'" >> ${IPSEC_SECRETS_FILE}
 		done
 	}
-	unset _user
-
+	unset user
+	
 	ipt_rule add
+	
 	/usr/lib/ipsec/starter --daemon charon --nofork > /dev/null 2>&1 &
 	gen_include
-
-	uci -q set network.ipsec_server.ipaddr="${vt_gateway}"
-	uci -q set network.ipsec_server.netmask="${vt_netmask}"
-	if [ -n "${vt_gateway6}" ] && [ -n "${vt_prefix6}" ]; then
-		uci -q set network.ipsec_server.ip6addr="${vt_gateway6}/${vt_prefix6}"
-	else
-		uci -q delete network.ipsec_server.ip6addr
-	fi
-	uci -q commit network
+	
+	uci -q batch <<-EOF >/dev/null
+		set network.ipsec_server.ipaddr="${vt_clientip%.*}.1"
+		commit network
+	EOF
 	ifup ipsec_server > /dev/null 2>&1
 }
 
 stop() {
 	ifdown ipsec_server > /dev/null 2>&1
-	top -bn1 | grep "${LEGACY_L2TP_PATH}" | grep -v "grep" | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1
-	rm -rf ${LEGACY_L2TP_PATH}
+	sed -i '/l2tp-server/d' ${CHAP_SECRETS} 2>/dev/null
+	top -bn1 | grep "${L2TP_PATH}" | grep -v "grep" | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1
+	rm -rf ${L2TP_PATH}
 	ps -w | grep "/usr/lib/ipsec" | grep -v "grep" | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1
 	ipt_rule del
 	rm -rf /var/etc/ipsecvpn.include
+	ln -s "libipsec.so.0.0.0" "/usr/lib/ipsec/libipsec.so.0" >/dev/null 2>&1
 }
 
 gen_iface_and_firewall() {
-	local gateway="192.168.100.1"
-	local netmask="255.255.255.0"
-	local gateway6=""
-	local prefix6=""
-
-	[ -n "${vt_clientip}" ] && gateway=$(cidr_server "${vt_clientip}" 2>/dev/null || echo "192.168.100.1")
-	[ -n "${vt_clientip}" ] && netmask=$(cidr_netmask "${vt_clientip}" 2>/dev/null || echo "255.255.255.0")
-
-	if [ "${vt_ikev2_ipv6_enable}" = 1 ] && [ -n "${vt_clientip6}" ]; then
-		gateway6=$(cidr_server "${vt_clientip6}" 2>/dev/null)
-		prefix6=$(cidr_prefix "${vt_clientip6}" 2>/dev/null)
-	fi
-
-	uci -q batch <<-EOF2 >/dev/null
+	uci -q batch <<-EOF >/dev/null
 		delete network.ipsec_server
 		set network.ipsec_server=interface
 		set network.ipsec_server.device="ipsec0"
+		set network.ipsec_server.device="ipsec0"
 		set network.ipsec_server.proto="static"
-		set network.ipsec_server.ipaddr="${gateway}"
-		set network.ipsec_server.netmask="${netmask}"
+		set network.ipsec_server.ipaddr="${vt_clientip%.*}.1"
+		set network.ipsec_server.netmask="255.255.255.0"
+		commit network
+		
 		delete firewall.ipsecserver
 		set firewall.ipsecserver=zone
 		set firewall.ipsecserver.name="ipsecserver"
@@ -427,16 +271,8 @@ gen_iface_and_firewall() {
 		set firewall.ipsecserver.forward="ACCEPT"
 		set firewall.ipsecserver.output="ACCEPT"
 		set firewall.ipsecserver.network="ipsec_server"
-	EOF2
-
-	if [ -n "${gateway6}" ] && [ -n "${prefix6}" ]; then
-		uci -q set network.ipsec_server.ip6addr="${gateway6}/${prefix6}"
-	else
-		uci -q delete network.ipsec_server.ip6addr
-	fi
-
-	uci -q commit network
-	uci -q commit firewall
+		commit firewall
+	EOF
 }
 
 if [ -z "$(uci -q get network.ipsec_server)" ] || [ -z "$(uci -q get firewall.ipsecserver)" ]; then
