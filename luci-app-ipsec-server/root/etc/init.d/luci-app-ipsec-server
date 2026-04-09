@@ -13,6 +13,7 @@ L2TP_OPTIONS_FILE=${L2TP_PATH}/options.xl2tpd
 L2TP_LOG_FILE=${L2TP_PATH}/xl2tpd.log
 
 vt_clientip=$(uci -q get ${CONFIG}.@service[0].clientip)
+vt_serverip=$(uci -q get ${CONFIG}.@service[0].serverip)
 l2tp_enabled=$(uci -q get ${CONFIG}.@service[0].l2tp_enable)
 l2tp_localip=$(uci -q get ${CONFIG}.@service[0].l2tp_localip)
 
@@ -200,10 +201,21 @@ start() {
 		  rightauth2=xauth
 		  
 		conn IKEv2-PSK
-		  also=Non-L2TP
 		  keyexchange=ikev2
+		  auto=add
+		  left=%defaultroute
 		  leftauth=psk
+		  leftsubnet=0.0.0.0/0
+		  right=%any
 		  rightauth=psk
+		  rightsourceip=${vt_serverip}
+
+		  ike=aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024,3des-sha1-modp1536
+		  esp=aes128-sha1,3des-sha1
+		  dpdaction=clear
+		  dpddelay=30s
+		  rekey=no
+		  compress=no
 
 		$ipsec_l2tp_config
 	EOF

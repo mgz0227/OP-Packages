@@ -23,6 +23,12 @@ clientip.datatype = "ip4addr"
 clientip.optional = false
 clientip.rmempty = false
 
+serverip = s:option(Value, "serverip", translate("VPN Server IP"))
+serverip.description = translate("VPN Client reserved started IP addresses with the same subnet mask, such as: 192.168.100.10/24")
+serverip.datatype = "ip4addr"
+serverip.optional = false
+serverip.rmempty = false
+
 secret = s:option(Value, "secret", translate("Secret Pre-Shared Key"))
 secret.password = true
 
