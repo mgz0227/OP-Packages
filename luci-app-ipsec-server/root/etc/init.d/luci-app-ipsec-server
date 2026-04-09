@@ -25,8 +25,8 @@ get_enabled_anonymous_secs() {
 
 ipt_rule() {
 	if [ "$1" = "add" ]; then
-		iptables -t nat -I POSTROUTING -s ${vt_clientip} -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
-		iptables -I forwarding_rule -s ${vt_clientip} -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
+		iptables -t nat -I POSTROUTING -s ${vt_serverip} -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
+		iptables -I forwarding_rule -s ${vt_serverip} -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I forwarding_rule -m policy --dir in --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I forwarding_rule -m policy --dir out --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I INPUT -p udp -m multiport --dports 500,4500 -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
@@ -73,7 +73,7 @@ start() {
 	local vt_enabled=$(uci -q get ${CONFIG}.@service[0].enabled)
 	[ "$vt_enabled" = 0 ] && return 1
 	
-	local vt_gateway="${vt_clientip%.*}.1"
+	local vt_gateway="${vt_serverip%.*}.1"
 	local vt_secret=$(uci -q get ${CONFIG}.@service[0].secret)
 	
 	local l2tp_enabled=$(uci -q get ${CONFIG}.@service[0].l2tp_enable)
@@ -248,7 +248,7 @@ start() {
 	gen_include
 	
 	uci -q batch <<-EOF >/dev/null
-		set network.ipsec_server.ipaddr="${vt_clientip%.*}.1"
+		set network.ipsec_server.ipaddr="${vt_serverip%.*}.1"
 		commit network
 	EOF
 	ifup ipsec_server > /dev/null 2>&1
@@ -272,7 +272,7 @@ gen_iface_and_firewall() {
 		set network.ipsec_server.device="ipsec0"
 		set network.ipsec_server.device="ipsec0"
 		set network.ipsec_server.proto="static"
-		set network.ipsec_server.ipaddr="${vt_clientip%.*}.1"
+		set network.ipsec_server.ipaddr="${vt_serverip%.*}.1"
 		set network.ipsec_server.netmask="255.255.255.0"
 		commit network
 		

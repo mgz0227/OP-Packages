@@ -18,13 +18,13 @@ enabled.default = 0
 enabled.rmempty = false
 
 clientip = s:option(Value, "clientip", translate("VPN Client IP"))
-clientip.description = translate("VPN Client reserved started IP addresses with the same subnet mask, such as: 192.168.100.10/24")
+clientip.description = translate("VPN Client reserved started IP addresses with the same subnet mask, such as: 10.0.10.0/24")
 clientip.datatype = "ip4addr"
 clientip.optional = false
 clientip.rmempty = false
 
 serverip = s:option(Value, "serverip", translate("VPN Server IP"))
-serverip.description = translate("VPN Client reserved started IP addresses with the same subnet mask, such as: 192.168.100.10/24")
+serverip.description = translate("VPN Server reserved started IP addresses with the same subnet mask, such as: 10.0.0.1/24")
 serverip.datatype = "ip4addr"
 serverip.optional = false
 serverip.rmempty = false
