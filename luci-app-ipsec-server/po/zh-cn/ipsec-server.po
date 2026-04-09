@@ -144,3 +144,10 @@ msgid "Enable IPv6 masquerading for IKEv2"
 msgstr "启用 IKEv2 IPv6 地址伪装"
 msgid "Masquerade IPv6 traffic from the IKEv2 IPv6 pool so ULA/private IPv6 clients can still access the Internet through the router. Disable this if you route a public IPv6 prefix to the VPN pool instead."
 msgstr "对 IKEv2 IPv6 地址池出来的 IPv6 流量做伪装，这样使用 ULA/私有 IPv6 的客户端也能通过路由器访问互联网。如果你已经把公网 IPv6 前缀路由到了 VPN 地址池，请关闭此项。"
+
+
+msgid "Expecting a valid IPv4 CIDR value, such as 192.168.100.10/24."
+msgstr "请输入合法的 IPv4 CIDR 值，例如：192.168.100.10/24。"
+
+msgid "Expecting a valid IPv6 CIDR value, such as fd42:42:42::10/120."
+msgstr "请输入合法的 IPv6 CIDR 值，例如：fd42:42:42::10/120。"
