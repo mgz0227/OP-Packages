@@ -1,7 +1,7 @@
 m = Map("luci-app-ipsec-server")
 
-s = m:section(TypedSection, "ipsec_users", translate("IPSec Xauth PSK / IKEv2 EAP Users Manager"))
-s.description = translate("These accounts can be used for both IPSec Xauth PSK and IKEv2 EAP-MSCHAPv2.")
+s = m:section(TypedSection, "ipsec_users", "IPSec Xauth PSK " .. translate("Users Manager"))
+s.description = translate("These accounts are used by IPSec Xauth PSK (IKEv1) clients. Pure IKEv2 PSK clients authenticate with the global pre-shared key only.")
 s.addremove = true
 s.anonymous = true
 s.template = "cbi/tblsection"

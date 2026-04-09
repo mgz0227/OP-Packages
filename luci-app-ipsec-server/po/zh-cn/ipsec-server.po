@@ -1,41 +1,56 @@
 msgid "IPSec VPN Server"
 msgstr "IPSec VPN 服务器"
 
-msgid "Use a client that supports IPSec Xauth PSK (iOS or Android) to connect to this server."
-msgstr "使用支持 IPSec Xauth PSK（iOS 或 Android）的客户端连接到此服务端。"
+msgid "General Settings"
+msgstr "基本设置"
 
-msgid "Use a client that supports L2TP over IPSec PSK to connect to this server."
-msgstr "使用支持 L2TP over IPSec PSK 的客户端连接到此服务端。"
+msgid "Users Manager"
+msgstr "用户管理"
 
 msgid "Current Condition"
 msgstr "当前状态"
 
-msgid "General settings"
-msgstr "基本设置"
+msgid "Enable"
+msgstr "启用"
 
 msgid "Enabled"
 msgstr "启用"
 
 msgid "VPN Client IP"
-msgstr "VPN客户端地址段"
+msgstr "VPN 客户端 IPv4 地址池"
 
-msgid "VPN Client reserved started IP addresses with the same subnet mask, such as: 192.168.100.10/24"
-msgstr "VPN客户端获取IP的起始地址，例如：192.168.100.10/24"
+msgid "VPN client IPv4 pool start address and subnet mask, such as: 192.168.100.10/24"
+msgstr "VPN 客户端 IPv4 地址池起始地址和子网掩码，例如：192.168.100.10/24"
 
 msgid "Secret Pre-Shared Key"
-msgstr "PSK密钥"
+msgstr "PSK 密钥"
 
-msgid "VPN Server IP address, such as: 192.168.101.1"
-msgstr "VPN服务端IP地址，例如：192.168.101.1"
+msgid "This PSK is shared by both IKEv1 Xauth PSK and IKEv2 PSK clients."
+msgstr "该 PSK 同时用于 IKEv1 Xauth PSK 和 IKEv2 PSK 客户端。"
 
-msgid "VPN Client IP address range, such as: 192.168.101.10-20"
-msgstr "VPN客户端获取IP范围，例如：192.168.101.10-20"
+msgid "Enable the IPSec VPN server. This service keeps the original IPSec Xauth PSK (IKEv1) support and also exposes pure IKEv2 PSK remote-access support."
+msgstr "启用 IPSec VPN 服务。该服务保留原有的 IPSec Xauth PSK（IKEv1）支持，并新增纯 IKEv2 PSK 远程接入支持。"
 
-msgid "L2TP/IPSec is not compatible with kernel-libipsec, which will disable this module."
-msgstr "L2TP/IPSec不兼容kernel-libipsec，开启将会禁用此模块。"
+msgid "IKEv2 Support"
+msgstr "IKEv2 支持"
 
-msgid "Users Manager"
-msgstr "用户管理"
+msgid "IKEv2 PSK is enabled automatically together with the IPSec service. Unlike IKEv1 Xauth PSK, pure IKEv2 PSK does not use the per-user username/password list below."
+msgstr "启用 IPSec 服务后会自动开启 IKEv2 PSK。与 IKEv1 Xauth PSK 不同，纯 IKEv2 PSK 不使用下面的每用户账号密码列表。"
+
+msgid "Enable IPv6 for IKEv2"
+msgstr "为 IKEv2 启用 IPv6"
+
+msgid "Assign IPv6 virtual addresses to IKEv2 clients. Android and other dual-stack clients may request INTERNAL_IP6_ADDRESS during IKEv2, so enabling this avoids INTERNAL_ADDRESS_FAILURE when clients ask for IPv6."
+msgstr "为 IKEv2 客户端分配 IPv6 虚拟地址。Android 等双栈客户端在 IKEv2 过程中可能会请求 INTERNAL_IP6_ADDRESS，因此启用后可避免客户端请求 IPv6 时出现 INTERNAL_ADDRESS_FAILURE。"
+
+msgid "IKEv2 IPv6 Client IP"
+msgstr "IKEv2 IPv6 客户端地址池"
+
+msgid "VPN client IPv6 pool start address and prefix, such as: fd42:42:42::10/120"
+msgstr "VPN 客户端 IPv6 地址池起始地址和前缀，例如：fd42:42:42::10/120"
+
+msgid "These accounts are used by IPSec Xauth PSK (IKEv1) clients. Pure IKEv2 PSK clients authenticate with the global pre-shared key only."
+msgstr "这些账号用于 IPSec Xauth PSK（IKEv1）客户端。纯 IKEv2 PSK 客户端只使用全局预共享密钥认证。"
 
 msgid "Username"
 msgstr "用户名"
@@ -43,111 +58,20 @@ msgstr "用户名"
 msgid "Password"
 msgstr "密码"
 
-msgid "IP address"
-msgstr "IP 地址"
-
-msgid "Automatically"
-msgstr "自动分配"
-
-msgid "Online Users"
-msgstr "在线用户"
-
-msgid "L2TP Online Users"
-msgstr "L2TP 在线用户"
-
-msgid "Login Time"
-msgstr "登录时间"
-
-msgid "Blacklist"
-msgstr "黑名单"
-
-msgid "Add to Blacklist"
-msgstr "加入黑名单"
-
-msgid "Remove from Blacklist"
-msgstr "移出黑名单"
-
-msgid "Forced offline"
-msgstr "强制下线"
+msgid "RUNNING"
+msgstr "运行中"
 
 msgid "NOT RUNNING"
 msgstr "未运行"
 
-msgid "RUNNING"
-msgstr "运行中"
+msgid "This field is required."
+msgstr "此字段不能为空。"
 
-msgid "Enable the IPSec VPN server and expose the IPSec remote-access services configured below."
-msgstr "启用 IPSec VPN 服务器，并开放下方配置的 IPSec 远程接入服务。"
-
-msgid "Enable IKEv2 PSK"
-msgstr "启用 IKEv2 PSK"
-
-msgid "Use a client that supports IKEv2 PSK to connect to this server."
-msgstr "使用支持 IKEv2 PSK 的客户端连接到此服务端。"
-
-msgid "Enable IKEv2 EAP"
-msgstr "启用 IKEv2 EAP"
-
-msgid "Use a client that supports IKEv2 EAP-MSCHAPv2 to connect to this server. The gateway certificate is read from the OpenWrt ACME package under /etc/ssl/acme."
-msgstr "使用支持 IKEv2 EAP-MSCHAPv2 的客户端连接到此服务端。网关证书会从 OpenWrt ACME 包管理的 /etc/ssl/acme 目录读取。"
-
-msgid "IKEv2 EAP Server ID"
-msgstr "IKEv2 EAP 服务端 ID"
-
-msgid "Used as the gateway identity for IKEv2 EAP and should match a subjectAltName on the ACME certificate. Enter the public domain name clients connect to."
-msgstr "用作 IKEv2 EAP 的网关身份，并应与 ACME 证书上的 subjectAltName 匹配。请输入客户端连接时使用的公网域名。"
-
-msgid "This field is required when IKEv2 EAP is enabled."
-msgstr "启用 IKEv2 EAP 时，此项不能为空。"
-
-msgid "ACME Certificate Name"
-msgstr "ACME 证书名称"
-
-msgid "Main domain / filename stem of the ACME certificate stored under /etc/ssl/acme. Leave blank to reuse the IKEv2 EAP Server ID."
-msgstr "存放在 /etc/ssl/acme 下的 ACME 证书主域名/文件名前缀。留空则复用 IKEv2 EAP 服务端 ID。"
-
-msgid "Expected ACME Certificate Path"
-msgstr "预期的 ACME 证书路径"
-
-msgid "Configure and issue this certificate in the ACME app first. The IPSec service will read the certificate from this path when IKEv2 EAP is enabled."
-msgstr "请先在 ACME 应用中配置并签发该证书。启用 IKEv2 EAP 后，IPSec 服务会从这个路径读取证书。"
-
-msgid "Expected ACME Key Path"
-msgstr "预期的 ACME 私钥路径"
-
-msgid "Expected ACME Chain Path"
-msgstr "预期的 ACME 证书链路径"
-
-msgid "If present, the issuer chain will also be linked into strongSwan so clients receive the intermediate CA certificates."
-msgstr "如果该文件存在，也会一并链接到 strongSwan，让客户端收到中间 CA 证书链。"
-
-msgid "IPSec Xauth PSK / IKEv2 EAP Users Manager"
-msgstr "IPSec Xauth PSK / IKEv2 EAP 用户管理"
-
-msgid "These accounts can be used for both IPSec Xauth PSK and IKEv2 EAP-MSCHAPv2."
-msgstr "这些账号可同时用于 IPSec Xauth PSK 和 IKEv2 EAP-MSCHAPv2。"
-msgid "Enable IPv6 for IKEv2"
-msgstr "启用 IKEv2 IPv6"
-msgid "Provide IPv6 virtual addresses to IKEv2 clients. Android and other dual-stack clients may request INTERNAL_IP6_ADDRESS during IKEv2. This option only affects IKEv2 PSK/EAP and does not change legacy IKEv1 Xauth."
-msgstr "为 IKEv2 客户端下发 IPv6 虚拟地址。Android 及其他双栈客户端在 IKEv2 阶段可能会请求 INTERNAL_IP6_ADDRESS。此选项只影响 IKEv2 PSK/EAP，不会改变旧版 IKEv1 Xauth。"
-msgid "IKEv2 IPv6 Client IP"
-msgstr "IKEv2 IPv6 客户端地址"
-msgid "IPv6 starting address/prefix used for IKEv2 virtual IP assignment, such as: fd42:42:42::10/120"
-msgstr "用于 IKEv2 虚拟地址分配的 IPv6 起始地址/前缀，例如：fd42:42:42::10/120"
 msgid "This field is required when IKEv2 IPv6 is enabled."
-msgstr "启用 IKEv2 IPv6 时，此项不能为空。"
-msgid "IKEv2 IPv6 Server IP"
-msgstr "IKEv2 IPv6 服务端地址"
-msgid "IPv6 address/prefix configured on ipsec0 when IKEv2 IPv6 is enabled, such as: fd42:42:42::1/120. The address part is also sent to clients as INTERNAL_IP6_DNS."
-msgstr "启用 IKEv2 IPv6 时，会把这个 IPv6 地址/前缀配置到 ipsec0 上，例如：fd42:42:42::1/120。其地址部分也会作为 INTERNAL_IP6_DNS 下发给客户端。"
-msgid "Enable IPv6 masquerading for IKEv2"
-msgstr "启用 IKEv2 IPv6 地址伪装"
-msgid "Masquerade IPv6 traffic from the IKEv2 IPv6 pool so ULA/private IPv6 clients can still access the Internet through the router. Disable this if you route a public IPv6 prefix to the VPN pool instead."
-msgstr "对 IKEv2 IPv6 地址池出来的 IPv6 流量做伪装，这样使用 ULA/私有 IPv6 的客户端也能通过路由器访问互联网。如果你已经把公网 IPv6 前缀路由到了 VPN 地址池，请关闭此项。"
-
+msgstr "启用 IKEv2 IPv6 时，此字段不能为空。"
 
 msgid "Expecting a valid IPv4 CIDR value, such as 192.168.100.10/24."
-msgstr "请输入合法的 IPv4 CIDR 值，例如：192.168.100.10/24。"
+msgstr "需要填写有效的 IPv4 CIDR 值，例如：192.168.100.10/24。"
 
 msgid "Expecting a valid IPv6 CIDR value, such as fd42:42:42::10/120."
-msgstr "请输入合法的 IPv6 CIDR 值，例如：fd42:42:42::10/120。"
+msgstr "需要填写有效的 IPv6 CIDR 值，例如：fd42:42:42::10/120。"

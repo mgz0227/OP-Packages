@@ -5,19 +5,11 @@ START=99
 CONFIG="luci-app-ipsec-server"
 IPSEC_SECRETS_FILE=/etc/ipsec.secrets
 IPSEC_CONN_FILE=/etc/ipsec.conf
-IPSEC_CERT_DIR=/etc/ipsec.d
-IPSEC_CERTS_DIR=${IPSEC_CERT_DIR}/certs
-IPSEC_CACERTS_DIR=${IPSEC_CERT_DIR}/cacerts
-IPSEC_PRIVATE_DIR=${IPSEC_CERT_DIR}/private
-ACME_CERT_DIR=/etc/ssl/acme
-IKEV2_EAP_SERVER_CERT=${IPSEC_CERTS_DIR}/ikev2-eap-server-cert.pem
-IKEV2_EAP_SERVER_CHAIN=${IPSEC_CACERTS_DIR}/ikev2-eap-chain.pem
-IKEV2_EAP_SERVER_KEY=${IPSEC_PRIVATE_DIR}/ikev2-eap-server-key.pem
 LEGACY_L2TP_PATH=/var/etc/xl2tpd
 
 vt_clientip=$(uci -q get ${CONFIG}.@service[0].clientip)
 vt_ikev2_ipv6_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_ipv6_enable)
-vt_ikev2_serverip6=$(uci -q get ${CONFIG}.@service[0].ikev2_serverip6)
+vt_clientip6=$(uci -q get ${CONFIG}.@service[0].clientip6)
 
 ipt_flag="IPSec VPN Server"
 
@@ -29,15 +21,29 @@ ipsec_escape() {
 	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
-strip_cidr() {
-	printf '%s' "${1%%/*}"
+find_lua() {
+	local bin
+	for bin in lua lua5.1 lua5.3 lua5.4; do
+		command -v "$bin" >/dev/null 2>&1 && {
+			echo "$bin"
+			return 0
+		}
+	done
+	return 1
 }
+
+LUA_BIN=$(find_lua)
 
 cidr_eval() {
 	local action="$1"
 	local value="$2"
 
-	lua - "$action" "$value" <<'EOFLUA'
+	[ -n "${LUA_BIN}" ] || {
+		log "lua runtime not found, unable to derive IPSec address pools"
+		return 1
+	}
+
+	"${LUA_BIN}" - "$action" "$value" <<'EOFLUA'
 local ip = require "luci.ip"
 local action = arg[1]
 local value = arg[2] or ""
@@ -47,78 +53,46 @@ if not cidr then
 	os.exit(1)
 end
 
+local function pool_start(c)
+	local start = ip.new((value:match("^([^/]+)") or ""))
+	local server = c:minhost()
+	local maxhost = c:maxhost()
+	local first_client
+
+	if not start or not server or not maxhost then
+		os.exit(1)
+	end
+
+	first_client = server:add(1)
+	if not first_client or first_client:higher(maxhost) then
+		os.exit(1)
+	end
+
+	start = start:host()
+	if start:lower(first_client) then
+		start = first_client
+	elseif start:higher(maxhost) then
+		os.exit(1)
+	end
+
+	return start, maxhost
+end
+
 if action == "network" then
 	io.write(cidr:network():string(), "/", tostring(cidr:prefix()))
 elseif action == "mask" then
 	io.write(cidr:mask():string())
-elseif action == "minhost" then
-	io.write(cidr:minhost():string())
-elseif action == "maxhost" then
-	io.write(cidr:maxhost():string())
-elseif action == "range" then
-	local start = ip.new((value:match("^([^/]+)") or ""))
-	local minhost = cidr:minhost()
-	local maxhost = cidr:maxhost()
-	if not start or not minhost or not maxhost then
-		os.exit(1)
-	end
-	if start:lower(minhost) then
-		start = minhost
-	elseif start:higher(maxhost) then
-		os.exit(1)
-	end
-	io.write(start:string(), "-", maxhost:string())
-elseif action == "poollist" then
-	local start = ip.new((value:match("^([^/]+)") or ""))
-	local minhost = cidr:minhost()
-	local maxhost = cidr:maxhost()
-	local maxbits = cidr:is4() and 32 or (cidr:is6() and 128 or nil)
-	local blocks = {}
-	if not start or not minhost or not maxhost or not maxbits then
-		os.exit(1)
-	end
-	start = start:host()
-	minhost = minhost:host()
-	maxhost = maxhost:host()
-	if start:lower(minhost) then
-		start = minhost
-	elseif start:higher(maxhost) then
-		os.exit(1)
-	end
-	while true do
-		local prefix = maxbits
-		while prefix > cidr:prefix() do
-			local cand = ip.new(start:string(), prefix - 1)
-			local cand_max
-			if not cand then
-				break
-			end
-			if not cand:network():equal(start) then
-				break
-			end
-			cand_max = cand:maxhost() or cand:host()
-			if cand_max:higher(maxhost) then
-				break
-			end
-			prefix = prefix - 1
-		end
-		local block = ip.new(start:string(), prefix)
-		blocks[#blocks + 1] = string.format("%s/%d", block:network(prefix):host():string(), prefix)
-		local next_start = (block:maxhost() or block:host()):add(1)
-		if next_start:higher(maxhost) then
-			break
-		end
-		start = next_start:host()
-	end
-	io.write(table.concat(blocks, ","))
-elseif action == "address" then
-	local start = ip.new((value:match("^([^/]+)") or ""))
-	if not start then
-		os.exit(1)
-	end
-	io.write(start:string())
 elseif action == "prefix" then
 	io.write(tostring(cidr:prefix()))
+elseif action == "server" then
+	local server = cidr:minhost()
+	if not server then
+		os.exit(1)
+	end
+	io.write(server:host():string())
+elseif action == "range" then
+	local start, maxhost = pool_start(cidr)
+	io.write(start:string(), "-", maxhost:string())
 else
 	os.exit(1)
 end
@@ -133,50 +107,16 @@ cidr_netmask() {
 	cidr_eval mask "$1"
 }
 
-cidr_minhost() {
-	cidr_eval minhost "$1"
+cidr_prefix() {
+	cidr_eval prefix "$1"
 }
 
-cidr_pool_range() {
+cidr_server() {
+	cidr_eval server "$1"
+}
+
+cidr_range() {
 	cidr_eval range "$1"
-}
-
-cidr_pool_list() {
-	cidr_eval poollist "$1"
-}
-
-prepare_ikev2_eap_acme_certificates() {
-	local acme_name="$1"
-	local cert_file
-	local fullchain_file
-	local chain_file
-	local key_file
-
-	[ -n "${acme_name}" ] || return 1
-
-	cert_file="${ACME_CERT_DIR}/${acme_name}.crt"
-	fullchain_file="${ACME_CERT_DIR}/${acme_name}.fullchain.crt"
-	chain_file="${ACME_CERT_DIR}/${acme_name}.chain.crt"
-	key_file="${ACME_CERT_DIR}/${acme_name}.key"
-
-	[ -s "${cert_file}" ] || cert_file="${fullchain_file}"
-
-	if [ ! -s "${cert_file}" ] || [ ! -s "${key_file}" ]; then
-		log "ACME certificate files for ${acme_name} were not found under ${ACME_CERT_DIR}; configure luci-app-acme and run /etc/init.d/acme renew first"
-		return 1
-	fi
-
-	mkdir -p ${IPSEC_CERTS_DIR} ${IPSEC_CACERTS_DIR} ${IPSEC_PRIVATE_DIR}
-	ln -sfn "${cert_file}" ${IKEV2_EAP_SERVER_CERT} || return 1
-	ln -sfn "${key_file}" ${IKEV2_EAP_SERVER_KEY} || return 1
-
-	if [ -s "${chain_file}" ]; then
-		ln -sfn "${chain_file}" ${IKEV2_EAP_SERVER_CHAIN} || return 1
-	else
-		rm -f ${IKEV2_EAP_SERVER_CHAIN}
-	fi
-
-	return 0
 }
 
 get_enabled_anonymous_secs() {
@@ -184,35 +124,28 @@ get_enabled_anonymous_secs() {
 }
 
 ipt_rule() {
-	local ikev2_ipv6_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_ipv6_enable)
-	local ikev2_clientip6=$(uci -q get ${CONFIG}.@service[0].ikev2_clientip6)
-	local ikev2_ipv6_nat6_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_ipv6_nat6_enable)
-	local vt_clientsubnet
-	local ikev2_clientsubnet6=""
+	local clientsubnet4
+	local clientsubnet6=""
 
-	[ -n "${ikev2_ipv6_enable}" ] || ikev2_ipv6_enable=0
-	[ -n "${ikev2_ipv6_nat6_enable}" ] || ikev2_ipv6_nat6_enable=1
+	clientsubnet4=$(cidr_network "${vt_clientip}" 2>/dev/null)
+	[ -n "${clientsubnet4}" ] || clientsubnet4="${vt_clientip}"
 
-	vt_clientsubnet=$(cidr_network "${vt_clientip}" 2>/dev/null)
-	[ -n "${vt_clientsubnet}" ] || vt_clientsubnet="${vt_clientip}"
-
-	if [ "${ikev2_ipv6_enable}" = 1 ] && [ -n "${ikev2_clientip6}" ]; then
-		ikev2_clientsubnet6=$(cidr_network "${ikev2_clientip6}" 2>/dev/null)
-		[ -n "${ikev2_clientsubnet6}" ] || ikev2_clientsubnet6="${ikev2_clientip6}"
+	if [ "${vt_ikev2_ipv6_enable}" = 1 ] && [ -n "${vt_clientip6}" ]; then
+		clientsubnet6=$(cidr_network "${vt_clientip6}" 2>/dev/null)
 	fi
 
 	if [ "$1" = "add" ]; then
-		iptables -t nat -I POSTROUTING -s ${vt_clientsubnet} -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
-		iptables -I forwarding_rule -s ${vt_clientsubnet} -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
+		iptables -t nat -I POSTROUTING -s ${clientsubnet4} -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
+		iptables -I forwarding_rule -s ${clientsubnet4} -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I forwarding_rule -m policy --dir in --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I forwarding_rule -m policy --dir out --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I INPUT -p udp -m multiport --dports 500,4500 -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I INPUT -p esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -t mangle -I OUTPUT -p udp -m multiport --sports 500,4500 -m comment --comment "${ipt_flag}" -j RETURN 2>/dev/null
 
-		if [ "${ikev2_ipv6_enable}" = 1 ] && [ -n "${ikev2_clientsubnet6}" ] && command -v ip6tables >/dev/null 2>&1; then
-			[ "${ikev2_ipv6_nat6_enable}" = 1 ] && ip6tables -t nat -I POSTROUTING -s ${ikev2_clientsubnet6} -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
-			ip6tables -I forwarding_rule -s ${ikev2_clientsubnet6} -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
+		if [ -n "${clientsubnet6}" ] && command -v ip6tables >/dev/null 2>&1; then
+			ip6tables -t nat -I POSTROUTING -s ${clientsubnet6} -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
+			ip6tables -I forwarding_rule -s ${clientsubnet6} -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 			ip6tables -I forwarding_rule -m policy --dir in --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 			ip6tables -I forwarding_rule -m policy --dir out --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 			ip6tables -I INPUT -p udp -m multiport --dports 500,4500 -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
@@ -258,132 +191,105 @@ gen_include() {
 	}
 	cat <<-EOF2 >> /var/etc/ipsecvpn.include
 		if command -v iptables-save >/dev/null 2>&1 && command -v iptables-restore >/dev/null 2>&1; then
-			iptables-save -c 2>/dev/null | grep -v "${ipt_flag}" | iptables-restore -c 2>/dev/null
-			iptables-restore -n <<-EOT
-			$(extract_rules iptables-save filter)
-			$(extract_rules iptables-save nat)
-			$(extract_rules iptables-save mangle)
-			EOT
+			iptables-save -c | grep -v "${ipt_flag}" | iptables-restore -c
+			iptables-restore -n <<-'EOT4'
+$(extract_rules iptables-save filter)
+$(extract_rules iptables-save nat)
+$(extract_rules iptables-save mangle)
+EOT4
 		fi
 		if command -v ip6tables-save >/dev/null 2>&1 && command -v ip6tables-restore >/dev/null 2>&1; then
-			ip6tables-save -c 2>/dev/null | grep -v "${ipt_flag}" | ip6tables-restore -c 2>/dev/null
-			ip6tables-restore -n <<-EOT
-			$(extract_rules ip6tables-save filter)
-			$(extract_rules ip6tables-save nat)
-			$(extract_rules ip6tables-save mangle)
-			EOT
+			ip6tables-save -c | grep -v "${ipt_flag}" | ip6tables-restore -c
+			ip6tables-restore -n <<-'EOT6'
+$(extract_rules ip6tables-save filter)
+$(extract_rules ip6tables-save nat)
+$(extract_rules ip6tables-save mangle)
+EOT6
 		fi
 	EOF2
-	chmod 0755 /var/etc/ipsecvpn.include
+	chmod +x /var/etc/ipsecvpn.include
 	return 0
 }
 
 start() {
 	local vt_enabled=$(uci -q get ${CONFIG}.@service[0].enabled)
-	[ "$vt_enabled" = 0 ] && return 1
+	[ "${vt_enabled}" = 1 ] || return 1
 
-	local vt_gateway=$(cidr_minhost "${vt_clientip}" 2>/dev/null)
-	local vt_netmask=$(cidr_netmask "${vt_clientip}" 2>/dev/null)
-	local vt_clientsubnet=$(cidr_network "${vt_clientip}" 2>/dev/null)
-	local vt_clientpool_ikev2=$(cidr_pool_list "${vt_clientip}" 2>/dev/null)
 	local vt_secret=$(uci -q get ${CONFIG}.@service[0].secret)
-	local vt_secret_escaped=$(ipsec_escape "${vt_secret}")
-	local ikev2_psk_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_psk_enable)
-	local ikev2_eap_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_eap_enable)
-	local ikev2_eap_id=$(uci -q get ${CONFIG}.@service[0].ikev2_eap_id)
-	local ikev2_eap_acme_name=$(uci -q get ${CONFIG}.@service[0].ikev2_eap_acme_name)
-	local ikev2_ipv6_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_ipv6_enable)
-	local ikev2_clientip6=$(uci -q get ${CONFIG}.@service[0].ikev2_clientip6)
-	local ikev2_serverip6=$(uci -q get ${CONFIG}.@service[0].ikev2_serverip6)
-	local ikev2_ipv6_nat6_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_ipv6_nat6_enable)
-	local ikev2_any_enable=0
-	local ikev2_eap_ready=0
-	local ikev2_gateway6=""
-	local ikev2_clientsubnet6=""
-	local ikev2_clientpool6=""
-	local ipsec_rightdns="${vt_gateway}"
-	local ipsec_ikev2_leftsubnet="0.0.0.0/0"
-	local ipsec_ikev2_rightsourceip="${vt_clientpool_ikev2}"
-	local ipsec_ikev2_psk_config=""
-	local ipsec_ikev2_eap_config=""
-	local ipsec_extra_secrets=""
+	local vt_gateway
+	local vt_netmask
+	local vt_clientsubnet
+	local vt_clientrange
+	local ikev2_leftsubnet
+	local ikev2_rightsubnet
+	local ikev2_rightsourceip
+	local ikev2_rightdns
+	local vt_gateway6=""
+	local vt_clientsubnet6=""
+	local vt_clientrange6=""
+	local vt_prefix6=""
+	local ipsec_users
 
-	[ -n "${ikev2_psk_enable}" ] || ikev2_psk_enable=0
-	[ -n "${ikev2_eap_enable}" ] || ikev2_eap_enable=0
-	[ -n "${ikev2_ipv6_enable}" ] || ikev2_ipv6_enable=0
-	[ -n "${ikev2_ipv6_nat6_enable}" ] || ikev2_ipv6_nat6_enable=1
-	[ -n "${ikev2_eap_acme_name}" ] || ikev2_eap_acme_name="${ikev2_eap_id}"
-	[ -n "${vt_gateway}" ] || vt_gateway="${vt_clientip%.*}.1"
-	[ -n "${vt_netmask}" ] || vt_netmask="255.255.255.0"
-	[ -n "${vt_clientsubnet}" ] || vt_clientsubnet="${vt_clientip}"
-	[ -n "${vt_clientpool_ikev2}" ] || vt_clientpool_ikev2="${vt_clientsubnet}"
+	[ -n "${vt_clientip}" ] || {
+		log "VPN client IPv4 pool is empty"
+		return 1
+	}
+	[ -n "${vt_secret}" ] || {
+		log "IPSec pre-shared key is empty"
+		return 1
+	}
 
-	[ "${ikev2_psk_enable}" = 1 ] && ikev2_any_enable=1
-	[ "${ikev2_eap_enable}" = 1 ] && ikev2_any_enable=1
+	vt_gateway=$(cidr_server "${vt_clientip}") || {
+		log "invalid IPv4 client pool: ${vt_clientip}"
+		return 1
+	}
+	vt_netmask=$(cidr_netmask "${vt_clientip}") || {
+		log "invalid IPv4 client pool netmask: ${vt_clientip}"
+		return 1
+	}
+	vt_clientsubnet=$(cidr_network "${vt_clientip}") || {
+		log "invalid IPv4 client subnet: ${vt_clientip}"
+		return 1
+	}
+	vt_clientrange=$(cidr_range "${vt_clientip}") || {
+		log "invalid IPv4 client pool range: ${vt_clientip}"
+		return 1
+	}
 
-	if [ "${ikev2_ipv6_enable}" = 1 ]; then
-		if [ "${ikev2_any_enable}" != 1 ]; then
-			log "IKEv2 IPv6 is enabled but all IKEv2 connection types are disabled, skipping IKEv2 IPv6"
-			ikev2_ipv6_enable=0
-		elif [ -z "${ikev2_clientip6}" ] || [ -z "${ikev2_serverip6}" ]; then
-			log "IKEv2 IPv6 is enabled but the IPv6 client/server addresses are incomplete, skipping IKEv2 IPv6"
-			ikev2_ipv6_enable=0
-		else
-			ikev2_clientsubnet6=$(cidr_network "${ikev2_clientip6}" 2>/dev/null)
-			ikev2_clientpool6=$(cidr_pool_list "${ikev2_clientip6}" 2>/dev/null)
-			if [ -z "${ikev2_clientsubnet6}" ] || [ -z "${ikev2_clientpool6}" ]; then
-				log "IKEv2 IPv6 is enabled but the IPv6 pool could not be derived from ${ikev2_clientip6}, skipping IKEv2 IPv6"
-				ikev2_ipv6_enable=0
-			else
-				ikev2_gateway6=$(strip_cidr "${ikev2_serverip6}")
-				ipsec_rightdns="${vt_gateway},${ikev2_gateway6}"
-				ipsec_ikev2_leftsubnet="0.0.0.0/0,::/0"
-				ipsec_ikev2_rightsourceip="${vt_clientpool_ikev2},${ikev2_clientpool6}"
-			fi
-		fi
+	ikev2_leftsubnet="0.0.0.0/0"
+	ikev2_rightsubnet="${vt_clientsubnet}"
+	ikev2_rightsourceip="${vt_clientrange}"
+	ikev2_rightdns="${vt_gateway}"
+
+	if [ "${vt_ikev2_ipv6_enable}" = 1 ]; then
+		[ -n "${vt_clientip6}" ] || {
+			log "IKEv2 IPv6 is enabled but no IPv6 pool is configured"
+			return 1
+		}
+		vt_gateway6=$(cidr_server "${vt_clientip6}") || {
+			log "invalid IPv6 client pool: ${vt_clientip6}"
+			return 1
+		}
+		vt_prefix6=$(cidr_prefix "${vt_clientip6}") || {
+			log "invalid IPv6 client prefix: ${vt_clientip6}"
+			return 1
+		}
+		vt_clientsubnet6=$(cidr_network "${vt_clientip6}") || {
+			log "invalid IPv6 client subnet: ${vt_clientip6}"
+			return 1
+		}
+		vt_clientrange6=$(cidr_range "${vt_clientip6}") || {
+			log "invalid IPv6 client pool range: ${vt_clientip6}"
+			return 1
+		}
+		ikev2_leftsubnet="${ikev2_leftsubnet},::/0"
+		ikev2_rightsubnet="${ikev2_rightsubnet},${vt_clientsubnet6}"
+		ikev2_rightsourceip="${ikev2_rightsourceip},${vt_clientrange6}"
+		ikev2_rightdns="${ikev2_rightdns},${vt_gateway6}"
 	fi
 
-	if [ "${ikev2_psk_enable}" = 1 ]; then
-		ipsec_ikev2_psk_config=$(cat <<-EOF2
-		conn IKEv2-PSK
-		  also=RemoteAccess-IKEv2
-		  leftsubnet=${ipsec_ikev2_leftsubnet}
-		  rightsourceip=${ipsec_ikev2_rightsourceip}
-		  rightdns=${ipsec_rightdns}
-		  leftauth=psk
-		  rightauth=psk
-		EOF2
-		)
-	fi
-
-	if [ "${ikev2_eap_enable}" = 1 ]; then
-		if [ -z "${ikev2_eap_id}" ]; then
-			log "IKEv2 EAP is enabled but the server ID is empty, skipping IKEv2 EAP"
-		elif prepare_ikev2_eap_acme_certificates "${ikev2_eap_acme_name}"; then
-			ikev2_eap_ready=1
-			ipsec_extra_secrets=$(cat <<-EOF2
-		: RSA ikev2-eap-server-key.pem
-		EOF2
-			)
-			ipsec_ikev2_eap_config=$(cat <<-EOF2
-
-		conn IKEv2-EAP
-		  also=RemoteAccess-IKEv2
-		  leftsubnet=${ipsec_ikev2_leftsubnet}
-		  rightsourceip=${ipsec_ikev2_rightsourceip}
-		  rightdns=${ipsec_rightdns}
-		  leftauth=pubkey
-		  leftid=${ikev2_eap_id}
-		  leftcert=ikev2-eap-server-cert.pem
-		  leftsendcert=always
-		  rightauth=eap-mschapv2
-		  eap_identity=%identity
-		EOF2
-			)
-		else
-			log "Failed to prepare IKEv2 EAP ACME certificate links, skipping IKEv2 EAP"
-		fi
-	fi
+	top -bn1 | grep "${LEGACY_L2TP_PATH}" | grep -v "grep" | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1
+	rm -rf ${LEGACY_L2TP_PATH}
 
 	cat > ${IPSEC_CONN_FILE} <<-EOF2
 		# ipsec.conf - strongSwan IPsec configuration file
@@ -406,44 +312,53 @@ start() {
 		  auto=add
 
 		#######################################
-		# Remote Access Connections
+		# IKEv1 Xauth PSK
 		#######################################
 
-		conn RemoteAccess
-		  ike=aes256-sha256-modp2048,aes128-sha256-modp2048,aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024,3des-sha1-modp1536
-		  esp=aes256-sha256,aes128-sha256,aes128-sha1,3des-sha1
-
-		conn RemoteAccess-IKEv1
-		  also=RemoteAccess
-		  keyexchange=ikev1
+		conn IKEv1-Base
 		  leftsubnet=0.0.0.0/0
-		  rightsubnet=${vt_clientip}
-		  rightsourceip=${vt_clientip}
+		  rightsubnet=${vt_clientsubnet}
+		  rightsourceip=${vt_clientrange}
 		  rightdns=${vt_gateway}
+		  ike=aes256-sha256-modp2048,aes128-sha256-modp2048,aes256-sha1-modp1536,aes128-sha1-modp1024,3des-sha1-modp1024
+		  esp=aes256-sha256,aes128-sha256,aes256-sha1,aes128-sha1,3des-sha1
+		  auto=ignore
 
-		conn RemoteAccess-IKEv2
-		  also=RemoteAccess
-		  keyexchange=ikev2
-		  fragmentation=yes
-		  forceencaps=yes
-
-		# Cisco IPSec
 		conn IKEv1-PSK-XAuth
-		  also=RemoteAccess-IKEv1
+		  also=IKEv1-Base
+		  keyexchange=ikev1
 		  leftauth=psk
 		  rightauth=psk
 		  rightauth2=xauth
 
-		${ipsec_ikev2_psk_config}${ipsec_ikev2_eap_config}
+		#######################################
+		# IKEv2 PSK
+		#######################################
+
+		conn IKEv2-Base
+		  leftsubnet=${ikev2_leftsubnet}
+		  rightsubnet=${ikev2_rightsubnet}
+		  rightsourceip=${ikev2_rightsourceip}
+		  rightdns=${ikev2_rightdns}
+		  ike=aes256-sha256-modp2048,aes128-sha256-modp2048,aes256-sha1-modp1536,aes128-sha1-modp1024,3des-sha1-modp1024
+		  esp=aes256-sha256,aes128-sha256,aes256-sha1,aes128-sha1,3des-sha1
+		  auto=ignore
+
+		conn IKEv2-PSK
+		  also=IKEv2-Base
+		  keyexchange=ikev2
+		  fragmentation=yes
+		  leftauth=psk
+		  rightauth=psk
+		  rightid=%any
 	EOF2
 
 	cat > ${IPSEC_SECRETS_FILE} <<-EOF2
-	# /etc/ipsec.secrets - strongSwan IPsec secrets file
-	: PSK "${vt_secret_escaped}"
-	${ipsec_extra_secrets}
+		# /etc/ipsec.secrets - strongSwan IPsec secrets file
+		: PSK "$(ipsec_escape "${vt_secret}")"
 	EOF2
 
-	local ipsec_users=$(get_enabled_anonymous_secs "@ipsec_users")
+	ipsec_users=$(get_enabled_anonymous_secs "@ipsec_users")
 	[ -n "${ipsec_users}" ] && {
 		for _user in ${ipsec_users}; do
 			local u_enabled=$(uci -q get ${CONFIG}.${_user}.enabled)
@@ -455,32 +370,23 @@ start() {
 			local u_password=$(uci -q get ${CONFIG}.${_user}.password)
 			[ -n "${u_password}" ] || continue
 
-			local u_password_escaped=$(ipsec_escape "${u_password}")
-			printf '%s : XAUTH "%s"\n' "${u_username}" "${u_password_escaped}" >> ${IPSEC_SECRETS_FILE}
-			[ "${ikev2_eap_ready}" = 1 ] && printf '%s : EAP "%s"\n' "${u_username}" "${u_password_escaped}" >> ${IPSEC_SECRETS_FILE}
+			echo "\"$(ipsec_escape "${u_username}")\" : XAUTH \"$(ipsec_escape "${u_password}")\"" >> ${IPSEC_SECRETS_FILE}
 		done
 	}
-	unset user
-
-	sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
-	if [ "${ikev2_ipv6_enable}" = 1 ]; then
-		sysctl -w net.ipv6.conf.all.forwarding=1 >/dev/null 2>&1
-		[ -n "${ikev2_ipv6_nat6_enable}" ] || ikev2_ipv6_nat6_enable=1
-	fi
+	unset _user
 
 	ipt_rule add
-
 	/usr/lib/ipsec/starter --daemon charon --nofork > /dev/null 2>&1 &
 	gen_include
 
 	uci -q set network.ipsec_server.ipaddr="${vt_gateway}"
 	uci -q set network.ipsec_server.netmask="${vt_netmask}"
-	if [ "${ikev2_ipv6_enable}" = 1 ] && [ -n "${ikev2_serverip6}" ]; then
-		uci -q set network.ipsec_server.ip6addr="${ikev2_serverip6}"
+	if [ -n "${vt_gateway6}" ] && [ -n "${vt_prefix6}" ]; then
+		uci -q set network.ipsec_server.ip6addr="${vt_gateway6}/${vt_prefix6}"
 	else
-		uci -q delete network.ipsec_server.ip6addr >/dev/null 2>&1
+		uci -q delete network.ipsec_server.ip6addr
 	fi
-	uci -q commit network >/dev/null
+	uci -q commit network
 	ifup ipsec_server > /dev/null 2>&1
 }
 
@@ -494,33 +400,43 @@ stop() {
 }
 
 gen_iface_and_firewall() {
-	local vt_gateway4=$(cidr_minhost "${vt_clientip}" 2>/dev/null)
-	local vt_netmask4=$(cidr_netmask "${vt_clientip}" 2>/dev/null)
+	local gateway="192.168.100.1"
+	local netmask="255.255.255.0"
+	local gateway6=""
+	local prefix6=""
 
-	[ -n "${vt_gateway4}" ] || vt_gateway4="${vt_clientip%.*}.1"
-	[ -n "${vt_netmask4}" ] || vt_netmask4="255.255.255.0"
+	[ -n "${vt_clientip}" ] && gateway=$(cidr_server "${vt_clientip}" 2>/dev/null || echo "192.168.100.1")
+	[ -n "${vt_clientip}" ] && netmask=$(cidr_netmask "${vt_clientip}" 2>/dev/null || echo "255.255.255.0")
 
-	uci -q delete network.ipsec_server
-	uci -q set network.ipsec_server=interface
-	uci -q set network.ipsec_server.device="ipsec0"
-	uci -q set network.ipsec_server.proto="static"
-	uci -q set network.ipsec_server.ipaddr="${vt_gateway4}"
-	uci -q set network.ipsec_server.netmask="${vt_netmask4}"
-	if [ "${vt_ikev2_ipv6_enable}" = 1 ] && [ -n "${vt_ikev2_serverip6}" ]; then
-		uci -q set network.ipsec_server.ip6addr="${vt_ikev2_serverip6}"
-	else
-		uci -q delete network.ipsec_server.ip6addr >/dev/null 2>&1
+	if [ "${vt_ikev2_ipv6_enable}" = 1 ] && [ -n "${vt_clientip6}" ]; then
+		gateway6=$(cidr_server "${vt_clientip6}" 2>/dev/null)
+		prefix6=$(cidr_prefix "${vt_clientip6}" 2>/dev/null)
 	fi
-	uci -q commit network >/dev/null
 
-	uci -q delete firewall.ipsecserver
-	uci -q set firewall.ipsecserver=zone
-	uci -q set firewall.ipsecserver.name="ipsecserver"
-	uci -q set firewall.ipsecserver.input="ACCEPT"
-	uci -q set firewall.ipsecserver.forward="ACCEPT"
-	uci -q set firewall.ipsecserver.output="ACCEPT"
-	uci -q set firewall.ipsecserver.network="ipsec_server"
-	uci -q commit firewall >/dev/null
+	uci -q batch <<-EOF2 >/dev/null
+		delete network.ipsec_server
+		set network.ipsec_server=interface
+		set network.ipsec_server.device="ipsec0"
+		set network.ipsec_server.proto="static"
+		set network.ipsec_server.ipaddr="${gateway}"
+		set network.ipsec_server.netmask="${netmask}"
+		delete firewall.ipsecserver
+		set firewall.ipsecserver=zone
+		set firewall.ipsecserver.name="ipsecserver"
+		set firewall.ipsecserver.input="ACCEPT"
+		set firewall.ipsecserver.forward="ACCEPT"
+		set firewall.ipsecserver.output="ACCEPT"
+		set firewall.ipsecserver.network="ipsec_server"
+	EOF2
+
+	if [ -n "${gateway6}" ] && [ -n "${prefix6}" ]; then
+		uci -q set network.ipsec_server.ip6addr="${gateway6}/${prefix6}"
+	else
+		uci -q delete network.ipsec_server.ip6addr
+	fi
+
+	uci -q commit network
+	uci -q commit firewall
 }
 
 if [ -z "$(uci -q get network.ipsec_server)" ] || [ -z "$(uci -q get firewall.ipsecserver)" ]; then
