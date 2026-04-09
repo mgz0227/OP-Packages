@@ -68,6 +68,49 @@ elseif action == "range" then
 		os.exit(1)
 	end
 	io.write(start:string(), "-", maxhost:string())
+elseif action == "poollist" then
+	local start = ip.new((value:match("^([^/]+)") or ""))
+	local minhost = cidr:minhost()
+	local maxhost = cidr:maxhost()
+	local maxbits = cidr:is4() and 32 or (cidr:is6() and 128 or nil)
+	local blocks = {}
+	if not start or not minhost or not maxhost or not maxbits then
+		os.exit(1)
+	end
+	start = start:host()
+	minhost = minhost:host()
+	maxhost = maxhost:host()
+	if start:lower(minhost) then
+		start = minhost
+	elseif start:higher(maxhost) then
+		os.exit(1)
+	end
+	while true do
+		local prefix = maxbits
+		while prefix > cidr:prefix() do
+			local cand = ip.new(start:string(), prefix - 1)
+			local cand_max
+			if not cand then
+				break
+			end
+			if not cand:network():equal(start) then
+				break
+			end
+			cand_max = cand:maxhost() or cand:host()
+			if cand_max:higher(maxhost) then
+				break
+			end
+			prefix = prefix - 1
+		end
+		local block = ip.new(start:string(), prefix)
+		blocks[#blocks + 1] = string.format("%s/%d", block:network(prefix):host():string(), prefix)
+		local next_start = (block:maxhost() or block:host()):add(1)
+		if next_start:higher(maxhost) then
+			break
+		end
+		start = next_start:host()
+	end
+	io.write(table.concat(blocks, ","))
 elseif action == "address" then
 	local start = ip.new((value:match("^([^/]+)") or ""))
 	if not start then
@@ -96,6 +139,10 @@ cidr_minhost() {
 
 cidr_pool_range() {
 	cidr_eval range "$1"
+}
+
+cidr_pool_list() {
+	cidr_eval poollist "$1"
 }
 
 prepare_ikev2_eap_acme_certificates() {
@@ -237,7 +284,8 @@ start() {
 
 	local vt_gateway=$(cidr_minhost "${vt_clientip}" 2>/dev/null)
 	local vt_netmask=$(cidr_netmask "${vt_clientip}" 2>/dev/null)
-	local vt_clientpool=$(cidr_pool_range "${vt_clientip}" 2>/dev/null)
+	local vt_clientsubnet=$(cidr_network "${vt_clientip}" 2>/dev/null)
+	local vt_clientpool_ikev2=$(cidr_pool_list "${vt_clientip}" 2>/dev/null)
 	local vt_secret=$(uci -q get ${CONFIG}.@service[0].secret)
 	local vt_secret_escaped=$(ipsec_escape "${vt_secret}")
 	local ikev2_psk_enable=$(uci -q get ${CONFIG}.@service[0].ikev2_psk_enable)
@@ -251,10 +299,11 @@ start() {
 	local ikev2_any_enable=0
 	local ikev2_eap_ready=0
 	local ikev2_gateway6=""
+	local ikev2_clientsubnet6=""
 	local ikev2_clientpool6=""
 	local ipsec_rightdns="${vt_gateway}"
 	local ipsec_ikev2_leftsubnet="0.0.0.0/0"
-	local ipsec_ikev2_rightsourceip="${vt_clientpool}"
+	local ipsec_ikev2_rightsourceip="${vt_clientpool_ikev2}"
 	local ipsec_ikev2_psk_config=""
 	local ipsec_ikev2_eap_config=""
 	local ipsec_extra_secrets=""
@@ -266,7 +315,8 @@ start() {
 	[ -n "${ikev2_eap_acme_name}" ] || ikev2_eap_acme_name="${ikev2_eap_id}"
 	[ -n "${vt_gateway}" ] || vt_gateway="${vt_clientip%.*}.1"
 	[ -n "${vt_netmask}" ] || vt_netmask="255.255.255.0"
-	[ -n "${vt_clientpool}" ] || vt_clientpool="${vt_clientip}"
+	[ -n "${vt_clientsubnet}" ] || vt_clientsubnet="${vt_clientip}"
+	[ -n "${vt_clientpool_ikev2}" ] || vt_clientpool_ikev2="${vt_clientsubnet}"
 
 	[ "${ikev2_psk_enable}" = 1 ] && ikev2_any_enable=1
 	[ "${ikev2_eap_enable}" = 1 ] && ikev2_any_enable=1
@@ -279,15 +329,17 @@ start() {
 			log "IKEv2 IPv6 is enabled but the IPv6 client/server addresses are incomplete, skipping IKEv2 IPv6"
 			ikev2_ipv6_enable=0
 		else
-			ikev2_clientpool6=$(cidr_pool_range "${ikev2_clientip6}" 2>/dev/null)
-			if [ -z "${ikev2_clientpool6}" ]; then
-				ikev2_clientpool6=$(cidr_network "${ikev2_clientip6}" 2>/dev/null)
-				[ -n "${ikev2_clientpool6}" ] || ikev2_clientpool6="${ikev2_clientip6}"
+			ikev2_clientsubnet6=$(cidr_network "${ikev2_clientip6}" 2>/dev/null)
+			ikev2_clientpool6=$(cidr_pool_list "${ikev2_clientip6}" 2>/dev/null)
+			if [ -z "${ikev2_clientsubnet6}" ] || [ -z "${ikev2_clientpool6}" ]; then
+				log "IKEv2 IPv6 is enabled but the IPv6 pool could not be derived from ${ikev2_clientip6}, skipping IKEv2 IPv6"
+				ikev2_ipv6_enable=0
+			else
+				ikev2_gateway6=$(strip_cidr "${ikev2_serverip6}")
+				ipsec_rightdns="${vt_gateway},${ikev2_gateway6}"
+				ipsec_ikev2_leftsubnet="0.0.0.0/0,::/0"
+				ipsec_ikev2_rightsourceip="${vt_clientpool_ikev2},${ikev2_clientpool6}"
 			fi
-			ikev2_gateway6=$(strip_cidr "${ikev2_serverip6}")
-			ipsec_rightdns="${vt_gateway},${ikev2_gateway6}"
-			ipsec_ikev2_leftsubnet="0.0.0.0/0,::/0"
-			ipsec_ikev2_rightsourceip="${vt_clientpool},${ikev2_clientpool6}"
 		fi
 	fi
 
@@ -365,7 +417,8 @@ start() {
 		  also=RemoteAccess
 		  keyexchange=ikev1
 		  leftsubnet=0.0.0.0/0
-		  rightsourceip=${vt_clientpool}
+		  rightsubnet=${vt_clientip}
+		  rightsourceip=${vt_clientip}
 		  rightdns=${vt_gateway}
 
 		conn RemoteAccess-IKEv2

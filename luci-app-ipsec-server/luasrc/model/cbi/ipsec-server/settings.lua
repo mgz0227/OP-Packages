@@ -66,7 +66,7 @@ o.rmempty = false
 
 o = s:option(Flag, "ikev2_ipv6_enable", translate("Enable IPv6 for IKEv2"))
 o.description = translate("Provide IPv6 virtual addresses to IKEv2 clients. Android and other dual-stack clients may request INTERNAL_IP6_ADDRESS during IKEv2. This option only affects IKEv2 PSK/EAP and does not change legacy IKEv1 Xauth.")
-o.default = 0
+o.default = 1
 o.rmempty = false
 
 o = s:option(Value, "ikev2_clientip6", translate("IKEv2 IPv6 Client IP"))
