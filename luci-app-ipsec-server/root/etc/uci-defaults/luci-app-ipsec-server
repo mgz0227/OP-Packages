@@ -7,6 +7,14 @@
 }
 EEOF
 }
+[ ! -f "/usr/share/ucitrack/luci-app-luci-app-ipsec-server.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-luci-app-ipsec-server.json << EEOF
+{
+    "config": "luci-app-ipsec-server",
+    "init": "luci-app-ipsec-server"
+}
+EEOF
+}
 
 uci -q batch <<-EOF >/dev/null
 	delete firewall.luci_app_ipsec_server
@@ -27,6 +35,5 @@ EOF
 /etc/init.d/ipsec stop 2>/dev/null
 /etc/init.d/xl2tpd disable 2>/dev/null
 /etc/init.d/xl2tpd stop 2>/dev/null
-chmod 777 /etc/init.d/luci-app-ipsec-server && /etc/init.d/luci-app-ipsec-server enable
 rm -rf /tmp/luci-*cache
 exit 0
