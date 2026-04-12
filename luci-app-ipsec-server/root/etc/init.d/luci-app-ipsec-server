@@ -208,7 +208,7 @@ start() {
 		  leftsubnet=0.0.0.0/0
 		  right=%any
 		  rightauth=psk
-		  rightsourceip=${vt_serverip}
+		  rightsourceip=${vt_clientip}
 
 		  ike=aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024,3des-sha1-modp1536
 		  esp=aes128-sha1,3des-sha1
