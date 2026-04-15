@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ipsec-server
 PKG_VERSION:=20260409
-PKG_RELEASE:=18
+PKG_RELEASE:=19
 
 PKG_MAINTAINER:=Lienol <lawlienol@gmail.com>
 
