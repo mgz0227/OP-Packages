@@ -38,8 +38,6 @@ msgstr "VPN服务端IP地址，例如：192.168.101.1"
 msgid "VPN Client IP address range, such as: 192.168.101.10-20"
 msgstr "VPN客户端获取IP范围，例如：192.168.101.10-20"
 
-msgid "L2TP/IPSec is not compatible with kernel-libipsec, which will disable this module."
-msgstr "L2TP/IPSec不兼容kernel-libipsec，开启将会禁用此模块。"
 
 msgid "Users Manager"
 msgstr "用户管理"
@@ -59,26 +57,14 @@ msgstr "自动分配"
 msgid "Online Users"
 msgstr "在线用户"
 
-msgid "L2TP Online Users"
-msgstr "L2TP 在线用户"
-
-msgid "Login Time"
-msgstr "登录时间"
-
-msgid "Blacklist"
-msgstr "黑名单"
-
-msgid "Add to Blacklist"
-msgstr "加入黑名单"
-
-msgid "Remove from Blacklist"
-msgstr "移出黑名单"
-
-msgid "Forced offline"
-msgstr "强制下线"
-
 msgid "NOT RUNNING"
 msgstr "未运行"
 
 msgid "RUNNING"
 msgstr "运行中"
+
+msgid "certs_name"
+msgstr "证书名称"
+
+msgid "private_key"
+msgstr "证书私钥名称"

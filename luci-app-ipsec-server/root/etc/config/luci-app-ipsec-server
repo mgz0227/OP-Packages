@@ -4,5 +4,6 @@ config service 'ipsec'
 	option secret 'ipsec'
 	option clientip '10.0.10.0/24'
 	option serverip '10.0.0.1/24'
-
+	option certs_name 'server.pem'
+	option private_key 'server_key.pem'
 

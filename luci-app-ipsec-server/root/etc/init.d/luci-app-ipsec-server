@@ -14,6 +14,8 @@ L2TP_LOG_FILE=${L2TP_PATH}/xl2tpd.log
 
 vt_clientip=$(uci -q get ${CONFIG}.@service[0].clientip)
 vt_serverip=$(uci -q get ${CONFIG}.@service[0].serverip)
+certs_name=$(uci -q get ${CONFIG}.@service[0].certs_name)
+private_key=$(uci -q get ${CONFIG}.@service[0].private_key)
 l2tp_enabled=$(uci -q get ${CONFIG}.@service[0].l2tp_enable)
 l2tp_localip=$(uci -q get ${CONFIG}.@service[0].l2tp_localip)
 
@@ -217,12 +219,42 @@ start() {
 		  rekey=no
 		  compress=no
 
+		conn ikev2-EAP
+		keyexchange=ikev2
+		auto=add
+		fragmentation=yes
+		forceencaps=yes
+
+		left=%defaultroute
+		leftid=@ns.miaogongzi.cc
+		leftauth=pubkey
+		leftcert=${certs_name}
+		leftsendcert=always
+		leftsubnet=0.0.0.0/0
+
+		right=%any
+		rightid=%any
+		rightauth=eap-mschapv2
+		eap_identity=%identity
+		rightsourceip=${vt_clientip}
+		rightdns=10.0.0.1
+
+		ike=aes256-sha256-modp1024,aes256-sha1-modp1024,aes128-sha256-modp1024,aes128-sha1-modp1024,aes256-sha256-modp2048,aes256-sha1-modp2048
+		esp=aes256-sha256,aes128-sha256,aes256-sha1,aes128-sha1
+		dpdaction=clear
+		dpddelay=30s
+		rekey=no
+		compress=no
+
+
+
 		$ipsec_l2tp_config
 	EOF
 
 	cat > /etc/ipsec.secrets <<-EOF
 	# /etc/ipsec.secrets - strongSwan IPsec secrets file
 	: PSK "$vt_secret"
+	: RSA /etc/ipsec.d/private/$private_key
 	EOF
 	
 	local ipsec_users=$(get_enabled_anonymous_secs "@ipsec_users")
@@ -238,6 +270,7 @@ start() {
 			[ -n "${u_password}" ] || continue
 			
 			echo "${u_username} : XAUTH '${u_password}'" >> ${IPSEC_SECRETS_FILE}
+			echo "${u_username} : EAP '${u_password}'" >> ${IPSEC_SECRETS_FILE}
 		done
 	}
 	unset user
