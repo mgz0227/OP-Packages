@@ -16,6 +16,7 @@ vt_clientip=$(uci -q get ${CONFIG}.@service[0].clientip)
 vt_serverip=$(uci -q get ${CONFIG}.@service[0].serverip)
 certs_name=$(uci -q get ${CONFIG}.@service[0].certs_name)
 private_key=$(uci -q get ${CONFIG}.@service[0].private_key)
+vpn_domain=$(uci -q get ${CONFIG}.@service[0].domain)
 l2tp_enabled=$(uci -q get ${CONFIG}.@service[0].l2tp_enable)
 l2tp_localip=$(uci -q get ${CONFIG}.@service[0].l2tp_localip)
 
@@ -226,7 +227,7 @@ start() {
 		forceencaps=yes
 
 		left=%defaultroute
-		leftid=@ns.miaogongzi.cc
+		leftid=@$vpn_domain
 		leftauth=pubkey
 		leftcert=${certs_name}
 		leftsendcert=always

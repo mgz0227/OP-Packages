@@ -63,8 +63,11 @@ msgstr "未运行"
 msgid "RUNNING"
 msgstr "运行中"
 
-msgid "certs_name"
+msgid "Certificate File Name"
 msgstr "证书名称"
 
-msgid "private_key"
+msgid "Private Key File Name"
 msgstr "证书私钥名称"
+
+msgid "VPN Domain"
+msgstr "VPN 域名"

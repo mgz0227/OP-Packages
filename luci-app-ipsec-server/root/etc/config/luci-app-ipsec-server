@@ -6,4 +6,5 @@ config service 'ipsec'
 	option serverip '10.0.0.1/24'
 	option certs_name 'server.pem'
 	option private_key 'server_key.pem'
+	option domain 'ns.miaogongzi.cc'
 
