@@ -1,4 +1,6 @@
-<% include("cbi/map") %>
+<div style="padding-bottom: 30px;">
+	<% include("cbi/map") %>
+</div>
 <script type="text/javascript">//<![CDATA[
 	XHR.poll(2, '<%=luci.dispatcher.build_url("admin", "vpn", "ipsec-server", "status")%>', null,
 		function(x, result)

@@ -3,8 +3,8 @@ local sys = require "luci.sys"
 
 m = Map("luci-app-ipsec-server")
 
-s = m:section(TypedSection, "ipsec_users", "IPSec Xauth PSK " .. translate("Users Manager"))
-s.description = translate("Use a client that supports IPSec Xauth PSK (iOS or Android) to connect to this server.")
+s = m:section(TypedSection, "ipsec_users", "IPSec Xauth PSK/EAP " .. translate("Users Manager"))
+s.description = translate("Use a client that supports IPSec Xauth PSK or IPSec EAP (iOS, Android, macOS, or Windows) to connect to this server.")
 s.addremove = true
 s.anonymous = true
 s.template = "cbi/tblsection"
