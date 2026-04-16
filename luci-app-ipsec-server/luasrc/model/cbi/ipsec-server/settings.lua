@@ -35,18 +35,21 @@ domain.datatype = "host"
 domain.optional = false
 domain.rmempty = false
 domain.placeholder = "ns.miaogongzi.cc"
+domain.default = "ns.miaogongzi.cc"
 
 certs_name = s:option(Value, "certs_name", translate("Certificate File Name"))
 certs_name.description = translate("Server certificate file name under /etc/ipsec.d/certs/, such as: server.pem")
 certs_name.optional = false
 certs_name.rmempty = false
 certs_name.placeholder = "server.pem"
+certs_name.default = "server.pem"
 
 private_key = s:option(Value, "private_key", translate("Private Key File Name"))
 private_key.description = translate("Server private key file name under /etc/ipsec.d/private/, such as: server_key.pem")
 private_key.optional = false
 private_key.rmempty = false
 private_key.placeholder = "server_key.pem"
+private_key.default = "server_key.pem"
 
 secret = s:option(Value, "secret", translate("Secret Pre-Shared Key"))
 secret.password = true
