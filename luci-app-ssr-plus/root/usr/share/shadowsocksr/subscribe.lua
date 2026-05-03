@@ -26,17 +26,17 @@ local ucic = require "luci.model.uci".cursor()
 local proxy = ucic:get_first(name, 'server_subscribe', 'proxy', '0')
 local switch = ucic:get_first(name, 'server_subscribe', 'switch', '1')
 local allow_insecure = ucic:get_first(name, 'server_subscribe', 'allow_insecure', '0')
-local subscribe_url = ucic:get_first(name, 'server_subscribe', 'subscribe_url', {})
 local filter_words = ucic:get_first(name, 'server_subscribe', 'filter_words', '过期/套餐/剩余/网址/QQ群/官网/防失联/回国')
 local save_words = ucic:get_first(name, 'server_subscribe', 'save_words', '')
 local user_agent = ucic:get_first(name, 'server_subscribe', 'user_agent', 'v2rayN/9.99')
 local local_clash_dir = "/etc/ssrplus/clash"
+local target_subscribe_sid = tostring(arg and arg[1] or ""):gsub("^%s*(.-)%s*$", "%1")
 
 local has_ss_rust = luci.sys.exec('type -t -p sslocal 2>/dev/null || type -t -p ssserver 2>/dev/null') ~= ""
 local has_ss_libev = luci.sys.exec('type -t -p ss-redir 2>/dev/null || type -t -p ss-local 2>/dev/null') ~= ""
 local has_xray = luci.sys.exec('type -t -p xray 2>/dev/null') ~= ""
 
-local tuic_type = luci.sys.exec('type -t -p tuic-client') ~= "" and "tuic"
+local tuic_type = luci.sys.exec('type -t -p mihomo -p /usr/libexec/mihomo 2>/dev/null') ~= "" and "tuic"
 local log = function(...)
 	print(os.date("%Y-%m-%d %H:%M:%S ") .. table.concat({...}, " "))
 end
@@ -154,6 +154,55 @@ local function is_true_value(v)
 	return false
 end
 
+local function collect_subscribe_items()
+	local items = {}
+
+	ucic:foreach(name, "server_subscribe_item", function(s)
+		if target_subscribe_sid ~= "" and s[".name"] ~= target_subscribe_sid then
+			return
+		end
+
+		local url = trim(s.url or "")
+		if url == "" then
+			return
+		end
+
+		if target_subscribe_sid == "" and not is_true_value(s.enabled or "1") then
+			return
+		end
+
+		items[#items + 1] = {
+			sid = s[".name"],
+			alias = trim(s.alias or ""),
+			url = url
+		}
+	end)
+
+	if #items > 0 then
+		return items
+	end
+
+	if target_subscribe_sid ~= "" then
+		return items
+	end
+
+	local legacy_urls = ucic:get_first(name, 'server_subscribe', 'subscribe_url', {})
+	for index, url in ipairs(legacy_urls or {}) do
+		url = trim(url)
+		if url ~= "" then
+			items[#items + 1] = {
+				sid = "legacy_" .. index,
+				alias = "Legacy " .. index,
+				url = url
+			}
+		end
+	end
+
+	return items
+end
+
+local subscribe_items = collect_subscribe_items()
+
 local function first_nonempty(tbl, keys)
 	for _, key in ipairs(keys) do
 		local value = tbl[key]
@@ -162,6 +211,40 @@ local function first_nonempty(tbl, keys)
 		end
 	end
 	return nil
+end
+
+local function normalize_host(value)
+	value = trim(value or "")
+	if value == "" then
+		return value
+	end
+	if value:match("^%[.*%]$") then
+		return value:sub(2, -2)
+	end
+	return value
+end
+
+local function parse_host_port(value, default_port)
+	value = trim(value or "")
+	if value == "" then
+		return nil, default_port
+	end
+
+	local host, port = value:match("^%[(.*)%]:(%d+)$")
+	if host then
+		return normalize_host(host), port
+	end
+
+	host, port = value:match("^(.-):(%d+)$")
+	if host and host ~= "" and not host:find(":", 1, true) then
+		return normalize_host(host), port
+	end
+
+	if value:find(":", 1, true) then
+		return normalize_host(value), default_port
+	end
+
+	return normalize_host(value), default_port
 end
 -- md5
 local function md5(content)
@@ -247,7 +330,7 @@ local function processClashSubscription(url)
 	local server_port = parsed.port or ((parsed.scheme == "http") and "80" or "443")
 	local result = {
 		type = "clash",
-		server = parsed.host,
+		server = normalize_host(parsed.host),
 		server_port = server_port,
 		clash_url = url,
 		clash_user_agent = user_agent,
@@ -439,7 +522,7 @@ local function processData(szType, content, cfgid)
 		local raw_alias = url.fragment and UrlDecode(url.fragment) or nil
 		result.raw_alias = raw_alias   -- 新增
 		result.alias = raw_alias       -- 临时赋值（后面会被覆盖）
-		result.server = url.host
+		result.server = normalize_host(url.host)
 		result.server_port = url.port or 443
 		result.hy2_auth = url.user
 
@@ -468,15 +551,22 @@ local function processData(szType, content, cfgid)
 		-- 去掉前后空白和#注释
 		local link = trim(content:gsub("#.*$", ""))
 		local dat = split(link, "/%?")
-		local hostInfo = split(dat[1] or '', ':')
+		local host, port, rest
+		local hostinfo = dat[1] or ''
+		if hostinfo:find("^%[.*%]:") then
+			host, port, rest = hostinfo:match("^%[(.*)%]:(%d+):(.*)$")
+		else
+			host, port, rest = hostinfo:match("^(.-):(%d+):(.*)$")
+		end
 
 		result.type = 'ssr'
-		result.server = hostInfo[1] or ''
-		result.server_port = hostInfo[2] or ''
-		result.protocol = hostInfo[3] or ''
-		result.encrypt_method = hostInfo[4] or ''
-		result.obfs = hostInfo[5] or ''
-		result.password = base64Decode(hostInfo[6] or '')
+		local ssr_parts = split(rest or '', ':')
+		result.server = normalize_host(host or '')
+		result.server_port = port or ''
+		result.protocol = ssr_parts[1] or ''
+		result.encrypt_method = ssr_parts[2] or ''
+		result.obfs = ssr_parts[3] or ''
+		result.password = base64Decode(ssr_parts[4] or '')
 
 		local params = {}
 		if dat[2] and dat[2] ~= '' then
@@ -691,7 +781,7 @@ local function processData(szType, content, cfgid)
 
 			result.type = "v2ray"
 			result.v2ray_protocol = "shadowsocks"
-			result.server = url.host
+			result.server = normalize_host(url.host)
 			result.server_port = url.port
 
 			-- 判断 @ 前部分是否为 Base64
@@ -1020,13 +1110,7 @@ local function processData(szType, content, cfgid)
 			end
 
 			-- 提取服务器地址和端口
-			if host_port:find(":") then
-				local sp = split(host_port, ":")
-				result.server_port = sp[#sp]
-				result.server = sp[1]
-			else
-				result.server = host_port
-			end
+			result.server, result.server_port = parse_host_port(host_port, "443")
 
 			-- 默认设置
 			-- 按照官方的建议 默认验证ssl证书
@@ -1166,7 +1250,7 @@ local function processData(szType, content, cfgid)
 		result.alias = raw_alias       -- 临时赋值（后面会被覆盖）
 		result.type = "v2ray"
 		result.v2ray_protocol = "vless"
-		result.server = url.host
+		result.server = normalize_host(url.host)
 		result.server_port = url.port
 		result.vmess_id = url.user
 		result.vless_encryption = params.encryption or "none"
@@ -1297,7 +1381,7 @@ local function processData(szType, content, cfgid)
 		end
 	elseif szType == "tuic" then
 		if not tuic_type then
-			log("跳过 TUIC 节点：本地未安装 tuic-client。")
+			log("跳过 TUIC 节点：本地未安装 mihomo。")
 			return nil
 		end
 
@@ -1337,13 +1421,7 @@ local function processData(szType, content, cfgid)
 		end
 
 		-- 提取服务器地址和端口
-		if host_port:find(":") then
-			local sp = split(host_port, ":")
-			result.server_port = sp[#sp]
-			result.server = sp[1]
-		else
-			result.server = host_port
-		end
+		result.server, result.server_port = parse_host_port(host_port, "443")
 
 		result.type = tuic_type
 		result.tuic_ip = params.ip or ""
@@ -1543,16 +1621,39 @@ local function loadOldNodes(groupHash)
 	end)
 end
 
+local function preserve_unselected_groups(selected_hashes)
+	local preserved = {}
+
+	ucic:foreach(name, uciType, function(s)
+		local groupHash = s.grouphashkey
+		if groupHash and groupHash ~= "" and not selected_hashes[groupHash] and not preserved[groupHash] then
+			preserved[groupHash] = true
+			loadOldNodes(groupHash)
+		end
+	end)
+end
+
 local execute = function()
 	local updated = false
 	local service_stopped = false
+	local selected_hashes = {}
+
+	for _, item in ipairs(subscribe_items) do
+		selected_hashes[md5(item.url)] = true
+	end
 
 	if proxy == '0' then
 		log('服务正在暂停')
 		luci.sys.init.stop(name)
 		service_stopped = true
 	end
-	for k, url in ipairs(subscribe_url) do
+
+	if target_subscribe_sid ~= "" then
+		preserve_unselected_groups(selected_hashes)
+	end
+
+	for _, item in ipairs(subscribe_items) do
+		local url = item.url
 		local raw, new_md5 = curl(url, user_agent)
 		log("raw 长度: "..#raw)
 		local groupHash = md5(url)
@@ -1848,7 +1949,7 @@ local execute = function()
 	log('订阅更新成功')
 end
 
-if subscribe_url and #subscribe_url > 0 then
+if subscribe_items and #subscribe_items > 0 then
 	xpcall(execute, function(e)
 		log(e)
 		log(debug.traceback())
