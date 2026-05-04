@@ -7,27 +7,35 @@ local m, s, o
 local redir_run = 0
 local reudp_run = 0
 local sock5_run = 0
-local http_run = 0
 local server_run = 0
+local kcptun_run = 0
 local tunnel_run = 0
 local gfw_count = 0
 local ad_count = 0
 local ip_count = 0
-local Process_list = luci.sys.exec("busybox ps -w 2>/dev/null || busybox ps")
+local nfip_count = 0
+local Process_list = luci.sys.exec("busybox ps -w")
 local uci = require "luci.model.uci".cursor()
-local global_server = uci:get_first("shadowsocksr", "global", "global_server", "nil")
-local global_type = global_server ~= "nil" and (uci:get("shadowsocksr", global_server, "type") or "") or ""
-local global_socks_enabled = uci:get_first("shadowsocksr", "socks5_proxy", "enabled", "0") == "1"
-local global_socks_server = uci:get_first("shadowsocksr", "socks5_proxy", "server", "nil")
-local global_http_enabled = uci:get_first("shadowsocksr", "http_proxy", "enabled", "0") == "1"
-local has_3proxy = nixio.fs.access("/usr/bin/3proxy") or nixio.fs.access("/usr/libexec/3proxy") or nixio.fs.access("/bin/3proxy")
-local pdnsd_mode = uci:get_first("shadowsocksr", 'global', 'pdnsd_enable', '0')
 -- html constants
 font_blue = [[<b style=color:green>]]
 style_blue = [[<b style=color:red>]]
 font_off = [[</b>]]
 bold_on = [[<strong>]]
 bold_off = [[</strong>]]
+local kcptun_version = translate("Unknown")
+local kcp_file = "/usr/bin/kcptun-client"
+if not nixio.fs.access(kcp_file) then
+	kcptun_version = translate("Not exist")
+else
+	if not nixio.fs.access(kcp_file, "rwx", "rx", "rx") then
+		nixio.fs.chmod(kcp_file, 755)
+	end
+	kcptun_version = "<b>" ..luci.sys.exec(kcp_file .. " -v | awk '{printf $3}'") .. "</b>"
+	if not kcptun_version or kcptun_version == "" then
+		kcptun_version = translate("Unknown")
+	end
+end
+
 if nixio.fs.access("/etc/ssrplus/gfw_list.conf") then
 	gfw_count = tonumber(luci.sys.exec("cat /etc/ssrplus/gfw_list.conf | wc -l")) / 2
 end
@@ -42,6 +50,10 @@ end
 
 if nixio.fs.access("/etc/ssrplus/applechina.conf") then
 	apple_count = tonumber(luci.sys.exec("cat /etc/ssrplus/applechina.conf | wc -l"))
+end
+
+if nixio.fs.access("/etc/ssrplus/netflixip.list") then
+	nfip_count = tonumber(luci.sys.exec("cat /etc/ssrplus/netflixip.list | wc -l"))
 end
 
 if Process_list:find("udp.only.ssr.reudp") then
@@ -60,10 +72,6 @@ end
 
 if Process_list:find("tcp.udp.ssr.local") then
 	sock5_run = 1
-end
-
-if has_3proxy and Process_list:find("3proxy%-ssr%-http%.cfg") then
-	http_run = 1
 end
 
 if Process_list:find("tcp.udp.ssr.retcp") then
@@ -95,44 +103,19 @@ if Process_list:find("local.udp.ssr.retcp") then
 	sock5_run = 1
 end
 
-if (global_type == "clash" or global_type == "tuic" or global_type == "ss") and Process_list:find("ssr%-retcp") then
-	redir_run = 1
-	reudp_run = 1
-	if global_socks_enabled and (global_socks_server == "same" or global_socks_server == global_server) then
-		sock5_run = 1
-	end
-end
-
-if (global_type == "clash" or global_type == "tuic" or global_type == "ss") and Process_list:find("mihomo") and (Process_list:find("/clash%-") or Process_list:find("/tuic%-") or Process_list:find("/ss%-")) then
-	redir_run = 1
-	reudp_run = 1
-	if global_socks_enabled and (global_socks_server == "same" or global_socks_server == global_server) then
-		sock5_run = 1
-	end
-end
-
-if has_3proxy and global_http_enabled and http_run == 0 and Process_list:find("3proxy%-ssr%-http%.cfg") then
-	http_run = 1
+if Process_list:find("kcptun.client") then
+	kcptun_run = 1
 end
 
 if Process_list:find("ssr.server") then
 	server_run = 1
 end
 
-if Process_list:find("mihomo") and Process_list:find("/ss%-server%-") then
-	server_run = 1
-end
-
 if  Process_list:find("ssrplus/bin/dns2tcp") or
-    Process_list:find("ssrplus/bin/mosdns") then
-	pdnsd_run = 1
-end
-
-if pdnsd_mode == "7" and (global_type == "clash" or global_type == "tuic" or global_type == "ss") and Process_list:find("ssr%-retcp") then
-	pdnsd_run = 1
-end
-
-if pdnsd_mode == "7" and global_type == "v2ray" and Process_list:find("ssr%-retcp%.json") then
+    Process_list:find("ssrplus/bin/mosdns") or
+    Process_list:find("dnsproxy.*127.0.0.1.*5335") or
+    Process_list:find("chinadns.*127.0.0.1.*5335") or
+    (Process_list:find("ssrplus.dns") and Process_list:find("dns2socks.*127.0.0.1.*127.0.0.1.5335")) then
 	pdnsd_run = 1
 end
 
@@ -174,22 +157,25 @@ else
 	s.value = style_blue .. bold_on .. translate("Not Running") .. bold_off .. font_off
 end
 
-if has_3proxy then
-	s = m:field(DummyValue, "http_run", translate("Global HTTP/HTTPS Proxy Server"))
-	s.rawhtml = true
-	if http_run == 1 then
-		s.value = font_blue .. bold_on .. translate("Running") .. bold_off .. font_off
-	else
-		s.value = style_blue .. bold_on .. translate("Not Running") .. bold_off .. font_off
-	end
-end
-
 s = m:field(DummyValue, "server_run", translate("Local Servers"))
 s.rawhtml = true
 if server_run == 1 then
 	s.value = font_blue .. bold_on .. translate("Running") .. bold_off .. font_off
 else
 	s.value = style_blue .. bold_on .. translate("Not Running") .. bold_off .. font_off
+end
+
+if nixio.fs.access("/usr/bin/kcptun-client") then
+	s = m:field(DummyValue, "kcp_version", translate("KcpTun Version"))
+	s.rawhtml = true
+	s.value = kcptun_version
+	s = m:field(DummyValue, "kcptun_run", translate("KcpTun"))
+	s.rawhtml = true
+	if kcptun_run == 1 then
+		s.value = font_blue .. bold_on .. translate("Running") .. bold_off .. font_off
+	else
+		s.value = style_blue .. bold_on .. translate("Not Running") .. bold_off .. font_off
+	end
 end
 
 s = m:field(Button, "Restart", translate("Restart ShadowSocksR Plus+"))
@@ -223,6 +209,13 @@ if uci:get_first("shadowsocksr", 'global', 'apple_optimization', '0') ~= '0' the
 	s.rawhtml = true
 	s.template = "shadowsocksr/refresh"
 	s.value = apple_count .. " " .. translate("Records")
+end
+
+if uci:get_first("shadowsocksr", 'global', 'netflix_enable', '0') ~= '0' then
+	s = m:field(DummyValue, "nfip_data", translate("Netflix IP Data"))
+	s.rawhtml = true
+	s.template = "shadowsocksr/refresh"
+	s.value = nfip_count .. " " .. translate("Records")
 end
 
 if uci:get_first("shadowsocksr", 'global', 'adblock', '0') == '1' then

@@ -1,17 +1,119 @@
 'use strict';
 'require baseclass';
+'require fs';
+'require request';
 'require ui';
-
-// 兼容新旧版本 LuCI
-var LuciCompat = {
-	isNewVersion: function() {
-		return L.env.luci_version && parseFloat(L.env.luci_version.split('.')[0]) >= 23;
-	}
-};
 
 return baseclass.extend({
 	__init__: function() {
-		ui.menu.load().then(L.bind(this.render, this));
+		var params = new URLSearchParams(window.location.search);
+
+		if (params.get('menu') === 'flush') {
+			ui.menu.flushCache();
+			params.delete('menu');
+			window.history.replaceState(null, '', window.location.pathname +
+				(params.toString() ? '?' + params.toString() : '') +
+				window.location.hash);
+		}
+
+		this.dynamicMenuTargets = {};
+
+		this.syncConditionalMenuCache()
+			.then(L.bind(function(reloading) {
+				if (reloading)
+					return;
+
+				return this.resolveDynamicMenuTargets()
+					.then(L.bind(function() {
+						return ui.menu.load().then(L.bind(this.render, this));
+					}, this));
+			}, this));
+	},
+
+	resolveDynamicMenuTargets: function() {
+		this.dynamicMenuTargets = {};
+
+		if (!document.body.classList.contains('logged-in'))
+			return Promise.resolve();
+
+		return this.resolveFirewallMenuTarget().then(L.bind(function(target) {
+			if (target)
+				this.dynamicMenuTargets['admin/status/nftables'] = target;
+		}, this));
+	},
+
+	resolveFirewallMenuTarget: function() {
+		return L.resolveDefault(fs.exec_direct('/usr/sbin/nft', [ '--terse', '--json', 'list', 'ruleset' ], 'json'), null).then(function(nft) {
+			var hasTables = false;
+
+			if (!Array.isArray(nft && nft.nftables))
+				return null;
+
+			for (var i = 0; i < nft.nftables.length; i++) {
+				if (nft.nftables[i] && nft.nftables[i].hasOwnProperty('table')) {
+					hasTables = true;
+					break;
+				}
+			}
+
+			return hasTables ? null : 'admin/status/nftables/iptables';
+		});
+	},
+
+	getMenuHref: function(url, child) {
+		var path = [ url, child.name ].filter(Boolean).join('/'),
+			target = this.dynamicMenuTargets[path];
+
+		if (target)
+			return L.url.apply(L, target.split('/'));
+
+		return L.url(url, child.name);
+	},
+
+	reloadPageWithMenuFlush: function() {
+		var url = new URL(window.location.href);
+
+		url.searchParams.set('menu', 'flush');
+		window.location.replace(url.toString());
+	},
+
+	getConditionalMenuStamp: function() {
+		var googleFuMode = !!document.querySelector('.navbar a[href*="/admin/services/openclash"]');
+
+		return Promise.resolve(JSON.stringify({
+			google_fu_mode: googleFuMode
+		}));
+	},
+
+	flushBackendMenuCache: function() {
+		ui.menu.flushCache();
+
+		return L.resolveDefault(request.get(L.url('admin/services/theme_menu_flush')), null).then(function() {
+			ui.menu.flushCache();
+		}).then(function() {
+			ui.menu.flushCache();
+		});
+	},
+
+	syncConditionalMenuCache: function() {
+		var storageKey = 'design.menu.condition-stamp';
+
+		if (!document.body.classList.contains('logged-in'))
+			return Promise.resolve();
+
+		return this.getConditionalMenuStamp().then(L.bind(function(stamp) {
+			var previousStamp = window.localStorage.getItem(storageKey);
+
+			if (previousStamp === stamp)
+				return false;
+
+			window.localStorage.setItem(storageKey, stamp);
+
+			return this.flushBackendMenuCache().then(L.bind(function() {
+				this.reloadPageWithMenuFlush();
+				return true;
+			}, this));
+		}, this));
 	},
 
 	render: function(tree) {
@@ -124,11 +226,11 @@ return baseclass.extend({
 				ul.classList.add('active');
 				slideClass += " active";
 				menuClass += " active";
-			}
+				}
 
 			ul.appendChild(E('li', { 'class': slideClass }, [
 				E('a', {
-					'href': L.url(url, children[i].name),
+					'href': this.getMenuHref(url, children[i]),
 					'click': (l == 1) ? ui.createHandlerFn(this, 'handleMenuExpand') : null,
 					'class': menuClass,
 					'data-title': hasChildren ? children[i].title.replace(" ", "_") : children[i].title.replace(" ", "_"),
@@ -243,4 +345,3 @@ return baseclass.extend({
 		}
 	},
 });
-

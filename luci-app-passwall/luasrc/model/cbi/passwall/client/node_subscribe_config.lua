@@ -165,7 +165,7 @@ o:value("UseIPv4", translate("IPv4 Only"))
 o:value("UseIPv6", translate("IPv6 Only"))
 
 o = s:option(Flag, "allowInsecure", translate("allowInsecure"))
-o.default = "0"
+o.default = "1"
 o.rmempty = false
 o.description = translate("Whether unsafe connections are allowed. When checked, Certificate validation will be skipped.") .. "<br>" ..
 		translate("Used when the node link does not include this parameter.")
