@@ -9,6 +9,15 @@
  	default PACKAGE_$(PKG_NAME)_INCLUDE_NONE_V2RAY
  
  	config PACKAGE_$(PKG_NAME)_INCLUDE_NONE_V2RAY
+@@ -169,7 +169,7 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_DNSPROXY
+ 
+ config PACKAGE_$(PKG_NAME)_INCLUDE_MosDNS
+ 	bool "Include MosDNS"
+-	default y if aarch64||arm||i386||x86_64
++	default y if aarch64||i386||x86_64
+ 
+ config PACKAGE_$(PKG_NAME)_INCLUDE_Hysteria
+ 	bool "Include Hysteria"
 
 --- a/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
 +++ b/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
@@ -80,8 +89,15 @@
  	luci.sys.call("/usr/bin/lua /usr/share/shadowsocksr/subscribe.lua >>/var/log/ssrplus.log")
  	luci.http.prepare_content("application/json")
 
+--- a/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua
++++ b/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua
+@@ -293,4 +293,5 @@ if is_finded("chinadns-ng") then
+ 	end
+ end
+ 
++m:section(SimpleSection).template = "shadowsocksr/status_bottom"
+ return m
 
-diff --git a/luci-app-ssr-plus/luasrc/view/shadowsocksr/status_bottom.htm b/luci-app-passwall/luasrc/view/shadowsocksr/status_bottom.htm
 new file mode 100644
 index 000000000000..a00fff9c79b3
 --- /dev/null
