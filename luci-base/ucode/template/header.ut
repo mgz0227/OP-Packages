@@ -1,0 +1,53 @@
+{#
+ Copyright 2022 Jo-Philipp Wich <jo@mein.io>
+ Licensed to the public under the Apache License 2.0.
+-#}
+
+{%
+	import { access } from 'fs';
+	import { cursor } from 'uci';
+
+	const wizard_request = ctx.request_path ?? [];
+	let wizard_pending = false;
+
+	if (ctx.authsession &&
+	    wizard_request[0] == 'admin' &&
+	    wizard_request[1] != 'wizard' &&
+	    access('/etc/config/wizard') &&
+	    !access('/usr/sbin/quickstart') &&
+	    !access('/etc/config/finished')) {
+		let wizard_uci = cursor();
+		wizard_pending = (wizard_uci.get('wizard', 'config', 'finished') != '1');
+	}
+
+	include(`themes/${theme}/header`);
+-%}
+
+{% if (wizard_pending): %}
+<script>
+	window.location.replace({{ sprintf('%J', dispatcher.build_url('admin/wizard')) }});
+</script>
+{% endif %}
+
+<script src="{{ resource }}/luci.js?v={# PKG_VERSION #}-{{ pkgs_update_time }}"></script>
+<script>
+	L = new LuCI({{ replace(`${ {
+		media          : media,
+		resource       : resource,
+		scriptname     : http.getenv("SCRIPT_NAME"),
+		pathinfo       : http.getenv("PATH_INFO"),
+		documentroot   : http.getenv("DOCUMENT_ROOT"),
+		requestpath    : ctx.request_path,
+		dispatchpath   : ctx.path,
+		pollinterval   : +config.main.pollinterval || 5,
+		ubuspath       : config.main.ubuspath || '/ubus/',
+		sessionid      : ctx.authsession,
+		token          : ctx.authtoken,
+		nodespec       : dispatched,
+		apply_rollback : max(+config.apply.rollback ||  90, 90),
+		apply_holdoff  : max(+config.apply.holdoff  ||   4,  1),
+		apply_timeout  : max(+config.apply.timeout  ||   5,  1),
+		apply_display  : max(+config.apply.display  || 1.5,  1),
+		rollback_token : rollback_token
+	} }`, '/', '\\/') }});
+</script>
