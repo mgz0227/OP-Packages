@@ -1533,14 +1533,6 @@ start_dns() {
 	fi
 }
 
-start_adblock() {
-	[ "$(config_t_get global adblock 0)" != "1" ] && {
-	[ -s $RULES_PATH/my_block_host ] && ln -sf $RULES_PATH/my_block_host $RULES_PATH/block_host || > $RULES_PATH/block_host
-	return
-	}
-	"$APP_PATH/adblock.sh" > /dev/null 2>&1 &
-}
-
 start_haproxy() {
 	[ "$(config_t_get global_haproxy balancing_enable 0)" != "1" ] && return
 	haproxy_path=$TMP_PATH/haproxy
@@ -1883,7 +1875,6 @@ start() {
 	export ENABLE_DEPRECATED_GEOIP=true
 	export SS_SYSTEM_DNS_RESOLVER_FORCE_BUILTIN=1
 	ulimit -n 65535
-	start_adblock
 	start_haproxy
 	start_socks
 	nftflag=0

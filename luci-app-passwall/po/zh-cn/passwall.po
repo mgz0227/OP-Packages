@@ -1,48 +1,6 @@
 msgid "Pass Wall"
 msgstr "PassWall"
 
-msgid "Enable adblock"
-msgstr "启用广告屏蔽"
-
-msgid "Records"
-msgstr "条记录"
-
-msgid "Refresh..."
-msgstr "正在更新,请稍候.."
-
-msgid "No new data!"
-msgstr "已经是最新数据,无需更新"
-
-msgid "Refresh Error!"
-msgstr "更新失败!"
-
-msgid "Refresh OK!"
-msgstr "更新成功~"
-
-msgid "Total Records:"
-msgstr "新的总规则数："
-
-msgid "Refresh Data"
-msgstr "更新订阅规则"
-
-msgid "Last Update Checked"
-msgstr "上一次规则更新时间"
-
-msgid "Subscribe Rules Data"
-msgstr "去广告规则"
-
-msgid "Support Domain / Dnsmasq / AdGuardHome / Hosts format list"
-msgstr "支持 域名/Dnsmasq/AdGuardHome/Hosts 格式的过滤列表"
-
-msgid "Adblock Rules Subscribe"
-msgstr "广告过滤列表URL"
-
-msgid "Adblock white list"
-msgstr "广告过滤白名单"
-
-msgid "Invalid domain name"
-msgstr "无效域名"
-
 msgid "Auto"
 msgstr "自动"
 
@@ -1203,6 +1161,12 @@ msgstr "订阅信息"
 
 msgid "Subscribe URL"
 msgstr "订阅网址"
+
+msgid "Subscription Conversion"
+msgstr "订阅转换"
+
+msgid "Download and convert Clash subscription when enabled (Clash subscription required)."
+msgstr "开启后下载 Clash 订阅并转换（需提供 Clash 订阅）。"
 
 msgid "Subscribe URL Access Method"
 msgstr "订阅网址访问方式"
