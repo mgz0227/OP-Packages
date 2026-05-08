@@ -1,48 +1,6 @@
 msgid "Pass Wall"
 msgstr "PassWall"
 
-msgid "Enable adblock"
-msgstr "启用广告屏蔽"
-
-msgid "Records"
-msgstr "条记录"
-
-msgid "Refresh..."
-msgstr "正在更新,请稍候.."
-
-msgid "No new data!"
-msgstr "已经是最新数据,无需更新"
-
-msgid "Refresh Error!"
-msgstr "更新失败!"
-
-msgid "Refresh OK!"
-msgstr "更新成功~"
-
-msgid "Total Records:"
-msgstr "新的总规则数："
-
-msgid "Refresh Data"
-msgstr "更新订阅规则"
-
-msgid "Last Update Checked"
-msgstr "上一次规则更新时间"
-
-msgid "Subscribe Rules Data"
-msgstr "去广告规则"
-
-msgid "Support Domain / Dnsmasq / AdGuardHome / Hosts format list"
-msgstr "支持 域名/Dnsmasq/AdGuardHome/Hosts 格式的过滤列表"
-
-msgid "Adblock Rules Subscribe"
-msgstr "广告过滤列表URL"
-
-msgid "Adblock white list"
-msgstr "广告过滤白名单"
-
-msgid "Invalid domain name"
-msgstr "无效域名"
-
 msgid "Auto"
 msgstr "自动"
 
@@ -1509,9 +1467,6 @@ msgstr "传输层加密"
 
 msgid "Whether or not transport layer encryption is enabled, \"none\" for unencrypted, \"tls\" for using TLS, \"xtls\" for using XTLS."
 msgstr "是否启入传输层加密，支持的选项有 \"none\" 表示不加密，\"tls\" 表示使用 TLS，\"xtls\" 表示使用 XTLS。"
-
-msgid "Original Trojan only supported 'tls', please choose 'tls'."
-msgstr "原版Trojan只支持'tls'，请选择'tls'。"
 
 msgid "Transfer mode"
 msgstr "传输模式"

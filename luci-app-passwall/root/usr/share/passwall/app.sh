@@ -13,7 +13,6 @@ LUA_UTIL_PATH=/usr/lib/lua/luci/passwall
 UTIL_SINGBOX=$LUA_UTIL_PATH/util_sing-box.lua
 UTIL_SS=$LUA_UTIL_PATH/util_shadowsocks.lua
 UTIL_XRAY=$LUA_UTIL_PATH/util_xray.lua
-UTIL_TROJAN=$LUA_UTIL_PATH/util_trojan.lua
 UTIL_NAIVE=$LUA_UTIL_PATH/util_naiveproxy.lua
 UTIL_HYSTERIA2=$LUA_UTIL_PATH/util_hysteria2.lua
 UTIL_TUIC=$LUA_UTIL_PATH/util_tuic.lua
@@ -448,13 +447,6 @@ run_socks() {
 		[ -n "$no_run" ] && _args="${_args} no_run=1"
 		run_xray flag=$flag node=$node socks_address=$bind socks_port=$socks_port config_file=$config_file log_file=$log_file ${_args}
 	;;
-	trojan*)
-		json_add_string "run_type" "client"
-		json_add_string "local_addr" "$bind"
-		json_add_string "local_port" "$socks_port"
-		lua $UTIL_TROJAN gen_config "$(json_dump)" > $config_file
-		[ -n "$no_run" ] || ln_run "$(first_type ${type})" "${type}" $log_file -c "$config_file"
-	;;
 	naiveproxy)
 		json_add_string "run_type" "socks"
 		json_add_string "local_addr" "$bind"
@@ -633,15 +625,6 @@ run_redir() {
 				fi
 			}
 			run_xray flag=UDP node=$node udp_redir_port=$local_port config_file=$config_file log_file=$log_file
-		;;
-		trojan*)
-			local loglevel=$(config_t_get global trojan_loglevel "2")
-			json_add_string "run_type" "nat"
-			json_add_string "local_addr" "0.0.0.0"
-			json_add_string "local_port" "$local_port"
-			json_add_string "loglevel" "$loglevel"
-			lua $UTIL_TROJAN gen_config "$(json_dump)" > $config_file
-			ln_run "$(first_type ${type})" "${type}" $log_file -c "$config_file"
 		;;
 		naiveproxy)
 			echolog "Naiveproxy不支持UDP转发！"
@@ -880,21 +863,6 @@ run_redir() {
 				NEXT_DNS_LISTEN_PORT=$(expr $NEXT_DNS_LISTEN_PORT + 1)
 			}
 			run_xray flag=$_flag node=$node tcp_redir_port=$local_port tcp_proxy_way=$TCP_PROXY_WAY config_file=$config_file log_file=$log_file ${_args}
-		;;
-		trojan*)
-			[ "${TCP_PROXY_WAY}" = "tproxy" ] && json_add_string "use_tproxy" "true"
-			[ "$TCP_UDP" = "1" ] && {
-				config_file="${config_file//TCP/TCP_UDP}"
-				UDP_REDIR_PORT=$TCP_REDIR_PORT
-				unset UDP_NODE
-			}
-			local loglevel=$(config_t_get global trojan_loglevel "2")
-			json_add_string "run_type" "nat"
-			json_add_string "local_addr" "0.0.0.0"
-			json_add_string "local_port" "$local_port"
-			json_add_string "loglevel" "$loglevel"
-			lua $UTIL_TROJAN gen_config "$(json_dump)" > $config_file
-			ln_run "$(first_type ${type})" "${type}" $log_file -c "$config_file"
 		;;
 		naiveproxy)
 			json_add_string "run_type" "redir"
@@ -1533,14 +1501,6 @@ start_dns() {
 	fi
 }
 
-start_adblock() {
-	[ "$(config_t_get global adblock 0)" != "1" ] && {
-	[ -s $RULES_PATH/my_block_host ] && ln -sf $RULES_PATH/my_block_host $RULES_PATH/block_host || > $RULES_PATH/block_host
-	return
-	}
-	"$APP_PATH/adblock.sh" > /dev/null 2>&1 &
-}
-
 start_haproxy() {
 	[ "$(config_t_get global_haproxy balancing_enable 0)" != "1" ] && return
 	local haproxy_ver=$($(first_type haproxy) -v 2>/dev/null | awk 'NR==1 {print $3}' | cut -d'-' -f1)
@@ -1888,7 +1848,6 @@ start() {
 	export ENABLE_DEPRECATED_GEOIP=true
 	export SS_SYSTEM_DNS_RESOLVER_FORCE_BUILTIN=1
 	ulimit -n 65535
-	start_adblock
 	start_haproxy
 	start_socks
 	nftflag=0
@@ -2058,8 +2017,8 @@ get_config() {
 	FILTER_PROXY_IPV6=$(config_t_get global filter_proxy_ipv6 0)
 	DNS_REDIRECT=$(config_t_get global dns_redirect 1)
 
-	REDIRECT_LIST="socks ss ss-rust ssr sing-box xray trojan-plus naiveproxy hysteria2"
-	TPROXY_LIST="socks ss ss-rust ssr sing-box xray trojan-plus hysteria2"
+	REDIRECT_LIST="socks ss ss-rust ssr sing-box xray naiveproxy hysteria2"
+	TPROXY_LIST="socks ss ss-rust ssr sing-box xray hysteria2"
 
 	NEXT_DNS_LISTEN_PORT=15353
 	TUN_DNS="127.0.0.1#${NEXT_DNS_LISTEN_PORT}"
