@@ -321,15 +321,11 @@ async fn main() -> Result<(), ()> {
                                 continue;
                             }
                             let key = (neigh.mac.clone(), inet_to_string(&neigh.inet));
-                            if registered.remove(&key).is_none() {
-                                // Was not registered, skip
-                                continue;
-                            }
+                            registered.remove(&key);
                             debug!("Del neighbour: {:?}", neigh);
-                            if !process_del_neigh(&neigh, &updater, &leases).await {
-                                // DNS delete failed, put back so we retry delete next time
-                                registered.insert(key, Instant::now());
-                            }
+                            // Always attempt DNS deletion even if not in registered map,
+                            // to clean up records that survived a program restart.
+                            process_del_neigh(&neigh, &updater, &leases).await;
                         }
                         _ => {}
                     }
