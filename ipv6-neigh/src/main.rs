@@ -238,11 +238,12 @@ async fn main() -> Result<(), ()> {
     if router_hostname.is_empty() {
         warn!("could not read router hostname from /proc/sys/kernel/hostname");
     } else {
+        let router_alias = args.router_alias.as_deref().filter(|a| *a != router_hostname);
         register_router_addresses(
             handle.clone(),
             &args.router_iface,
             &router_hostname,
-            args.router_alias.as_deref(),
+            router_alias,
             &updater,
             private_subnet_v6,
         )
