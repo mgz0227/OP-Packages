@@ -64,6 +64,9 @@ struct Cli {
     /// Network interface to read the router's own addresses from
     #[clap(long, default_value = "br-lan")]
     router_iface: String,
+    /// Additional DNS name to register router addresses under (e.g. "router" → "router.lan")
+    #[clap(long)]
+    router_alias: Option<String>,
 }
 
 #[derive(Debug)]
@@ -239,6 +242,7 @@ async fn main() -> Result<(), ()> {
             handle.clone(),
             &args.router_iface,
             &router_hostname,
+            args.router_alias.as_deref(),
             &updater,
             private_subnet_v6,
         )
@@ -825,6 +829,7 @@ async fn register_router_addresses(
     handle: Handle,
     iface: &str,
     hostname: &str,
+    extra_alias: Option<&str>,
     updater: &db::DnsUpdater,
     private_subnet_v6: bool,
 ) {
@@ -862,15 +867,19 @@ async fn register_router_addresses(
                     if private_subnet_v6 && !is_ula {
                         continue;
                     }
-                    match updater.upsert_aaaa(hostname, *addr, DEFAULT_TTL).await {
-                        Ok(()) => info!("registered router {} AAAA {}", hostname, addr),
-                        Err(e) => warn!("failed to register router AAAA {} for {}: {}", addr, hostname, e),
+                    for name in std::iter::once(hostname).chain(extra_alias) {
+                        match updater.upsert_aaaa(name, *addr, DEFAULT_TTL).await {
+                            Ok(()) => info!("registered router {} AAAA {}", name, addr),
+                            Err(e) => warn!("failed to register router AAAA {} for {}: {}", addr, name, e),
+                        }
                     }
                 }
                 IpAddr::V4(addr) => {
-                    match updater.upsert_a(hostname, *addr, DEFAULT_TTL).await {
-                        Ok(()) => info!("registered router {} A {}", hostname, addr),
-                        Err(e) => warn!("failed to register router A {} for {}: {}", addr, hostname, e),
+                    for name in std::iter::once(hostname).chain(extra_alias) {
+                        match updater.upsert_a(name, *addr, DEFAULT_TTL).await {
+                            Ok(()) => info!("registered router {} A {}", name, addr),
+                            Err(e) => warn!("failed to register router A {} for {}: {}", addr, name, e),
+                        }
                     }
                 }
             }
