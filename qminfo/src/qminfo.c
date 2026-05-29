@@ -491,6 +491,10 @@ static void emit_results(void)
     printf("  \"scc\"      : \"%s\",\n",  b_scc);
     printf("  \"bwca\"     : \"%u\",\n",  info.has_ca ? info.bw_ca_total / 1000 : 0);
     printf("  \"iccid\"    : \"%s\",\n",  b_iccid);
+    if (info.has_pci)
+        printf("  \"pci\"      : \"%u\"\n", info.pci);
+    else
+        printf("  \"pci\"      : \"\"\n");
     printf("  \"imsi\"     : \"%s\"\n",   b_imsi);
     printf("}\n");
 }
