@@ -14,10 +14,12 @@
 
 --- a/luci-app-passwall2/Makefile
 +++ b/luci-app-passwall2/Makefile
-@@ -32,6 +32,25 @@ LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
+@@ -31,7 +31,26 @@ LUCI_PKGARCH:=all
+ LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
  	+ip-full +libuci-lua +lua +luci-compat +luci-lib-jsonc +lyaml +resolveip +tcping \
  	+geoview +v2ray-geoip +v2ray-geosite \
- 	+unzip
+-	+unzip
++	+unzip \
 +	+PACKAGE_$(PKG_NAME)_Basic_Core_Xray:xray-core \
 +	+PACKAGE_$(PKG_NAME)_Basic_Core_SingBox:sing-box \
 +	+PACKAGE_$(PKG_NAME)_Basic_Core_All:xray-core \
@@ -52,7 +54,7 @@
 
 --- a/luci-app-passwall2/luasrc/controller/passwall2.lua
 +++ b/luci-app-passwall2/luasrc/controller/passwall2.lua
-@@ -82,6 +82,7 @@ function index()
+@@ -95,6 +95,7 @@ function index()
  	entry({"admin", "services", appname, "subscribe_manual"}, call("subscribe_manual")).leaf = true
  	entry({"admin", "services", appname, "subscribe_manual_all"}, call("subscribe_manual_all")).leaf = true
  	entry({"admin", "services", appname, "flush_set"}, call("flush_set")).leaf = true
@@ -60,8 +62,8 @@
  
  	--[[Components update]]
  	entry({"admin", "services", appname, "check_passwall2"}, call("app_check")).leaf = true
-@@ -89,6 +90,61 @@ local function http_write_json(content)
- 	http.write_json(content or {code = 1})
+@@ -114,6 +115,61 @@ function index()
+ 	entry({"admin", "services", appname, "geo_view"}, call("geo_view")).leaf = true
  end
  
 +function check_site(host, port)
@@ -119,9 +121,9 @@
 +    luci.http.write_json(e)
 +end
 +
- function reset_config()
- 	luci.sys.call('/etc/init.d/passwall2 stop')
- 	luci.sys.call('[ -f "/usr/share/passwall2/0_default_config" ] && cp -f /usr/share/passwall2/0_default_config /etc/config/passwall2')
+ local function http_write_json(content)
+ 	http.prepare_content("application/json")
+ 	http.write(jsonStringify(content or {code = 1}))
 
 --- a/luci-app-passwall2/luasrc/model/cbi/passwall2/client/global.lua
 +++ b/luci-app-passwall2/luasrc/model/cbi/passwall2/client/global.lua
@@ -267,3 +269,15 @@ index 000000000000..a00fff9c79b3
 +
 +window.addEventListener('resize', resize);
 +</script>
+
+--- a/luci-app-passwall2/luasrc/passwall2/util_xray.lua
++++ b/luci-app-passwall2/luasrc/passwall2/util_xray.lua
+@@ -176,7 +176,7 @@ function gen_outbound(flag, node, tag, proxy_table)
+ 					serverName = node.tls_serverName,
+ 					allowInsecure = (function()
+ 								if node.tls_pinSHA256 and node.tls_pinSHA256 ~= "" then return nil end
+-								if api.compare_versions(os.date("%Y.%m.%d"), "<", "2026.6.1") and node.tls_allowInsecure == "1" then return true end
++								if node.tls_allowInsecure == "1" then return true end
+ 							end)(),
+ 					fingerprint = (node.type == "Xray" and node.utls == "1" and node.fingerprint and node.fingerprint ~= "") and node.fingerprint or nil,
+ 					pinnedPeerCertSha256 = (function()
