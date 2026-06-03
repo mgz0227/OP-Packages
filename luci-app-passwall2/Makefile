@@ -6,8 +6,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-passwall2
-PKG_VERSION:=26.5.19
-PKG_RELEASE:=34
+PKG_VERSION:=26.6.3
+PKG_RELEASE:=35
 PKG_PO_VERSION:=$(PKG_VERSION)
 
 PKG_CONFIG_DEPENDS:= \
@@ -28,7 +28,7 @@ LUCI_PKGARCH:=all
 LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
 	+ip-full +libuci-lua +lua +luci-compat +luci-lib-jsonc +lyaml +resolveip +tcping \
 	+geoview +v2ray-geoip +v2ray-geosite \
-	+unzip
+	+unzip \
 	+PACKAGE_$(PKG_NAME)_Basic_Core_Xray:xray-core \
 	+PACKAGE_$(PKG_NAME)_Basic_Core_SingBox:sing-box \
 	+PACKAGE_$(PKG_NAME)_Basic_Core_All:xray-core \
