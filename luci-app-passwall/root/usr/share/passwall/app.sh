@@ -1480,14 +1480,6 @@ start_dns() {
 	fi
 }
 
-start_adblock() {
-	[ "$(config_t_get global adblock 0)" != "1" ] && {
-	[ -s $RULES_PATH/my_block_host ] && ln -sf $RULES_PATH/my_block_host $RULES_PATH/block_host || > $RULES_PATH/block_host
-	return
-	}
-	"$APP_PATH/adblock.sh" > /dev/null 2>&1 &
-}
-
 start_haproxy() {
 	[ "$(config_t_get global_haproxy balancing_enable 0)" != "1" ] && return
 	local haproxy_ver=$($(first_type haproxy) -v 2>/dev/null | awk 'NR==1 {print $3}' | cut -d'-' -f1)
@@ -1834,6 +1826,11 @@ acl_app() {
 }
 
 start() {
+	busybox pgrep -f /tmp/etc/passwall/bin > /dev/null 2>&1 && {
+		logger -t PSW-RESTART "Upgrade or overload residue is detected, and the subprocess is being called to perform complete cleaning..."
+		(stop)
+		sleep 2
+	}
 	mkdir -p /tmp/etc /tmp/log $TMP_PATH $TMP_BIN_PATH $TMP_SCRIPT_FUNC_PATH $TMP_ROUTE_PATH $TMP_ACL_PATH $TMP_PATH2
 	get_config
 	export V2RAY_LOCATION_ASSET=$(config_t_get global_rules v2ray_location_asset "/usr/share/v2ray/")
@@ -1842,7 +1839,6 @@ start() {
 	export ENABLE_DEPRECATED_GEOIP=true
 	export SS_SYSTEM_DNS_RESOLVER_FORCE_BUILTIN=1
 	ulimit -n 65535
-	start_adblock
 	start_haproxy
 	start_socks
 	nftflag=0
