@@ -7,7 +7,7 @@
 -		"order": "60",
 +	"admin/dockerman": {
 +		"title": "Docker",
-+		"order": 40,
++		"order": "40",
  		"action": {
  			"type": "firstchild"
  		},
@@ -20,7 +20,7 @@
  		"title": "Overview",
  		"order": 1,
  		"action": {
-@@ -24,7 +24,7 @@
+@@ -27,7 +27,7 @@
  		}
  	},
  
@@ -29,7 +29,7 @@
  		"title": "Configuration",
  		"order": 2,
  		"action": {
-@@ -33,14 +33,14 @@
+@@ -39,17 +39,17 @@
  		}
  	},
  
@@ -39,6 +39,9 @@
  			"type": "alias",
 -			"path": "admin/services/dockerman/containers"
 +			"path": "admin/dockerman/containers"
+ 		},
+ 		"depends": {
+ 			"acl": [ "luci-app-dockerman" ]
  		}
  	},
  
@@ -47,7 +50,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -52,7 +52,7 @@
+@@ -64,7 +64,7 @@
  		}
  	},
  
@@ -56,7 +59,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -64,7 +64,7 @@
+@@ -79,7 +79,7 @@
  		}
  	},
  
@@ -65,7 +68,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -76,7 +76,7 @@
+@@ -94,7 +94,7 @@
  		}
  	},
  
@@ -74,7 +77,7 @@
  		"title_hide": "Container",
  		"action": {
  			"type": "view",
-@@ -84,7 +84,7 @@
+@@ -105,7 +105,7 @@
  		}
  	},
  
@@ -83,7 +86,7 @@
  		"title": "Containers",
  		"order": 3,
  		"action": {
-@@ -93,7 +93,7 @@
+@@ -117,7 +117,7 @@
  		}
  	},
  
@@ -92,7 +95,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -106,14 +106,14 @@
+@@ -133,17 +133,17 @@
  		}
  	},
  
@@ -102,6 +105,9 @@
  			"type": "alias",
 -			"path": "admin/services/dockerman/containers"
 +			"path": "admin/dockerman/containers"
+ 		},
+ 		"depends": {
+ 			"acl": [ "luci-app-dockerman" ]
  		}
  	},
  
@@ -110,7 +116,7 @@
  		"title_hide": "Container",
  		"action": {
  			"type": "view",
-@@ -121,7 +121,7 @@
+@@ -154,7 +154,7 @@
  		}
  	},
  
@@ -119,7 +125,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -134,7 +134,7 @@
+@@ -170,7 +170,7 @@
  		}
  	},
  
@@ -128,7 +134,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -147,7 +147,7 @@
+@@ -186,7 +186,7 @@
  		}
  	},
  
@@ -137,7 +143,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -159,7 +159,7 @@
+@@ -201,7 +201,7 @@
  		}
  	},
  
@@ -146,7 +152,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -172,7 +172,7 @@
+@@ -217,7 +217,7 @@
  		}
  	},
  
@@ -155,7 +161,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -185,7 +185,7 @@
+@@ -233,7 +233,7 @@
  		}
  	},
  
@@ -164,7 +170,7 @@
  		"title": "Images",
  		"order": 4,
  		"action": {
-@@ -194,7 +194,7 @@
+@@ -242,7 +242,7 @@
  		}
  	},
  
@@ -173,7 +179,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -207,7 +207,7 @@
+@@ -258,7 +258,7 @@
  		}
  	},
  
@@ -182,7 +188,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -220,14 +220,14 @@
+@@ -274,17 +274,17 @@
  		}
  	},
  
@@ -192,6 +198,9 @@
  			"type": "alias",
 -			"path": "admin/services/dockerman/images"
 +			"path": "admin/dockerman/images"
+ 		},
+ 		"depends": {
+ 			"acl": [ "luci-app-dockerman" ]
  		}
  	},
  
@@ -200,7 +209,7 @@
  		"title_hide": "Network",
  		"action": {
  			"type": "view",
-@@ -235,7 +235,7 @@
+@@ -295,7 +295,7 @@
  		}
  	},
  
@@ -209,7 +218,7 @@
  		"title": "Networks",
  		"order": 5,
  		"action": {
-@@ -244,7 +244,7 @@
+@@ -307,7 +307,7 @@
  		}
  	},
  
@@ -218,7 +227,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -257,7 +257,7 @@
+@@ -323,7 +323,7 @@
  		}
  	},
  
@@ -227,7 +236,7 @@
  		"title_hide": "Network",
  		"action": {
  			"type": "view",
-@@ -265,14 +265,14 @@
+@@ -334,17 +334,17 @@
  		}
  	},
  
@@ -237,6 +246,9 @@
  			"type": "alias",
 -			"path": "admin/services/dockerman/networks"
 +			"path": "admin/dockerman/networks"
+ 		},
+ 		"depends": {
+ 			"acl": [ "luci-app-dockerman" ]
  		}
  	},
  
@@ -245,7 +257,7 @@
  		"title": "Volumes",
  		"order": 6,
  		"action": {
-@@ -281,7 +281,7 @@
+@@ -356,7 +356,7 @@
  		}
  	},
  
@@ -254,7 +266,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -294,7 +294,7 @@
+@@ -372,7 +372,7 @@
  		}
  	},
  
@@ -263,7 +275,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -307,7 +307,7 @@
+@@ -388,7 +388,7 @@
  		}
  	},
  
@@ -307,157 +319,3 @@
  
  		o = s.taboption('globals', form.ListValue, 'log_level',
  			_('Log Level'),
-
---- a/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js
-+++ b/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js
-@@ -73,7 +73,8 @@ return dm2.dv.extend({
- 			const hostConfig = c.HostConfig || {};
- 			const resolvedImage = resolveImageId(c.Image) || resolveImageId(c.Config?.Image) || c.Image || c.Config?.Image || '';
- 			const builtInNetworks = new Set(['none', 'bridge', 'host']);
--			const [netnames, nets] = Object.entries(c.NetworkSettings?.Networks || {});
-+			// Object.entries returns [[name, obj], ...] — pick the first network
-+			const [[firstName, firstNet] = []] = Object.entries(c.NetworkSettings?.Networks || {});
- 
- 			containerData.container = {
- 				name: c.Name?.substring(1) || '',
-@@ -82,20 +83,18 @@ return dm2.dv.extend({
- 				image: resolvedImage,
- 				privileged: hostConfig.Privileged ? 1 : 0,
- 				restart_policy: hostConfig.RestartPolicy?.Name || 'unless-stopped',
--				network: (() => {
--					return (netnames && (netnames.length > 0)) ? netnames[0] : '';
--				})(),
-+				network: firstName || '',
- 				ipv4: (() => {
--					if (builtInNetworks.has(netnames[0])) return '';
--					return (nets && (nets.length > 0)) ? nets[0]?.IPAddress || '' : '';
-+					if (!firstName || builtInNetworks.has(firstName)) return '';
-+					return firstNet?.IPAddress || '';
- 				})(),
- 				ipv6: (() => {
--					if (builtInNetworks.has(netnames[0])) return '';
--					return (nets && (nets.length > 0)) ? nets[0]?.GlobalIPv6Address || '' : '';
-+					if (!firstName || builtInNetworks.has(firstName)) return '';
-+					return firstNet?.GlobalIPv6Address || '';
- 				})(),
- 				ipv6_lla: (() => {
--					if (builtInNetworks.has(netnames[0])) return '';
--					return (nets && (nets.length > 0)) ? nets[0]?.LinkLocalIPv6Address || '' : '';
-+					if (!firstName || builtInNetworks.has(firstName)) return '';
-+					return firstNet?.LinkLocalIPv6Address || '';
- 				})(),
- 				link: hostConfig.Links || [],
- 				dns: hostConfig.Dns || [],
-@@ -135,9 +134,12 @@ return dm2.dv.extend({
- 				publish: (() => {
- 					const ports = [];
- 					for (const [containerPort, bindings] of Object.entries(hostConfig.PortBindings || {})) {
--						if (Array.isArray(bindings) && bindings.length > 0 && bindings[0]?.HostPort) {
--							const hostPort = bindings[0].HostPort;
--							ports.push(hostPort + ':' + containerPort);
-+						if (Array.isArray(bindings) && bindings.length > 0) {
-+							for (const b of bindings) {
-+								if (!b?.HostPort) continue;
-+								const ip = b.HostIp || '';
-+								ports.push((ip ? ip + ':' : '') + b.HostPort + ':' + containerPort);
-+							}
- 						}
- 					}
- 					return ports;
-@@ -801,9 +803,15 @@ return dm2.dv.extend({
- 							(Array.isArray(publish) ? publish : [publish])
- 							.filter(p => p && typeof p === 'string' && p.trim().length > 0)
- 							.map(p => {
--								const m = p.match(/^(\d+):(\d+)\/(tcp|udp)$/);
--								if (m) return [`${m[2]}/${m[3]}`, [{ HostPort: m[1] }]];
--								return null;
-+								// formats: hostPort:cPort/proto  or  hostIp:hostPort:cPort/proto
-+								const m = p.match(/^(?:([^:]+):(\d+)|(\d+)):(\d+)\/(tcp|udp)$/);
-+								if (!m) return null;
-+								const hostIp   = m[1] || '';
-+								const hostPort = m[2] || m[3];
-+								const cPort    = m[4];
-+								const proto    = m[5];
-+								const binding  = hostIp ? { HostIp: hostIp, HostPort: hostPort } : { HostPort: hostPort };
-+								return [`${cPort}/${proto}`, [binding]];
- 							}).filter(Boolean)
- 						) : undefined,
- 						Mounts: undefined,
-
---- a/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/containers.js
-+++ b/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/containers.js
-@@ -308,6 +308,56 @@ return dm2.dv.extend({
- 		}, E('div', btns));
- 	},
- 
-+	buildPortLinks(ports) {
-+		// cont.Ports[] from GET /containers/json — flat array.
-+		// Published ports have {IP, PrivatePort, PublicPort, Type}.
-+		// Exposed-only ports omit IP and PublicPort: {PrivatePort, Type}.
-+		if (!Array.isArray(ports) || ports.length === 0) return '';
-+
-+		const LOCAL_IPS = new Set(['0.0.0.0', '::']);
-+
-+		// Sort: published (has PublicPort) before exposed-only, then by PrivatePort
-+		const sorted = [...ports].sort((a, b) => {
-+			const aHasPub = a.PublicPort ? 1 : 0;
-+			const bHasPub = b.PublicPort ? 1 : 0;
-+			if (aHasPub !== bHasPub) return bHasPub - aHasPub;
-+			return (a.PrivatePort || 0) - (b.PrivatePort || 0);
-+		});
-+
-+		const lines = sorted.map(p => {
-+			const ip   = p.IP || '';
-+			const pub  = p.PublicPort || '';
-+			const priv = p.PrivatePort || '';
-+			const type = p.Type || '';
-+
-+			const isIPv6    = ip.includes(':');
-+			const isLocal   = LOCAL_IPS.has(ip);
-+			const displayIp = isIPv6 ? `[${ip}]` : ip;
-+
-+			let label;
-+			if (pub && ip)  label = `${displayIp}:${pub}->${priv}/${type}`;
-+			else if (pub)   label = `${pub}->${priv}/${type}`;
-+			else            label = `${priv}/${type}`;
-+
-+			// Clickable link for published TCP ports only
-+			if (type === 'tcp' && pub) {
-+				const host = isLocal ? window.location.hostname : displayIp;
-+				return E('div', {}, [
-+					E('a', {
-+						href: `http://${host}:${pub}`,
-+						target: '_blank',
-+						rel: 'noopener noreferrer',
-+						title: _('Open in browser'),
-+					}, [label]),
-+				]);
-+			}
-+
-+			return E('div', {}, [label]);
-+		});
-+
-+		return E('div', {}, lines);
-+	},
-+
- 	handleSave: null,
- 	handleSaveApply: null,
- 	handleReset: null,
-@@ -342,16 +392,7 @@ return dm2.dv.extend({
- 				_shortId: (cont?.Id || '').substring(0, 12),
- 				Networks: this.parseNetworkLinksForContainer(network_list, cont?.NetworkSettings?.Networks || {}, true),
- 				Created: this.buildTimeString(cont?.Created) || '',
--				Ports: (Array.isArray(cont.Ports) && cont.Ports.length > 0)
--						? cont.Ports.map(p => {
--							// const ip = p.IP || '';
--							const pub = p.PublicPort || '';
--							const priv = p.PrivatePort || '';
--							const type = p.Type || '';
--							return `${pub ? pub + ':' : ''}${priv}/${type}`;
--							// return `${ip ? ip + ':' : ''}${pub} -> ${priv} (${type})`;
--						}).join('<br/>')
--						: '',
-+				Ports: this.buildPortLinks(cont.Ports),
- 			});
- 		}
- 
