@@ -1868,7 +1868,7 @@ function action_myip_check()
 			url = string.format("http://myip.ipip.net?z=%d", random),
 			parser = function(data)
 				if data and data ~= "" then
-					local ip = string.match(data, "当前 IP：([%x:%.]+)")
+					local ip = string.match(data, "当前 IP：([%d%.]+)")
 					local geo = string.match(data, "来自于：(.+)")
 
 					if ip and geo then
@@ -3332,7 +3332,6 @@ function action_add_subscription()
 	local sub_convert = luci.http.formvalue("sub_convert") or "0"
 	local convert_address = luci.http.formvalue("convert_address") or ""
 	local template = luci.http.formvalue("template") or ""
-	local custom_template_url = luci.http.formvalue("custom_template_url") or ""
 	local emoji = luci.http.formvalue("emoji") or "false"
 	local udp = luci.http.formvalue("udp") or "false"
 	local skip_cert_verify = luci.http.formvalue("skip_cert_verify") or "false"
@@ -3458,15 +3457,9 @@ function action_add_subscription()
 		if sub_convert == "1" then
 			uci:set("openclash", section_id, "convert_address", convert_address)
 			uci:set("openclash", section_id, "template", template)
-			if template == "0" then
-				uci:set("openclash", section_id, "custom_template_url", custom_template_url)
-			else
-				uci:delete("openclash", section_id, "custom_template_url")
-			end
 		else
 			uci:delete("openclash", section_id, "convert_address")
 			uci:delete("openclash", section_id, "template")
-			uci:delete("openclash", section_id, "custom_template_url")
 		end
 		uci:set("openclash", section_id, "emoji", emoji)
 		uci:set("openclash", section_id, "udp", udp)

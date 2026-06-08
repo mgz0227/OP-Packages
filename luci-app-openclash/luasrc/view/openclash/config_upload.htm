@@ -1206,7 +1206,6 @@ var ConfigUploader = {
 
         document.getElementById('advanced-options-enable').checked = false;
         document.getElementById('advanced-options-container').style.display = 'none';
-        document.getElementById('config-upload-cancel').disabled = false;
         this.resetAdvancedOptions();
 
         var templateSelect = document.getElementById('template-select');
@@ -1244,7 +1243,7 @@ var ConfigUploader = {
             }
         }
 
-        if (data.sub_convert === '1' || data.convert_address || data.template || data.custom_template_url || data.emoji === 'true' || data.udp === 'true' || data.skip_cert_verify === 'true' || data.sort === 'true' || data.node_type === 'true' || data.rule_provider === 'true' || data.custom_params || data.keyword || data.ex_keyword || data.de_ex_keyword) {
+        if (data.sub_convert === '1' || data.convert_address || data.template || data.emoji === 'true' || data.udp === 'true' || data.skip_cert_verify === 'true' || data.sort === 'true' || data.node_type === 'true' || data.rule_provider === 'true' || data.custom_params || data.keyword || data.ex_keyword || data.de_ex_keyword) {
             document.getElementById('advanced-options-enable').checked = true;
             document.getElementById('advanced-options-container').style.display = 'block';
 
@@ -1283,7 +1282,7 @@ var ConfigUploader = {
                     } else if (data.template === '0') {
                         templateSelect.value = '0';
                         document.getElementById('custom-template-group').style.display = 'block';
-                        document.getElementById('custom-template-input').value = data.custom_template_url || data.custom_template || '';
+                        document.getElementById('custom-template-input').value = data.custom_template || '';
                     }
                 }
 
@@ -1406,7 +1405,7 @@ var ConfigUploader = {
 
             if (url && filename) {
                 if (subConvert) {
-                    var linkPattern = /^(?:https?:\/\/\S+|[a-zA-Z]+:\/\/\S+|[^,\s]+,https?:\/\/\S+|[^%\s]+%2Chttps?%3A%2F%2F\S+)$/i;
+                    var linkPattern = /^(?:https?:\/\/|[a-zA-Z]+:\/\/|[^,\s]+,https?:\/\/.+|[^%\s]+%2Chttps?%3A%2F%2F.+)$/i;
 
                     if (url.indexOf('\n') !== -1 || url.indexOf('|') !== -1) {
                         var links = url.split(/[\n|]/);
@@ -1536,7 +1535,6 @@ var ConfigUploader = {
         var sort = false;
         var nodeType = false;
         var ruleProvider = false;
-        var customTemplateUrl = '';
         var customParams = '';
         var keywords = '';
         var excludeKeywords = '';
@@ -1567,7 +1565,7 @@ var ConfigUploader = {
             }
 
             if (template === '0') {
-                customTemplateUrl = customTemplate.trim();
+                template = customTemplate.trim();
             }
         }
 
@@ -1583,7 +1581,7 @@ var ConfigUploader = {
         var isValidFormat = false;
 
         if (subConvert) {
-            var linkPattern = /^(?:https?:\/\/\S+|[a-zA-Z]+:\/\/\S+|[^,\s]+,https?:\/\/\S+|[^%\s]+%2Chttps?%3A%2F%2F\S+)$/i;
+            var linkPattern = /^(?:https?:\/\/|[a-zA-Z]+:\/\/|[^,\s]+,https?:\/\/.+|[^%\s]+%2Chttps?%3A%2F%2F.+)$/i;
 
             if (url.indexOf('\n') !== -1 || url.indexOf('|') !== -1) {
                 var links = url.split(/[\n|]/);
@@ -1642,7 +1640,6 @@ var ConfigUploader = {
             sub_convert: subConvert ? '1' : '0',
             convert_address: convertAddress,
             template: template,
-            custom_template_url: customTemplateUrl,
             emoji: emoji ? 'true' : 'false',
             udp: udp ? 'true' : 'false',
             skip_cert_verify: skipCert ? 'true' : 'false',
@@ -1690,18 +1687,7 @@ var ConfigUploader = {
 
         if (!filenameInput.value.trim() && url) {
             try {
-                var match = url.match(/https?:\/\/[^,\s|]+/i);
-                if (!match) {
-                    try {
-                        var decoded = decodeURIComponent(url);
-                        match = decoded.match(/https?:\/\/[^,\s|]+/i);
-                    } catch (e) {
-                        match = null;
-                    }
-                }
-
-                var urlToParse = match ? match[0] : url;
-                var urlObj = new URL(urlToParse);
+                var urlObj = new URL(url);
                 var hostname = urlObj.hostname;
 
                 var configName = hostname

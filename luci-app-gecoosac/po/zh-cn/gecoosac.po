@@ -1,0 +1,110 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "Default certificate files are generated when HTTPS starts; custom paths must point to readable files."
+msgstr "默认证书文件会在 HTTPS 启动时生成；自定义路径必须指向可读取的文件。"
+
+msgid "Gecoos AC"
+msgstr "集客AC控制器"
+
+msgid "Batch management Gecoos AP, Default password: admin"
+msgstr "批量集中管理集客 AP，默认密码：admin"
+
+msgid "The current AC version %s, only supports AP 7.6 and above."
+msgstr "当前 AC 版本 %s ，仅支持 AP 7.6 及以上版本。"
+
+msgid "The AC program does not exist, please check."
+msgstr "AC 程序不存在，请检查。"
+
+msgid "Global Settings"
+msgstr "全局设置"
+
+msgid "Enabled AC"
+msgstr "启用集客AC"
+
+msgid "Set interface port"
+msgstr "设置接口端口"
+
+msgid "Single Port Mode"
+msgstr "单端口模式"
+
+msgid "Do not enable the independent management port, only use one port for management."
+msgstr "不开启独立管理端口，只使用一个端口进行管理。"
+
+msgid "Set management port"
+msgstr "设置管理端口"
+
+msgid "Enable HTTPS service"
+msgstr "开启 HTTPS 服务"
+
+msgid "A certificate file must be specified, otherwise it will fail to start."
+msgstr "需要指定证书文件，否则开启失败。"
+
+msgid "Specify crt certificate file"
+msgstr "指定 crt 证书文件"
+
+msgid "Specify key certificate file"
+msgstr "指定 key 证书文件"
+
+msgid "Upload dir path"
+msgstr "上传目录"
+
+msgid "The path to upload AP upgrade firmware"
+msgstr "存放AP升级固件的路径"
+
+msgid "Database dir path"
+msgstr "数据库目录"
+
+msgid "The path to store the config database"
+msgstr "存放配置数据库的路径"
+
+msgid "PID dir path"
+msgstr "PID 目录"
+
+msgid "The path to store the AC program pid file"
+msgstr "存放 AC 程序 PID 文件的路径"
+
+msgid "Language"
+msgstr "语言"
+
+msgid "Chinese"
+msgstr "中文"
+
+msgid "English"
+msgstr "英文"
+
+msgid "Debug Mode"
+msgstr "调试模式"
+
+msgid "Show IP Tip"
+msgstr "显示 IP 提示"
+
+msgid "Show the IP 6.7.8.9 setup tip when it is not configured."
+msgstr "未配置 6.7.8.9 时显示相关提示信息。"
+
+msgid "Enable Log"
+msgstr "启用日志"
+
+msgid "The GecoosAC service is running."
+msgstr "集客AC控制器 运行中"
+
+msgid "The GecoosAC service is not running."
+msgstr "集客AC控制器 未运行"
+
+msgid "Open the mgmt page"
+msgstr "打开管理页面"
+
+msgid "Collecting data..."
+msgstr "收集数据..."
+
+msgid "Clear Upload Directory"
+msgstr "清理上传目录"
+
+msgid "Expecting an absolute path"
+msgstr "请输入绝对路径"
+
+msgid "Only Gecoos upload directories can be cleared"
+msgstr "只能清理集客 AC 上传目录"
+
+msgid "Upload directory was not cleared"
+msgstr "上传目录未清理"
