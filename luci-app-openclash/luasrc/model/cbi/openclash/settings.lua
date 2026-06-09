@@ -173,14 +173,14 @@ custom_domain_dns.wrap = "off"
 custom_domain_dns:depends{enable_redirect_dns = "1", enable_custom_domain_dns_server = "1"}
 
 function custom_domain_dns.cfgvalue(self, section)
-	return NXFS.readfile("/etc/openclash/custom/openclash_custom_domain_dns.list") or ""
+	return fs.readfile("/etc/openclash/custom/openclash_custom_domain_dns.list") or ""
 end
 function custom_domain_dns.write(self, section, value)
 	if value then
 		value = value:gsub("\r\n?", "\n")
-		local old_value = NXFS.readfile("/etc/openclash/custom/openclash_custom_domain_dns.list")
+		local old_value = fs.readfile("/etc/openclash/custom/openclash_custom_domain_dns.list")
 	if value ~= old_value then
-			NXFS.writefile("/etc/openclash/custom/openclash_custom_domain_dns.list", value)
+			fs.writefile("/etc/openclash/custom/openclash_custom_domain_dns.list", value)
 		end
 	end
 end
@@ -289,7 +289,7 @@ o.rmempty = true
 o = s2:option(ListValue, "user", translate("User"))
 o:value("")
 o.default = ""
-local passwd_content = NXFS.readfile("/etc/passwd")
+local passwd_content = fs.readfile("/etc/passwd")
 local users = ""
 if passwd_content then
     for line in string.gmatch(passwd_content, "[^\n]+") do
@@ -482,14 +482,14 @@ o.rows = 20
 o.wrap = "off"
 
 function o.cfgvalue(self, section)
-	return NXFS.readfile("/etc/openclash/custom/openclash_custom_localnetwork_ipv4.list") or ""
+	return fs.readfile("/etc/openclash/custom/openclash_custom_localnetwork_ipv4.list") or ""
 end
 function o.write(self, section, value)
 	if value then
 		value = value:gsub("\r\n?", "\n")
-		local old_value = NXFS.readfile("/etc/openclash/custom/openclash_custom_localnetwork_ipv4.list")
+		local old_value = fs.readfile("/etc/openclash/custom/openclash_custom_localnetwork_ipv4.list")
 		if value ~= old_value then
-			NXFS.writefile("/etc/openclash/custom/openclash_custom_localnetwork_ipv4.list", value)
+			fs.writefile("/etc/openclash/custom/openclash_custom_localnetwork_ipv4.list", value)
 		end
 	end
 end
@@ -503,14 +503,14 @@ o:depends("enable_redirect_dns", "1")
 o:depends("enable_redirect_dns", "0")
 
 function o.cfgvalue(self, section)
-	return NXFS.readfile("/etc/openclash/custom/openclash_custom_chnroute_pass.list") or ""
+	return fs.readfile("/etc/openclash/custom/openclash_custom_chnroute_pass.list") or ""
 end
 function o.write(self, section, value)
 	if value then
 		value = value:gsub("\r\n?", "\n")
-		local old_value = NXFS.readfile("/etc/openclash/custom/openclash_custom_chnroute_pass.list")
+		local old_value = fs.readfile("/etc/openclash/custom/openclash_custom_chnroute_pass.list")
 		if value ~= old_value then
-			NXFS.writefile("/etc/openclash/custom/openclash_custom_chnroute_pass.list", value)
+			fs.writefile("/etc/openclash/custom/openclash_custom_chnroute_pass.list", value)
 		end
 	end
 end
@@ -1148,7 +1148,7 @@ o:value("https://ispip.clang.cn/all_cn.txt", translate("Clang-CN")..translate("(
 o:value("https://ispip.clang.cn/all_cn_cidr.txt", translate("Clang-CN-CIDR"))
 o:value("https://fastly.jsdelivr.net/gh/Hackl0us/GeoIP2-CN@release/CN-ip-cidr.txt", translate("Hackl0us-CN-CIDR-fastly-jsdelivr"))
 o:value("https://testingcf.jsdelivr.net/gh/Hackl0us/GeoIP2-CN@release/CN-ip-cidr.txt", translate("Hackl0us-CN-CIDR-testingcf-jsdelivr"))
-o:value("https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/direct-list.txt", translate("Loyalsoldier-github-Version"))
+o:value("https://raw.githubusercontent.com/gaoyifan/china-operator-ip/refs/heads/ip-lists/china.txt", translate("gaoyifan-github-Version"))
 o.default = "https://ispip.clang.cn/all_cn.txt"
 
 o = s:taboption("chnr_update", Value, "chnr6_custom_url")
@@ -1156,6 +1156,7 @@ o.title = translate("Custom Chnroute6 Lists URL")
 o.rmempty = false
 o.description = translate("Custom Chnroute6 Lists URL, Click Button Below To Refresh After Edit")
 o:value("https://ispip.clang.cn/all_cn_ipv6.txt", translate("Clang-CN-IPV6")..translate("(Default)"))
+o:value("https://raw.githubusercontent.com/gaoyifan/china-operator-ip/refs/heads/ip-lists/china6.txt", translate("gaoyifan-github-Version"))
 o.default = "https://ispip.clang.cn/all_cn_ipv6.txt"
 
 o = s:taboption("chnr_update", Button, translate("Chnroute Lists Update")) 
@@ -1309,14 +1310,14 @@ o.wrap = "off"
 o:depends("ipv6_enable", "1")
 
 function o.cfgvalue(self, section)
-	return NXFS.readfile("/etc/openclash/custom/openclash_custom_localnetwork_ipv6.list") or ""
+	return fs.readfile("/etc/openclash/custom/openclash_custom_localnetwork_ipv6.list") or ""
 end
 function o.write(self, section, value)
 	if value then
 		value = value:gsub("\r\n?", "\n")
-		local old_value = NXFS.readfile("/etc/openclash/custom/openclash_custom_localnetwork_ipv6.list")
+		local old_value = fs.readfile("/etc/openclash/custom/openclash_custom_localnetwork_ipv6.list")
 		if value ~= old_value then
-			NXFS.writefile("/etc/openclash/custom/openclash_custom_localnetwork_ipv6.list", value)
+			fs.writefile("/etc/openclash/custom/openclash_custom_localnetwork_ipv6.list", value)
 		end
 	end
 end
@@ -1329,14 +1330,14 @@ o.wrap = "off"
 o:depends({ipv6_enable = "1", enable_redirect_dns = "1"})
 
 function o.cfgvalue(self, section)
-	return NXFS.readfile("/etc/openclash/custom/openclash_custom_chnroute6_pass.list") or ""
+	return fs.readfile("/etc/openclash/custom/openclash_custom_chnroute6_pass.list") or ""
 end
 function o.write(self, section, value)
 	if value then
 		value = value:gsub("\r\n?", "\n")
-		local old_value = NXFS.readfile("/etc/openclash/custom/openclash_custom_chnroute6_pass.list")
+		local old_value = fs.readfile("/etc/openclash/custom/openclash_custom_chnroute6_pass.list")
 		if value ~= old_value then
-			NXFS.writefile("/etc/openclash/custom/openclash_custom_chnroute6_pass.list", value)
+			fs.writefile("/etc/openclash/custom/openclash_custom_chnroute6_pass.list", value)
 		end
 	end
 end
@@ -1353,14 +1354,14 @@ o.rows = 30
 o.wrap = "off"
 
 function o.cfgvalue(self, section)
-	return NXFS.readfile("/etc/openclash/custom/openclash_custom_firewall_rules.sh") or ""
+	return fs.readfile("/etc/openclash/custom/openclash_custom_firewall_rules.sh") or ""
 end
 function o.write(self, section, value)
 	if value then
 		value = value:gsub("\r\n?", "\n")
-		local old_value = NXFS.readfile("/etc/openclash/custom/openclash_custom_firewall_rules.sh")
+		local old_value = fs.readfile("/etc/openclash/custom/openclash_custom_firewall_rules.sh")
 		if value ~= old_value then
-			NXFS.writefile("/etc/openclash/custom/openclash_custom_firewall_rules.sh", value)
+			fs.writefile("/etc/openclash/custom/openclash_custom_firewall_rules.sh", value)
 		end
 	end
 end
