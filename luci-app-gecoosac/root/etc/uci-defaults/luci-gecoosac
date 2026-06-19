@@ -8,8 +8,11 @@
 EEOF
 }
 
+while uci -q delete 'ucitrack.@gecoosac[0]'; do
+	:
+done
+
 uci -q batch <<-EOF >/dev/null
-	delete ucitrack.@gecoosac[-1]
 	add ucitrack gecoosac
 	set ucitrack.@gecoosac[-1].init=gecoosac
 	commit ucitrack

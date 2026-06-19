@@ -11,6 +11,10 @@ const DEFAULT_DB_DIR = '/etc/gecoosac/';
 const DEFAULT_CRT_FILE = '/etc/gecoosac/tls/gecoosac.crt';
 const DEFAULT_KEY_FILE = '/etc/gecoosac/tls/gecoosac.key';
 const DEFAULT_PID_DIR = '/var/run/';
+const DB_DIR_PREFIXES = [ '/etc/gecoosac', '/tmp/gecoosac', '/var/lib/gecoosac' ];
+const PID_DIR_PREFIXES = [ '/var/run', '/tmp/gecoosac' ];
+
+let statusPollRegistered = false;
 
 const callServiceList = rpc.declare({
 	object: 'service',
@@ -28,6 +32,49 @@ const callClearUpload = rpc.declare({
 function validPort(value, defaultValue) {
 	const port = Number(value || defaultValue);
 	return Number.isInteger(port) && port >= 1 && port <= 65535 ? String(port) : defaultValue;
+}
+
+function stripTrailingSlashes(value) {
+	let path = String(value || '');
+
+	while (path.length > 1 && path.endsWith('/'))
+		path = path.slice(0, -1);
+
+	return path;
+}
+
+function validUploadDir(value) {
+	const path = stripTrailingSlashes(value);
+
+	return path.charAt(0) === '/' && path.endsWith('/gecoosac/upload');
+}
+
+function validPathPrefix(value, prefixes) {
+	const path = stripTrailingSlashes(value);
+
+	if (path.charAt(0) !== '/')
+		return false;
+
+	for (let i = 0; i < prefixes.length; i++)
+		if (path === prefixes[i] || path.indexOf(prefixes[i] + '/') === 0)
+			return true;
+
+	return false;
+}
+
+function pathInDir(value, dir) {
+	const path = stripTrailingSlashes(value);
+	const root = stripTrailingSlashes(dir);
+
+	return root !== '/' && (path === root || path.indexOf(root + '/') === 0);
+}
+
+function validDbDir(value, uploadDir) {
+	return validPathPrefix(value, DB_DIR_PREFIXES) && !pathInDir(value, uploadDir || DEFAULT_UPLOAD_DIR);
+}
+
+function validPidDir(value, uploadDir) {
+	return validPathPrefix(value, PID_DIR_PREFIXES) && !pathInDir(value, uploadDir || DEFAULT_UPLOAD_DIR);
 }
 
 function serviceRunning(status) {
@@ -111,18 +158,21 @@ return view.extend({
 	},
 
 	render(data) {
-		let m, s, o;
+		let m, s, o, uploadDirOption;
 
 		m = new form.Map('gecoosac', _('Gecoos AC'),
-			_('Batch management Gecoos AP, Default password: admin') + '<br />' +
-			_('The current AC version %s, only supports AP 7.6 and above.').format('2.2'));
+			_('Batch management Gecoos AP. The initial password is admin; change it immediately after first login.') + '<br />' +
+			_('Supports Gecoos AP firmware 7.6 and above.'));
 
 		s = m.section(form.TypedSection, 'gecoosac');
 		s.anonymous = true;
 		s.render = function() {
-			poll.add(function() {
-				return L.resolveDefault(callServiceList('gecoosac'), {}).then(updateStatus);
-			}, 3);
+			if (!statusPollRegistered) {
+				poll.add(function() {
+					return L.resolveDefault(callServiceList('gecoosac'), {}).then(updateStatus);
+				}, 3);
+				statusPollRegistered = true;
+			}
 
 			return E('fieldset', { 'class': 'cbi-section' }, [
 				E('style', {}, [
@@ -159,7 +209,7 @@ return view.extend({
 		o.depends('isonlyoneprot', '0');
 
 		o = s.option(form.Flag, 'https', _('Enable HTTPS service'),
-			_('Default certificate files are generated when HTTPS starts; custom paths must point to readable files.'));
+			_('Default certificate files are generated when HTTPS starts; custom paths must point to a readable certificate and matching key.'));
 		o.default = '0';
 		o.depends('isonlyoneprot', '0');
 
@@ -167,31 +217,60 @@ return view.extend({
 		o.placeholder = DEFAULT_CRT_FILE;
 		o.default = DEFAULT_CRT_FILE;
 		o.datatype = 'file';
-		o.depends('https', '1');
+		o.depends({ isonlyoneprot: '0', https: '1' });
 
 		o = s.option(form.Value, 'key_file', _('Specify key certificate file'));
 		o.placeholder = DEFAULT_KEY_FILE;
 		o.default = DEFAULT_KEY_FILE;
 		o.datatype = 'file';
-		o.depends('https', '1');
+		o.depends({ isonlyoneprot: '0', https: '1' });
 
-		o = s.option(form.Value, 'upload_dir', _('Upload dir path'), _('The path to upload AP upgrade firmware'));
+		o = s.option(form.Value, 'upload_dir', _('Upload dir path'),
+			_('Upload AP upgrade firmware here. For safe cleanup, use an absolute path ending with /gecoosac/upload, for example /tmp/gecoosac/upload/.'));
+		uploadDirOption = o;
 		o.placeholder = DEFAULT_UPLOAD_DIR;
 		o.default = DEFAULT_UPLOAD_DIR;
 		o.datatype = 'directory';
 		o.rmempty = false;
+		o.validate = function(section_id, value) {
+			return validUploadDir(value)
+				? true
+				: _('Upload directory must be an absolute path ending with /gecoosac/upload.');
+		};
 
-		o = s.option(form.Value, 'db_dir', _('Database dir path'), _('The path to store the config database'));
+		o = s.option(form.Value, 'db_dir', _('Database dir path'),
+			_('Store the config database under /etc/gecoosac, /tmp/gecoosac, or /var/lib/gecoosac. Do not place it inside the upload directory.'));
 		o.placeholder = DEFAULT_DB_DIR;
 		o.default = DEFAULT_DB_DIR;
 		o.datatype = 'directory';
 		o.rmempty = false;
+		o.validate = function(section_id, value) {
+			const uploadDir = uploadDirOption.formvalue(section_id) || DEFAULT_UPLOAD_DIR;
 
-		o = s.option(form.Value, 'piddir', _('PID dir path'), _('The path to store the AC program pid file'));
+			if (!validPathPrefix(value, DB_DIR_PREFIXES))
+				return _('Database directory must be under /etc/gecoosac, /tmp/gecoosac, or /var/lib/gecoosac.');
+
+			return validDbDir(value, uploadDir)
+				? true
+				: _('Database directory must not be the upload directory or inside it.');
+		};
+
+		o = s.option(form.Value, 'piddir', _('PID dir path'),
+			_('Store the AC program pid file under /var/run or /tmp/gecoosac. Do not place it inside the upload directory.'));
 		o.placeholder = DEFAULT_PID_DIR;
 		o.default = DEFAULT_PID_DIR;
 		o.datatype = 'directory';
 		o.rmempty = false;
+		o.validate = function(section_id, value) {
+			const uploadDir = uploadDirOption.formvalue(section_id) || DEFAULT_UPLOAD_DIR;
+
+			if (!validPathPrefix(value, PID_DIR_PREFIXES))
+				return _('PID directory must be under /var/run or /tmp/gecoosac.');
+
+			return validPidDir(value, uploadDir)
+				? true
+				: _('PID directory must not be the upload directory or inside it.');
+		};
 
 		o = s.option(form.ListValue, 'lang', _('Language'));
 		o.value('zh', _('Chinese'));
@@ -213,16 +292,16 @@ return view.extend({
 		o.rmempty = false;
 
 		o = s.option(form.Button, '_clear_upload', _('Clear Upload Directory'),
-			_('Only files under the configured Gecoos upload directory will be removed.'));
+			_('Only files under the saved Gecoos upload directory will be removed. Save and Apply before clearing a newly edited path.'));
 		o.inputstyle = 'remove';
 		o.inputtitle = _('Clear');
 		o.onclick = function() {
-			if (!confirm(_('Really clear the configured upload directory?')))
+			if (!confirm(_('Really clear the saved upload directory?')))
 				return Promise.resolve();
 
 			return callClearUpload().then(function(res) {
 				if (res && res.result === true)
-					ui.addNotification(null, E('p', {}, _('Upload directory cleared')));
+					ui.addNotification(null, E('p', {}, _('Saved upload directory cleared')));
 				else
 					ui.addNotification(null, E('p', {}, clearUploadError(res)), 'danger');
 			});

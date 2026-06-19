@@ -40,6 +40,36 @@ safe_upload_path() {
 	return 1
 }
 
+path_in_dir() {
+	local path root
+
+	path="$(strip_trailing_slashes "$1")"
+	root="$(strip_trailing_slashes "$2")"
+
+	[ "$root" != "/" ] || return 1
+	[ "$path" = "$root" ] && return 0
+	[ "${path#"$root"/}" != "$path" ]
+}
+
+configured_path_in_upload() {
+	local option="$1"
+	local upload_path="$2"
+	local path real_path
+
+	path="$(uci -q get "gecoosac.config.${option}")"
+	[ -n "$path" ] || return 1
+
+	case "$path" in
+		/*) ;;
+		*) return 1 ;;
+	esac
+
+	real_path="$(readlink -f "$path" 2>/dev/null)"
+	[ -n "$real_path" ] || real_path="$path"
+
+	path_in_dir "$real_path" "$upload_path"
+}
+
 clear_upload() {
 	local path real entry
 
@@ -58,6 +88,11 @@ clear_upload() {
 
 	if ! safe_upload_path "$real"; then
 		json_result 0 "Only Gecoos upload directories can be cleared" "$real"
+		return
+	fi
+
+	if configured_path_in_upload db_dir "$real" || configured_path_in_upload piddir "$real"; then
+		json_result 0 "Upload directory contains configured runtime paths" "$real"
 		return
 	fi
 
