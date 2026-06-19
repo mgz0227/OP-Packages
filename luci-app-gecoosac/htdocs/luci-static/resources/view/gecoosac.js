@@ -11,15 +11,15 @@ const DEFAULT_DB_DIR = '/etc/gecoosac/';
 const DEFAULT_CRT_FILE = '/etc/gecoosac/tls/gecoosac.crt';
 const DEFAULT_KEY_FILE = '/etc/gecoosac/tls/gecoosac.key';
 const DEFAULT_PID_DIR = '/var/run/';
+const CONFIG_BACKUP_DIR = '/etc/gecoosac';
 const DB_DIR_PREFIXES = [ '/etc/gecoosac', '/tmp/gecoosac', '/var/lib/gecoosac' ];
 const PID_DIR_PREFIXES = [ '/var/run', '/tmp/gecoosac' ];
 
 let statusPollRegistered = false;
 
-const callServiceList = rpc.declare({
-	object: 'service',
-	method: 'list',
-	params: [ 'name' ],
+const callServiceStatus = rpc.declare({
+	object: 'luci.gecoosac',
+	method: 'status',
 	expect: { '': {} }
 });
 
@@ -43,16 +43,43 @@ function stripTrailingSlashes(value) {
 	return path;
 }
 
-function validUploadDir(value) {
-	const path = stripTrailingSlashes(value);
+function normalizePath(value) {
+	const path = String(value || '');
 
-	return path.charAt(0) === '/' && path.endsWith('/gecoosac/upload');
+	if (path.charAt(0) !== '/')
+		return null;
+
+	const parts = [];
+	const segments = path.split('/');
+
+	for (let i = 0; i < segments.length; i++) {
+		const segment = segments[i];
+
+		if (!segment || segment === '.')
+			continue;
+
+		if (segment === '..') {
+			if (parts.length > 0)
+				parts.pop();
+			continue;
+		}
+
+		parts.push(segment);
+	}
+
+	return '/' + parts.join('/');
+}
+
+function validUploadDir(value) {
+	const path = normalizePath(value);
+
+	return path !== null && path.endsWith('/gecoosac/upload') && !pathInDir(path, CONFIG_BACKUP_DIR);
 }
 
 function validPathPrefix(value, prefixes) {
-	const path = stripTrailingSlashes(value);
+	const path = normalizePath(value);
 
-	if (path.charAt(0) !== '/')
+	if (path === null)
 		return false;
 
 	for (let i = 0; i < prefixes.length; i++)
@@ -63,10 +90,10 @@ function validPathPrefix(value, prefixes) {
 }
 
 function pathInDir(value, dir) {
-	const path = stripTrailingSlashes(value);
-	const root = stripTrailingSlashes(dir);
+	const path = normalizePath(value);
+	const root = normalizePath(dir);
 
-	return root !== '/' && (path === root || path.indexOf(root + '/') === 0);
+	return path !== null && root !== null && root !== '/' && (path === root || path.indexOf(root + '/') === 0);
 }
 
 function validDbDir(value, uploadDir) {
@@ -80,6 +107,9 @@ function validPidDir(value, uploadDir) {
 function serviceRunning(status) {
 	const service = status && status.gecoosac;
 	const instances = service && service.instances;
+
+	if (status && status.running === true)
+		return true;
 
 	if (!instances)
 		return false;
@@ -153,7 +183,7 @@ return view.extend({
 	load() {
 		return Promise.all([
 			uci.load('gecoosac'),
-			L.resolveDefault(callServiceList('gecoosac'), {})
+			L.resolveDefault(callServiceStatus(), {})
 		]);
 	},
 
@@ -161,15 +191,15 @@ return view.extend({
 		let m, s, o, uploadDirOption;
 
 		m = new form.Map('gecoosac', _('Gecoos AC'),
-			_('Batch management Gecoos AP. The initial password is admin; change it immediately after first login.') + '<br />' +
-			_('Supports Gecoos AP firmware 7.6 and above.'));
+			_('Supports Gecoos AP firmware 7.6 and above.') + '<br />' +
+			_('The initial password is admin; change it immediately after first login.'));
 
 		s = m.section(form.TypedSection, 'gecoosac');
 		s.anonymous = true;
 		s.render = function() {
 			if (!statusPollRegistered) {
 				poll.add(function() {
-					return L.resolveDefault(callServiceList('gecoosac'), {}).then(updateStatus);
+					return L.resolveDefault(callServiceStatus(), {}).then(updateStatus);
 				}, 3);
 				statusPollRegistered = true;
 			}
@@ -226,7 +256,7 @@ return view.extend({
 		o.depends({ isonlyoneprot: '0', https: '1' });
 
 		o = s.option(form.Value, 'upload_dir', _('Upload dir path'),
-			_('Upload AP upgrade firmware here. For safe cleanup, use an absolute path ending with /gecoosac/upload, for example /tmp/gecoosac/upload/.'));
+			_('Upload AP upgrade firmware here. Use an absolute path ending with /gecoosac/upload, for example /tmp/gecoosac/upload/. Do not place it under /etc/gecoosac because that directory is backed up during sysupgrade.'));
 		uploadDirOption = o;
 		o.placeholder = DEFAULT_UPLOAD_DIR;
 		o.default = DEFAULT_UPLOAD_DIR;
@@ -235,7 +265,7 @@ return view.extend({
 		o.validate = function(section_id, value) {
 			return validUploadDir(value)
 				? true
-				: _('Upload directory must be an absolute path ending with /gecoosac/upload.');
+				: _('Upload directory must be an absolute path ending with /gecoosac/upload and must not be under /etc/gecoosac.');
 		};
 
 		o = s.option(form.Value, 'db_dir', _('Database dir path'),
