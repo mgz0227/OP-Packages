@@ -4,7 +4,7 @@ LUCI_TITLE:=luci-app-ssr-plus
 LUCI_PKGARCH:=all
 PKG_NAME:=luci-app-ssr-plus
 PKG_VERSION:=195
-PKG_RELEASE:=31
+PKG_RELEASE:=32
 
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_$(PKG_NAME)_Iptables_Transparent_Proxy \
@@ -107,6 +107,7 @@ choice
 	config PACKAGE_$(PKG_NAME)_INCLUDE_Xray
 	bool "Xray-core"
 	select PACKAGE_xray-core
+	select PACKAGE_coreutils-timeout
 endchoice
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_ChinaDNS_NG
