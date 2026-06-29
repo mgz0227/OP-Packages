@@ -18,6 +18,9 @@ return view.extend({
 
 		s.tab('general', _('General Settings'));
 
+		o = s.taboption('general', form.Flag, 'enabled', _('Enabled'));
+		o.rmempty = false;
+		
 		o = s.taboption('general', form.ListValue, 'mode',
 			_('Mode'),
 			_("Ping Reboot: Reboot this device if a ping to a specified host fails for a specified duration of time. <br /> \
@@ -51,7 +54,7 @@ return view.extend({
 
 		o = s.taboption('general', form.DynamicList, 'pinghosts', _('Hosts To Check'), _(`IP addresses or hostnames to ping.`));
 		o.datatype = 'host';
-		o.default = ['8.8.8.8', '1.1.1.1'];
+		o.default = ['223.5.5.5', '8.8.8.8', '1.1.1.1'];
 		o.depends({ mode: "ping_reboot" });
 		o.depends({ mode: "restart_iface" });
 		o.depends({ mode: "run_script" });
