@@ -227,7 +227,7 @@ if is_finded("chinadns-ng") then
 	end
 end
 
-m:append(Template("shadowsocksr/client_dns_defaults"))
-m:append(Template("shadowsocksr/status_bottom"))
+local dns_defaults_section = m:section(SimpleSection)
+dns_defaults_section.template = "shadowsocksr/client_dns_defaults"
 
 return m

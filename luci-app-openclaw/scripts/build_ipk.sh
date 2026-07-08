@@ -188,10 +188,31 @@ cat > "$CTRL_DIR/postinst" << 'EOF'
 	do
 		[ -e "$p" ] && chown -R root:root "$p" 2>/dev/null || true
 	done
+
+	# 升级/重装后修复已存在的 OpenClaw 运行数据权限。尤其是 npm 外部插件：
+	# npm 安装阶段需要 openclaw 可写，运行阶段插件源码目录必须 root:root，
+	# 否则 OpenClaw 会因为 suspicious ownership 拒绝加载微信插件。
+	OPENCLAW_INSTALL_BASE="$(uci -q get openclaw.main.install_path 2>/dev/null || echo /opt)"
+	if [ -r /usr/libexec/openclaw-paths.sh ]; then
+		. /usr/libexec/openclaw-paths.sh
+		oc_load_paths "$OPENCLAW_INSTALL_BASE" 2>/dev/null || true
+	else
+		OPENCLAW_INSTALL_BASE="${OPENCLAW_INSTALL_BASE%/}"
+		OC_DATA="${OPENCLAW_INSTALL_BASE}/openclaw/data"
+	fi
+	if [ -n "${OC_DATA:-}" ] && [ -d "${OC_DATA}/.openclaw" ] && [ -x /usr/libexec/openclaw-permissions.sh ]; then
+		/usr/libexec/openclaw-permissions.sh fix-state "${OC_DATA}/.openclaw" >/dev/null 2>&1 || true
+	fi
 	
 	# 重启 Web PTY (使其加载新文件和新 token)
 	PTY_PID=$(pgrep -f 'web-pty.js' 2>/dev/null | head -1)
 	[ -n "$PTY_PID" ] && kill "$PTY_PID" 2>/dev/null || true
+
+	# 如果用户原本启用了 OpenClaw，opkg reinstall/upgrade 后恢复服务。
+	if [ "$(uci -q get openclaw.main.enabled 2>/dev/null || echo 0)" = "1" ] && [ -x /etc/init.d/openclaw ]; then
+		/etc/init.d/openclaw enable >/dev/null 2>&1 || true
+		/etc/init.d/openclaw start >/dev/null 2>&1 || true
+	fi
 	
 	exit 0
 }

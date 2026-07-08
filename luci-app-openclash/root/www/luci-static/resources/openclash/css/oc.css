@@ -1962,6 +1962,61 @@
     opacity: 0.7;
 }
 
+.oc .subconverter-version-status {
+    display: flex;
+    align-items: center;
+    max-width: 100%;
+    gap: 6px;
+    margin: 0 0 2px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: inherit;
+    line-height: 15px;
+    box-sizing: border-box;
+    word-break: break-word;
+}
+
+.oc .subconverter-version-status[hidden] {
+    display: none !important;
+}
+
+.oc .subconverter-version-label {
+    color: inherit;
+    font-weight: 600;
+    flex: 0 0 auto;
+}
+
+.oc .subconverter-version-text {
+    min-width: 0;
+}
+
+.oc .subconverter-version-status[data-state="checking"] {
+    color: var(--primary-color);
+}
+
+.oc .subconverter-version-status[data-state="success"] {
+    color: var(--success-color);
+}
+
+.oc .subconverter-version-status[data-state="unrecognized"],
+.oc .subconverter-version-status[data-state="empty"] {
+    color: var(--tip-color);
+}
+
+.oc .subconverter-version-status[data-state="error"] {
+    color: var(--error-color);
+}
+
+[data-page^="admin-services-openclash-config-subscribe-edit"] #cbi-openclash > .cbi-section:not(.cbi-tblsection) > .cbi-section-node[id^="cbi-openclash-"] {
+    padding-top: 14px;
+}
+
+[data-page^="admin-services-openclash-config-subscribe-edit"] #cbi-openclash > .cbi-section:not(.cbi-tblsection) textarea.cbi-input-textarea {
+    vertical-align: top;
+}
+
 .oc .filename-input-container {
     margin-top: 20px;
     display: flex;
