@@ -94,7 +94,9 @@ chmod +x "$DATA_DIR/etc/profile.d/openclaw.sh"
 # 计算安装大小
 INSTALLED_SIZE=$(du -sk "$DATA_DIR" | awk '{print $1}')
 
-(cd "$DATA_DIR" && tar czf "$STAGING/data.tar.gz" .)
+# 强制 data.tar.gz 内文件归属为 root:root，避免 GitHub runner / 本地构建用户
+# 的 UID/GID 泄漏到用户机器（例如安装后出现 1001:1001）。
+(cd "$DATA_DIR" && tar --owner=0 --group=0 --numeric-owner -czf "$STAGING/data.tar.gz" .)
 
 # ── 构建 control.tar.gz ──
 CTRL_DIR="$STAGING/control"
@@ -169,6 +171,23 @@ cat > "$CTRL_DIR/postinst" << 'EOF'
 	
 	# 清理 LuCI 缓存
 	rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* /tmp/luci-indexcache.*.json 2>/dev/null
+
+	# 双保险：确保系统侧文件保持 root:root，避免非 SDK 打包时构建机 UID/GID
+	# 泄漏到目标机器。不要触碰 /opt/openclaw 运行数据。
+	for p in \
+		/etc/init.d/openclaw \
+		/etc/profile.d/openclaw.sh \
+		/usr/bin/openclaw-env \
+		/usr/libexec/openclaw-permissions.sh \
+		/usr/lib/lua/luci/controller/openclaw.lua \
+		/usr/lib/lua/luci/model/cbi/openclaw \
+		/usr/lib/lua/luci/view/openclaw \
+		/usr/lib/lua/openclaw \
+		/usr/share/openclaw \
+		/usr/share/rpcd/acl.d/luci-app-openclaw.json
+	do
+		[ -e "$p" ] && chown -R root:root "$p" 2>/dev/null || true
+	done
 	
 	# 重启 Web PTY (使其加载新文件和新 token)
 	PTY_PID=$(pgrep -f 'web-pty.js' 2>/dev/null | head -1)

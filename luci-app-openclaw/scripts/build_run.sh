@@ -116,7 +116,9 @@ case "$ARCH" in
 esac
 
 # 检查依赖
-for dep in luci-compat luci-base; do
+# .run 不经过 opkg 依赖解析，需要主动补齐运行时依赖。
+# 特别是精简固件常见 /bin/tar 为 BusyBox 版本，无法解压 Node.js 的 .tar.xz。
+for dep in luci-compat luci-base curl openssl-util script-utils tar libstdcpp6; do
 	if ! opkg list-installed 2>/dev/null | grep -q "^${dep} "; then
 		echo "警告: 缺少依赖 $dep，尝试安装..."
 		opkg update >/dev/null 2>&1 || true
@@ -129,6 +131,24 @@ echo "正在安装文件..."
 # 解压 payload (从 MARKER 行之后)
 ARCHIVE=$(awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' "$0")
 tail -n +$ARCHIVE "$0" | tar xzf - -C / 2>/dev/null
+
+# 双保险：即使构建环境 tar 不支持 owner 规范化，也不要把构建机 UID/GID
+# 带到路由器系统文件中。这里仅修复本插件安装的系统侧文件，不触碰
+# /opt/openclaw 运行数据和 OpenClaw npm 插件状态目录。
+for p in \
+	/etc/init.d/openclaw \
+	/etc/profile.d/openclaw.sh \
+	/usr/bin/openclaw-env \
+	/usr/libexec/openclaw-permissions.sh \
+	/usr/lib/lua/luci/controller/openclaw.lua \
+	/usr/lib/lua/luci/model/cbi/openclaw \
+	/usr/lib/lua/luci/view/openclaw \
+	/usr/lib/lua/openclaw \
+	/usr/share/openclaw \
+	/usr/share/rpcd/acl.d/luci-app-openclaw.json
+do
+	[ -e "$p" ] && chown -R root:root "$p" 2>/dev/null || true
+done
 
 # UCI 配置文件保护: 升级时不覆盖用户已有配置
 if [ -f /etc/config/openclaw ] && [ -f /etc/config/openclaw.default ]; then
@@ -259,7 +279,9 @@ echo "[4/4] 打包..."
 mkdir -p "$OUT_DIR"
 
 # 创建 payload tarball
-(cd "$STAGING/payload" && tar czf "$STAGING/payload.tar.gz" .)
+# 强制 payload 内文件归属为 root:root，避免 GitHub runner / 本地构建用户
+# 的 UID/GID 泄漏到用户机器（例如安装后出现 1001:1001）。
+(cd "$STAGING/payload" && tar --owner=0 --group=0 --numeric-owner -czf "$STAGING/payload.tar.gz" .)
 
 # 组合: installer header + payload
 RUN_FILE="$OUT_DIR/${PKG_NAME}_${PKG_VERSION}.run"
