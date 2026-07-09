@@ -2004,8 +2004,8 @@ msgstr "¡Cambio realizado con éxito!"
 msgid "switching failed!"
 msgstr "¡El cambio ha fallado!"
 
-msgid "Current Config File"
-msgstr "Archivo de configuración actual"
+msgid "Current Config"
+msgstr "Configuración actual"
 
 msgid "Up"
 msgstr "Subida"

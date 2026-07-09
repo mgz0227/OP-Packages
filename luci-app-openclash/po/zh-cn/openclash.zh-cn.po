@@ -2004,8 +2004,8 @@ msgstr "切换成功！"
 msgid "switching failed!"
 msgstr "切换失败！"
 
-msgid "Current Config File"
-msgstr "当前配置文件"
+msgid "Current Config"
+msgstr "当前配置"
 
 msgid "Up"
 msgstr "上传"
