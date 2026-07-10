@@ -392,34 +392,58 @@ fi
 	# 同步 UCI 到 JSON
 	sync_uci_to_json
 
-	# 微信 npm 插件自愈注册：
-	# 有些环境里 npm projects 已安装 @tencent-weixin/openclaw-weixin，
-	# 但 openclaw.json 缺少 plugins.installs / plugins.allow / channels 配置，
-	# 会导致页面显示“已安装”而 Gateway 或登录流程无法稳定加载插件。
+	# 微信 npm 插件自愈注册：OpenClaw 2026.6.11 已把安装记录从
+	# openclaw.json 的 plugins.installs 迁移到 SQLite installed_plugin_index。
+	# 旧 LuCI 直装目录存在但索引缺失时，用官方 CLI 一次性迁移。
 	self_heal_wechat_npm_plugin_config() {
 		[ -x "$NODE_BIN" ] || return 0
 		[ -f "$CONFIG_FILE" ] || return 0
 		local npm_projects_dir="${OC_DATA}/.openclaw/npm/projects"
 		[ -d "$npm_projects_dir" ] || return 0
-		local wechat_plugin_json wechat_plugin_dir heal_out
+		local wechat_plugin_json wechat_plugin_dir heal_out plugin_index_db index_ok
 		wechat_plugin_json=$(find "$npm_projects_dir" -path "*/node_modules/@tencent-weixin/openclaw-weixin/openclaw.plugin.json" -type f 2>/dev/null | head -n 1)
 		[ -n "$wechat_plugin_json" ] || return 0
 		wechat_plugin_dir="${wechat_plugin_json%/openclaw.plugin.json}"
-		heal_out=$(OC_CONFIG="$CONFIG_FILE" OC_WECHAT_PLUGIN_DIR="$wechat_plugin_dir" "$NODE_BIN" -e "
+		plugin_index_db="${OC_DATA}/.openclaw/state/openclaw.sqlite"
+		index_ok=0
+		if [ -f "$plugin_index_db" ]; then
+			NODE_NO_WARNINGS=1 OC_PLUGIN_INDEX_DB="$plugin_index_db" "$NODE_BIN" -e "
+try {
+	const {DatabaseSync}=require('node:sqlite');
+	const db=new DatabaseSync(process.env.OC_PLUGIN_INDEX_DB,{readOnly:true});
+	const row=db.prepare(\"SELECT install_records_json FROM installed_plugin_index WHERE index_key='installed-plugin-index'\").get();
+	const records=row?JSON.parse(row.install_records_json):{};
+	const installPath=records['openclaw-weixin']&&records['openclaw-weixin'].installPath;
+	process.exit(installPath&&require('fs').existsSync(installPath)?0:1);
+} catch(e) { process.exit(1); }
+" >/dev/null 2>&1 && index_ok=1
+		fi
+		if [ "$index_ok" != "1" ]; then
+			logger -t openclaw "检测到旧微信直装目录，正在迁移到 SQLite 插件索引"
+			mkdir -p "${OC_DATA}/.npm" "${OC_DATA}/.tmp" 2>/dev/null || true
+			HOME="$OC_DATA" OPENCLAW_HOME="$OC_DATA" OPENCLAW_STATE_DIR="${OC_DATA}/.openclaw" \
+				OPENCLAW_CONFIG_PATH="$CONFIG_FILE" NODE_ICU_DATA="${OC_INSTALL_PATH}/node/share/icu" \
+				NPM_CONFIG_CACHE="${OC_DATA}/.npm" npm_config_cache="${OC_DATA}/.npm" TMPDIR="${OC_DATA}/.tmp" \
+				PATH="${OC_INSTALL_PATH}/node/bin:${OC_INSTALL_PATH}/global/bin:$PATH" \
+				"$NODE_BIN" "$oc_entry" plugins install --force --pin '@tencent-weixin/openclaw-weixin@2.4.6' \
+				>/tmp/openclaw-wechat-self-heal.log 2>&1
+			if [ "$?" = "0" ]; then
+				logger -t openclaw "微信插件已迁移到 SQLite installed_plugin_index"
+			else
+				logger -t openclaw "微信插件 SQLite 索引迁移失败，请查看 /tmp/openclaw-wechat-self-heal.log"
+			fi
+		fi
+		heal_out=$(OC_CONFIG="$CONFIG_FILE" "$NODE_BIN" -e "
 const fs=require('fs');
 const p=process.env.OC_CONFIG;
-const pluginDir=process.env.OC_WECHAT_PLUGIN_DIR;
 let d={};
 try{d=JSON.parse(fs.readFileSync(p,'utf8'));}catch(e){}
 if(!d.plugins||typeof d.plugins!=='object')d.plugins={};
-if(!d.plugins.installs||typeof d.plugins.installs!=='object')d.plugins.installs={};
 if(!Array.isArray(d.plugins.allow))d.plugins.allow=[];
 if(!d.channels||typeof d.channels!=='object')d.channels={};
 let changed=false;
-const want={kind:'npm',installPath:pluginDir,packageName:'@tencent-weixin/openclaw-weixin'};
-const cur=d.plugins.installs['openclaw-weixin'];
-if(!cur||cur.kind!==want.kind||cur.installPath!==want.installPath||cur.packageName!==want.packageName){
-	d.plugins.installs['openclaw-weixin']=want; changed=true;
+if(d.plugins.installs&&d.plugins.installs['openclaw-weixin']){
+	delete d.plugins.installs['openclaw-weixin']; changed=true;
 }
 if(!d.plugins.allow.includes('openclaw-weixin')){
 	d.plugins.allow.push('openclaw-weixin'); changed=true;
@@ -440,7 +464,7 @@ if(changed){
 " 2>/dev/null)
 		if echo "$heal_out" | grep -q "FIXED"; then
 			chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
-			logger -t openclaw "已自愈注册 openclaw-weixin npm plugin: $wechat_plugin_dir"
+			logger -t openclaw "已自愈启用 openclaw-weixin channel"
 		fi
 	}
 	self_heal_wechat_npm_plugin_config
