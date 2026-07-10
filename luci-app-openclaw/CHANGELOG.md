@@ -4,6 +4,21 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [2.0.11] - 2026-07-10
+
+### 修复微信扫码后 Gateway 丢失插件
+
+- 微信安装、升级和登录前置检查改为使用官方 `plugins enable openclaw-weixin`、`plugins registry --refresh` 和 `plugins inspect` 完成闭环。
+- 只有官方 npm 安装记录、SQLite 注册表和微信 channel capability 全部验证通过后，LuCI 才返回安装成功。
+- 启动自愈不再删除 OpenClaw 官方生成的 `plugins.entries.openclaw-weixin`，并在 Gateway 启动前以 `openclaw` 用户刷新和验证注册表。
+- 修复扫码认证已保存，但 Gateway 重启后只加载 `memory-core` 并报 `invalid channels.start channel` 的问题。
+
+### 验证
+
+- 增加插件启用、SQLite 注册表刷新、加载能力校验和冷启动自愈的契约断言。
+
+---
+
 ## [2.0.10] - 2026-07-08
 
 ### 修复微信渠道配对

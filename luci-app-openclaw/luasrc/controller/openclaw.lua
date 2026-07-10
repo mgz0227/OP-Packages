@@ -223,6 +223,39 @@ local function wechat_openclaw_plugin_install_cmd(install_path, oc_entry, log_fi
 		"if [ $RC -eq 0 ]; then echo '✅ OpenClaw 插件索引注册完成' >> " .. shellquote(log_file) .. "; else echo '❌ OpenClaw 插件安装失败 (exit: '$RC')' >> " .. shellquote(log_file) .. "; fi; "
 end
 
+local function wechat_finalize_plugin_registry_cmd(install_path, oc_entry, log_file, exit_file)
+	exit_file = exit_file or "/tmp/openclaw-wechat-install.exit"
+	local oc_data = install_path .. "/data"
+	local node_bin = install_path .. "/node/bin/node"
+	local cli_env = "HOME=" .. oc_data .. " OPENCLAW_HOME=" .. oc_data ..
+		" OPENCLAW_STATE_DIR=" .. oc_data .. "/.openclaw" ..
+		" OPENCLAW_CONFIG_PATH=" .. oc_data .. "/.openclaw/openclaw.json" ..
+		" NODE_ICU_DATA=" .. install_path .. "/node/share/icu" ..
+		" NPM_CONFIG_CACHE=" .. oc_data .. "/.npm TMPDIR=" .. oc_data .. "/.tmp" ..
+		" PATH=" .. install_path .. "/node/bin:" .. install_path .. "/global/bin:$PATH "
+	local cli = cli_env .. node_bin .. " " .. oc_entry
+
+	return "if [ $RC -eq 0 ]; then " ..
+		"echo '正在写入微信插件启用状态...' >> " .. shellquote(log_file) .. "; " ..
+		"_oc_as_openclaw '" .. cli .. " plugins enable openclaw-weixin' >> " .. shellquote(log_file) .. " 2>&1; " ..
+		"FINAL_RC=$?; " ..
+		"if [ $FINAL_RC -eq 0 ]; then " ..
+		"echo '正在刷新 SQLite 插件注册表...' >> " .. shellquote(log_file) .. "; " ..
+		"_oc_as_openclaw '" .. cli .. " plugins registry --refresh' >> " .. shellquote(log_file) .. " 2>&1; " ..
+		"FINAL_RC=$?; fi; " ..
+		"if [ $FINAL_RC -eq 0 ]; then " ..
+		"_OC_WECHAT_INSPECT=/tmp/openclaw-wechat-inspect-$$.log; " ..
+		"_oc_as_openclaw '" .. cli .. " plugins inspect openclaw-weixin' > \"$_OC_WECHAT_INSPECT\" 2>&1; " ..
+		"VERIFY_RC=$?; cat \"$_OC_WECHAT_INSPECT\" >> " .. shellquote(log_file) .. "; " ..
+		"if [ $VERIFY_RC -ne 0 ] || ! grep -q '^Status: loaded$' \"$_OC_WECHAT_INSPECT\" || ! grep -q '^channel: openclaw-weixin$' \"$_OC_WECHAT_INSPECT\"; then FINAL_RC=1; fi; " ..
+		"rm -f \"$_OC_WECHAT_INSPECT\"; fi; " ..
+		"if [ $FINAL_RC -eq 0 ]; then " ..
+		"echo '✅ 微信插件已启用，SQLite 注册表已刷新并通过加载验证' >> " .. shellquote(log_file) .. "; " ..
+		"else RC=$FINAL_RC; echo $RC > " .. shellquote(exit_file) .. "; " ..
+		"echo '❌ 微信插件启用或注册表验证失败' >> " .. shellquote(log_file) .. "; fi; " ..
+		"fi; "
+end
+
 local function wechat_tail_detail(text, max_lines)
 	if not text or text == "" then
 		return ""
@@ -1556,6 +1589,7 @@ function action_wechat_install()
 		"_oc_as_openclaw 'test -w %s/.npm && test -w %s/.tmp && test -w %s/.openclaw' || { echo '❌ openclaw 用户无法写入 npm cache/tmp/data 目录' >> /tmp/openclaw-wechat-install.log; echo 1 > /tmp/openclaw-wechat-install.exit; exit 0; }; " ..
 		wechat_openclaw_plugin_install_cmd(install_path, oc_entry, "/tmp/openclaw-wechat-install.log", "/tmp/openclaw-wechat-install.exit") ..
 		wechat_enable_plugin_config_cmd(install_path, node_bin, "/tmp/openclaw-wechat-install.log") ..
+		wechat_finalize_plugin_registry_cmd(install_path, oc_entry, "/tmp/openclaw-wechat-install.log", "/tmp/openclaw-wechat-install.exit") ..
 		-- 关键修复: 安装完成后强制修复插件目录权限 (确保 Gateway 可读取插件)
 		-- 原因: npx/npm 以 root 身份创建目录，默认权限 700 导致其他用户无法读取
 		-- 官方 npm generation 由 openclaw 用户维护，必须允许后续升级清理。
@@ -1705,6 +1739,7 @@ function action_wechat_login()
                 "_oc_as_openclaw 'test -w %s/.npm && test -w %s/.tmp && test -w %s/.openclaw && test -w %s/.openclaw/openclaw-weixin && test -w %s/.openclaw/openclaw.json' || { echo '❌ openclaw 用户无法写入微信登录目录，请检查数据目录权限' >> /tmp/openclaw-wechat-qrcode.txt; echo 1 > /tmp/openclaw-wechat-login.exit; exit 0; }; " ..
                 "RC=0; " ..
                 wechat_enable_plugin_config_cmd(install_path, node_bin, "/tmp/openclaw-wechat-qrcode.txt", "/tmp/openclaw-wechat-login.exit") ..
+		wechat_finalize_plugin_registry_cmd(install_path, oc_entry, "/tmp/openclaw-wechat-qrcode.txt", "/tmp/openclaw-wechat-login.exit") ..
                 "if [ $RC -ne 0 ]; then echo '❌ 微信插件注册失败，无法登录' >> /tmp/openclaw-wechat-qrcode.txt; exit 0; fi; " ..
                 "cd %s && " ..
                 "_oc_as_openclaw 'HOME=%s OPENCLAW_HOME=%s OPENCLAW_STATE_DIR=%s/.openclaw OPENCLAW_CONFIG_PATH=%s/.openclaw/openclaw.json " ..
@@ -2039,6 +2074,7 @@ function action_wechat_upgrade_plugin()
 		"_oc_as_openclaw 'test -w %s/.npm && test -w %s/.tmp && test -w %s/.openclaw' || { echo '❌ openclaw 用户无法写入 npm cache/tmp/data 目录' >> /tmp/openclaw-wechat-install.log; echo 1 > /tmp/openclaw-wechat-install.exit; exit 0; }; " ..
 		wechat_openclaw_plugin_install_cmd(install_path, oc_entry, "/tmp/openclaw-wechat-install.log", "/tmp/openclaw-wechat-install.exit") ..
 		wechat_enable_plugin_config_cmd(install_path, node_bin, "/tmp/openclaw-wechat-install.log") ..
+		wechat_finalize_plugin_registry_cmd(install_path, oc_entry, "/tmp/openclaw-wechat-install.log", "/tmp/openclaw-wechat-install.exit") ..
 		-- 关键修复: 升级完成后强制修复插件目录权限 (确保 Gateway 可读取插件)
 		-- 官方 npm generation 由 openclaw 用户维护，必须允许后续升级清理。
 		"[ -x /usr/libexec/openclaw-permissions.sh ] && /usr/libexec/openclaw-permissions.sh fix-state %s/.openclaw >/dev/null 2>&1; " ..
