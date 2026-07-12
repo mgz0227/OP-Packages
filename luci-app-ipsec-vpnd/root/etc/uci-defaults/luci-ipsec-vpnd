@@ -10,7 +10,7 @@ uci -q batch <<-EOF >/dev/null
 	set network.VPN=interface
 	set network.VPN.device="ipsec0"
 	set network.VPN.proto="static"
-	set network.VPN.ipaddr="192.168.0.1"
+	set network.VPN.ipaddr="192.168.200.1"
 	set network.VPN.netmask="255.255.255.0"
 	commit network
 
