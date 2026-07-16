@@ -6,8 +6,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-passwall2
-PKG_VERSION:=26.7.12
-PKG_RELEASE:=47
+PKG_VERSION:=26.7.16
+PKG_RELEASE:=48
 PKG_PO_VERSION:=$(PKG_VERSION)
 
 PKG_CONFIG_DEPENDS:= \
@@ -28,26 +28,7 @@ LUCI_PKGARCH:=all
 LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +coreutils-timeout +curl \
 	+ip-full +libuci-lua +lua +luci-compat +luci-lib-jsonc +lyaml +resolveip +tcping \
 	+geoview +v2ray-geoip +v2ray-geosite \
-	+unzip \
-	+PACKAGE_$(PKG_NAME)_Basic_Core_Xray:xray-core \
-	+PACKAGE_$(PKG_NAME)_Basic_Core_SingBox:sing-box \
-	+PACKAGE_$(PKG_NAME)_Basic_Core_All:xray-core \
-	+PACKAGE_$(PKG_NAME)_Basic_Core_All:sing-box \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy:haproxy \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_Hysteria:hysteria \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy:naiveproxy \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Client:shadowsocks-libev-ss-local \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Client:shadowsocks-libev-ss-redir \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Server:shadowsocks-libev-ss-server \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Client:shadowsocks-rust-sslocal \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server:shadowsocks-rust-ssserver \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client:shadowsocksr-libev-ssr-local \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client:shadowsocksr-libev-ssr-redir \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server:shadowsocksr-libev-ssr-server \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs:simple-obfs-client \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_SingBox:sing-box \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client:tuic-client \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Plugin:v2ray-plugin \
+	+unzip
 
 define Package/$(PKG_NAME)/config
 menu "Configuration"
@@ -55,7 +36,7 @@ menu "Configuration"
 
 choice
 	prompt "Basic Core"
-	default PACKAGE_$(PKG_NAME)_Basic_Core_All if aarch64||i386||x86_64
+	default PACKAGE_$(PKG_NAME)_Basic_Core_All if aarch64||arm||i386||x86_64
 	default PACKAGE_$(PKG_NAME)_Basic_Core_Xray
 
 	config PACKAGE_$(PKG_NAME)_Basic_Core_Xray

@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-diskman
 PKG_VERSION:=0.2.13
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 PKG_MAINTAINER:=lisaac <lisaac.cn@gmail.com>
 PKG_LICENSE:=AGPL-3.0
@@ -24,7 +24,7 @@ define Package/luci-app-diskman/config
 config PACKAGE_$(PKG_NAME)_INCLUDE_btrfs_progs
 	depends on PACKAGE_$(PKG_NAME)
 	bool "Include btrfs-progs"
-	default y
+	default n
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_lsblk
 	depends on PACKAGE_$(PKG_NAME)
