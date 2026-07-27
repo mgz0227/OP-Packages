@@ -157,9 +157,35 @@ Remember that these are starting points - optimal settings may depend on your sp
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- | ------- |
 | enabled       | Enables or disables QoSmate. Set to 1 to enable, 0 to disable.                                                                                                             | boolean           | 1       |
 | WAN           | Specifies the WAN interface. This is crucial for applying QoS rules to the correct network interface. It's typically the interface connected to your ISP.                                                                      | string            | eth1    |
-| DOWNRATE      | Download rate in kbps. Set this to about 80-90% of your actual download speed to allow for overhead and prevent bufferbloat. This creates a buffer that helps maintain low latency even when the connection is fully utilized. | integer           | 90000   |
-| UPRATE        | Upload rate in kbps. Set this to about 80-90% of your actual upload speed for the same reasons as DOWNRATE.                                                                                                                    | integer           | 45000   |
+| DOWNRATE      | Download rate in kbps. Set this to about 80-90% of your actual download speed to allow for overhead and prevent bufferbloat. This creates a buffer that helps maintain low latency even when the connection is fully utilized. Set to 0 to disable ingress shaping, see [One-Directional Shaping](#one-directional-shaping). | integer           | 90000   |
+| UPRATE        | Upload rate in kbps. Set this to about 80-90% of your actual upload speed for the same reasons as DOWNRATE. Set to 0 to disable egress shaping.                                                                                | integer           | 45000   |
 | ROOT_QDISC    | Specifies the root queueing discipline. Options are 'hfsc', 'cake', 'hybrid', or 'htb' | enum (hfsc, cake, hybrid, htb) | hfsc    |
+
+### One-Directional Shaping
+
+Setting a rate to `0` disables shaping for that direction, the same convention `sqm-scripts` uses.
+
+| Configuration | Effect |
+| ------------- | ------ |
+| `DOWNRATE` and `UPRATE` greater than 0 | Both directions are shaped (default) |
+| `DOWNRATE=0` | Upload only. No IFB device, no ingress hook and no redirect are created, so the download path is left untouched |
+| `UPRATE=0` | Download only. No egress qdisc is created; classification still works because the DSCP is stored in conntrack and restored on the IFB |
+| both `0` | Nothing is shaped, only the nftables rules are applied |
+
+What `DOWNRATE=0` costs you:
+
+- **TCP bulk detection** (`TCP_DOWNPRIO_INITIAL_ENABLED`, `TCP_DOWNPRIO_SUSTAINED_ENABLED`) is
+  switched off, because its byte thresholds are derived from the download rate.
+- **`ACK_FILTER_EGRESS=auto`** cannot compute the download/upload ratio and therefore stays off. Set
+  it to `1` or `0` explicitly for a defined behaviour.
+- **Incoming packets carry no DSCP**, because the restore happens on the IFB. Devices behind the
+  router, for example an access point applying WMM, will not see any marking.
+- **CAKE ingress options** have no effect, and so does `WASHDSCPDOWN` in CAKE mode. With HFSC,
+  Hybrid and HTB, `WASHDSCPDOWN` keeps working because it is implemented in nftables.
+
+`status` and `health_check` report a disabled direction as such, so it stays distinguishable from a
+broken setup. Autorate adjusts only the direction that is actually shaped and does not start when
+both rates are 0.
 
 ### HFSC + Hybrid Specific Settings
 
@@ -383,7 +409,7 @@ QoSmate allows you to define custom DSCP (Differentiated Services Code Point) ma
 | ------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- | ------- |
 | name          | A unique name for the rule. Used for identification and logging.                                       | string                                                                                                                    |         |
 | proto         | The protocol to match. Determines which type of traffic the rule applies to.                           | enum (tcp, udp, icmp)                                                                                                     |         |
-| src_ip        | Source IP address or range to match. Can use CIDR notation for networks.                               | string                                                                                                                    |         |
+| src_ip        | Source IP to match. Single address, CIDR notation, or a range like '192.168.1.1-192.168.1.200'.        | string                                                                                                                    |         |
 | src_port      | Source port or range to match. Can use individual ports or ranges like '1000-2000'.                    | string                                                                                                                    |         |
 | dest_ip       | Destination IP address or range to match. Similar to src_ip in format.                                 | string                                                                                                                    |         |
 | dest_port     | Destination port or range to match. Similar to src_port in format.                                     | string                                                                                                                    |         |
@@ -518,8 +544,8 @@ QoSmate features an integrated IP Sets UI which allows you to manage both static
 | name          | Name of the IP set. Used to reference the set in QoS rules with the @ prefix (e.g., @gaming_devices). Must contain only letters, numbers, and underscores.  | string                   |         |
 | mode          | Defines how the set is populated. 'static' for manually specified IP lists, 'dynamic' for automatically populated sets (e.g., via DNS resolution).           | enum (static, dynamic)   | static  |
 | family        | Specifies the IP version for addresses in this set.                                                                                                         | enum (ipv4, ipv6)       | ipv4    |
-| ip4           | List of IPv4 addresses or networks to include in the set. Only applicable when mode is 'static'.                                                            | list(string)            |         |
-| ip6           | List of IPv6 addresses or networks to include in the set. Only applicable when mode is 'static'.                                                            | list(string)            |         |
+| ip4           | List of IPv4 addresses, networks or ranges (e.g. 192.168.1.1-192.168.1.200) to include in the set. Only applicable when mode is 'static'.                   | list(string)             |         |
+| ip6           | List of IPv6 addresses, networks or ranges (e.g. 2001:db8::1-2001:db8::ff) to include in the set. Only applicable when mode is 'static'.                    | list(string)             |         |
 | timeout       | Duration after which entries are removed from the set if not refreshed. Format: number + unit (s/m/h). Only applicable when mode is 'dynamic'.              | string                   | 1h      |
 | enabled       | Enables or disables the IP set.                                                                                                                             | boolean                  | 1       |
 
@@ -537,6 +563,22 @@ config ipset
     list ip4 '192.168.1.52'
     list ip4 '192.168.1.53'
 ```
+
+Instead of listing every address individually, you can use CIDR notation or an address range:
+
+```bash
+config ipset
+    option name 'guest_devices'
+    option mode 'static'
+    option family 'ipv4'
+    list ip4 '192.168.1.100-192.168.1.150'
+    list ip4 '192.168.2.0/24'
+```
+
+Overlapping entries are merged automatically. If a range covers an address that is also listed
+separately, nftables collapses both into a single interval, so `nft list set inet dscptag <name>`
+may show fewer entries than the configuration contains.
+
 This set can then be referenced in your QoS rules:
 ```bash
 config rule
@@ -602,7 +644,7 @@ Rate limits are configured via the LuCI interface under **Network â†’ QoSmate â†
 |--------|-------------|------|---------|
 | name | Descriptive name for the rate limit rule | string | |
 | enabled | Enables or disables this rate limit rule | boolean | 1 |
-| target | List of IP/IPv6 addresses or subnets to limit. Supports negation (!=) and set references (@setname) | list(string) | |
+| target | List of IP/IPv6 addresses, subnets or ranges to limit. Supports negation (!=) and set references (@setname) | list(string) | |
 | download_limit | Maximum download speed in Kbit/s (0 = unlimited) | integer | 10000 |
 | upload_limit | Maximum upload speed in Kbit/s (0 = unlimited) | integer | 10000 |
 | burst_factor | Burst allowance multiplier. 0 = strict limiting, 1.0 = rate as burst, higher = more burst | float | 1.0 |
