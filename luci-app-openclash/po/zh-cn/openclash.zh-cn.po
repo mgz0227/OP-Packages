@@ -1698,6 +1698,24 @@ msgstr "开始下载大陆 IP 白名单..."
 msgid "Start Downloading The Chnroute6 Cidr List..."
 msgstr "开始下载大陆 IPv6 白名单..."
 
+msgid "Version info not ready, please wait and try again"
+msgstr "版本信息尚未就绪，请稍后重试"
+
+msgid "Link access timed out, cannot download"
+msgstr "链接访问超时，无法下载"
+
+msgid "Link access failed, cannot download"
+msgstr "链接访问失败，无法下载"
+
+msgid "Failed to get plugin version info from this link, please check again later"
+msgstr "此链接的插件版本信息获取失败，请稍后重试"
+
+msgid "Failed to get core version info from this link, please check again later"
+msgstr "此链接的内核版本信息获取失败，请稍后重试"
+
+msgid "The selected version is the same as the installed version, no need to update"
+msgstr "所选版本与已安装版本相同，无需更新"
+
 msgid "Chnroute Cidr List Download Success, Check Updated..."
 msgstr "大陆 IP 白名单下载成功，检查版本是否更新..."
 
@@ -3300,6 +3318,21 @@ msgstr "下载进度："
 msgid "Downloading..."
 msgstr "下载中..."
 
+msgid "Downloading config..."
+msgstr "正在下载配置..."
+
+msgid "Downloading core..."
+msgstr "正在下载内核..."
+
+msgid "Fetching subscription..."
+msgstr "正在获取订阅..."
+
+msgid "Logging in..."
+msgstr "正在登录..."
+
+msgid "Saving token..."
+msgstr "正在保存令牌..."
+
 msgid "Sniff the domain name of the traffics to avoid rule-based proxy failure"
 msgstr "嗅探流量的域名信息，避免基于规则的代理失败"
 
@@ -4052,6 +4085,15 @@ msgstr "oixCloud 账户登录失败！请检查账户信息并重试..."
 
 msgid "oixCloud Account Login Failed, The Error Info is"
 msgstr "oixCloud 账户登录失败，错误信息"
+
+msgid "invalid token"
+msgstr "无效的令牌"
+
+msgid "login failed"
+msgstr "登录失败"
+
+msgid "email or passwd is wrong"
+msgstr "邮箱或密码错误"
 
 msgid "oixCloud Checkin Failed! Please Check And Try Again..."
 msgstr "oixCloud 签到失败，请稍后再试！"
