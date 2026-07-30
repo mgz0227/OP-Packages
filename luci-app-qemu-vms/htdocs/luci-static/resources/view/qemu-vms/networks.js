@@ -20,7 +20,8 @@ return view.extend({
 	load: function() {
 		return Promise.all([
 			callListNetDrivers(),
-			uci.load('qemu-vms')
+			uci.load('qemu-vms'),
+			uci.load('network')
 		]);
 	},
 
@@ -29,9 +30,9 @@ return view.extend({
 		var m, s;
 
 		m = new form.Map('qemu-vms', _('Virtual network segments'),
-			_('Define reusable tap interfaces that can be attached to one or more VMs. ' +
-				'Interfaces are brought up by /etc/qemu-ifup at VM start; if "bridge" is set, ' +
-				'the interface is also enslaved into that bridge, otherwise it is left standalone.'));
+			_('Define reusable tap interfaces that can be attached to one or more VMs.') +
+			'<br />' + _('Interfaces are brought up by /etc/qemu-ifup at VM start; if "bridge" is set,') +
+			' ' + _('the interface is also enslaved into that bridge, otherwise it is left standalone.'));
 
 		s = m.section(form.GridSection, 'network', _('Networks'));
 		s.addremove = true;
@@ -46,13 +47,13 @@ return view.extend({
 				return _('Invalid MAC address format (expected xx:xx:xx:xx:xx:xx)');
 			return true;
 		};
-		mac.write = function(section_id, value) {
-			if (!value)
-				value = randomMac();
-			return form.Value.prototype.write.call(this, section_id, value);
-		};
+
 		mac.rmempty = false;
-		mac.value(randomMac(), _('Automatically assigned'));
+		mac.renderWidget = function(section_id, option_index, cfgvalue) {
+			this.keylist = [randomMac()];
+			this.vallist = [_('Automatically assigned')];
+			return form.Value.prototype.renderWidget.apply(this, arguments);
+		};
 
 		var ifname = s.option(form.Value, 'ifname', _('tap ifname'));
 		ifname.placeholder = 'tap0';
@@ -63,12 +64,24 @@ return view.extend({
 			return true;
 		};
 
-		var bridge = s.option(form.Value, 'bridge', _('Bridge (optional)'));
-		bridge.placeholder = _('leave empty to keep the interface standalone');
+		// В render:
+		var bridgeList = [];
+		uci.sections('network', 'device').forEach(function(s) {
+			if (s.type === 'bridge') {
+				bridgeList.push(s.name);
+			}
+		});
 
-		// --- Поле driver с динамическим списком ---
+		var bridge = s.option(form.Value, 'bridge', _('Bridge (optional)'));
+		bridge.value('', _('not assign'));
+		bridgeList.forEach(function(name) {
+			bridge.value(name, name);
+		});
+		bridge.rmempty = true;
+		//bridge.nocreate = false;   
+
 		var driver = s.option(form.ListValue, 'driver', _('Network driver'));
-		// Добавляем опции из загруженного списка
+
 		if (drivers.length) {
 			drivers.forEach(function(d) {
 				driver.value(d, d);
@@ -78,7 +91,7 @@ return view.extend({
 		}
 		driver.default = 'virtio-net-pci';
 		driver.rmempty = true;
-		driver.description = _('Choose the emulated network card model. If empty, virtio-net-pci is used.');
+		driver.description = _('Choose the emulated network card model. Default driver: <code>virtio-net-pci</code>');
 
 		return m.render();
 	}
