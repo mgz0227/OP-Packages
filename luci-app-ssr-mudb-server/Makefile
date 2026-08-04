@@ -9,7 +9,7 @@ LUCI_TITLE:=LuCI support for SSR Mudb Server
 LUCI_DEPENDS:=+libsodium +luci-lib-jsonc +python3
 LUCI_PKGARCH:=all
 PKG_VERSION:=20211211
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
