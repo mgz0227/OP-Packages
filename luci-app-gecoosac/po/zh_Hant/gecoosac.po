@@ -139,6 +139,9 @@ msgstr "請輸入絕對路徑"
 msgid "Only Gecoos upload directories can be cleared"
 msgstr "只能清除集客 AC 上傳目錄"
 
+msgid "Upload directory contains a mount point"
+msgstr "上傳目錄包含掛載點"
+
 msgid "Upload directory was not cleared"
 msgstr "上傳目錄未清除"
 
@@ -189,6 +192,9 @@ msgstr "無法驗證上傳目錄清理暫存區"
 
 msgid "Upload cleanup stage contains a configured protected path"
 msgstr "上傳目錄清理暫存區包含已設定的受保護路徑"
+
+msgid "Paths under .gecoosac-clear.* are reserved for upload cleanup."
+msgstr ".gecoosac-clear.* 下的路徑保留供上傳目錄清理使用。"
 
 msgid "Unable to recreate upload directory"
 msgstr "無法重新建立上傳目錄"
