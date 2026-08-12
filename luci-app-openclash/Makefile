@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-openclash
 PKG_VERSION:=0.47.156
-PKG_RELEASE:=146
+PKG_RELEASE:=147
 PKG_MAINTAINER:=vernesong <https://github.com/vernesong/OpenClash>
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -116,6 +116,7 @@ define Package/$(PKG_NAME)/postrm
 	rm -rf /usr/share/openclash >/dev/null 2>&1
 	rm -rf /tmp/openclash_version_history.json >/dev/null 2>&1
     rm -rf /tmp/openclash_cdn_info.json >/dev/null 2>&1
+	rm -rf /tmp/openclash_proxy_ips_cache >/dev/null 2>&1
 	rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_openclash_custom_domain.conf >/dev/null 2>&1
 	rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_openclash_chnroute_pass.conf >/dev/null 2>&1
 	rm -rf ${DNSMASQ_CONF_DIR}/dnsmasq_openclash_chnroute6_pass.conf >/dev/null 2>&1
