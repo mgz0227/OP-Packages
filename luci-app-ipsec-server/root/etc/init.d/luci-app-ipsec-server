@@ -74,7 +74,7 @@ gen_include() {
 
 start() {
 	local vt_enabled=$(uci -q get ${CONFIG}.@service[0].enabled)
-	[ "$vt_enabled" = 0 ] && return 1
+	[ "$vt_enabled" = 1 ] || return 0
 	
 	local vt_gateway="${vt_serverip%.*}.1"
 	local vt_secret=$(uci -q get ${CONFIG}.@service[0].secret)

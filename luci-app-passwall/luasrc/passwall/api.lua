@@ -19,9 +19,10 @@ OPENWRT_ARCH = nil
 DISTRIB_ARCH = nil
 OPENWRT_BOARD = nil
 
-CACHE_PATH = "/tmp/etc/" .. appname .. "_tmp"
-LOG_FILE = "/tmp/log/" .. appname .. ".log"
-TMP_PATH = "/tmp/etc/" .. appname
+LOCK_PREFIX = "/tmp/lock/passwall"
+LOG_FILE = "/tmp/log/passwall.log"
+TMP_PATH = "/tmp/etc/passwall"
+CACHE_PATH = TMP_PATH .. "_tmp"
 TMP_IFACE_PATH = TMP_PATH .. "/iface"
 
 function log(...)
@@ -37,7 +38,85 @@ function is_old_uci()
 	return sys.call("grep -E 'require[ \t]*\"uci\"' /usr/lib/lua/luci/model/uci.lua >/dev/null 2>&1") == 0
 end
 
+function uci_del(config, section, option)
+	if option then
+		return uci:delete(config, section, option)
+	else
+		return uci:delete(config, section)
+	end
+end
+
+function uci_get(config, section, option)
+	if not section then
+		return uci:get_all(config)
+	elseif option then
+		return uci:get(config, section, option) or nil
+	else
+		return uci:get_all(config, section)
+	end
+end
+
+function uci_set(config, section, option, value)
+	if type(value) == "number" then
+		value = value .. ""
+	end
+	if #value > 0 then
+		if option then
+			if type(value) == "table" then
+				return uci:set_list(config, section, option, value)
+			else
+				return uci:set(config, section, option, value)
+			end
+		else
+			return uci:set(config, section, value)
+		end
+	else
+		return uci_del(config, section, option)
+	end
+end
+
+function uci_del_c(section, option)
+	return uci_del(c_config, section, option)
+end
+
+function uci_foreach_c(stype, func)
+	uci:foreach(c_config, stype, func)
+end
+
+function uci_get_c(section, option)
+	return uci_get(c_config, section, option)
+end
+
+function uci_set_c(section, option, value)
+	return uci_set(c_config, section, option, value)
+end
+
+function uci_save_c(commit, apply)
+	return uci_save(uci, c_config, commit, apply)
+end
+
+function uci_del_s(section, option)
+	return uci_del(s_config, section, option)
+end
+
+function uci_foreach_s(stype, func)
+	uci:foreach(s_config, stype, func)
+end
+
+function uci_get_s(section, option)
+	return uci_get(s_config, section, option)
+end
+
+function uci_set_s(section, option, value)
+	return uci_set(s_config, section, option, value)
+end
+
+function uci_save_s(commit, apply)
+	return uci_save(uci, s_config, commit, apply)
+end
+
 function uci_save(cursor, config, commit, apply)
+	if not cursor then cursor = uci end
 	if is_old_uci() then
 		cursor:save(config)
 		if commit then
@@ -198,7 +277,7 @@ end
 
 function curl_direct(url, file, args)
 	--直连访问
-	local chn_list = uci:get(appname, "@global[0]", "chn_list") or "direct"
+	local chn_list = uci_get_c("@global[0]", "chn_list") or "direct"
 	local Dns = (chn_list == "proxy") and "1.1.1.1" or "223.5.5.5"
 	if not args then args = {} end
 	local tmp_args = clone(args)
@@ -213,7 +292,7 @@ function curl_direct(url, file, args)
 end
 
 function curl_auto(url, file, args)
-	local localhost_proxy = uci:get(c_config, "@global[0]", "localhost_proxy") or "1"
+	local localhost_proxy = uci_get_c("@global[0]", "localhost_proxy") or "1"
 	if localhost_proxy == "1" then
 		return curl_base(url, file, args) -- 当路由器本机开启代理时，采用passwall规则进行访问
 	else
@@ -481,7 +560,7 @@ function get_domain_from_url(url)
 end
 
 function get_valid_nodes()
-	local show_node_info = uci:get(c_config, "@global_other[0]", "show_node_info") or "0"
+	local show_node_info = uci_get_c("@global_other[0]", "show_node_info") or "0"
 	local nodes = {}
 	local default_nodes = {}
 	local other_nodes = {}
@@ -666,7 +745,7 @@ function chmod_755(file)
 end
 
 function get_customed_path(e)
-	return uci:get(c_config, "@global_app[0]", e .. "_file")
+	return uci_get_c("@global_app[0]", e .. "_file")
 end
 
 function finded_com(e)
@@ -725,7 +804,7 @@ end
 function get_app_path(app_name)
 	if com[app_name] then
 		local def_path = com[app_name].default_path
-		local path = uci:get(c_config, "@global_app[0]", app_name:gsub("%-","_") .. "_file")
+		local path = uci_get_c("@global_app[0]", app_name:gsub("%-","_") .. "_file")
 		path = path and (#path>0 and path or def_path) or def_path
 		return path
 	end
@@ -1003,7 +1082,7 @@ local default_file_tree = {
 }
 
 local function get_api_json(url)
-	local gh_proxy = uci:get(c_config, "@global_app[0]", "github_proxy") or "0"
+	local gh_proxy = uci_get_c("@global_app[0]", "github_proxy") or "0"
 	local return_code, content
 	if gh_proxy == "1" then
 		url = "https://gh-proxy.org/" .. url
@@ -1127,7 +1206,7 @@ function to_download(app_name, url, size)
 	local _curl_args = clone(curl_args)
 	table.insert(_curl_args, "--speed-limit 51200 --speed-time 15 --max-time 300")
 
-	local gh_proxy = uci:get(c_config, "@global_app[0]", "github_proxy") or "0"
+	local gh_proxy = uci_get_c("@global_app[0]", "github_proxy") or "0"
 	local return_code, result
 	if gh_proxy == "1" then
 		url = "https://gh-proxy.org/" .. url
@@ -1285,7 +1364,7 @@ end
 function to_check_self()
 	local url = "https://raw.githubusercontent.com/Openwrt-Passwall/openwrt-passwall/main/luci-app-passwall/Makefile"
 	local tmp_file = "/tmp/passwall_makefile"
-	local gh_proxy = uci:get(c_config, "@global_app[0]", "github_proxy") or "0"
+	local gh_proxy = uci_get_c("@global_app[0]", "github_proxy") or "0"
 	local return_code, result
 	if gh_proxy == "1" then
 		url = "https://gh-proxy.org/" .. url
@@ -1331,6 +1410,23 @@ function set_default_cbi()
 	if true then
 		--Map
 		local Map = cbi.Map
+
+		if not Map._passwall_default_cbi then
+			Map._passwall_default_cbi = true
+			local original_parse = Map.parse
+			function Map.parse(self, ...)
+				if is_js_luci() then
+					apply_redirect(self)
+					local old = self.on_after_save
+					self.on_after_save = function(map)
+						if old then old(map) end
+						map:set("@global[0]", "timestamp", os.time())
+					end
+				end
+				return original_parse(self, ...)
+			end
+		end
+
 		local original_init = Map.__init__
 		function Map.__init__(self, config, ...)
 			if not config then config = c_config end
@@ -1353,26 +1449,6 @@ function set_default_cbi()
 			end
 			self:append(obj)
 			return obj
-		end
-
-		if is_js_luci() == true then
-			local hide_popup_box = nil
-			if hide_popup_box == true then
-				Map.apply_on_parse = false
-				Map.on_after_apply = function(self)
-					if self.redirect then
-						os.execute("sleep 1")
-						luci.http.redirect(self.redirect)
-					end
-				end
-			else
-				apply_redirect(Map)
-				local old = Map.on_after_save
-				Map.on_after_save = function(self)
-					if old then old(self) end
-					self:set("@global[0]", "timestamp", os.time())
-				end
-			end
 		end
 	end
 	if true then
@@ -1632,7 +1708,11 @@ function apply_redirect(m)
 		else
 			fs.writefile(tmp_uci_file, "config redirect\n")
 		end
+		local old = m.on_after_save
 		m.on_after_save = function(self)
+			if old then
+				old(self)
+			end
 			local redirect = self.redirect
 			if redirect and redirect ~= "" then
 				uci:set(c_config .. "_redirect", "@redirect[0]", "url", redirect)
@@ -1740,7 +1820,7 @@ end
 function get_socks_backup_nodes(id)
 	id = trim(id)
 	if id == "" then return "" end
-	local socks = uci:get_all(c_config, id)
+	local socks = uci_get_c(id)
 	local nodes
 	if socks.backup_node_add_mode and socks.backup_node_add_mode == "batch" then
 		local node = {}
@@ -1761,7 +1841,7 @@ function get_socks_backup_nodes(id)
 end
 
 function get_core(field, candidates)
-	local v = uci:get(c_config, "@global_subscribe[0]", field)
+	local v = uci_get_c("@global_subscribe[0]", field)
 	if v and v ~= "" then
 		for _, c in ipairs(candidates) do
 			if c[2] == v and c[1] then

@@ -1,8 +1,8 @@
 msgid "IPSec VPN Server"
 msgstr "IPSec VPN 服务器"
 
-msgid "IPSec VPN connectivity using the native built-in VPN Client on iOS or Andriod (IKEv2 PSK & IKEv1 Xauth PSK)<br />IKEv2 Client Mention:<br />Android Client Plsease Set IPsec Identifier With PSK<br />IOS Client Plsease Set Remote ID With PSK"
-msgstr "使用iOS 或者 Andriod (IKEv2 PSK & IKEv1 Xauth PSK) 原生内置 IPSec VPN 客户端进行连接<br />IKEv2 客户端使用须知:<br />安卓客户端请将IPsec标识符设置为PSK密钥<br />苹果客户端请将远程ID设置为PSK密钥"
+msgid "Enable IPsec access for IKEv2 PSK, IKEv1 XAuth PSK, and IKEv2 EAP clients."
+msgstr "启用 IKEv2 PSK、IKEv1 XAuth PSK 和 IKEv2 EAP 客户端接入。"
 
 msgid "Use a client that supports IPSec Xauth PSK or IPSec EAP (iOS, Android, macOS, or Windows) to connect to this server."
 msgstr "请使用支持 IPSec Xauth PSK 或 IPSec EAP 的客户端（iOS、Android、macOS、Windows）连接到此服务器。"
@@ -10,42 +10,47 @@ msgstr "请使用支持 IPSec Xauth PSK 或 IPSec EAP 的客户端（iOS、Andro
 msgid "Current Condition"
 msgstr "当前状态"
 
-msgid "General settings"
+msgid "Checking..."
+msgstr "正在检查..."
+
+msgid "Status unavailable"
+msgstr "状态不可用"
+
+msgid "General Settings"
 msgstr "基本设置"
+
+msgid "Enable"
+msgstr "启用"
 
 msgid "Enabled"
 msgstr "启用"
 
 msgid "VPN Client IP"
-msgstr "VPN客户端地址段"
+msgstr "VPN 客户端地址池"
 
 msgid "VPN Server IP"
-msgstr "VPN服务端地址段"
+msgstr "VPN 服务端地址"
 
-msgid "VPN Client reserved started IP addresses with the same subnet mask, such as: 192.168.100.10/24"
-msgstr "VPN客户端获取IP的起始地址，例如：192.168.100.10/24"
+msgid "VPN client address pool in CIDR notation, such as: 10.0.10.0/24"
+msgstr "VPN 客户端地址池（CIDR 格式），例如：10.0.10.0/24"
 
-msgid "VPN Server reserved started IP addresses with the same subnet mask, such as: 192.168.100.10/24"
-msgstr "VPN服务端获取IP的起始地址，例如：192.168.100.10/24"
+msgid "VPN server address and subnet in CIDR notation, such as: 10.0.0.1/24"
+msgstr "VPN 服务端地址和子网（CIDR 格式），例如：10.0.0.1/24"
 
 msgid "Domain name used for IKEv2 certificate and Remote ID, such as: ns.miaogongzi.cc"
-msgstr "用于IKEv2证书和远程ID的域名，例如：ns.miaogongzi.cc"
+msgstr "用于 IKEv2 证书和远程 ID 的域名，例如：ns.miaogongzi.cc"
 
 msgid "Server private key file name under /etc/ipsec.d/private/, such as: server_key.pem"
-msgstr "位于 /etc/ipsec.d/private/ 目录下的服务器私钥文件名，例如：server_key.pem"
+msgstr "位于 /etc/ipsec.d/private/ 的服务器私钥文件名，例如：server_key.pem"
 
 msgid "Server certificate file name under /etc/ipsec.d/certs/, such as: server.pem"
-msgstr "位于 /etc/ipsec.d/certs/ 目录下的服务器证书文件名，例如：server.pem"
+msgstr "位于 /etc/ipsec.d/certs/ 的服务器证书文件名，例如：server.pem"
 
 msgid "Secret Pre-Shared Key"
-msgstr "PSK密钥"
+msgstr "PSK 密钥"
 
-msgid "VPN Server IP address, such as: 192.168.101.1"
-msgstr "VPN服务端IP地址，例如：192.168.101.1"
-
-msgid "VPN Client IP address range, such as: 192.168.101.10-20"
-msgstr "VPN客户端获取IP范围，例如：192.168.101.10-20"
-
+msgid "Used by IKEv2 PSK and IKEv1 XAuth PSK clients."
+msgstr "供 IKEv2 PSK 和 IKEv1 XAuth PSK 客户端使用。"
 
 msgid "Users Manager"
 msgstr "用户管理"
@@ -62,8 +67,11 @@ msgstr "IP 地址"
 msgid "Automatically"
 msgstr "自动分配"
 
-msgid "Online Users"
-msgstr "在线用户"
+msgid "Static Routes"
+msgstr "静态路由"
+
+msgid "Use a client that supports L2TP over IPSec PSK to connect to this server."
+msgstr "使用支持 L2TP over IPSec PSK 的客户端连接到此服务器。"
 
 msgid "NOT RUNNING"
 msgstr "未运行"
@@ -72,10 +80,10 @@ msgid "RUNNING"
 msgstr "运行中"
 
 msgid "Certificate File Name"
-msgstr "证书名称"
+msgstr "证书文件名"
 
 msgid "Private Key File Name"
-msgstr "证书私钥名称"
+msgstr "私钥文件名"
 
 msgid "VPN Domain"
 msgstr "VPN 域名"

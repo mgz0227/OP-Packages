@@ -16,8 +16,7 @@ end
 
 function act_status()
 	local e = {}
-	e["ipsec_status"] = luci.sys.call("/usr/bin/pgrep ipsec >/dev/null") == 0
-	e["l2tp_status"] = luci.sys.call("top -bn1 | grep -v grep | grep '/var/etc/xl2tpd' >/dev/null") == 0
+	e["ipsec_status"] = luci.sys.call("pidof charon >/dev/null 2>&1") == 0
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)
 end

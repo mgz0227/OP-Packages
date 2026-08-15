@@ -1,5 +1,3 @@
-local sys = require "luci.sys"
-
 m = Map("luci-app-ipsec-server", translate("IPSec VPN Server"))
 m.template = "ipsec-server/ipsec-server_status"
 
@@ -9,25 +7,27 @@ s.anonymous = true
 o = s:option(DummyValue, "ipsec-server_status", translate("Current Condition"))
 o.rawhtml = true
 o.cfgvalue = function(t, n)
-	return '<font class="ipsec-server_status"></font>'
+	return '<span class="ipsec-server-status is-loading" role="status" aria-live="polite">' .. translate("Checking...") .. '</span>'
 end
 
 enabled = s:option(Flag, "enabled", translate("Enable"))
-enabled.description = translate("IPSec VPN connectivity using the native built-in VPN Client on iOS or Andriod (IKEv2 PSK & IKEv1 Xauth PSK)<br />IKEv2 Client Mention:<br />Android Client Plsease Set IPsec Identifier With PSK<br />IOS Client Plsease Set Remote ID With PSK")
+enabled.description = translate("Enable IPsec access for IKEv2 PSK, IKEv1 XAuth PSK, and IKEv2 EAP clients.")
 enabled.default = 0
 enabled.rmempty = false
 
 clientip = s:option(Value, "clientip", translate("VPN Client IP"))
-clientip.description = translate("VPN Client reserved started IP addresses with the same subnet mask, such as: 10.0.10.0/24")
+clientip.description = translate("VPN client address pool in CIDR notation, such as: 10.0.10.0/24")
 clientip.datatype = "ip4addr"
 clientip.optional = false
 clientip.rmempty = false
+clientip.placeholder = "10.0.10.0/24"
 
 serverip = s:option(Value, "serverip", translate("VPN Server IP"))
-serverip.description = translate("VPN Server reserved started IP addresses with the same subnet mask, such as: 10.0.0.1/24")
+serverip.description = translate("VPN server address and subnet in CIDR notation, such as: 10.0.0.1/24")
 serverip.datatype = "ip4addr"
 serverip.optional = false
 serverip.rmempty = false
+serverip.placeholder = "10.0.0.1/24"
 
 domain = s:option(Value, "domain", translate("VPN Domain"))
 domain.description = translate("Domain name used for IKEv2 certificate and Remote ID, such as: ns.miaogongzi.cc")
@@ -52,6 +52,8 @@ private_key.placeholder = "server_key.pem"
 private_key.default = "server_key.pem"
 
 secret = s:option(Value, "secret", translate("Secret Pre-Shared Key"))
+secret.description = translate("Used by IKEv2 PSK and IKEv1 XAuth PSK clients.")
 secret.password = true
+secret.rmempty = false
 
 return m
