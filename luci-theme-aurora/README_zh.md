@@ -154,7 +154,7 @@ Aurora 使用 **Vite** 与现代前端工具链构建，并尝试将 AI 融入�
 [Apache 2.0](LICENSE)。致谢：
 
 - [luci-theme-bootstrap](https://github.com/openwrt/luci/tree/master/themes/luci-theme-bootstrap)
-- [luci-theme-footstrap](https://github.com/VizzleTF/luci-theme-footstrap) — 一个自带客户端路由的 LuCI 主题。Aurora 的同文档导航借鉴了它的部分思路，并改用 Navigation API 实现——见 `.dev/docs/router.md`
+- [luci-theme-footstrap](https://github.com/VizzleTF/luci-theme-footstrap) — 一个自带客户端路由的 LuCI 主题。Aurora 的同文档导航借鉴了它的部分思路，并改用 Navigation API 实现——见[路由文档](.dev/docs/router.md)
 - [Vite](https://vitejs.dev/)
 - [Tailwind CSS](https://tailwindcss.com/)
 - [Tabler Icons](https://tabler.io/icons) — 界面图标集

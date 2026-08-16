@@ -154,7 +154,7 @@ Thanks goes to these wonderful people:
 [Apache 2.0](LICENSE). Thanks to:
 
 - [luci-theme-bootstrap](https://github.com/openwrt/luci/tree/master/themes/luci-theme-bootstrap)
-- [luci-theme-footstrap](https://github.com/VizzleTF/luci-theme-footstrap) — a LuCI theme with its own client-side router. Aurora's same-document navigation borrows some of its ideas and implements them on the Navigation API instead — see `.dev/docs/router.md`
+- [luci-theme-footstrap](https://github.com/VizzleTF/luci-theme-footstrap) — a LuCI theme with its own client-side router. Aurora's same-document navigation borrows some of its ideas and implements them on the Navigation API instead — see the [router doc](.dev/docs/router.md)
 - [Vite](https://vitejs.dev/)
 - [Tailwind CSS](https://tailwindcss.com/)
 - [Tabler Icons](https://tabler.io/icons) — the interface icon set

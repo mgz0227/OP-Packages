@@ -8,13 +8,15 @@ or to any view** — the router is additive theme JS plus three small template
 hooks (a patch manifest, a `<footer>` boundary, and `data-aurora-*` markers
 on the stylesheets header.ut itself renders).
 
+![Full reload vs the same-document router: timings above, the router's five stages below](https://raw.githubusercontent.com/eamonxg/assets/master/shared/architecture/same-document-router-architecture.png)
+
 ## Prior art
 
-Other LuCI themes solve the same problem, and reading one of them (credited
-in the README) informed two pieces here: pausing `L.Poll` on a hidden tab,
-and folding a view's read-only state along its dispatch path (both below).
-The rest is independent, and one choice diverges deliberately. The common
-approach drives navigation through the **History API**
+[luci-theme-footstrap](https://github.com/VizzleTF/luci-theme-footstrap)
+solves the same problem, and reading it informed two pieces here: pausing
+`L.Poll` on a hidden tab, and folding a view's read-only state along its
+dispatch path (both below). The rest is independent, and one choice diverges
+deliberately. footstrap drives navigation through the **History API**
 (`pushState`/`popstate`) with its own scroll bookkeeping and a
 `prototype.render` guard to repair stale renders; this router is built on
 the **Navigation API** instead (see "Kernel"), which hands scroll, history
@@ -82,7 +84,7 @@ and (with `scroll: 'after-transition'`) restores scroll on traversal /
 scrolls to top on push, so the router carries no `pushState`/`popstate`
 code, no scroll bookkeeping, and no fragment-vs-navigation heuristics.
 
-Why this API rather than the History API the other themes use:
+Why this API rather than the History API footstrap uses:
 
 - **The browser owns URL, history and scroll.** `pushState` puts the
   router in charge of all three and of keeping them consistent with what
