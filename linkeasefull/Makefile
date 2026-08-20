@@ -10,8 +10,8 @@ PKG_ARCH_LINKEASE:=$(ARCH)
 
 PKG_NAME:=linkeasefull
 # use PKG_SOURCE_DATE instead of PKG_VERSION for compitable
-PKG_SOURCE_DATE:=3.0.5
-PKG_RELEASE:=13
+PKG_SOURCE_DATE:=3.0.11
+PKG_RELEASE:=14
 
 ARCH_HEXCODE:=
 ifeq ($(ARCH),x86_64)
@@ -39,7 +39,7 @@ define Package/$(PKG_NAME)
 	CATEGORY:=Network
 	SUBMENU:=Web Servers/Proxies
 	TITLE:=LinkEase Full - the local web desktop
-	DEPENDS:=@(x86_64||aarch64) +linkease-common-bin +ca-bundle
+	DEPENDS:=@(x86_64||aarch64) +linkease-common-bin +ca-bundle +cifsmount +kmod-fs-cifs
 	PKGARCH:=all
 	URL:=https://www.linkease.com/
 endef
