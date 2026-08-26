@@ -1,0 +1,9 @@
+#!/bin/sh
+
+. /usr/share/daed/cleanup.sh
+
+if ! daed_cleanup_runtime; then
+	echo "daed: stale network state could not be removed" >&2
+	exit 1
+fi
+exec /usr/bin/daed "$@"

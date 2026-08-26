@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: LuCI: ddns\n"
 "POT-Creation-Date: 2017-10-17 21:00+0300\n"
-"PO-Revision-Date: 2026-03-07 13:10+0000\n"
+"PO-Revision-Date: 2026-08-14 12:12+0000\n"
 "Last-Translator: SnIPeRSnIPeR "
 "<snipersniper@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Russian <https://hosted.weblate.org/projects/openwrt/"
@@ -13,7 +13,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
-"X-Generator: Weblate 5.17-dev\n"
+"X-Generator: Weblate 2026.9.dev0\n"
 "Project-Info: Это технический перевод, не дословный. Главное-удобный русский "
 "интерфейс, все проверялось в графическом режиме, совместим с другими apps\n"
 
@@ -206,7 +206,7 @@ msgstr "Версия DDNS"
 
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:545
 msgid "Edit"
-msgstr "Редактировать"
+msgstr "Изменить"
 
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:783
 msgid "Enable secure communication with DDNS provider"
@@ -447,7 +447,7 @@ msgstr ""
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:491
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:1124
 msgid "Name"
-msgstr "Название"
+msgstr "Имя"
 
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:333
 msgid ""
@@ -520,7 +520,7 @@ msgstr "Непубличные и заблокированные по умолч
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:231
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:1121
 msgid "Not Running"
-msgstr "Не работает"
+msgstr "Не запущено"
 
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:964
 msgid "Notice"
@@ -706,11 +706,11 @@ msgstr "Запустить DDNS"
 
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:272
 msgid "State"
-msgstr "Область / регион"
+msgstr "Состояние"
 
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:1117
 msgid "Status"
-msgstr "Статус"
+msgstr "Состояние"
 
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:410
 msgid "Status directory"
@@ -718,7 +718,7 @@ msgstr "Каталог состояния"
 
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:566
 msgid "Stop"
-msgstr "Стоп"
+msgstr "Остановить"
 
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:201
 msgid "Stop DDNS"
@@ -730,7 +730,7 @@ msgstr "Остановить эту службу"
 
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:19
 msgid "Stopped"
-msgstr "Остановлено"
+msgstr "Остановлен"
 
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:694
 msgid "Switch service"
@@ -939,7 +939,7 @@ msgstr "или обновить вашу систему до последнег�
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:1000
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:1062
 msgid "seconds"
-msgstr "секунд(ы)"
+msgstr "секунды"
 
 #: applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:793
 msgid "to run HTTPS without verification of server certificates (insecure)"
