@@ -8,6 +8,7 @@
 		},
 		"depends": {
 			"acl": [ "luci-app-firewall" ],
+			"fs": { "/sbin/fw3": "executable" },
 			"uci": { "firewall": true }
 		}
 	},

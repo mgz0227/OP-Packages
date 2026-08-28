@@ -1,0 +1,18 @@
+# Copyright (C) 2016 Openwrt.org
+#
+# This is free software, licensed under the Apache License, Version 2.0 .
+#
+
+include $(TOPDIR)/rules.mk
+
+LUCI_TITLE:=LuCI support for OpenVPN Server
+LUCI_DEPENDS:=+luci-base +openvpn-openssl +openvpn-easy-rsa +kmod-tun
+PKG_LICENSE:=Apache-2.0
+
+PKG_NAME:=luci-app-openvpn-server
+PKG_VERSION:=3.0.1
+PKG_RELEASE:=3
+
+include ../../luci.mk
+
+# call BuildPackage - OpenWrt buildroot signature
