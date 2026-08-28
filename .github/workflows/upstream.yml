@@ -169,7 +169,6 @@ jobs:
         git_clone https://github.com/linkease/nas-packages-luci && mv -n nas-packages-luci/luci/* ./; rm -rf nas-packages-luci
         git_clone https://github.com/linkease/istore && mv -n istore/luci/* ./; rm -rf istore
         #git_clone https://github.com/linkease/lcdsimple lcdsimple1 && mvdir lcdsimple1
-        git_clone https://github.com/fcshark-org/openwrt-fchomo && mvdir openwrt-fchomo
         ) &
         (
         git_clone https://github.com/frainzy1477/luci-app-clash
@@ -414,7 +413,7 @@ jobs:
         git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/luci" applications/luci-app-dockerman protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
         git_sparse_clone openwrt-25.12 "https://github.com/coolsnowwolf/luci" applications \
         protocols/luci-proto-openvpnc themes/luci-theme-design
-        mv -n applications/* luciapp/; rm -rf applications
+        mv -f applications luciapp;rm -rf luciapp/luci-app-homeproxy
         git_sparse_clone master "https://github.com/coolsnowwolf/luci" libs/luci-lib-fs applications collections/luci-lib-docker
         mv -n applications/* luciapp/; rm -rf applications
 
