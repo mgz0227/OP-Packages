@@ -3,22 +3,27 @@
 'require dom';
 'require poll';
 'require uci';
-'require ui';
 'require rpc';
 'require form';
-'require tools.widgets as widgets';
+
+const callInitAction = rpc.declare({
+	object: 'luci',
+	method: 'setInitAction',
+	params: [ 'name', 'action' ],
+	expect: { result: false }
+});
 
 const callUpnpGetStatus = rpc.declare({
 	object: 'luci.upnp',
 	method: 'get_status',
-	expect: {}
+	expect: {  }
 });
 
 const callUpnpDeleteRule = rpc.declare({
 	object: 'luci.upnp',
 	method: 'delete_rule',
-	params: ['token'],
-	expect: { result: 'OK' },
+	params: [ 'token' ],
+	expect: { result : "OK" },
 });
 
 function handleDelRule(num, ev) {
@@ -39,10 +44,10 @@ return view.extend({
 
 	poll_status: function(nodes, data) {
 
-		const rules = Array.isArray(data[0].rules) ? data[0].rules : [];
+		var rules = Array.isArray(data[0].rules) ? data[0].rules : [];
 
-		const rows = rules.map(function(rule) {
-			const padnum = (num, length) => num.toString().padStart(length, '0');
+		var rows = rules.map(function(rule) {
+			const padnum = (num, length) => num.toString().padStart(length, "0");
 			const expires_sec = rule?.expires || 0;
 			const hour = Math.floor(expires_sec / 3600);
 			const minute = Math.floor((expires_sec % 3600) / 60);
@@ -60,327 +65,186 @@ return view.extend({
 				rule.extport,
 				rule.proto,
 				expires_str,
-				'%h'.format(rule.descr),
-				rule.num != '0' ? E('button', {
+				rule.descr,
+				E('button', {
 					'class': 'btn cbi-button-remove',
-					'click': L.bind(handleDelRule, this, rule.num),
-					'title': _('Delete')
-				}, [_('Delete')]) : E('button', {
-					'class': 'btn cbi-button-remove',
-					'title': _('Not yet deletable; UPnP IGDv2 IPv6 port maps expire sooner, have no description'),
-					'style': 'cursor: not-allowed'
-				}, [_('Delete')])
+					'click': L.bind(handleDelRule, this, rule.num)
+				}, [ _('Delete') ])
 			];
 		});
 
-		cbi_update_table(nodes.querySelector('#upnp_status_table'), rows, E('em', _('There are no active IPv4/IPv6 port maps')));
+		cbi_update_table(nodes.querySelector('#upnp_status_table'), rows, E('em', _('There are no active port maps.')));
 	},
 
 	render: function(data) {
 
 		let m, s, o;
 
-		const protocols = _('%s & %s/%s', '%s & %s/%s (%s = UPnP IGD, %s = PCP, %s = NAT-PMP)').format(
+		var protocols = '%s & %s/%s'.format(
 			'<a href="https://en.wikipedia.org/wiki/Internet_Gateway_Device_Protocol" target="_blank" rel="noreferrer"><abbr title="UPnP Internet Gateway Device (Control Protocol)">UPnP IGD</abbr></a>',
 			'<a href="https://en.wikipedia.org/wiki/Port_Control_Protocol" target="_blank" rel="noreferrer"><abbr title="Port Control Protocol">PCP</abbr></a>',
 			'<a href="https://en.wikipedia.org/wiki/NAT_Port_Mapping_Protocol" target="_blank" rel="noreferrer"><abbr title="NAT Port Mapping Protocol">NAT-PMP</abbr></a>');
-		m = new form.Map('upnpd', _('UPnP IGD & PCP/NAT-PMP Service'),
-			_('The %s protocols/service enable permitted devices on local networks to autonomously set up IPv4/IPv6 port maps/forwards on this router.',
-				'The %s (%s = UPnP IGD & PCP/NAT-PMP) protocols/service enable permitted devices on local networks to autonomously set up IPv4/IPv6 port maps/forwards on this router.')
-			.format(protocols)
+		m = new form.Map('upnpd', [_('UPnP IGD & PCP/NAT-PMP Service')],
+			_('The %s protocols allow clients on the local network to configure port maps/forwards on the router autonomously.',
+				'The %s (%s = UPnP IGD & PCP/NAT-PMP) protocols allow clients on the local network to configure port maps/forwards on the router autonomously.')
+				.format(protocols)
 		);
-		if (!uci.get('upnpd', 'settings')) {
-			ui.addNotification(null, E('div', '<h4>' + _('No suitable configuration was found!') + '</h4><p>' +
-				_('No suitable config (LuCI app %s) found in %s. A related package update (daemon or LuCI app) may be missing.').format('v2.0', '<code>/etc/config/upnpd</code>') + '<br />' +
-				_('Use the software package manager, update lists, and install the related update. Config is migrated with the daemon package update.') + '</p>' +
-				'<a class="btn" href="/cgi-bin/luci/admin/system/package-manager?query=UPnP%20IGD%20&amp;%20PCP/NAT-PMP">' + _('Go to package manager…') + '</a>'), 'warning');
-			m.readonly = true;
-		}
 
 		s = m.section(form.GridSection, '_active_rules');
-		s.disable = uci.get('upnpd', 'settings', 'enabled') == '0';
 
 		s.render = L.bind(function(view, section_id) {
-			const table = E('table', { 'class': 'table cbi-section-table', 'id': 'upnp_status_table' }, [
+			var table = E('table', { 'class': 'table cbi-section-table', 'id': 'upnp_status_table' }, [
 				E('tr', { 'class': 'tr table-titles' }, [
-					E('th', { 'class': 'th' }, _('Hostname')),
-					E('th', { 'class': 'th' }, _('IP address')),
-					E('th', { 'class': 'th' }, _('Port')),
-					E('th', { 'class': 'th' }, _('External port')),
+					E('th', { 'class': 'th' }, _('Client Name')),
+					E('th', { 'class': 'th' }, _('Client Address')),
+					E('th', { 'class': 'th' }, _('Client Port')),
+					E('th', { 'class': 'th' }, _('External Port')),
 					E('th', { 'class': 'th' }, _('Protocol')),
 					E('th', { 'class': 'th right' }, _('Expires')),
-					E('th', { 'class': 'th' }, _('Added via / description')),
+					E('th', { 'class': 'th' }, _('Description')),
 					E('th', { 'class': 'th cbi-section-actions' }, '')
 				])
 			]);
 
-			const rules = Array.isArray(data[0].rules) ? data[0].rules : [];
+			var rules = Array.isArray(data[0].rules) ? data[0].rules : [];
 
-			const rows = rules.map(function(rule) {
+			var rows = rules.map(function(rule) {
 				return [
 					rule.host_hint || _('Unknown'),
 					rule.intaddr,
 					rule.intport,
 					rule.extport,
 					rule.proto,
-					'', // expires
-					'%h'.format(rule.descr),
-					rule.num != '0' ? E('button', {
+					rule.descr,
+					E('button', {
 						'class': 'btn cbi-button-remove',
-						'click': L.bind(handleDelRule, this, rule.num),
-						'title': _('Delete')
-					}, [_('Delete')]) : E('button', {
-						'class': 'btn cbi-button-remove',
-						'title': _('Not yet deletable; UPnP IGDv2 IPv6 port maps expire sooner, have no description'),
-						'style': 'cursor: not-allowed'
-					}, [_('Delete')])
+						'click': L.bind(handleDelRule, this, rule.num)
+					}, [ _('Delete') ])
 				];
 			});
 
-			cbi_update_table(table, rows, E('em', _('There are no active IPv4/IPv6 port maps')));
+			cbi_update_table(table, rows, E('em', _('There are no active port maps.')));
 
 			return E('div', { 'class': 'cbi-section cbi-tblsection' }, [
-				E('h3', _('Active Port Maps')), table
-			]);
+					E('h3', _('Active Service Port Maps')), table ]);
 		}, o, this);
 
-		s = m.section(form.NamedSection, 'settings', 'upnpd', _('Service Settings'));
+		s = m.section(form.NamedSection, 'config', 'upnpd', _('Service Settings'));
 		s.addremove = false;
 		s.tab('setup', _('Service Setup'));
-		s.tab('access_control', _('Access Control'));
 		s.tab('advanced', _('Advanced Settings'));
-		s.tab('igd', _('UPnP IGD Adjustments'));
 
-		o = s.taboption('setup', form.Flag, 'enabled', _('Enable service'),
-			_('Enable the autonomous port mapping service'));
+		o = s.taboption('setup', form.Flag, 'enabled', _('Start service'),
+			_('Start autonomous port mapping service'));
 		o.rmempty = false;
 
-		o = s.taboption('setup', form.ListValue, 'enable_protocols', _('Enable protocols'));
-		o.value('all', _('All protocols'));
-		o.value('upnp-igd', _('UPnP IGD'));
-		o.value('pcp+nat-pmp', _('PCP and NAT-PMP'));
-		o.default = 'all';
-		o.widget = 'radio';
-
-		o = s.taboption('setup', widgets.NetworkSelect, 'internal_iface', _('Enable networks'),
-			_('Select local/internal (LAN) network interfaces to enable the service for'));
-		o.nocreate = true;
-		o.multiple = true;
-		o.rmempty = false;
-		o.filter = function(section_id, value) {
-			return (value == 'wan' || value == 'wan6') ? '' : value;
-		};
-		o.write = function(section_id, formvalue) {
-			uci.set('upnpd', section_id, 'internal_iface', Array.isArray(formvalue) ? formvalue.join(' ') : formvalue);
-		};
-
-		o = s.taboption('setup', form.ListValue, 'upnp_igd_compat', _('UPnP IGD compatibility'),
-			_('Set compatibility mode (act as device) to workaround IGDv2-incompatible clients; %s are known to only work with %s (or) <br />Emulate/report a specific/different device to workaround/support/handle/bypass/assist/mitigate... (Alternative text welcome)').format('Sony PS, Activision CoD…', 'IGDv1'));
-		o.value('igdv1', _('IGDv1 (IPv4 only)'));
-		o.value('igdv2', _('IGDv2 (with workarounds)'));
-		o.depends('enable_protocols', 'upnp-igd');
-		o.depends('enable_protocols', 'all');
-		o.retain = true;
-
-		o = s.taboption('access_control', form.ListValue, 'access_defaults', _('Access defaults'),
-			_('Set access control defaults for ports that all devices can map'));
-		o.value('', _('None / accept extra ports only'));
-		o.value('accept-high-ports', _('Accept ports >= 1024'));
-		o.value('accept-web+high-ports', _('Accept HTTP/HTTPS + ports >= 1024'));
-		o.value('accept-web-ports', _('Accept HTTP/HTTPS ports'));
-		o.value('accept-all-ports', _('Accept all ports'));
-
-		o = s.taboption('access_control', form.Value, 'accept_ports', _('Accept extra ports'));
-		o.datatype = 'list(portrange)';
-
-		o = s.taboption('access_control', form.Value, 'reject_ports', _('Reject ports'),
-			_('Reject unsafe/insecure/risky FTP/Telnet/DCE/NetBIOS/SMB/RDP ports by default; overrides other settings; use %s for none').format('<code>0</code>'));
-		o.datatype = 'list(portrange)';
-		o.placeholder = '21 23 135 137-139 445 3389';
-		o.modalonly = true;
-
-		o = s.taboption('access_control', form.Flag, 'check_acl', _('Check ACL'),
-			_('Extend or override access defaults by device-specific permissions using the access control list (ACL)') + '<br />' +
-			_('Sequence:') + ' 1. ' + _('Reject ports') + ', 2. ' + _('ACL entries (if checked)') + ', 3. ' + _('Access defaults') + ', 4. ' + _('Accept extra ports'));
+		o = s.taboption('setup', form.Flag, 'enable_upnp', _('Enable UPnP IGD protocol'));
 		o.default = '1';
-		o.onchange = function(ev, section_id, value) {
-			let acl = document.getElementById('cbi-upnpd-acl_entry');
-			value == 0 ? acl.style.display = 'none' : acl.style.display = 'block';
-		};
 
-		s.taboption('access_control', form.Flag, 'ipv6_disable', _('Disable IPv6 mapping'),
-			_('IPv6 is currently always accepted unless disabled'));
+		o = s.taboption('setup', form.Flag, 'enable_natpmp', _('Enable PCP/NAT-PMP protocols'));
+		o.default = '1';
 
-		o = s.taboption('advanced', form.RichListValue, 'allow_cgnat', _('Allow %s/%s', 'Allow %s/%s (%s = CGNAT, %s = STUN)')
-			.format('<a href="https://en.wikipedia.org/wiki/Carrier-grade_NAT" target="_blank" rel="noreferrer"><abbr title="Carrier-grade NAT">CGNAT</abbr></a>',
-				'<a href="https://en.wikipedia.org/wiki/STUN" target="_blank" rel="noreferrer"><abbr title="Session Traversal Utilities for NAT">STUN</abbr></a>'),
-			_('Allow use of unrestricted endpoint-independent (1:1) CGNATs and detect the public IPv4'));
-		o.value('', _('Disabled'), _('Manually override external IPv4 with public'));
-		o.value('1', _('Enabled'), _('Filtering test currently requires an extra firewall rule'));
-		o.value('allow-filtered', _('Enabled') + ' (' + _('allow filtered') + ')', _('Workaround filtered IPv4 CGNAT test result'));
-		o.value('report-private-ipv4', _('Disabled') + ' (' + _('report private IPv4, avoid') + ')', _('No STUN public IPv4 detection; client issues'));
-		o.optional = true;
+		o = s.taboption('setup', form.Flag, 'igdv1', _('UPnP IGDv1 compatibility mode'),
+			_('Advertise as IGDv1 (IPv4 only) device instead of IGDv2'));
+		o.default = '1';
+		o.rmempty = false;
+		o.depends('enable_upnp', '1');
 
-		o = s.taboption('advanced', form.Value, 'stun_host', _('STUN server'));
-		o.datatype = 'or(hostname,hostport,ip4addr("nomask"))';
-		o.placeholder = 'stun.nextcloud.com';
-		o.depends('allow_cgnat', '1');
-		o.depends('allow_cgnat', 'allow-filtered');
-		o.retain = true;
+		o = s.taboption('setup', form.Value, 'download', _('Download speed'),
+			_('Report maximum download speed in kByte/s'));
+		o.depends('enable_upnp', '1');
 
-		o = s.taboption('advanced', form.Value, 'external_ip', _('Override external IPv4'),
-			_('Report custom public/external (WAN) IPv4 address'));
-		o.datatype = 'ip4addr("nomask")';
-		o.depends('allow_cgnat', '');
-		o.depends('allow_cgnat', 'report-private-ipv4');
+		o = s.taboption('setup', form.Value, 'upload', _('Upload speed'),
+			_('Report maximum upload speed in kByte/s'));
+		o.depends('enable_upnp', '1');
 
-		o = s.taboption('advanced', form.ListValue, 'allow_third_party_mapping', _('Allow third-party mapping'),
-			_('Allow adding port maps for non-requesting IP addresses; use with care'));
-		o.value('', _('Disabled') + ' (' + _('recommended') + ')');
-		o.value('1', _('Enabled'));
-		o.value('upnp-igd', _('Enabled') + ' (' + _('UPnP IGD only') + ')');
-		o.value('pcp', _('Enabled') + ' (' + _('PCP only') + ')');
+		s.taboption('advanced', form.Flag, 'use_stun', _('Use %s', 'Use %s (%s = STUN)')
+				.format('<a href="https://en.wikipedia.org/wiki/STUN" target="_blank" rel="noreferrer"><abbr title="Session Traversal Utilities for NAT">STUN</abbr></a>'),
+			_('To detect the public IPv4 address for unrestricted full-cone/one-to-one NATs'));
+
+		o = s.taboption('advanced', form.Value, 'stun_host', _('STUN host'));
+		o.depends('use_stun', '1');
+		o.datatype = 'host';
+
+		o = s.taboption('advanced', form.Value, 'stun_port', _('STUN port'));
+		o.depends('use_stun', '1');
+		o.datatype = 'port';
+		o.placeholder = '3478';
+
+		s.taboption('advanced', form.Flag, 'force_forwarding', _('Force forwarding'),
+			_('Force forwarding ports even the network is behind NAT'));
+
+		o = s.taboption('advanced', form.Flag, 'secure_mode', _('Enable secure mode'),
+			_('Allow adding port maps for requesting IP addresses only'));
+		o.default = '1';
+		o.depends('enable_upnp', '1');
+
+		o = s.taboption('advanced', form.Value, 'notify_interval', _('Notify interval'),
+			_('A 900s interval will result in %s notifications with the minimum max-age of 1800s', 'A 900s interval will result in %s (%s = SSDP) notifications with the minimum max-age of 1800s')
+				.format('<abbr title="Simple Service Discovery Protocol">SSDP</abbr>'));
+		o.datatype = 'uinteger';
+		o.placeholder = '900';
+		o.depends('enable_upnp', '1');
+
+		o = s.taboption('advanced', form.Value, 'port', _('SOAP/HTTP port'));
+		o.datatype = 'port';
+		o.placeholder = '5000';
+		o.depends('enable_upnp', '1');
+
+		o = s.taboption('advanced', form.Value, 'presentation_url', _('Presentation URL'),
+			_('Report custom router web interface (presentation) URL'));
+		o.placeholder = 'http://192.168.1.1/';
+		o.depends('enable_upnp', '1');
+
+		o = s.taboption('advanced', form.Value, 'uuid', _('Device UUID'));
+		o.depends('enable_upnp', '1');
+
+		o = s.taboption('advanced', form.Value, 'model_number', _('Announced model number'));
+		o.depends('enable_upnp', '1');
+
+		o = s.taboption('advanced', form.Value, 'serial_number', _('Announced serial number'));
+		o.depends('enable_upnp', '1');
 
 		o = s.taboption('advanced', form.Flag, 'system_uptime', _('Report system instead of service uptime'));
 		o.default = '1';
-		o.depends('keep-translation', 'to-disable-as-rare-use');
-		o.retain = true;
+		o.depends('enable_upnp', '1');
 
-		o = s.taboption('advanced', form.ListValue, 'log_output', _('Log level'));
-		o.value('default', _('Default'));
-		o.value('info', _('Info'));
-		o.value('debug', _('Debug'));
-		o.default = 'default';
-		o.widget = 'radio';
+		s.taboption('advanced', form.Flag, 'log_output', _('Enable additional logging'),
+			_('Puts extra debugging information into the system log'));
 
-		o = s.taboption('advanced', form.Value, 'lease_file', _('Service lease file'));
-		o.depends('keep-translation', 'to-disable-as-rare-use');
-		o.retain = true;
+		o = s.taboption('advanced', form.Value, 'upnp_lease_file', _('Service lease file'));
+		o.placeholder = '/var/run/miniupnpd.leases';
 
-		o = s.taboption('igd', form.Value, 'download_kbps', _('Download speed'),
-			_('Report maximum connection speed in kbit/s'));
-		o.datatype = 'uinteger';
-		o.placeholder = _('Default interface link speed');
-		o.depends('enable_protocols', 'upnp-igd');
-		o.depends('enable_protocols', 'all');
-		o.retain = true;
-
-		o = s.taboption('igd', form.Value, 'upload_kbps', _('Upload speed'),
-			_('Report maximum connection speed in kbit/s'));
-		o.datatype = 'uinteger';
-		o.placeholder = _('Default interface link speed');
-		o.depends('enable_protocols', 'upnp-igd');
-		o.depends('enable_protocols', 'all');
-		o.retain = true;
-
-		o = s.taboption('igd', form.Value, 'friendly_name', _('Router/friendly name'));
-		o.placeholder = 'OpenWrt UPnP IGD & PCP';
-		o.depends('enable_protocols', 'upnp-igd');
-		o.depends('enable_protocols', 'all');
-		o.retain = true;
-
-		o = s.taboption('igd', form.Value, 'model_number', _('Announced model number'));
-		// o.depends('enable_protocols', 'upnp-igd');
-		// o.depends('enable_protocols', 'all');
-		o.depends('keep-translation', 'to-disable-as-rare-use');
-		o.retain = true;
-
-		o = s.taboption('igd', form.Value, 'serial_number', _('Announced serial number'));
-		// o.depends('enable_protocols', 'upnp-igd');
-		// o.depends('enable_protocols', 'all');
-		o.depends('keep-translation', 'to-disable-as-rare-use');
-		o.retain = true;
-
-		o = s.taboption('igd', form.Value, 'presentation_url', _('Router/presentation URL'),
-			_('Report custom router web interface URL'));
-		o.placeholder = 'http://192.168.1.1/';
-		o.depends('enable_protocols', 'upnp-igd');
-		o.depends('enable_protocols', 'all');
-		o.retain = true;
-
-		o = s.taboption('igd', form.Value, 'uuid', _('Device UUID'));
-		// o.depends('enable_protocols', 'upnp-igd');
-		// o.depends('enable_protocols', 'all');
-		o.depends('keep-translation', 'to-disable-as-rare-use');
-		o.retain = true;
-
-		o = s.taboption('igd', form.Value, 'http_port', _('SOAP/HTTP port'));
-		o.datatype = 'port';
-		o.placeholder = '5000';
-		o.depends('enable_protocols', 'upnp-igd');
-		o.depends('enable_protocols', 'all');
-		o.retain = true;
-
-		o = s.taboption('igd', form.Value, 'notify_interval', _('Notify interval'),
-			_('A 900 s interval sends %s announcements with the minimum %s header',
-				'A 900 s interval sends %s (%s = SSDP) announcements with the minimum %s (%s = Cache-Control: max-age=1800) header')
-			.format('<abbr title="Simple Service Discovery Protocol">SSDP</abbr>', '<code>Cache-Control: max-age=1800</code>'));
-		o.datatype = 'min(900)';
-		o.placeholder = '900';
-		o.depends('enable_protocols', 'upnp-igd');
-		o.depends('enable_protocols', 'all');
-		o.retain = true;
-
-		s = m.section(form.GridSection, 'acl_entry', '<h5>' + _('Access Control List') + '</h5>',
-			_('The access control list (ACL) specifies which IP addresses and ports can be mapped.') + ' ' +
-			_('ACL entries are checked in order, then rejected if not matched and not accepted by access defaults. (To do: should be part of access control tab)'));
+		s = m.section(form.GridSection, 'perm_rule', _('Service Access Control List'),
+			_('ACL specify which client addresses and ports can be mapped, IPv6 always allowed.'));
+		s.sortable = true;
 		s.anonymous = true;
 		s.addremove = true;
-		s.cloneable = true;
-		s.sortable = true;
-		s.modaltitle = _('UPnP IGD & PCP/NAT-PMP') + ' - ' + _('Edit ACL Entry');
-		// To do: ACL part of access control tab and hide (or dependency on option) instead of disable as immediately, and to not break onchange function
-		s.disable = uci.get('upnpd', 'settings', 'check_acl') == '0';
 
-		o = s.option(form.Value, 'comment', _('Comment'));
-		o.default = _('unspecified');
+		s.option(form.Value, 'comment', _('Comment'));
 
-		o = s.option(form.Value, 'int_addr', _('IP address'));
+		o = s.option(form.Value, 'int_addr', _('Client Address'));
 		o.datatype = 'ip4addr';
-		o.rmempty = false;
-		o.editable = true;
-		o.retain = true;
-		o.modalonly = false;
+		o.placeholder = '0.0.0.0/0';
 
-		o = s.option(form.Value, 'int_addr', _('IP address'),
-			_('Enter device\'s IPv4 address, or an address and netmask'));
-		o.datatype = 'ip4addr';
-		o.rmempty = false;
-		o.retain = true;
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'int_port', _('Port'));
+		o = s.option(form.Value, 'int_ports', _('Client Port'));
 		o.datatype = 'portrange';
-		o.placeholder = '1-65535 (' + _('any port') + ')';
-		o.editable = true;
-		o.retain = true;
+		o.placeholder = '1-65535';
 
-		o = s.option(form.Value, 'ext_port', _('External port'));
+		o = s.option(form.Value, 'ext_ports', _('External Port'));
 		o.datatype = 'portrange';
-		o.placeholder = '1-65535 (' + _('any port') + ')';
-		o.editable = true;
-		o.retain = true;
-
-		o = s.option(form.Value, 'descr_filter', _('Description filter'),
-			_('Regular expression to check description of UPnP IGD IPv4 port maps'));
-		o.placeholder = '.* (' + _('any description') + ')';
-		o.modalonly = true;
+		o.placeholder = '1-65535';
 
 		o = s.option(form.ListValue, 'action', _('Action'));
-		o.value('accept', _('Accept'));
-		o.value('reject', _('Reject'));
-		o.value('disabled', _('Disabled'));
-		o.editable = true;
-		o.retain = true;
+		o.value('allow', _('Allow'));
+		o.value('deny', _('Deny'));
 
 		return m.render().then(L.bind(function(m, nodes) {
-			if (uci.get('upnpd', 'settings', 'enabled') != '0') {
-				poll.add(L.bind(function() {
-					return Promise.all([
-						callUpnpGetStatus()
-					]).then(L.bind(this.poll_status, this, nodes));
-				}, this), 5);
-			}
+			poll.add(L.bind(function() {
+				return Promise.all([
+					callUpnpGetStatus()
+				]).then(L.bind(this.poll_status, this, nodes));
+			}, this), 5);
 			return nodes;
 		}, this, m));
 	}

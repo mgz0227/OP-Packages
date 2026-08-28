@@ -4,8 +4,7 @@
 		"read": {
 			"file": {
 				"/usr/bin/openlist2": [ "exec" ],
-				"/var/log/openlist2.log": [ "read" ],
-				"/var/log/openlist2*": [ "read" ]
+				"/*": [ "read" ]
 			},
 			"ubus": {
 				"service": [ "list" ]
@@ -14,8 +13,7 @@
 		},
 		"write": {
 			"file": {
-				"/var/log/openlist2.log": [ "write" ],
-				"/var/log/openlist2*": [ "write" ]
+				"/*": [ "write" ]
 			},
 			"uci": [ "openlist2" ]
 		}

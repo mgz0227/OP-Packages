@@ -12,7 +12,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 "X-Generator: Weblate 5.12-dev\n"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:183
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:180
 msgctxt ""
 "A 900s interval will result in %s (%s = SSDP) notifications with the minimum "
 "max-age of 1800s"
@@ -21,7 +21,7 @@ msgid ""
 "1800s"
 msgstr ""
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:219
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:216
 msgid ""
 "ACL specify which client addresses and ports can be mapped, IPv6 always "
 "allowed."
@@ -29,7 +29,7 @@ msgstr ""
 "Az ACL-ek határozzák meg, hogy melyik külső portok melyik belső portokra és "
 "címekre kerülhetnek továbbításra, IPv6 mindig engedélyezett."
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:238
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:235
 msgid "Action"
 msgstr "Művelet"
 
@@ -45,35 +45,31 @@ msgstr ""
 msgid "Advanced Settings"
 msgstr "Haladó beállítások"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:151
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:148
 msgid "Advertise as IGDv1 (IPv4 only) device instead of IGDv2"
 msgstr "Hirdetés IGDv1 eszközként IGDv2 helyett"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:239
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:236
 msgid "Allow"
 msgstr ""
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:178
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:175
 msgid "Allow adding port maps for requesting IP addresses only"
 msgstr ""
 "Kizárólag a kérést küldő IP címre történő továbbítás hozzáadásának "
 "engedélyezése"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:147
-msgid "Allow private IPv4"
-msgstr ""
-
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:202
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:199
 msgid "Announced model number"
 msgstr "Bejelentett modellszám"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:205
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:202
 msgid "Announced serial number"
 msgstr "Bejelentett sorozatszám"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:41
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:99
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:226
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:223
 msgid "Client Address"
 msgstr ""
 
@@ -84,11 +80,11 @@ msgstr ""
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:42
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:100
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:230
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:227
 msgid "Client Port"
 msgstr ""
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:224
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:221
 msgid "Comment"
 msgstr "Megjegyzés"
 
@@ -98,7 +94,7 @@ msgstr "Megjegyzés"
 msgid "Delete"
 msgstr "Törlés"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:240
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:237
 msgid "Deny"
 msgstr ""
 
@@ -107,11 +103,11 @@ msgstr ""
 msgid "Description"
 msgstr "Leírás"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:199
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:196
 msgid "Device UUID"
 msgstr "Eszköz UUID"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:156
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:153
 msgid "Download speed"
 msgstr "Befelé jövő kapcsolat"
 
@@ -123,15 +119,11 @@ msgstr "PCP/NAT-PMP protokoll engedélyezése"
 msgid "Enable UPnP IGD protocol"
 msgstr "UPnP IGD protokoll engedélyezése"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:212
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:209
 msgid "Enable additional logging"
 msgstr "További naplózás engedélyezése"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:148
-msgid "Enable forwarding for private/reserved IPv4 address"
-msgstr ""
-
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:177
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:174
 msgid "Enable secure mode"
 msgstr "Biztonságos mód engedélyezése"
 
@@ -142,7 +134,7 @@ msgstr ""
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:43
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:101
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:234
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:231
 msgid "External Port"
 msgstr "Külső port"
 
@@ -150,11 +142,11 @@ msgstr "Külső port"
 msgid "Grant access to UPnP IGD & PCP/NAT-PMP"
 msgstr ""
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:182
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:179
 msgid "Notify interval"
 msgstr "Értesítési időköz"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:194
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:191
 msgid "Presentation URL"
 msgstr "Bemutató URL"
 
@@ -163,39 +155,39 @@ msgstr "Bemutató URL"
 msgid "Protocol"
 msgstr "Protokoll"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:213
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:210
 msgid "Puts extra debugging information into the system log"
 msgstr "További hibakeresési információkat tesz a rendszernaplóba"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:195
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:192
 msgid "Report custom router web interface (presentation) URL"
 msgstr ""
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:157
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:154
 msgid "Report maximum download speed in kByte/s"
 msgstr ""
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:161
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:158
 msgid "Report maximum upload speed in kByte/s"
 msgstr ""
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:208
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:205
 msgid "Report system instead of service uptime"
 msgstr "A démon helyett a rendszer működési idejét jeleníti meg"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:189
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:186
 msgid "SOAP/HTTP port"
 msgstr "SOAP/HTTP port"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:168
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:165
 msgid "STUN host"
 msgstr ""
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:172
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:169
 msgid "STUN port"
 msgstr ""
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:218
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:215
 msgid "Service Access Control List"
 msgstr ""
 
@@ -207,7 +199,7 @@ msgstr ""
 msgid "Service Setup"
 msgstr "Általános beállítások"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:215
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:212
 msgid "Service lease file"
 msgstr ""
 
@@ -236,7 +228,7 @@ msgstr ""
 msgid "There are no active port maps."
 msgstr "Nincsenek aktív átírányítások."
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:166
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:163
 msgid ""
 "To detect the public IPv4 address for unrestricted full-cone/one-to-one NATs"
 msgstr ""
@@ -249,7 +241,7 @@ msgstr "UPnP IGD & PCP"
 msgid "UPnP IGD & PCP/NAT-PMP Service"
 msgstr ""
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:150
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:147
 msgid "UPnP IGDv1 compatibility mode"
 msgstr "UPnP IGDv1 mód engedélyezése"
 
@@ -259,11 +251,11 @@ msgstr "UPnP IGDv1 mód engedélyezése"
 msgid "Unknown"
 msgstr "Ismeretlen"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:160
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:157
 msgid "Upload speed"
 msgstr "Kimenő sebesség"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:164
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:161
 msgctxt "Use %s (%s = STUN)"
 msgid "Use %s"
 msgstr ""

@@ -250,12 +250,8 @@ return dm2.dv.extend({
 		if (!portBindings || typeof portBindings !== 'object') return [];
 		const ports = [];
 		for (const [containerPort, bindings] of Object.entries(portBindings)) {
-			if (Array.isArray(bindings)) {
-				for (const b of bindings) {
-					if (!b?.HostPort) continue;
-					const ip = (b.HostIp && b.HostIp !== '0.0.0.0' && b.HostIp !== '::') ? b.HostIp + ':' : '';
-					ports.push(`${ip}${b.HostPort}:${containerPort}`);
-				}
+			if (Array.isArray(bindings) && bindings.length > 0 && bindings[0]?.HostPort) {
+				ports.push(`${bindings[0].HostPort}:${containerPort}`);
 			}
 		}
 		return ports;
@@ -310,9 +306,8 @@ return dm2.dv.extend({
 				Name: name,
 				NetworkID: netid,
 				DNSNames: net?.DNSNames || '',
-				IPv4Address: net?.IPAMConfig?.IPv4Address || net?.IPAddress || '',
+				IPv4Address: net?.IPAMConfig?.IPv4Address || '',
 				IPv6Address: net?.IPAMConfig?.IPv6Address || '',
-				Aliases: net?.Aliases || '',
 			});
 		}
 
@@ -320,7 +315,6 @@ return dm2.dv.extend({
 	},
 
 	render([this_container, images, networks, cpus_mem, ps_top, stats_data, changes_data]) {
-		this.networks = networks;
 		const view = this;
 		const containerName = this_container.Name?.substring(1) || this_container.Id || '';
 		const containerIdShort = (this_container.Id || '').substring(0, 12);
@@ -365,7 +359,7 @@ return dm2.dv.extend({
 		}
 
 		// Stop button
-		if (containerStatus === 'running' || containerStatus === 'paused' || containerStatus === 'restarting') {
+		if (containerStatus === 'running' || containerStatus === 'paused') {
 			const stopBtn = E('button', {
 				'class': 'cbi-button cbi-button-reset',
 				'click': (ev) => this.executeAction(ev, 'stop', this_container.Id)
@@ -374,7 +368,7 @@ return dm2.dv.extend({
 		}
 
 		// Kill button
-		if (containerStatus === 'running' || containerStatus === 'restarting') {
+		if (containerStatus === 'running') {
 			const killBtn = E('button', {
 				'class': 'cbi-button',
 				'style': 'background-color: #dc3545;',
@@ -586,8 +580,6 @@ return dm2.dv.extend({
 		o = ss.option(form.DummyValue, 'IPv6Gateway', _('IPv6 Gateway'));
 
 		o = ss.option(form.DummyValue, 'DNSNames', _('DNS Names'));
-
-		o = ss.option(form.DummyValue, 'Aliases', _('Aliases'));
 
 		ss.handleAdd = function(ev) {
 			ev.preventDefault();
@@ -1684,10 +1676,7 @@ return dm2.dv.extend({
 					return false;
 				}
 
-				let logText = response?.body || _('No logs available');
-				if ("application/vnd.docker.multiplexed-stream" == response?.headers['content-type']) {
-					logText = (response?.body || []).map((frame)=>frame.payload).join('');
-				}
+				const logText = response?.body || _('No logs available');
 				// Convert ANSI codes to HTML and set innerHTML
 				logsDiv.innerHTML = dm2.ansiToHtml(logText);
 				logsDiv.scrollTop = logsDiv.scrollHeight;
@@ -1860,7 +1849,7 @@ return dm2.dv.extend({
 				dm2.network_disconnect,
 				{
 					id: networkID,
-					body: { Container: this_container.Id, Force: false }
+					body: { Container: view.containerId, Force: false }
 				},
 				_('Disconnect network'),
 				{
@@ -1894,7 +1883,7 @@ return dm2.dv.extend({
 
 			const ip4Input = E('input', {
 				'type': 'text',
-				'id': 'network-ip4',
+				'id': 'network-ip',
 				'class': 'cbi-input-text',
 				'placeholder': 'e.g., 172.18.0.5',
 				'style': 'width:100%; margin-top:5px;'
@@ -1902,29 +1891,18 @@ return dm2.dv.extend({
 
 			const ip6Input = E('input', {
 				'type': 'text',
-				'id': 'network-ip6',
+				'id': 'network-ip',
 				'class': 'cbi-input-text',
 				'placeholder': 'e.g., 2001:db8:1::1',
-				'style': 'width:100%; margin-top:5px;'
-			});
-
-			const aliasesInput = E('input', {
-				'type': 'text',
-				'id': 'network-aliases',
-				'class': 'cbi-input-text',
-				'placeholder': 'e.g., database,db (comma-separated)',
 				'style': 'width:100%; margin-top:5px;'
 			});
 
 			const modalBody = E('div', { 'class': 'cbi-section' }, [
 				E('p', {}, _('Select network to connect:')),
 				networkSelect,
-				E('label', { 'style': 'display:block; margin-top:10px;' }, _('IPv4 Address (optional):')),
+				E('label', { 'style': 'display:block; margin-top:10px;' }, _('IP Address (optional):')),
 				ip4Input,
-				E('label', { 'style': 'display:block; margin-top:10px;' }, _('IPv6 Address (optional):')),
 				ip6Input,
-				E('label', { 'style': 'display:block; margin-top:10px;' }, _('Aliases (optional):')),
-				aliasesInput,
 			]);
 
 			ui.showModal(_('Connect Network'), [
@@ -1940,9 +1918,7 @@ return dm2.dv.extend({
 						'click': () => {
 							const selectedNetwork = networkSelect.value;
 							const ip4Address = ip4Input.value || '';
-							const ip6Address = ip6Input.value || '';
-							const aliasesRaw = aliasesInput.value || '';
-							const aliases = aliasesRaw.split(',').map(a => a.trim()).filter(Boolean);
+							// const ip6Address = ip6Input.value || '';
 
 							if (!selectedNetwork) {
 								view.showNotification(_('Error'), [_('No network selected')], 5000, 'error');
@@ -1951,14 +1927,8 @@ return dm2.dv.extend({
 
 							ui.hideModal();
 
-							const body = { Container: this_container.Id };
-							body.EndpointConfig = { 
-								IPAMConfig: { 
-									IPv4Address: ip4Address || null, 
-									IPv6Address: ip6Address || null 
-								},
-								Aliases: aliases.length > 0 ? aliases : null
-							};
+							const body = { Container: view.containerId };
+							body.EndpointConfig = { IPAMConfig: { IPv4Address: ip4Address } }; //, IPv6Address: ip6Address || null
 
 							view.executeDockerAction(
 								dm2.network_connect,

@@ -84,10 +84,6 @@ return dm2.dv.extend({
 				privileged: hostConfig.Privileged ? 1 : 0,
 				restart_policy: hostConfig.RestartPolicy?.Name || 'unless-stopped',
 				network: firstName || '',
-				network_aliases: (() => {
-					if (!firstName || builtInNetworks.has(firstName)) return '';
-					return (firstNet?.Aliases || []).join(', ');
-				})(),
 				ipv4: (() => {
 					if (!firstName || builtInNetworks.has(firstName)) return '';
 					return firstNet?.IPAddress || '';
@@ -141,19 +137,14 @@ return dm2.dv.extend({
 						if (Array.isArray(bindings) && bindings.length > 0) {
 							for (const b of bindings) {
 								if (!b?.HostPort) continue;
-								const ip = (b.HostIp && b.HostIp !== '0.0.0.0' && b.HostIp !== '::') ? b.HostIp : '';
+								const ip = b.HostIp || '';
 								ports.push((ip ? ip + ':' : '') + b.HostPort + ':' + containerPort);
 							}
 						}
 					}
 					return ports;
 				})(),
-				command: c.Config?.Cmd ? c.Config?.Cmd.map(arg => {
-					if (arg.includes(' ') || arg.includes('"') || arg.includes("'")) {
-						return '"' + arg.replace(/"/g, '\\"') + '"';
-					}
-					return arg;
-				}).join(' ') : '',
+				command: c.Config?.Cmd ? c.Config?.Cmd.join(' ') : '',
 				hostname: c.Config?.Hostname || '',
 				publish_all: hostConfig.PublishAllPorts ? 1 : 0,
 				device: (hostConfig.Devices || []).map(d => d.PathOnHost + ':' + d.PathInContainer + (d.CgroupPermissions ? ':' + d.CgroupPermissions : '')),
@@ -193,7 +184,6 @@ return dm2.dv.extend({
 					}
 					return list;
 				})(),
-				log_driver: hostConfig.LogConfig?.Type || '',
 			};
 		}
 
@@ -277,11 +267,6 @@ return dm2.dv.extend({
 		o = s.option(form.Value, 'ipv6_lla', _('IPv6 Link-Local Address'));
 		o.rmempty = true;
 		o.datatype = 'ip6ll';
-		o.validate = not_with_a_docker_net;
-
-		o = s.option(form.Value, 'network_aliases', _('Network Aliases'));
-		o.rmempty = true;
-		o.placeholder = 'database,db (CSV)';
 		o.validate = not_with_a_docker_net;
 
 		o = s.option(form.DynamicList, 'link', _('Links with other containers'));
@@ -748,14 +733,6 @@ return dm2.dv.extend({
 		o.placeholder='max-size=1m';
 		o.depends('advanced', 1);
 
-		o = s.option(form.ListValue, 'log_driver', _('Log driver'));
-		o.rmempty = true;
-		o.value('', _('Default (daemon)'));
-		o.value('local', _('local'));
-		o.value('json-file', _('json-file'));
-		o.value('syslog', _('syslog'));
-		o.value('none', _('none'));
-		o.depends('advanced', 1);
 
 		this.map = m;
 
@@ -780,10 +757,8 @@ return dm2.dv.extend({
 			.then(() => {
 				const get = (opt) => map.data.get('json', 'container', opt);
 				const name = get('name');
-				const log_driver = get('log_driver');
 				// const pull = toBool(get('pull'));
 				const network = get('network');
-				const network_aliases = get('network_aliases');
 				const publish = get('publish');
 				const command = get('command');
 				// const publish_all = toBool(get('publish_all'));
@@ -799,7 +774,7 @@ return dm2.dv.extend({
 					Tty: toBool(get('tty')),
 					OpenStdin: toBool(get('interactive')),
 					Env: get('env'),
-					Cmd: command ? (command.match(/(?:[^\s"]+|"[^"]*")+/g) || []).map(arg => arg.replace(/^"|"$/g, '')) : null,
+					Cmd: command ? command.split(' ') : null,
 					Image: get('image'),
 					HostConfig: {
 						CpuShares: toInt(get('cpu_shares')),
@@ -820,45 +795,24 @@ return dm2.dv.extend({
 								CgroupPermissions: parts[2] || 'rwm'
 							};
 						}) : undefined,
-						LogConfig: log_driver ? {
-							Type: log_driver,
-							Config: listToKv(log_opt)
-						} : (log_opt ? {
+						LogConfig: log_opt ? {
 							Type: 'json-file',
 							Config: listToKv(log_opt)
-						} : undefined),
+						} : undefined,
 						NetworkMode: network,
 						PortBindings: publish ? Object.fromEntries(
 							(Array.isArray(publish) ? publish : [publish])
 							.filter(p => p && typeof p === 'string' && p.trim().length > 0)
 							.map(p => {
-								// hostIp:hostPort:cPort/proto (e.g. 192.168.1.100:8080:80/tcp)
-								const m = p.match(/^([^:]+):(\d+):(\d+)\/(tcp|udp)$/);
-								if (m) {
-									const hostIp   = m[1];
-									const hostPort = m[2];
-									const cPort    = m[3];
-									const proto    = m[4];
-									return [`${cPort}/${proto}`, [{ HostIp: hostIp, HostPort: hostPort }]];
-								}
-								// [ipv6]:hostPort:cPort/proto (e.g. [::1]:8080:80/tcp)
-								const m6 = p.match(/^\[([^\]]+)\]:(\d+):(\d+)\/(tcp|udp)$/);
-								if (m6) {
-									const hostIp   = m6[1];
-									const hostPort = m6[2];
-									const cPort    = m6[3];
-									const proto    = m6[4];
-									return [`${cPort}/${proto}`, [{ HostIp: hostIp, HostPort: hostPort }]];
-								}
-								// hostPort:cPort/proto (e.g. 8080:80/tcp)
-								const m2 = p.match(/^(\d+):(\d+)\/(tcp|udp)$/);
-								if (m2) {
-									const hostPort = m2[1];
-									const cPort    = m2[2];
-									const proto    = m2[3];
-									return [`${cPort}/${proto}`, [{ HostPort: hostPort }]];
-								}
-								return null;
+								// formats: hostPort:cPort/proto  or  hostIp:hostPort:cPort/proto
+								const m = p.match(/^(?:([^:]+):(\d+)|(\d+)):(\d+)\/(tcp|udp)$/);
+								if (!m) return null;
+								const hostIp   = m[1] || '';
+								const hostPort = m[2] || m[3];
+								const cPort    = m[4];
+								const proto    = m[5];
+								const binding  = hostIp ? { HostIp: hostIp, HostPort: hostPort } : { HostPort: hostPort };
+								return [`${cPort}/${proto}`, [binding]];
 							}).filter(Boolean)
 						) : undefined,
 						Mounts: undefined,
@@ -878,10 +832,7 @@ return dm2.dv.extend({
 						Sysctls: sysctl ? listToKv(sysctl) : undefined,
 					},
 					NetworkingConfig: {
-						EndpointsConfig: { [network]: { 
-							IPAMConfig: { IPv4Address: get('ipv4') || null, IPv6Address: get('ipv6') || null },
-							Aliases: network_aliases ? network_aliases.split(',').map(a => a.trim()).filter(Boolean) : null
-						} },
+						EndpointsConfig: { [network]: { IPAMConfig: { IPv4Address: get('ipv4') || null, IPv6Address: get('ipv6') || null } } },
 					}
 				};
 

@@ -5,50 +5,33 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=dae
-PKG_VERSION:=2026.08.26
-PKG_RELEASE:=8
+PKG_VERSION:=2.0.0
+PKG_RELEASE:=9
 
-PKG_SOURCE:=dae-src-2026.08.26-936105a87a65.tar.gz
-PKG_SOURCE_URL:=https://github.com/kenzok8/openwrt-daede/releases/download/dae-src
-PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).zip
+PKG_SOURCE_URL:=https://github.com/daeuniverse/dae/releases/download/v$(PKG_VERSION)/dae-full-src.zip?
 PKG_HASH:=skip
 
 PKG_LICENSE:=AGPL-3.0-only
 PKG_LICENSE_FILE:=LICENSE
-PKG_MAINTAINER:=kenzok8
-
-DAE_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
-PKG_BUILD_DIR:=$(DAE_BUILD_DIR)/core
+PKG_MAINTAINER:=Tianling Shen <cnsztl@immortalwrt.org>
 
 PKG_BUILD_DEPENDS:=golang/host bpf-headers
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_FLAGS:=no-mips16
 
-# armv7 lacks a CO-RE vmlinux.h for the trace eBPF, so trace's bpf2go fails to
-# build there. Apply sbwml/openwrt_helloworld's arm patches (add vmlinux-arm.h
-# + drop the kprobe that doesn't work) to let dae build on arm targets.
-ifeq ($(ARCH),arm)
-PATCH_DIR:=$(CURDIR)/patches_arm
-endif
-
 GO_PKG:=github.com/daeuniverse/dae
 GO_PKG_EXCLUDES:=control/kern/tests
-GO_PKG_LDFLAGS:= \
-	-s -w -buildid= \
-	-linkmode external -extldflags '-static -Wl,-s'
 GO_PKG_LDFLAGS_X:= \
 	$(GO_PKG)/cmd.Version=$(PKG_VERSION) \
 	$(GO_PKG)/common/consts.MaxMatchSetLen_=1024
-GO_PKG_TAGS:=trace,timetzdata
+GO_PKG_TAGS:=trace
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/bpf.mk
 include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
-GO_PKG_BUILD_VARS+= GOFLAGS="-trimpath -buildvcs=false -pgo=auto"
-GO_PKG_TARGET_VARS+= \
-	CGO_LDFLAGS="$(TARGET_LDFLAGS) -static -Wl,-s" \
-	GOEXPERIMENT=newinliner,simd
+UNZIP_CMD:=unzip -q -d $(PKG_BUILD_DIR) $(DL_DIR)/$(PKG_SOURCE)
 
 define Package/dae/Default
   SECTION:=net
@@ -60,31 +43,36 @@ endef
 define Package/dae
   $(call Package/dae/Default)
   TITLE:=A lightweight and high-performance transparent proxy solution
-  DEPENDS:=$(GO_ARCH_DEPENDS) \
-    +ca-bundle +kmod-sched-core +kmod-sched-bpf \
-    +kmod-veth +v2ray-geoip +v2ray-geosite \
-    +@KERNEL_XDP_SOCKETS \
-    +DAE_USE_VMLINUX_BTF:vmlinux-btf
+  # You need enable KERNEL_DEBUG_INFO_BTF and KERNEL_BPF_EVENTS
+  DEPENDS:=$(GO_ARCH_DEPENDS) $(BPF_DEPENDS)  \
+    +ca-bundle +kmod-sched-core +kmod-sched-bpf +kmod-xdp-sockets-diag \
+    +kmod-veth
 endef
 
-define Package/dae/config
-	choice
-		prompt "BTF source for CO-RE"
-		default DAE_USE_KERNEL_BTF
-		depends on PACKAGE_dae
+define Package/dae-geoip
+  $(call Package/dae/Default)
+  TITLE:=geoip for dae
+  DEPENDS:=+dae +v2ray-geoip
+  PKGARCH:=all
+endef
 
-	config DAE_USE_KERNEL_BTF
-		bool "Use kernel BTF (integrated)"
-		depends on KERNEL_DEBUG_INFO_BTF
-
-	config DAE_USE_VMLINUX_BTF
-		bool "Use vmlinux-btf package"
-	endchoice
+define Package/dae-geosite
+  $(call Package/dae/Default)
+  TITLE:=geosite for dae
+  DEPENDS:=+dae +v2ray-geosite
+  PKGARCH:=all
 endef
 
 define Package/dae/description
   dae, means goose, is a lightweight and high-performance transparent
   proxy solution.
+
+  In order to improve the traffic diversion performance as much as possible,
+  dae runs the transparent proxy and traffic diversion suite in the linux
+  kernel by eBPF. Therefore, we have the opportunity to make the direct
+  traffic bypass the forwarding by proxy application and achieve true direct
+  traffic through. Under such a magic trick, there is almost no performance
+  loss and additional resource consumption for direct traffic.
 endef
 
 define Package/dae/conffiles
@@ -98,15 +86,8 @@ DAE_CFLAGS:= \
 	-I$(BPF_HEADERS_DIR)/tools/lib \
 	-I$(BPF_HEADERS_DIR)/arch/$(BPF_KARCH)/include/asm/mach-generic
 
-define Build/Prepare
-	mkdir -p $(DAE_BUILD_DIR)
-	$(TAR) --strip-components=1 -C $(DAE_BUILD_DIR) -xzf $(DL_DIR)/$(PKG_SOURCE)
-	$(if $(wildcard $(PATCH_DIR)/*.patch),$(call PatchDir,$(PKG_BUILD_DIR),$(PATCH_DIR),))
-endef
-
 define Build/Compile
 	( \
-		pushd $(PKG_BUILD_DIR) ; \
 		export \
 		$(GO_GENERAL_BUILD_CONFIG_VARS) \
 		$(GO_PKG_BUILD_CONFIG_VARS) \
@@ -116,21 +97,17 @@ define Build/Compile
 		BPF_CFLAGS="$(DAE_CFLAGS)" \
 		BPF_TARGET="bpfel,bpfeb" \
 		BPF_TRACE_TARGET="$(GO_ARCH)" ; \
-		go generate ./control/control.go ; \
-		go generate ./trace/trace.go ; \
-		popd ; \
+		go generate $(PKG_BUILD_DIR)/control/control.go ; \
+		go generate $(PKG_BUILD_DIR)/trace/trace.go ; \
+		$(call GoPackage/Build/Compile) ; \
 	)
-	$(call GoPackage/Build/Compile)
 endef
 
 define Package/dae/install
-	$(call GoPackage/Package/Install/Bin,$(PKG_INSTALL_DIR))
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/dae $(1)/usr/bin/dae
+	$(call GoPackage/Package/Install/Bin,$(1))
 
-	$(INSTALL_DIR) $(1)/etc/dae
-	$(INSTALL_CONF) $(PKG_BUILD_DIR)/example.dae $(1)/etc/dae/example.dae
-	$(SED) 's|^[[:space:]]*#lan_interface: docker0|    lan_interface: br-lan|' $(1)/etc/dae/example.dae
+	$(INSTALL_DIR) $(1)/etc/dae/
+	$(INSTALL_CONF) $(PKG_BUILD_DIR)/example.dae $(1)/etc/dae/
 
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) $(CURDIR)/files/dae.config $(1)/etc/config/dae
@@ -139,5 +116,17 @@ define Package/dae/install
 	$(INSTALL_BIN) $(CURDIR)/files/dae.init $(1)/etc/init.d/dae
 endef
 
+define Package/dae-geoip/install
+	$(INSTALL_DIR) $(1)/usr/share/dae
+	$(LN) ../v2ray/geoip.dat $(1)/usr/share/dae/geoip.dat
+endef
+
+define Package/dae-geosite/install
+	$(INSTALL_DIR) $(1)/usr/share/dae
+	$(LN) ../v2ray/geosite.dat $(1)/usr/share/dae/geosite.dat
+endef
+
 $(eval $(call GoBinPackage,dae))
 $(eval $(call BuildPackage,dae))
+$(eval $(call BuildPackage,dae-geoip))
+$(eval $(call BuildPackage,dae-geosite))

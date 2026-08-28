@@ -520,46 +520,6 @@ function o.cfgvalue(self, section)
 		api.url("flush_set") .. "?redirect=1&reload=1", set_title)
 end
 
-o = s:taboption("DNS", Flag, "adblock", translate("Enable adblock"))
-o.rmempty = false
-
-local UD="" rule_count="0"
-if nixio.fs.access("/usr/share/passwall/rules/block_host") then
-UD = os.date("%Y-%m-%d %H:%M", nixio.fs.stat("/usr/share/passwall/rules/block_host").ctime)
-rule_count = tonumber(luci.sys.exec("wc -l < /usr/share/passwall/rules/block_host"))
-end
-o = s:taboption("DNS", DummyValue, "refresh_data", translate("Subscribe Rules Data"))
-o.rawhtml = true
-o.template = m:template_path("/global/adblock_refresh")
-o.value = rule_count.." "..translate("Records")
-o.description = string.format("<strong>"..translate("Last Update Checked")..":</strong> %s<br/>",UD)
-o:depends("adblock",1)
-
-o = s:taboption("DNS", DynamicList, "ad_url", translate("Adblock Rules Subscribe"))
-o:value("https://cdn.jsdelivr.net/gh/217heidai/adblockfilters@main/rules/adblockdomainlite.txt", translate("AdBlock DNS Filters"))
-o:value("https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD@master/anti-ad-domains.txt", translate("anti-AD"))
-o.default = "https://cdn.jsdelivr.net/gh/217heidai/adblockfilters@main/rules/adblockdomainlite.txt"
-o.description = translate("Support Domain / Dnsmasq / AdGuardHome / Hosts format list")
-o.rmempty = false
-o:depends("adblock",1)
-
-o = s:taboption("DNS", DynamicList, "white_list", translate("Adblock white list"))
-o.rmempty = false
-o:depends("adblock",1)
-function o.validate(self, value)
-    local vlist = (type(value) == "table") and value or { value }
-    
-    for _, v in ipairs(vlist) do
-        if v and v ~= "" and not (
-            #v < 254 and v:match("^[a-zA-Z0-9][a-zA-Z0-9%-%.]*[a-zA-Z0-9]$") and v:match("%.")
-        ) then
-            return nil, translate("Invalid domain name") .. ": " .. v
-        end
-    end
-    
-    return value
-end
-
 s:tab("Proxy", translate("Mode"))
 
 o = s:taboption("Proxy", Flag, "use_direct_list", translatef("Use %s", translate("Direct List")))
@@ -816,7 +776,7 @@ for k, v in pairs(nodes_table) do
 end
 
 m:appendTemplate("/global/footer", {shunt_list = api.jsonc.stringify(shunt_list)})
-m:appendTemplate("/global/status_bottom")
+
 m:appendTemplate("/cbi/sortable", {sectiontype = s2.sectiontype})
 
 return api.return_map(m)

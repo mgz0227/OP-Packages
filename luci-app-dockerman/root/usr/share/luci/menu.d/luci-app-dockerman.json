@@ -1,7 +1,7 @@
 {
 	"admin/dockerman": {
 		"title": "Docker",
-		"order": "40",
+		"order": 40,
 		"action": {
 			"type": "firstchild"
 		},
@@ -21,9 +21,6 @@
 		"action": {
 			"type": "view",
 			"path": "dockerman/overview"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -33,9 +30,6 @@
 		"action": {
 			"type": "view",
 			"path": "dockerman/configuration"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -43,9 +37,6 @@
 		"action": {
 			"type": "alias",
 			"path": "admin/dockerman/containers"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -58,9 +49,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -73,9 +61,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -88,9 +73,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -99,9 +81,6 @@
 		"action": {
 			"type": "view",
 			"path": "dockerman/container"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -111,9 +90,6 @@
 		"action": {
 			"type": "view",
 			"path": "dockerman/containers"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -127,9 +103,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -137,9 +110,6 @@
 		"action": {
 			"type": "alias",
 			"path": "admin/dockerman/containers"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -148,9 +118,6 @@
 		"action": {
 			"type": "view",
 			"path": "dockerman/container_new"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -164,9 +131,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -180,9 +144,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -195,9 +156,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -211,9 +169,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -227,9 +182,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -252,9 +204,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -268,9 +217,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -278,9 +224,6 @@
 		"action": {
 			"type": "alias",
 			"path": "admin/dockerman/images"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -289,9 +232,6 @@
 		"action": {
 			"type": "view",
 			"path": "dockerman/network"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -301,9 +241,6 @@
 		"action": {
 			"type": "view",
 			"path": "dockerman/networks"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -317,9 +254,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -328,9 +262,6 @@
 		"action": {
 			"type": "view",
 			"path": "dockerman/network_new"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -338,9 +269,6 @@
 		"action": {
 			"type": "alias",
 			"path": "admin/dockerman/networks"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -350,9 +278,6 @@
 		"action": {
 			"type": "view",
 			"path": "dockerman/volumes"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -366,9 +291,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -382,9 +304,6 @@
 		"auth": {
 			"methods": [ "cookie:sysauth_https", "cookie:sysauth_http" ],
 			"login": true
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	},
 
@@ -394,9 +313,6 @@
 		"action": {
 			"type": "view",
 			"path": "dockerman/events"
-		},
-		"depends": {
-			"acl": [ "luci-app-dockerman" ]
 		}
 	}
 }
