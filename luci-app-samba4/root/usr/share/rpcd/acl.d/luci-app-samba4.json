@@ -4,7 +4,7 @@
 		"read": {
 			"file": {
 				"/etc/samba/smb.conf.template": [ "read" ],
-				"/usr/sbin/smbd -V": [ "exec" ]
+				"/usr/sbin/smbd": [ "exec" ]
 			},
 			"uci": [ "samba4" ]
 		},
