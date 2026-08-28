@@ -1019,6 +1019,14 @@ stop_crontab() {
 	#echolog "清除定时执行命令。"
 }
 
+start_adblock() {
+	[ "$(config_t_get global adblock 0)" != "1" ] && {
+	[ -s $RULES_PATH/my_block_host ] && ln -sf $RULES_PATH/my_block_host $RULES_PATH/block_host || > $RULES_PATH/block_host
+	return
+	}
+	"$APP_PATH/adblock.sh" > /dev/null 2>&1 &
+}
+
 start_dns() {
 	echolog "DNS域名解析："
 
@@ -1623,6 +1631,7 @@ start() {
 	export ENABLE_DEPRECATED_GEOIP=true
 	export SS_SYSTEM_DNS_RESOLVER_FORCE_BUILTIN=1
 	ulimit -n 65535
+	start_adblock
 	start_haproxy
 	start_socks
 	nftflag=0

@@ -383,7 +383,7 @@ for k, v in pairs(nodes_table) do
 end
 
 m:appendTemplate("/global/footer", {shunt_list = api.jsonc.stringify(shunt_list)})
-
+m:appendTemplate("/global/status_bottom")
 m:appendTemplate("/cbi/sortable", {sectiontype = s2.sectiontype})
 
 return api.return_map(m)

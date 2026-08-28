@@ -1,0 +1,88 @@
+diff --git a/dae/run.go b/dae/run.go
+index d8f86c2..a0a665d 100644
+--- a/dae/run.go
++++ b/dae/run.go
+@@ -32,7 +32,8 @@ var ChReloadConfigs = make(chan *ReloadMessage)
+ var GracefullyExit = make(chan struct{})
+ var EmptyConfig *daeConfig.Config
+ var c *control.ControlPlane
+-var onceWaitingNetwork sync.Once
++var waitingNetworkMu sync.Mutex
++var networkReady bool
+ 
+ func init() {
+ 	sections, err := config_parser.Parse(`global{} routing{}`)
+@@ -52,6 +53,19 @@ func ControlPlane() (*control.ControlPlane, error) {
+ 	return c, nil
+ }
+ 
++func waitForNetwork(log *logrus.Logger) error {
++	waitingNetworkMu.Lock()
++	defer waitingNetworkMu.Unlock()
++	if networkReady {
++		return nil
++	}
++	if err := WaitForNetwork(log); err != nil {
++		return err
++	}
++	networkReady = true
++	return nil
++}
++
+ func Run(log *logrus.Logger, conf *daeConfig.Config, externGeoDataDirs []string, disableTimestamp bool, dry bool) (err error) {
+ 	defer close(GracefullyExit)
+ 	// Not really run dae.
+@@ -221,6 +235,9 @@ func newControlPlane(log *logrus.Logger, bpf interface{}, dnsCache map[string]*c
+ 
+ 	// Deep copy to prevent modification.
+ 	conf = deepcopy.Copy(conf).(*daeConfig.Config)
++	if bpf == nil {
++		control.PurgeStaleTCFilters(log)
++	}
+ 
+ 	// Init Direct Dialers.
+ 	direct.InitDirectDialers(conf.Global.FallbackResolver)
+@@ -228,9 +245,9 @@ func newControlPlane(log *logrus.Logger, bpf interface{}, dnsCache map[string]*c
+ 
+ 	if !conf.Global.DisableWaitingNetwork && len(conf.Global.WanInterface) > 0 {
+ 		// Wait for network for WAN ready.
+-		onceWaitingNetwork.Do(func() {
+-			WaitForNetwork(log)
+-		})
++		if err = waitForNetwork(log); err != nil {
++			return nil, err
++		}
+ 	}
+ 
+ 	/// Get subscription -> nodeList mapping.
+diff --git a/dae/utils.go b/dae/utils.go
+index 65965a2..dc43cbc 100644
+--- a/dae/utils.go
++++ b/dae/utils.go
+@@ -94,8 +94,9 @@ func preprocessWanInterfaceAuto(params *daeConfig.Config) error {
+ 	return nil
+ }
+ 
+-func WaitForNetwork(log *logrus.Logger) {
++func WaitForNetwork(log *logrus.Logger) error {
+ 	epo := 5 * time.Second
++	deadline := time.Now().Add(60 * time.Second)
+ 	client := http.Client{
+ 		Transport: &http.Transport{
+ 			DialContext: func(ctx context.Context, network, addr string) (c net.Conn, err error) {
+@@ -115,6 +116,9 @@ func WaitForNetwork(log *logrus.Logger) {
+ 	}
+ 	log.Infoln("Waiting for network...")
+ 	for i := 0; ; i++ {
++		if time.Now().After(deadline) {
++			return fmt.Errorf("network unavailable after 60 seconds")
++		}
+ 		resp, err := client.Get(cmd.CheckNetworkLinks[i%len(cmd.CheckNetworkLinks)])
+ 		if err != nil {
+ 			log.Debugln("CheckNetwork:", err)
+@@ -134,4 +138,5 @@ func WaitForNetwork(log *logrus.Logger) {
+ 		time.Sleep(epo)
+ 	}
+ 	log.Infoln("Network online.")
++	return nil
+ }
