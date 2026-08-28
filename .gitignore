@@ -64,10 +64,4 @@
 /fibocom_MHI
 /*zabbix*
 
-/shortcut-fe
-/xtables-wgobfs
-/quectel_MHI
-/rkp-ipid
-/fibocom_QMI_WWAN
-/*QMI*
-/natflow
+
