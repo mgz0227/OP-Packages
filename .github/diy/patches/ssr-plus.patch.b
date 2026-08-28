@@ -3,7 +3,7 @@
 @@ -33,6 +33,13 @@ LUCI_DEPENDS:= \
  	+libuci-lua +lua +luci-compat +coreutils +coreutils-base64 +dns2tcp +dnsmasq-full \
  	+jq +ip-full +lua-neturl +libuci-lua +microsocks +ipt2socks +lyaml \
- 	+resolveip +curl +nping +unzip +xz-utils +xz \
+ 	+resolveip +curl +nping +unzip +xz-utils \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Xray:xray-core \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Xray:coreutils-timeout \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Http_Proxy:3proxy \
@@ -129,7 +129,7 @@ new file mode 100644
 index 000000000000..a00fff9c79b3
 --- /dev/null
 +++ b/luci-app-ssr-plus/luasrc/view/shadowsocksr/status_bottom.htm
-@@ -0,0 +1,134 @@
+@@ -0,0 +1,128 @@
 +<style>
 +.pure-img {
 +    max-height: 100%;
@@ -146,7 +146,7 @@ index 000000000000..a00fff9c79b3
 +    box-shadow: 0 0 2rem 0 rgba(136, 152, 170, .3);
 +    color: #525f7f;
 +    background: #fff;
-+    z-index: 999;
++    z-index: 5;
 +    box-sizing: border-box;
 +}
 +
@@ -158,7 +158,7 @@ index 000000000000..a00fff9c79b3
 +    height: 2.6em;
 +    display: block;
 +    float: left;
-+    margin: 0 1em;
++    margin-right: 1em;
 +}
 +
 +.status-bar .inner .status-info {
@@ -170,17 +170,14 @@ index 000000000000..a00fff9c79b3
 +    text-align: right;
 +}
 +
-+.pure-u-1-2 {
-+    width: 49%;
-+    display: inline-block;
++#cbi-passwall+.cbi-page-actions.control-group.fixed {
++    bottom: 3.3rem;
 +}
 +
-+@media screen and (max-width: 720px) {
-+		.pure-u-1-2 {
-+			width: 100%;
-+		}
-+	}
-+
++footer{
++display:block !important;
++}
++    
 +@media screen and (max-width: 700px) {
 +.status-bar .icon-con {
 +    height: 2.5em;
@@ -191,15 +188,15 @@ index 000000000000..a00fff9c79b3
 +    <div class="inner">
 +        <div class="pure-g">
 +            <div class="pure-u-1-2">
-+                <span class="flag"><img src="/luci-static/shadowsocksr/flags/loading.svg" class="pure-img"></span> <span
++                <span class="flag"><img src="/luci-static/passwall/flags/loading.svg" class="pure-img"></span> <span
 +                    class="status-info">获取中...</span>
 +            </div>
 +            <div class="pure-u-1-2">
 +                <div class="icon-con">
-+                    <img src="/luci-static/shadowsocksr/img/site_icon1_01.png" class="pure-img i1">
-+                    <img src="/luci-static/shadowsocksr/img/site_icon1_02.png" class="pure-img i2">
-+                    <img src="/luci-static/shadowsocksr/img/site_icon1_03.png" class="pure-img i3">
-+                    <img src="/luci-static/shadowsocksr/img/site_icon1_04.png" class="pure-img i4">
++                    <img src="/luci-static/passwall/img/site_icon1_01.png" class="pure-img i1">
++                    <img src="/luci-static/passwall/img/site_icon1_02.png" class="pure-img i2">
++                    <img src="/luci-static/passwall/img/site_icon1_03.png" class="pure-img i3">
++                    <img src="/luci-static/passwall/img/site_icon1_04.png" class="pure-img i4">
 +                </div>
 +            </div>
 +        </div>
@@ -207,15 +204,15 @@ index 000000000000..a00fff9c79b3
 +</div>
 +
 +<script>
-+const _ASSETS = '/luci-static/shadowsocksr/';
-+const CHECK_IP_URL = '<%=url([[admin]], [[services]], [[shadowsocksr]], [[ip]])%>';
++const _ASSETS = '/luci-static/passwall/';
++const CHECK_IP_URL = '<%=url([[admin]], [[services]], [[passwall]], [[ip]])%>';
 +
-+let mainContent = document.getElementById("maincontent");
-+let statusBar = document.querySelector(".status-bar");
++let wW = window.innerWidth;
 +
 +function resize() {
 +    wW = window.innerWidth;
-+    let lw = document.querySelector(".main-left, :root[data-layout='sidebar'] .fs-sidebar")?.offsetWidth ?? 5;
++    let lw = document.querySelector(".main-left")?.offsetWidth ?? 5;
++    let statusBar = document.querySelector(".status-bar");
 +    statusBar.style.width = (wW - lw) + 'px';
 +    let flagElement = statusBar.querySelector(".flag");
 +    flagElement.style.width = (flagElement.offsetHeight / 3 * 4) + 'px';
@@ -260,9 +257,6 @@ index 000000000000..a00fff9c79b3
 +});
 +
 +window.addEventListener('resize', resize);
-+if (mainContent && window.getComputedStyle(mainContent).getPropertyValue("contain")=== "paint") {
-+document.body.appendChild(statusBar);
-+}
 +</script>
 
 --- a/luci-app-ssr-plus/root/etc/uci-defaults/luci-ssr-plus
@@ -276,6 +270,21 @@ index 000000000000..a00fff9c79b3
 +
  rm -f /tmp/luci-indexcache /tmp/luci-indexcache.*
  rm -rf /tmp/luci-modulecache/
+
+--- a/luci-app-ssr-plus/root/usr/share/shadowsocksr/gen_config.lua
++++ b/luci-app-ssr-plus/root/usr/share/shadowsocksr/gen_config.lua
+@@ -389,10 +389,7 @@ Xray.outbounds = {
+ 				fingerprint = server.fingerprint,
+ 				allowInsecure = (function()
+ 					if server.tls_CertSha and server.tls_CertSha ~= "" then return nil end
+-					if os.date("%Y.%m.%d") < "2026.06.01" then
+-						return server.insecure == "1"
+-					end
+-					return nil
++					return server.insecure == "1"
+ 				end)(),
+ 				serverName = server.tls_host,
+ 				certificates = server.certificate and {
 
 --- a/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua
 +++ b/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua
@@ -291,3 +300,14 @@ index 000000000000..a00fff9c79b3
  
  if xray_version_val >= 260131 then
  	-- Xray 版本大于等于 26.1.31
+
+--- a/luci-app-ssr-plus/root/usr/share/shadowsocksr/shadowsocksr.config
++++ b/luci-app-ssr-plus/root/usr/share/shadowsocksr/shadowsocksr.config
+@@ -65,3 +65,7 @@ config clash_client_group
+ 	option ip_addr ''
+ 	option client_mac ''
+ 	option policy_group ''
++
++config server_subscribe_item
++	option enabled '1'
++	option alias 'Subscribe default'

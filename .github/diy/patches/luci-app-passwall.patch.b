@@ -1,7 +1,21 @@
+--- a/luci-app-passwall/root/etc/uci-defaults/luci-passwall
++++ b/luci-app-passwall/root/etc/uci-defaults/luci-passwall
+@@ -1,5 +1,10 @@
+ #!/bin/sh
+ 
++[ "`which nft`" ] && uci -q set passwall.@global_forwarding[0].use_nft=1
++
++grep -q ip-api.com /usr/share/passwall/rules/proxy_host ||
++	sed -i '$a ip-api.com' /usr/share/passwall/rules/proxy_host
++
+ if [ -e "/etc/config/ucitrack" ]; then
+     uci -q batch <<-EOF
+  		delete ucitrack.@passwall[-1]
+
 --- a/luci-app-passwall/Makefile
 +++ b/luci-app-passwall/Makefile
 @@ -35,7 +35,25 @@ LUCI_PKGARCH:=all
- LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +coreutils-timeout +curl \
+ LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
  	+chinadns-ng +dns2socks +dnsmasq-full +ip-full \
  	+libuci-lua +lua +luci-compat +luci-lib-jsonc \
 -	+microsocks +resolveip +tcping +lyaml
@@ -27,12 +41,7 @@
  
  define Package/$(PKG_NAME)/config
  menu "Configuration"
-@@ -66,12 +84,11 @@ config PACKAGE_$(PKG_NAME)_Nftables_Transparent_Proxy
- config PACKAGE_$(PKG_NAME)_INCLUDE_Geoview
- 	bool "Include Geoview"
- 	select PACKAGE_geoview
--	default y if aarch64||arm||i386||x86_64
-+	default y if aarch64||i386||x86_64
+@@ -70,8 +88,7 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Geoview
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy
  	bool "Include Haproxy"
@@ -42,16 +51,14 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Hysteria
  	bool "Include Hysteria"
-@@ -87,8 +104,7 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy
+@@ -87,7 +104,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Client
  	bool "Include Shadowsocks Rust Client"
  	depends on !i386
 -	select PACKAGE_shadowsocks-rust-sslocal
--	default y if aarch64||x86_64
-+	default y if x86_64
+ 	default y if aarch64||x86_64
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server
- 	bool "Include Shadowsocks Rust Server"
 @@ -98,8 +114,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client
@@ -72,7 +79,7 @@
  	bool "Include Sing-Box"
  	select PACKAGE_sing-box
 -	default y if aarch64||arm||i386||x86_64
-+	default y
++	default y if aarch64||i386||x86_64
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Geodata
  	bool "Include V2ray_Geodata"
@@ -82,28 +89,28 @@
  	bool "Include V2ray-Plugin (Shadowsocks Plugin)"
 -	select PACKAGE_v2ray-plugin
 -	default y if aarch64||arm||i386||x86_64
-+	default y if i386||x86_64
++	default y if aarch64||i386||x86_64
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Xray
  	bool "Include Xray"
 -	select PACKAGE_xray-core
 -	select PACKAGE_unzip
 -	default y if aarch64||arm||i386||x86_64
-+	default n
++	default y
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Xray_Plugin
  	bool "Include Xray-Plugin (Shadowsocks Plugin)"
 
 --- a/luci-app-passwall/luasrc/controller/passwall.lua
 +++ b/luci-app-passwall/luasrc/controller/passwall.lua
-@@ -26,6 +26,8 @@ function index()
- 	entry({"admin", "services", appname}).dependent = true
+@@ -21,6 +21,8 @@ function index()
+ 	entry({"admin", "services", appname, "reset_config"}, call("reset_config")).leaf = true
  	entry({"admin", "services", appname, "show"}, call("show_menu")).leaf = true
  	entry({"admin", "services", appname, "hide"}, call("hide_menu")).leaf = true
 +	entry({"admin", "services", appname, "ip"}, call('check_ip')).leaf = true
 +	entry({"admin", "services", appname, "adblock_refresh"}, call('adblock_refresh')).leaf = true
  	local e
- 	if api.uci_get_c("@global[0]", "hide_from_luci") ~= "1" then
+ 	if uci:get(appname, "@global[0]", "hide_from_luci") ~= "1" then
  		e = entry({"admin", "services", appname}, alias("admin", "services", appname, "settings"), _("Pass Wall"), -1)
 @@ -211,6 +213,81 @@ function clear_log()
  	luci.sys.call("echo '' > /tmp/log/passwall.log")
@@ -190,7 +197,7 @@
 
 --- a/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua
 +++ b/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua
-@@ -547,6 +547,46 @@ function o.cfgvalue(self, section)
+@@ -547,6 +547,45 @@ function o.cfgvalue(self, section)
  		api.url("flush_set") .. "?redirect=1&reload=1", set_title)
  end
  
@@ -204,7 +211,7 @@
 +end
 +o = s:taboption("DNS", DummyValue, "refresh_data", translate("Subscribe Rules Data"))
 +o.rawhtml = true
-+o.template = m:template_path("/global/adblock_refresh")
++o.template = appname .. "/global/adblock_refresh"
 +o.value = rule_count.." "..translate("Records")
 +o.description = string.format("<strong>"..translate("Last Update Checked")..":</strong> %s<br/>",UD)
 +o:depends("adblock",1)
@@ -214,11 +221,10 @@
 +o:value("https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD@master/anti-ad-domains.txt", translate("anti-AD"))
 +o.default = "https://cdn.jsdelivr.net/gh/217heidai/adblockfilters@main/rules/adblockdomainlite.txt"
 +o.description = translate("Support Domain / Dnsmasq / AdGuardHome / Hosts format list")
-+o.rmempty = false
 +o:depends("adblock",1)
 +
 +o = s:taboption("DNS", DynamicList, "white_list", translate("Adblock white list"))
-+o.rmempty = false
++o.rmempty = true
 +o:depends("adblock",1)
 +function o.validate(self, value)
 +    local vlist = (type(value) == "table") and value or { value }
@@ -237,21 +243,19 @@
  s:tab("Proxy", translate("Mode"))
  
  o = s:taboption("Proxy", Flag, "use_direct_list", translatef("Use %s", translate("Direct List")))
-@@ -825,7 +825,7 @@ for k, v in pairs(nodes_table) do
- end
+@@ -834,5 +855,6 @@ footer.api = api
+ footer.global_cfgid = global_cfgid
+ footer.shunt_list = api.jsonc.stringify(shunt_list)
+ m:append(footer)
++m:append(Template(appname .. "/global/status_bottom"))
  
- m:appendTemplate("/global/footer", {shunt_list = api.jsonc.stringify(shunt_list)})
--
-+m:appendTemplate("/global/status_bottom")
- m:appendTemplate("/cbi/sortable", {sectiontype = s2.sectiontype})
- 
- return api.return_map(m)
+ return m
 
 new file mode 100644
 index 000000000000..a00fff9c79b3
 --- /dev/null
 +++ b/luci-app-passwall/luasrc/view/passwall/global/status_bottom.htm
-@@ -0,0 +1,131 @@
+@@ -0,0 +1,128 @@
 +<style>
 +.pure-img {
 +    max-height: 100%;
@@ -268,7 +272,7 @@ index 000000000000..a00fff9c79b3
 +    box-shadow: 0 0 2rem 0 rgba(136, 152, 170, .3);
 +    color: #525f7f;
 +    background: #fff;
-+    z-index: 999;
++    z-index: 5;
 +    box-sizing: border-box;
 +}
 +
@@ -280,7 +284,7 @@ index 000000000000..a00fff9c79b3
 +    height: 2.6em;
 +    display: block;
 +    float: left;
-+    margin: 0 1em;
++    margin-right: 1em;
 +}
 +
 +.status-bar .inner .status-info {
@@ -329,12 +333,12 @@ index 000000000000..a00fff9c79b3
 +const _ASSETS = '/luci-static/passwall/';
 +const CHECK_IP_URL = '<%=url([[admin]], [[services]], [[passwall]], [[ip]])%>';
 +
-+let mainContent = document.getElementById("maincontent");
-+let statusBar = document.querySelector(".status-bar");
++let wW = window.innerWidth;
 +
 +function resize() {
 +    wW = window.innerWidth;
-+    let lw = document.querySelector(".main-left, :root[data-layout='sidebar'] .fs-sidebar")?.offsetWidth ?? 5;
++    let lw = document.querySelector(".main-left")?.offsetWidth ?? 5;
++    let statusBar = document.querySelector(".status-bar");
 +    statusBar.style.width = (wW - lw) + 'px';
 +    let flagElement = statusBar.querySelector(".flag");
 +    flagElement.style.width = (flagElement.offsetHeight / 3 * 4) + 'px';
@@ -379,14 +383,11 @@ index 000000000000..a00fff9c79b3
 +});
 +
 +window.addEventListener('resize', resize);
-+if (mainContent && window.getComputedStyle(mainContent).getPropertyValue("contain")=== "paint") {
-+document.body.appendChild(statusBar);
-+}
 +</script>
 
 --- a/luci-app-passwall/root/usr/share/passwall/0_default_config
 +++ b/luci-app-passwall/root/usr/share/passwall/0_default_config
-@@ -31,7 +31,7 @@ config global_haproxy
+@@ -32,7 +32,7 @@ config global_haproxy
  
  config global_delay
  	option start_daemon '1'
@@ -395,11 +396,43 @@ index 000000000000..a00fff9c79b3
  
  config global_forwarding
  	option tcp_no_redir_ports 'disable'
+@@ -57,13 +57,17 @@ config global_other
+ 	option show_node_info '0'
+ 
+ config global_rules
+-	option auto_update '0'
++	option auto_update '1'
+ 	option chnlist_update '1'
+ 	option chnroute_update '1'
+ 	option chnroute6_update '1'
+ 	option gfwlist_update '1'
+-	option geosite_update '0'
+-	option geoip_update '0'
++	option geosite_update '1'
++	option geoip_update '1'
++	option enable_geoview '1'
++	option geo2rule '1'
++	option week_update '7'
++	option time_update '4'
+ 	list gfwlist_url 'https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/gfw.txt'
+ 	list chnroute_url 'https://ispip.clang.cn/all_cn.txt'
+ 	list chnroute_url 'https://cdn.jsdelivr.net/gh/gaoyifan/china-operator-ip@ip-lists/china.txt'
+@@ -72,8 +76,8 @@ config global_rules
+ 	list chnlist_url 'https://cdn.jsdelivr.net/gh/felixonmars/dnsmasq-china-list/accelerated-domains.china.conf'
+ 	list chnlist_url 'https://cdn.jsdelivr.net/gh/felixonmars/dnsmasq-china-list/apple.china.conf'
+ 	option v2ray_location_asset '/usr/share/v2ray/'
+-	option geoip_url 'https://github.com/Loyalsoldier/geoip/releases/latest/download/geoip.dat'
+-	option geosite_url 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat'
++	option geoip_url 'https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/geoip.dat'
++	option geosite_url 'https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat'
+ 
+ config global_app
+ 	option sing_box_file '/usr/bin/sing-box'
 
 --- a/luci-app-passwall/root/usr/share/passwall/app.sh
 +++ b/luci-app-passwall/root/usr/share/passwall/app.sh
-@@ -1037,6 +1037,14 @@ stop_crontab() {
- 	#echolog "清除定时执行命令。"
+@@ -1539,6 +1539,14 @@ start_dns() {
+ 	fi
  }
  
 +start_adblock() {
@@ -410,10 +443,10 @@ index 000000000000..a00fff9c79b3
 +	"$APP_PATH/adblock.sh" > /dev/null 2>&1 &
 +}
 +
- start_dns() {
- 	echolog "DNS域名解析："
- 
-@@ -1636,6 +1644,7 @@ start() {
+ start_haproxy() {
+ 	[ "$(config_t_get global_haproxy balancing_enable 0)" != "1" ] && return
+ 	haproxy_path=$TMP_PATH/haproxy
+@@ -1853,6 +1861,7 @@ start() {
  	export ENABLE_DEPRECATED_GEOIP=true
  	export SS_SYSTEM_DNS_RESOLVER_FORCE_BUILTIN=1
  	ulimit -n 65535
@@ -485,3 +518,15 @@ index 000000000000..a00fff9c79b3
  msgid "Auto"
  msgstr "自动"
  
+
+--- a/luci-app-passwall/luasrc/passwall/util_xray.lua
++++ b/luci-app-passwall/luasrc/passwall/util_xray.lua
+@@ -152,7 +152,7 @@ function gen_outbound(flag, node, tag, proxy_table)
+ 					serverName = node.tls_serverName,
+ 					allowInsecure = (function()
+ 								if node.tls_pinSHA256 and node.tls_pinSHA256 ~= "" then return nil end
+-								if api.compare_versions(os.date("%Y.%m.%d"), "<", "2026.6.1") and node.tls_allowInsecure == "1" then return true end
++								if node.tls_allowInsecure == "1" then return true end
+ 							end)(),
+ 					fingerprint = (node.type == "Xray" and node.utls == "1" and node.fingerprint and node.fingerprint ~= "") and node.fingerprint or nil,
+ 					pinnedPeerCertSha256 = (function()
