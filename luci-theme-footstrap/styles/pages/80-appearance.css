@@ -12,6 +12,11 @@
 	 * the only page that draws it: an axis control is not chrome. */
 
 	.fs-ap { display: flex; flex-direction: column; gap: var(--fs-space-5); }
+	/* The page note (fs-appearance.js). Only the outer margins: `.alert-message p` carries
+	 * --fs-space-1 top and bottom, which at the box's own edges adds to the panel's padding and
+	 * makes a two-sentence note look loose against every other alert on the theme. */
+	.fs-ap-note p:first-child { margin-top: 0; }
+	.fs-ap-note p:last-child { margin-bottom: 0; }
 	/* Grouping headings INSIDE the tab pane, not cards: the pane is already inside the stock
 	 * .cbi-section card, and a second border around each group is a box in a box. A hairline above
 	 * each group does the same job — except for the first, which sits under the tab strip. */
@@ -95,6 +100,10 @@
 	 * an item that cannot fit moves to the next line instead of hanging past the edge, which on a
 	 * flex row is silent. */
 	.fs-ap-actrow { display: flex; flex-wrap: wrap; gap: var(--fs-space-2); }
+	/* Save and the two resets differ by one word and sit in one row, which is the shape a
+	 * destructive click lands on by accident. The gap says they are two groups; both resets also
+	 * ask for a second click. Zero-width, so it costs no height when the row wraps on a phone. */
+	.fs-ap-actgap { flex: 0 0 var(--fs-space-4); }
 	.fs-ap-actrow .btn { font-size: var(--fs-type); padding: var(--fs-space-2) var(--fs-space-2-5); cursor: pointer; }
 	.fs-ap-actrow .btn:disabled { cursor: default; }
 	/* the primed Reset (second click confirms) reads as the destructive action it is */
