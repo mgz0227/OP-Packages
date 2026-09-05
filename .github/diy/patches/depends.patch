@@ -1,3 +1,14 @@
+--- a/pgyvpn/Makefile
++++ b/pgyvpn/Makefile
+@@ -67,7 +67,6 @@ ifeq ($(ARCH),x86_64)
+ 	OPENSSL_COMPAT_TARGET:=linux-x86_64
+ endif
+ 
+-PKG_FLAGS:=nonshared
+ PKG_MAINTAINER:=Oray <developer@oray.com>
+ 
+ include $(INCLUDE_DIR)/package.mk
+
 --- a/luci-app-easytier/Makefile
 +++ b/luci-app-easytier/Makefile
 @@ -10,7 +10,7 @@ PKG_VERSION:=2.3.0
@@ -26,17 +37,6 @@
 +++ b/phtunnel/Makefile
 @@ -36,7 +36,6 @@ PKG_SOURCE:=phtunnel
  PKG_SOURCE_URL:=https://mirrors.oray.com/orayos/packages/$(PKG_NAME)/$(PKG_ARCH_PHT)/$(PKG_VERSION)/bin
- PKG_HASH:=skip
- 
--PKG_FLAGS:=nonshared
- PKG_MAINTAINER:=Oray <developer@oray.com>
- 
- include $(INCLUDE_DIR)/package.mk
-
---- a/pgyvpn/Makefile
-+++ b/pgyvpn/Makefile
-@@ -36,7 +36,6 @@ PKG_SOURCE:=pgyvpnsvr
- PKG_SOURCE_URL:=https://mirrors.oray.com/orayos/packages/$(PKG_NAME)/$(PKG_ARCH_PGYYPN)/$(PKG_VERSION)/bin
  PKG_HASH:=skip
  
 -PKG_FLAGS:=nonshared
