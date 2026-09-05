@@ -5,8 +5,7 @@
 			"type": "firstchild"
 		},
 		"depends": {
-			"acl": [ "luci-app-qbittorrent" ],
-			"uci": { "qbittorrent": true }
+			"acl": [ "luci-app-qbittorrent" ]
 		}
 	},
 	"admin/services/qbittorrent/config": {

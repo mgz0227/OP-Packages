@@ -6,8 +6,7 @@
 			"path": "ddns-go"
 		},
 		"depends": {
-			"acl": [ "luci-app-ddns-go" ],
-			"uci": { "ddns-go": true }
+			"acl": [ "luci-app-ddns-go" ]
 		}
 	}
 }

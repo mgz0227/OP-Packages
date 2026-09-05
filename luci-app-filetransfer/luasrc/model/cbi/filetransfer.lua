@@ -1,4 +1,4 @@
-local fs = require "luci.fs"
+local fs = require "nixio.fs"
 local http = luci.http
 
 ful = SimpleForm("upload", translate("Upload"), nil)
@@ -28,8 +28,8 @@ dm.template = "filetransfer/other_dvalue"
 function Download()
 	local sPath, sFile, fd, block
 	sPath = http.formvalue("dlfile")
-	sFile = nixio.fs.basename(sPath)
-	if luci.fs.isdirectory(sPath) then
+	sFile = fs.basename(sPath)
+	if fs.stat(sPath, "type") == "dir" then
 		fd = io.popen('tar -C "%s" -cz .' % {sPath}, "r")
 		sFile = sFile .. ".tar.gz"
 	else
@@ -91,16 +91,6 @@ elseif luci.http.formvalue("download") then
 	Download()
 end
 
-local function getSizeStr(size)
-	local i = 0
-	local byteUnits = {' kB', ' MB', ' GB', ' TB'}
-	repeat
-		size = size / 1024
-		i = i + 1
-	until(size <= 1024)
-    return string.format("%.1f", size) .. byteUnits[i]
-end
-
 local inits, attr = {}
 for i, f in ipairs(fs.glob("/tmp/upload/*")) do
 	attr = fs.stat(f)
@@ -109,7 +99,7 @@ for i, f in ipairs(fs.glob("/tmp/upload/*")) do
 		inits[i].name = fs.basename(f)
 		inits[i].mtime = os.date("%Y-%m-%d %H:%M:%S", attr.mtime)
 		inits[i].modestr = attr.modestr
-		inits[i].size = getSizeStr(attr.size)
+		inits[i].size = tostring(attr.size)
 		inits[i].remove = 0
 		inits[i].install = false
 	end
@@ -122,9 +112,8 @@ form.submit = false
 tb = form:section(Table, inits)
 nm = tb:option(DummyValue, "name", translate("File name"))
 mt = tb:option(DummyValue, "mtime", translate("Modify time"))
-ms = tb:option(DummyValue, "modestr", translate("Attributes"))
+ms = tb:option(DummyValue, "modestr", translate("Mode string"))
 sz = tb:option(DummyValue, "size", translate("Size"))
-
 btnrm = tb:option(Button, "remove", translate("Remove"))
 btnrm.render = function(self, section, scope)
 	self.inputstyle = "remove"
@@ -132,7 +121,7 @@ btnrm.render = function(self, section, scope)
 end
 
 btnrm.write = function(self, section)
-	local v = luci.fs.unlink("/tmp/upload/" .. luci.fs.basename(inits[section].name))
+	local v = fs.unlink("/tmp/upload/" .. fs.basename(inits[section].name))
 	if v then table.remove(inits, section) end
 	return v
 end

@@ -1,0 +1,8 @@
+#!/bin/sh
+
+[ "$ACTION" = "ifup" ] || exit 0
+[ "$INTERFACE" = "wan" ] || exit 0
+[ "$(uci -q get ipsec-vpnd.ipsec.enabled)" = "1" ] || exit 0
+
+logger -t ipsec-vpnd "WAN reconnected, restarting IPsec VPN server"
+/etc/init.d/ipsec-vpnd restart
