@@ -13,7 +13,11 @@ msgstr ""
 msgid "Collecting data..."
 msgstr "正在收集数据中..."
 
-#: applications/luci-app-qbittorrent/htdocs/luci-static/resources/view/qbittorrent/config.js:96
+#: applications/luci-app-qbittorrent/htdocs/luci-static/resources/view/qbittorrent/config.js:87
+msgid "Configuration files path"
+msgstr "配置文件路径"
+
+#: applications/luci-app-qbittorrent/htdocs/luci-static/resources/view/qbittorrent/config.js:82
 msgid "Download path"
 msgstr "下载目录"
 

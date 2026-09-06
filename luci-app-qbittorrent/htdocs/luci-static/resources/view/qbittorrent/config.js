@@ -81,6 +81,12 @@ return view.extend({
 
 		o = s.option(form.Value, 'download_dir', _('Download path'));
 		o.default = '/mnt/download';
+		o.datatype = 'directory';
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'profile_dir', _('Configuration files path'));
+		o.default = '/etc/qbittorrent';
+		o.datatype = 'directory';
 		o.rmempty = false;
 
 		return m.render();
