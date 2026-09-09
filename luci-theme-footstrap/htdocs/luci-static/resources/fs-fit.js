@@ -373,60 +373,48 @@ function watch(el) {
  * It never fights the user: a page at the top has no offset to give back, and a drift under a pixel
  * is rounding. */
 /* Does the engine anchor at all? Chromium and Firefox do — measured with their anchoring
- * suppressed, a 120px growth above the fold moves the reader 120px, and 0px with it on. An older
- * WebKit does not, and a current one anchors but gets the COLLAPSE case wrong instead (lateDrift()
- * below). Correcting the offset in an engine that also corrects it means two corrections and a
- * page that jumps the other way, so this is asked of the platform rather than of a browser name —
- * `overflow-anchor` is the property that turns the feature off, and an engine that does not know it
- * does not have it.
+ * suppressed, a 120px growth above the fold moves the reader 120px, and 0px with it on. So this is
+ * asked of the platform rather than of a browser name — `overflow-anchor` is the property that
+ * turns the feature off, and an engine that does not know it does not have it. Defended against an
+ * engine — or a stub, in a node-run test — with no `CSS` object at all; unreadable answers `true`
+ * (assumed handled rather than fought).
  *
- * Task wkanchor: WebKit 26 shipped `overflow-anchor`, so that question now gets `true` from every
- * engine and can no longer tell "has none" apart from "has one that mis-fires". Measured on the
- * Overview, reader parked, real poll ticks, nothing above the fold changing height by even a pixel:
- * WebKit's own anchoring still moved the offset +21px — no `scrollTo`, no `scrollTop` setter
- * recorded (../tmp/task-overview12/tick-probe.mjs) — and lateDrift() below wrote it back one rAF +
- * SCROLL_IDLE later, measured 421/421/408ms after the tick: correct, and too late not to read as a
- * jump. So the job is taken away from the engine on exactly the engine that gets it wrong, rather
- * than corrected twice — `theme/20-shell.css` turns the platform's own anchoring off on the
- * scroller for the same engine ENGINE_MISANCHORS identifies below, and ENGINE_ANCHORS has to agree
- * with it or the "two corrections" fault this file already warns about reopens in a subtler shape:
- * the CSS side thinking the engine is out while this one still waits for it. */
-/* Both feature tests below are `CSS.supports`, defended against an engine — or a stub, in a
- * node-run test — with no `CSS` object at all; one function shared between them is what pays this
- * section's own way back under the wire budget, since jsmin/terser fold no duplicate literal
- * (`docs/conventions.md`, "Carry the measurement" — measured, tools/size-budget.mjs). `dflt` is the
- * answer when the probe itself cannot run, and the two calls below do not agree on it. */
-function cssSupports(prop, val, dflt) {
-	try { return typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports(prop, val); }
-	catch (e) { return dflt; }
-}
-/* Not `overflow-anchor` — every engine claims it now — and not a browser name (the platform,
- * never a browser, is this file's own rule above). `-webkit-hyphenate-limit-before` is a
- * non-standard WebKit hyphenation extension (Apple/WebKit docs, shipped since Safari 5.1) that
- * Blink and Gecko have never implemented under either spelling: measured against the three
- * engines Playwright bundles with this checkout, `CSS.supports` answers false on Chromium and
- * Firefox and true on WebKit. `-webkit-touch-callout` was tried first and rejected: it answers
- * false on a touch-LESS WebKit build too (this checkout's own WebKit, a desktop UA), so it
- * names a CAPABILITY rather than the engine and would leave every non-touch Safari undetected.
- * `dflt` is `false` here: unreadable is not claimed as a fault that could not be measured. */
-const ENGINE_MISANCHORS = cssSupports('-webkit-hyphenate-limit-before', '2', false);
-/* Written once, at module eval, never re-read: `theme/20-shell.css` keys its `overflow-anchor: none`
- * off this same attribute, so the browser's own anchoring is actually suppressed wherever this file
- * decides to own the correction instead of it — see the note above on why the two have to travel
- * together. */
-if (ENGINE_MISANCHORS) {
-	try { document.documentElement.dataset.fsAnchorSuppress = '1'; }
-	catch (e) { /* no document, no flag to write */ }
-}
+ * Task wkanchor shipped a second question here, `ENGINE_MISANCHORS`
+ * (`-webkit-hyphenate-limit-before`), reasoning WebKit 26's own anchoring got a real correction
+ * wrong: +21-41px on the Overview, reader parked, real poll ticks, nothing above the fold growing
+ * by even a pixel. Task barpin found the real mover instead — `fitChrome()` (fs-chrome.js) pinned
+ * the bar against SHRINKING during its own measurement pass but not against GROWING, so the bar
+ * itself walked up to 107px taller than its settled height and back inside that one pass, on every
+ * engine; WebKit was never mis-anchoring, it was the one engine with no scroll anchoring of its own
+ * to absorb what the bar was actually doing. With `fitChrome()` pinned both ways, the same probe
+ * that measured +21-41px reads 0px on WebKit at 390/top with NO suppression at all
+ * (`../tmp/task-toplayout/top-probe.mjs --unsuppress`, 26s of real ticks) — `ENGINE_MISANCHORS` and
+ * the `data-fs-anchor-suppress` write it drove are gone with it; see `docs/anchoring.md`. */
 const ENGINE_ANCHORS = (() => {
 	/* dev switch: `localStorage.fsEngineAnchor = 'off'` makes any engine take the non-anchoring
 	 * path, which is otherwise only reachable on a machine with Safari on it */
 	try { if (localStorage.getItem('fsEngineAnchor') === 'off') return false; }
 	catch (e) { /* no storage, no switch */ }
-	if (ENGINE_MISANCHORS) return false;
-	/* `dflt` is `true` here: unreadable is assumed handled rather than fought */
-	return cssSupports('overflow-anchor', 'auto', true);
+	try { return typeof CSS !== 'undefined' && typeof CSS.supports === 'function'
+		? CSS.supports('overflow-anchor', 'auto') : true; }
+	catch (e) { return true; }
 })();
+
+/* Support for the property is not proof it is doing the job on THIS page: CI showed a real engine
+ * decline to anchor a container refill on two separate passes, `overflow-anchor` still reading
+ * `true` throughout — a case `ENGINE_ANCHORS` above cannot see, because it is asked once, at load,
+ * of the platform. `lateDrift()` below already computes the residual after every refill the theme
+ * did not itself correct, so the evidence is left to accumulate rather than guessed at up front:
+ * two residuals it actually had to write back — task latenet's four-way ablation measured that
+ * write landing 419-420ms after the refill — and the observer stops trusting this engine with the
+ * REST of the session, moving to the anchorFor()/scheduleAnchor() path instead, measured 7-36ms on
+ * the same refill. One residual is left as headroom for a single one-off rather than tripping on
+ * the first. Never a browser name, only a count: an engine that keeps the reference itself never
+ * reaches the write this counts — Chromium and Firefox measure 0 residuals today — so the switch
+ * cannot trip for them. `docs/anchoring.md`, "Who is responsible", carries the numbers. */
+const LATE_MISS_LIMIT = 2;
+let _lateMisses = 0;
+let _engineTrusted = ENGINE_ANCHORS;
 
 /* What the reader was looking at, captured while the page was still. `anchorRef()` runs from the
  * mutation observer, i.e. after the DOM changed: right for the FITTERS, which have not run yet, and
@@ -673,6 +661,9 @@ function lateDrift(ref) {
 			 * it is re-read rather than assumed; `rememberRest()` cannot do it, since the write
 			 * starts the motion sampler and that function returns early while the page moves. */
 			_restAt = scrollTop();
+			/* This engine did not keep the reference across a container refill, once more on this
+			 * page — see LATE_MISS_LIMIT above for what happens once that has been measured twice. */
+			if (++_lateMisses >= LATE_MISS_LIMIT) _engineTrusted = false;
 		}, SCROLL_IDLE);
 	});
 }
@@ -755,9 +746,15 @@ function observeContent() {
 		 * within the frame, so the immediate correction stays, measured against the reference from
 		 * the last still page. */
 		const settled = _rest;
-		const ref = ENGINE_ANCHORS ? null : anchorFor();
+		/* `_engineTrusted`, not `ENGINE_ANCHORS`: the platform check above answers once, at load,
+		 * whether the property exists — it cannot see an engine that has it but declines to use it
+		 * on a given refill, which is what `lateDrift()`'s own residual count is for (LATE_MISS_LIMIT
+		 * above). Once that has happened twice this session the fork moves here too, so the engine
+		 * gets no third 420ms-late chance at a correction the fast path already does in 7-36ms. */
+		const trustEngine = _engineTrusted;
+		const ref = trustEngine ? null : anchorFor();
 		run();
-		if (ENGINE_ANCHORS) lateDrift(settled);
+		if (trustEngine) lateDrift(settled);
 		else scheduleAnchor(ref);
 	});
 	const hosts = [ document.getElementById('view') || document.body, document.getElementById('modal_overlay') ]
@@ -779,20 +776,35 @@ function observeContent() {
 	_moFlag = new MutationObserver(run);
 	_moFlag.observe(document.body, { attributes: true, attributeFilter: [ 'class' ] });
 
-	/* A TAB SWITCH MUTATES NO NODE. ui.tabs writes `data-tab-active` on the panes, so the
-	 * {childList} registration above never wakes and the floor the pane wore while it was open
-	 * stays on it — and `min-height` beats the `height: 0` an inactive pane is collapsed with
-	 * (theme/30-tables.css), so that floor IS blank page above the tab the reader just opened.
-	 * Measured on 25.12, /admin/network/network, Interfaces -> Devices: 1299px left standing, the
-	 * document at 2647px against 1720 and the content the reader came for 1559px down, still there
-	 * 13 s later on a page whose poll never mutates #view (tools/floor-contract.mjs, issue #75).
+	/* A TAB SWITCH — OR A DISCLOSURE CLOSING, OR A depends() ROW HIDING — MUTATES NO NODE. ui.tabs
+	 * writes `data-tab-active` on the panes and fs-appearance.js's foldable() closes by writing
+	 * `hidden`/`aria-expanded` only, so the `{childList}` registration above never wakes for either
+	 * and the floor taken while the content was open/visible just stays — `min-height` beats the
+	 * `height: 0` a hidden pane collapses with (theme/30-tables.css), so that floor IS blank page.
+	 * Measured on 25.12, /admin/network/network, Interfaces -> Devices: a tab switch left 1299px
+	 * standing, the document at 2647px against 1720, still there 13s later on a page whose poll
+	 * never mutates #view (tools/floor-contract.mjs, issue #75); the disclosure shape measured
+	 * 731/1485/1485 (open/close/still-1485) on /admin/system/footstrap before this observer
+	 * covered it, 731/1485/731 with it (docs/anchoring.md).
+	 *
+	 * STOCK LuCI HIDES A ROW THE SAME WAY, WIDER: form.js's setActive() — what every `depends()`
+	 * calls — toggles the CLASS `hidden` on the `[data-field]` element, not the attribute. `class`
+	 * cannot join `data-tab-active`/`hidden`/`aria-expanded` in this filter unguarded — the poll
+	 * rewrites row classes on every tick, and an unfiltered `class` watch would call run(), a
+	 * forced layout, on every one of them (see _moFlag's own comment) — so a `class` record only
+	 * counts where the mutated element itself carries `data-field`, a property check with no
+	 * forced layout, once per delivered record rather than once per poll tick. Measured: System ->
+	 * System -> Time Synchronization, unticking "Enable NTP client", left 258px of empty ground
+	 * before this filter existed and 0px with it (../tmp/task-spoilerfloor/probe3.mjs).
 	 *
 	 * A THIRD observer for the reason the second one exists — observe() replaces the options of a
-	 * registration for the same node. The filter keeps it to the one attribute: `subtree: true` on
-	 * `class` would wake run() on every row the poll rewrites. */
-	_moTabs = new MutationObserver(run);
+	 * registration for the same node; ONE registration per host covers all four attributes since
+	 * none of this needs `subtree: true` on a different scope than `data-tab-active` already has. */
+	_moTabs = new MutationObserver((records) =>
+		records.some((r) => r.attributeName !== 'class' || r.target.dataset.field) && run());
 	for (const host of hosts)
-		_moTabs.observe(host, { attributes: true, attributeFilter: [ 'data-tab-active' ], subtree: true });
+		_moTabs.observe(host, { attributes: true,
+			attributeFilter: [ 'data-tab-active', 'hidden', 'aria-expanded', 'class' ], subtree: true });
 
 }
 
