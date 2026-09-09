@@ -566,11 +566,7 @@ start_global() {
 	local node_socks_bind_local=$(config_n_get @global[0] node_socks_bind_local 1)
 	local node_socks_bind="127.0.0.1"
 	[ "${node_socks_bind_local}" != "1" ] && node_socks_bind="0.0.0.0"
-	local global_socks_port=$(config_n_get @global[0] node_socks_port 1070)
-	GLOBAL_SOCKS_port=$(get_new_port $global_socks_port)
-	if [ "$GLOBAL_SOCKS_port" != "$global_socks_port" ]; then
-		echolog "注意：全局节点 Socks 端口冲突，原端口 ${global_socks_port} 已自动更改为 ${GLOBAL_SOCKS_port}！"
-	fi
+	GLOBAL_SOCKS_port=$(config_n_get @global[0] node_socks_port 1070)
 	GLOBAL_HTTP_port=$(config_n_get @global[0] node_http_port 0)
 	[ "$GLOBAL_HTTP_port" != "0" ] && local on_node_http=1
 	if [ $PROXY_IPV6 = "1" ]; then
@@ -1041,14 +1037,6 @@ stop_crontab() {
 	clean_crontab
 	/etc/init.d/cron restart
 	#echolog "清除定时执行命令。"
-}
-
-start_adblock() {
-	[ "$(config_t_get global adblock 0)" != "1" ] && {
-	[ -s $RULES_PATH/my_block_host ] && ln -sf $RULES_PATH/my_block_host $RULES_PATH/block_host || > $RULES_PATH/block_host
-	return
-	}
-	"$APP_PATH/adblock.sh" > /dev/null 2>&1 &
 }
 
 start_dns() {
@@ -1662,7 +1650,6 @@ start() {
 	export ENABLE_DEPRECATED_GEOIP=true
 	export SS_SYSTEM_DNS_RESOLVER_FORCE_BUILTIN=1
 	ulimit -n 65535
-	start_adblock
 	start_haproxy
 	start_socks
 	nftflag=0

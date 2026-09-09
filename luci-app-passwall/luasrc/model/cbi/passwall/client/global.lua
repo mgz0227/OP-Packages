@@ -112,6 +112,10 @@ o:value("", translate("Close"))
 o.group = {""}
 
 current_node_id = m:get(s.section, "node")
+local node_value = s.fields["node"]:formvalue(s.section)
+if node_value then
+	current_node_id = node_value
+end
 current_node = current_node_id and m:get(current_node_id) or {}
 
 -- Shunt Start
@@ -120,17 +124,10 @@ if (has_singbox or has_xray) and #nodes_table > 0 then
 		if current_node.protocol == "_shunt" then
 			local shunt_lua = loadfile("/usr/lib/lua/luci/model/cbi/passwall/client/include/shunt_options.lua")
 			setfenv(shunt_lua, getfenv(1))(m, s, {
-				s_cfgid = s.section,
-				node_id = current_node_id,
 				node = current_node,
-				socks_list = socks_list,
-				urltest_list = urltest_list,
-				balancing_list = balancing_list,
-				iface_list = iface_list,
-				normal_list = normal_list,
 				verify_option = s.fields["node"],
 				tab = "Shunt",
-				tab_desc = translate("Shunt Rule")
+				tab_desc = translate("Shunt Rule"),
 			})
 		end
 	else
@@ -164,6 +161,11 @@ end
 o = s:taboption("Main", Flag, "node_socks_bind_local", translate("Node") .. " Socks " .. translate("Bind Local"), translate("When selected, it can only be accessed localhost."))
 o.default = "1"
 o:depends("_node", "1")
+
+o = s:taboption("Main", DummyValue, "node_save_before", "")
+o.template = m:template_path("/cbi/hidevalue")
+o.value = current_node[".name"]
+o.cbid = function(self, section) return "node_save_before" end
 
 o = s:taboption("Main", DummyValue, "_node", "")
 o.template = m:template_path("/cbi/hidevalue")
@@ -529,46 +531,6 @@ function o.cfgvalue(self, section)
 		api.url("flush_set") .. "?redirect=1&reload=1", set_title)
 end
 
-o = s:taboption("DNS", Flag, "adblock", translate("Enable adblock"))
-o.rmempty = false
-
-local UD="" rule_count="0"
-if nixio.fs.access("/usr/share/passwall/rules/block_host") then
-UD = os.date("%Y-%m-%d %H:%M", nixio.fs.stat("/usr/share/passwall/rules/block_host").ctime)
-rule_count = tonumber(luci.sys.exec("wc -l < /usr/share/passwall/rules/block_host"))
-end
-o = s:taboption("DNS", DummyValue, "refresh_data", translate("Subscribe Rules Data"))
-o.rawhtml = true
-o.template = m:template_path("/global/adblock_refresh")
-o.value = rule_count.." "..translate("Records")
-o.description = string.format("<strong>"..translate("Last Update Checked")..":</strong> %s<br/>",UD)
-o:depends("adblock",1)
-
-o = s:taboption("DNS", DynamicList, "ad_url", translate("Adblock Rules Subscribe"))
-o:value("https://cdn.jsdelivr.net/gh/217heidai/adblockfilters@main/rules/adblockdomainlite.txt", translate("AdBlock DNS Filters"))
-o:value("https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD@master/anti-ad-domains.txt", translate("anti-AD"))
-o.default = "https://cdn.jsdelivr.net/gh/217heidai/adblockfilters@main/rules/adblockdomainlite.txt"
-o.description = translate("Support Domain / Dnsmasq / AdGuardHome / Hosts format list")
-o.rmempty = false
-o:depends("adblock",1)
-
-o = s:taboption("DNS", DynamicList, "white_list", translate("Adblock white list"))
-o.rmempty = false
-o:depends("adblock",1)
-function o.validate(self, value)
-    local vlist = (type(value) == "table") and value or { value }
-    
-    for _, v in ipairs(vlist) do
-        if v and v ~= "" and not (
-            #v < 254 and v:match("^[a-zA-Z0-9][a-zA-Z0-9%-%.]*[a-zA-Z0-9]$") and v:match("%.")
-        ) then
-            return nil, translate("Invalid domain name") .. ": " .. v
-        end
-    end
-    
-    return value
-end
-
 s:tab("Proxy", translate("Mode"))
 
 o = s:taboption("Proxy", Flag, "use_direct_list", translatef("Use %s", translate("Direct List")))
@@ -686,6 +648,8 @@ o.template = m:template_path("/global/faq")
 s:tab("maintain", translate("Maintain"))
 o = s:taboption("maintain", DummyValue, "")
 o.template = m:template_path("/global/backup")
+
+m:appendTemplate("/include/node_change", { verify_option = s.fields["node"], shunt_list = api.jsonc.stringify(shunt_list) })
 
 -- [[ Socks Server ]]--
 o = s:taboption("Main", Flag, "socks_enabled", "Socks " .. translate("Main switch"))
@@ -824,8 +788,8 @@ for k, v in pairs(nodes_table) do
 	end
 end
 
-m:appendTemplate("/global/footer", {shunt_list = api.jsonc.stringify(shunt_list)})
-m:appendTemplate("/global/status_bottom")
+m:appendTemplate("/global/footer")
+
 m:appendTemplate("/cbi/sortable", {sectiontype = s2.sectiontype})
 
 return api.return_map(m)
