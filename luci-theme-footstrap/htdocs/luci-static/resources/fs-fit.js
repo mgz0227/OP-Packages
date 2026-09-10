@@ -195,12 +195,48 @@ function holdFloor(records) {
 	}
 	if (!dirty.length) return;
 
+	/* THE SWEEP MAY NOT COST THE READER THE CLAMP IT EXISTS TO PREVENT — task resid. Clearing every
+	 * floor before the measure pass is what makes the answers honest (above), and for the length of
+	 * that pass the document stands without them. Measured live (chromium/owrt2512b @390 top normal,
+	 * /admin/network/dhcp, `../tmp/task-resid/dbg-before.json`): 38 sweeps, 33 of them took the
+	 * document DOWN between the clear and the write-back, and on 13 the offset went with it. Eight of
+	 * those 13 are this fault — the unscoped, every-box sweep, document 4730px to 4729px and straight
+	 * back to 4730px, offset 3886 to 3885 and NOT back. Nothing in this function is asynchronous and
+	 * `scrolling()` at the top already refused a reader who is moving, so an offset that is LOWER
+	 * after the write-back than before the clear was lowered by this pass and by nothing else — 0
+	 * sweeps of the 38 moved it the other way.
+	 *
+	 * One pixel, and it is not the pixel that matters: `lateDrift()` reads the offset twice,
+	 * SCROLL_IDLE apart, and treats any difference as "the reader has moved since" (its own comment
+	 * below). That 1px discarded the whole 60px correction the same tick's shrink was owed
+	 * (`late-refuse why: moving, seen 3886, now 3885`), and the unforced `rememberRest()` a
+	 * millisecond later adopted the wrong offset as the reference the NEXT refill measures against:
+	 * 59px off, carried forward, which is the 47-64px `REPEAT` reports on the second or third of
+	 * three back-to-back refills of one section (`tools/scroll-anchor.mjs`, docs/anchoring.md).
+	 *
+	 * ONLY WHERE THE SCROLLER IS AS TALL AGAIN AS IT WAS, which is what separates this pass's own
+	 * transient dip from a floor that came down because the CONTENT really shrank — the eight sweeps
+	 * above against the other five, on the same run, that lost 3958 to 3886 with the document
+	 * staying 120px shorter for good. That second clamp is real, it belongs to the shrink, and
+	 * `lateDrift()`'s `floorShrink` path already corrects for it; touching it here was measured too
+	 * — restoring unconditionally and letting the browser re-clamp the write is green on this cell
+	 * as well, but it also makes every genuine shrink's clamp this file's OWN write
+	 * (`sawOwnWrite()`), so the motion window that clamp used to open stops opening and
+	 * `sampleMotion()`'s terminal sweep stops running with it. The narrow form holds the cell on its
+	 * own, so the wider one does not ship.
+	 *
+	 * `writeOffset()` rather than a bare assignment: the restore is a scroll write like the two
+	 * corrections, and the motion sampler must read it as this file's own rather than as the reader
+	 * arriving. */
+	const sc = scroller(), page = sc || document.documentElement;
+	const at = scrollTop(), tall = page.scrollHeight;
 	dirty.forEach((box) => { box.style.minHeight = ''; });
 	dirty.forEach((box) => hs.push(box.offsetHeight));
 	dirty.forEach((box, i) => {
 		if (hs[i] > 0) { box.style.minHeight = hs[i] + 'px'; box.setAttribute('data-fs-floor', ''); }
 		else box.removeAttribute('data-fs-floor');
 	});
+	if (scrollTop() < at && page.scrollHeight >= tall) writeOffset(sc, at);
 }
 
 /* ---- is the page moving right now? asked of the position, never of the events ----
@@ -885,13 +921,44 @@ function lateDrift(ref, grow, floorShrink) {
 					/* fresh distrust starts the recovery count at 0 too — a streak from a PREVIOUS
 					 * spell of distrust proves nothing about this one */
 					if (++_lateMisses >= LATE_MISS_LIMIT) { _engineTrusted = false; _lateHits = 0; }
+					/* MIRROR OF task refill2's WRITE-PATH FIX, ON THE NO-WRITE PATH — task nine.
+					 * A miss here means the OFFSET did not fully move; it does not mean this tick's
+					 * geometry is unknown. Leaving `_rest` as `run()`'s own mid-transition capture (the
+					 * DOM already changed, nothing had compensated yet) makes THAT stale snapshot the
+					 * `ref.at`/`was` the NEXT tick measures against, same as the write path used to
+					 * before `rememberRest(true)` was added there. `seen` and `el`'s rect, just read,
+					 * ARE the true current position — uncorrected, but real — so the next comparison
+					 * should start from here, not from before this tick began. Measured, `../tmp/
+					 * task-nine/`: without this, `firefox owrt2410 @390 top overview` counted a SECOND
+					 * phantom miss off the stale baseline and tripped `_engineTrusted` false while
+					 * REPEAT's own mark never moved (misses [true,true,false]) — e0b6db4's fault on the
+					 * other side of the same comparison. */
+					rememberRest(true);
 					return;
 				}
 				/* else: within table-row rounding — drift is still whatever it was (< 1 per the guard
 				 * above), so the plain `drift < 1` return two lines down is what fires, unwritten and
 				 * uncounted: the engine did the job. */
 			}
-			if (Math.abs(drift) < 1) return;			/* the engine put it back */
+			if (Math.abs(drift) < 1) {
+				/* SAME MIRROR AS ABOVE, FOR THE "engine already got it right" EXIT — task nine.
+				 * Gated on `grow` OR `floorShrink`, not unconditional: a tick where this floored box
+				 * neither grew nor shrank pays nothing extra here (P5), and `run()`'s own synchronous
+				 * reference is only ever wrong relative to what THIS tick's mutation did. `grow` alone
+				 * is not enough — REPEAT's own SHRINK leg (the pad it removes between refills) is a
+				 * real box change `grow` reads as <=1 (growth witness is deliberately one-sided,
+				 * task detector), so gating on `grow > 1` alone left the SAME hole one level down: the
+				 * shrink between refill 1 and refill 2 left `_rest` at run()'s mid-transition capture,
+				 * and refill 2 read ITS drift against that stale baseline. Where it did change (either
+				 * way) and the engine handled it without a write, `run()`'s snapshot is still what the
+				 * NEXT tick's `lateDrift()` would measure against — masking a real residual as "small"
+				 * until it surfaces as a flat, un-recovered offset. Measured, `../tmp/task-nine/`:
+				 * gating on `grow > 1` alone left `/admin/network/dhcp @390` at 47-59px off on the
+				 * second of three back-to-back refills, unchanged — chromium/firefox/webkit alike,
+				 * `_engineTrusted` true throughout. */
+				if (grow > 1 || floorShrink > 1) rememberRest(true);
+				return;						/* the engine put it back */
+			}
 			if (Math.abs(drift) > (window.innerHeight || 800)) return;
 			const sc = scroller();
 			const at = sc ? sc.scrollTop : window.scrollY;
