@@ -343,7 +343,7 @@ set_firewall() {
 	return 0
 }
 
-start_service() {
+start_openlist2() {
 	openlist2_migrate_config || return 1
 	config_load openlist2 || return 1
 	section_id=""
@@ -550,6 +550,18 @@ start_service() {
 	procd_set_param limits core="unlimited"
 	procd_set_param limits nofile="200000 200000"
 	procd_close_instance openlist2
+}
+
+start_service() {
+	# rc.common closes the procd request even if start_service fails.
+	# Preserve our result for its service_started hook instead of losing it.
+	openlist2_start_status=0
+	start_openlist2 "$@" || openlist2_start_status=$?
+	return "$openlist2_start_status"
+}
+
+service_started() {
+	return "${openlist2_start_status:-1}"
 }
 
 service_triggers() {

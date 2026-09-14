@@ -633,6 +633,10 @@ msgstr "允許從 WAN 存取的連接埠或範圍，例如 50000-50100，必須�
 msgid "Enabled FTP"
 msgstr "啟用 FTP"
 
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js
+msgid "Enable FTP/SFTP access for the OpenList account in Management > Users. Also grant FTP/SFTP management permission to allow uploads and changes."
+msgstr "還需在 OpenList 管理後台的「使用者」中為帳號開啟 FTP/SFTP 存取權限；上傳和修改檔案還需要 FTP/SFTP 管理權限。"
+
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:714
 msgid "FTP Port"
 msgstr "FTP 埠"
@@ -690,8 +694,8 @@ msgid "MCP endpoint"
 msgstr "MCP 端點"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:767
-msgid "Use Streamable HTTP with Authorization: TOKEN, without a Bearer prefix. Use an OpenList user login token; retain MCP-Session-Id for subsequent requests."
-msgstr "使用 Streamable HTTP，認證標頭為 Authorization: TOKEN，不加 Bearer 前綴。TOKEN 為 OpenList 使用者登入權杖，後續請求須保留 MCP-Session-Id。"
+msgid "Use Streamable HTTP with Authorization: TOKEN, without a Bearer prefix. Use an OpenList administrator login token; retain MCP-Session-Id for subsequent requests."
+msgstr "使用 Streamable HTTP，認證標頭為 Authorization: TOKEN，不加 Bearer 前綴。TOKEN 必須為 OpenList 管理員登入權杖，後續請求須保留 MCP-Session-Id。"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:770
 msgid "Configure a web port or Site URL."

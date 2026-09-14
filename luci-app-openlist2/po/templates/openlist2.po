@@ -632,6 +632,10 @@ msgstr ""
 msgid "Enabled FTP"
 msgstr ""
 
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js
+msgid "Enable FTP/SFTP access for the OpenList account in Management > Users. Also grant FTP/SFTP management permission to allow uploads and changes."
+msgstr ""
+
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:714
 msgid "FTP Port"
 msgstr ""
@@ -689,7 +693,7 @@ msgid "MCP endpoint"
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:767
-msgid "Use Streamable HTTP with Authorization: TOKEN, without a Bearer prefix. Use an OpenList user login token; retain MCP-Session-Id for subsequent requests."
+msgid "Use Streamable HTTP with Authorization: TOKEN, without a Bearer prefix. Use an OpenList administrator login token; retain MCP-Session-Id for subsequent requests."
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:770

@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-openlist2
 PKG_VERSION:=1.0.4
-PKG_RELEASE:=10
+PKG_RELEASE:=11
 
 LUCI_TITLE:=LuCI support for openlist
 # The virtual provide forces installation of a core package with the helper.

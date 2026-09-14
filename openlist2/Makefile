@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=openlist2
 PKG_VERSION:=4.2.6
 PKG_WEB_VERSION:=4.2.6
-PKG_RELEASE:=21
+PKG_RELEASE:=22
 
 PKG_SOURCE:=openlist-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/OpenListTeam/OpenList/tar.gz/v$(PKG_VERSION)?
@@ -51,7 +51,7 @@ define Package/openlist2
   SUBMENU:=Web Servers/Proxies
   TITLE:=A file list program that supports multiple storage
   URL:=https://doc.oplist.org/
-  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +jshn +jsonfilter
+  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +coreutils-stat +jshn +jsonfilter
   PROVIDES:=openlist2-helper
 endef
 

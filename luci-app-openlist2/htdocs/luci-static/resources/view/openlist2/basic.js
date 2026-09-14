@@ -708,7 +708,8 @@ return view.extend({
 			_('Ports or ranges to allow from WAN, for example 50000-50100. They must match the listening ports in OpenList passive port mapping. Empty means passive ports must be allowed manually.'));
 		o.placeholder = '50000-50100';
 		o.depends({ ftp: '1', allow_wan: '1' });
-		o = addOption('ftp', form.Flag, 'ftp', _('Enabled FTP'));
+		o = addOption('ftp', form.Flag, 'ftp', _('Enabled FTP'),
+			_('Enable FTP/SFTP access for the OpenList account in Management > Users. Also grant FTP/SFTP management permission to allow uploads and changes.'));
 		o.rmempty = false;
 
 		o = addOption('ftp', form.Value, 'ftp_port', _('FTP Port'));
@@ -749,7 +750,8 @@ return view.extend({
 		o.rmempty = false;
 
 		// sftp
-		o = addOption('sftp', form.Flag, 'sftp', _('Enabled SFTP'));
+		o = addOption('sftp', form.Flag, 'sftp', _('Enabled SFTP'),
+			_('Enable FTP/SFTP access for the OpenList account in Management > Users. Also grant FTP/SFTP management permission to allow uploads and changes.'));
 		o.rmempty = false;
 
 		o = addOption('sftp', form.Value, 'sftp_port', _('SFTP Port'));
@@ -764,7 +766,7 @@ return view.extend({
 
 
 		o = addOption('mcp', form.DummyValue, '_mcp_endpoint', _('MCP endpoint'),
-			_('Use Streamable HTTP with Authorization: TOKEN, without a Bearer prefix. Use an OpenList user login token; retain MCP-Session-Id for subsequent requests.'));
+			_('Use Streamable HTTP with Authorization: TOKEN, without a Bearer prefix. Use an OpenList administrator login token; retain MCP-Session-Id for subsequent requests.'));
 		o.depends('mcp', '1');
 		o.renderWidget = () => E('div', {}, [
 			E('code', {}, backendUrl('mcp') || _('Configure a web port or Site URL.')),
@@ -798,19 +800,29 @@ return view.extend({
 		for (const name of ['data_dir', 'temp_dir', 'bleve_dir', 'dist_dir'])
 			fields[name].validate = (section_id, value) => validateDirectories(section_id, name, value);
 
-		const tlsRequired = section_id => isEnabledPort(fieldValue(section_id, 'listen_https_port', '-1')) ||
-			(fieldValue(section_id, 's3') === '1' && fieldValue(section_id, 's3_ssl') === '1');
+		const tlsRequired = section_id => {
+			const httpsPort = fieldValue(section_id, 'listen_https_port', '-1');
+			const s3Enabled = fieldValue(section_id, 's3') === '1';
+			const s3Ssl = fieldValue(section_id, 's3_ssl') === '1';
+			return isEnabledPort(httpsPort) || (s3Enabled && s3Ssl);
+		};
 		for (const name of ['ssl_cert', 'ssl_key']) {
 			fields[name].validate = (section_id, value) => {
-				if (tlsRequired(section_id) && !String(value || '').trim())
+				// Validate only the currently enabled TLS mode. LuCI may invoke
+				// validators for hidden fields while another protocol is active.
+				if (!tlsRequired(section_id))
+					return true;
+				if (!String(value || '').trim())
 					return _('Certificate and key paths are required for HTTPS or S3 SSL.');
 				return validateAbsolutePath(value, false);
 			};
 		}
+		// LuCI passes input.value (always "1") for checkbox validation.
+		// Read formvalue() to distinguish checked and unchecked flags.
 		for (const name of ['force_https', 'listen_enable_h3'])
-			fields[name].validate = (section_id, value) => value !== '1' || isEnabledPort(fieldValue(section_id, 'listen_https_port', '-1'))
+			fields[name].validate = section_id => fieldValue(section_id, name) !== '1' || isEnabledPort(fieldValue(section_id, 'listen_https_port', '-1'))
 				? true : _('Force HTTPS and HTTP/3 require an enabled HTTPS port.');
-		fields.s3_ssl.validate = (section_id, value) => value !== '1' || fieldValue(section_id, 's3') !== '1' ||
+		fields.s3_ssl.validate = section_id => fieldValue(section_id, 's3_ssl') !== '1' || fieldValue(section_id, 's3') !== '1' ||
 			(fieldValue(section_id, 'ssl_cert').trim() && fieldValue(section_id, 'ssl_key').trim())
 				? true : _('Certificate and key paths are required for HTTPS or S3 SSL.');
 		fields.listen_unix_file.validate = (section_id, value) => validateAbsolutePath(value, false);
