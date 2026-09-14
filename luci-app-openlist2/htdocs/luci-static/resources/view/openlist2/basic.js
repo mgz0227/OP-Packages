@@ -545,7 +545,7 @@ return view.extend({
 		};
 
 		o = addOption('scheme', form.Value, 'listen_https_port', _('HTTPS listen port'),
-			_('The upstream default is -1 (disabled). Set a valid port number to enable HTTPS.'));
+			_('Set to -1 to disable HTTPS, or 1-65535 to enable it. Leave both certificate paths empty to use an automatically generated self-signed certificate.'));
 		o.datatype = 'integer';
 		o.default = '-1';
 		o.rmempty = false;
@@ -554,14 +554,15 @@ return view.extend({
 			return validateListenPort(value);
 		};
 
-		o = addOption('scheme', form.Flag, 'force_https', _('Force HTTPS'));
+		o = addOption('scheme', form.Flag, 'force_https', _('Force HTTPS'),
+			_('Redirect HTTP requests to HTTPS. The HTTPS listen port enables HTTPS independently of this option.'));
 		o.rmempty = false;
 
 		o = addOption('scheme', form.Value, 'ssl_cert', _('SSL cert'),
-			_('SSL certificate file path'));
+			_('Leave both paths empty to manage a self-signed certificate in the TLS subdirectory of the data directory. It is reused and renewed at startup when fewer than 30 days remain. Browsers do not trust self-signed certificates automatically.'));
 
 		o = addOption('scheme', form.Value, 'ssl_key', _('SSL key'),
-			_('SSL key file path'));
+			_('For custom TLS, specify both certificate and private key paths. The certificate must be currently valid and match its private key. Custom files are never overwritten automatically.'));
 
 		o = addOption('scheme', form.Value, 'listen_unix_file', _('Unix socket file'));
 
@@ -572,7 +573,7 @@ return view.extend({
 		o.rmempty = false;
 
 		o = addOption('scheme', form.Flag, 'listen_enable_h3', _('Enable HTTP/3/QUIC'),
-			_('Enable HTTP/3 over QUIC on the HTTPS listen port. HTTPS must be enabled and certificate files must be configured.'));
+			_('Enable HTTP/3 over QUIC on the HTTPS listen port. HTTPS must be enabled. Certificate settings are shared with HTTPS.'));
 		o.rmempty = false;
 
 		// tasks
@@ -698,7 +699,8 @@ return view.extend({
 		o.default = 5246;
 		o.rmempty = false;
 
-		o = addOption('s3', form.Flag, 's3_ssl', _('Enable SSL'));
+		o = addOption('s3', form.Flag, 's3_ssl', _('Enable SSL'),
+			_('Use the same custom or automatically generated certificate as HTTPS. Configure certificate paths on the Web Protocol tab.'));
 		o.rmempty = false;
 
 		// ftp
@@ -795,6 +797,12 @@ return view.extend({
 			if (dist && (containsPath(dist, data) || containsPath(dist, cache) ||
 				containsPath(cache, dist) || containsPath(dist, index) || containsPath(index, dist)))
 				return _('Frontend files must be separate from private data, cache and index files.');
+			if (tlsRequired(section_id) && !fieldValue(section_id, 'ssl_cert') && !fieldValue(section_id, 'ssl_key')) {
+				const tls = data + '/tls';
+				for (const directory of [cache, index, dist].filter(Boolean))
+					if (containsPath(tls, directory) || containsPath(directory, tls))
+						return _('Automatic TLS directory must be separate from cache, index and public frontend directories.');
+			}
 			return true;
 		};
 		for (const name of ['data_dir', 'temp_dir', 'bleve_dir', 'dist_dir'])
@@ -806,25 +814,31 @@ return view.extend({
 			const s3Ssl = fieldValue(section_id, 's3_ssl') === '1';
 			return isEnabledPort(httpsPort) || (s3Enabled && s3Ssl);
 		};
-		for (const name of ['ssl_cert', 'ssl_key']) {
-			fields[name].validate = (section_id, value) => {
-				// Validate only the currently enabled TLS mode. LuCI may invoke
-				// validators for hidden fields while another protocol is active.
-				if (!tlsRequired(section_id))
-					return true;
-				if (!String(value || '').trim())
-					return _('Certificate and key paths are required for HTTPS or S3 SSL.');
-				return validateAbsolutePath(value, false);
-			};
-		}
+		const validateCertificatePaths = (section_id, changed, value) => {
+			if (!tlsRequired(section_id))
+				return true;
+			const cert = changed === 'ssl_cert' ? value : fieldValue(section_id, 'ssl_cert');
+			const key = changed === 'ssl_key' ? value : fieldValue(section_id, 'ssl_key');
+			if (!cert && !key)
+				return true;
+			if (!cert || !key)
+				return _('Leave both certificate paths empty for automatic TLS, or provide both custom certificate and key paths.');
+			for (const path of [cert, key]) {
+				const valid = validateAbsolutePath(path, true);
+				if (valid !== true)
+					return valid;
+			}
+			return true;
+		};
+		for (const name of ['ssl_cert', 'ssl_key'])
+			fields[name].validate = (section_id, value) => validateCertificatePaths(section_id, name, value);
 		// LuCI passes input.value (always "1") for checkbox validation.
 		// Read formvalue() to distinguish checked and unchecked flags.
 		for (const name of ['force_https', 'listen_enable_h3'])
 			fields[name].validate = section_id => fieldValue(section_id, name) !== '1' || isEnabledPort(fieldValue(section_id, 'listen_https_port', '-1'))
 				? true : _('Force HTTPS and HTTP/3 require an enabled HTTPS port.');
-		fields.s3_ssl.validate = section_id => fieldValue(section_id, 's3_ssl') !== '1' || fieldValue(section_id, 's3') !== '1' ||
-			(fieldValue(section_id, 'ssl_cert').trim() && fieldValue(section_id, 'ssl_key').trim())
-				? true : _('Certificate and key paths are required for HTTPS or S3 SSL.');
+		fields.s3_ssl.validate = section_id => fieldValue(section_id, 's3') !== '1' || fieldValue(section_id, 's3_ssl') !== '1'
+			? true : validateCertificatePaths(section_id);
 		fields.listen_unix_file.validate = (section_id, value) => validateAbsolutePath(value, false);
 		fields.listen_unix_file_perm.validate = (section_id, value) => !value || /^[0-7]{3,4}$/.test(value)
 			? true : _('Use 3 or 4 octal digits, for example 660 or 0660.');
@@ -869,6 +883,17 @@ return view.extend({
 		};
 		for (const name of ['listen_http_port', 'listen_https_port', 's3_port', 'ftp_port', 'sftp_port', 'ftp_pasv_ports'])
 			fields[name].validate = (section_id, value) => validatePorts(section_id, name, value);
+		const protocolFields = ['listen_http_port', 'listen_https_port', 'force_https', 'listen_enable_h3',
+			'ssl_cert', 'ssl_key', 's3', 's3_ssl', 's3_port', 'ftp', 'ftp_port', 'sftp', 'sftp_port',
+			'ftp_pasv_ports', 'allow_wan', 'data_dir', 'temp_dir', 'bleve_dir', 'dist_dir'];
+		const revalidateProtocolFields = (event, section_id) => {
+			for (const name of protocolFields)
+				if (fields[name].isActive(section_id))
+					fields[name].triggerValidation(section_id);
+			ui.tabs.updateTabs(event, m.root);
+		};
+		for (const name of protocolFields)
+			fields[name].onchange = revalidateProtocolFields;
 		for (const name of ['ftp_pasv_ports', 'log_path', 'log_max_size', 'log_max_backups', 'log_max_age',
 			'log_compress', 'log_filter', 'log_filter_cidr', 'log_filter_path', 'log_filter_method'])
 			fields[name].retain = true;
