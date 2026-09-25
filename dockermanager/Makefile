@@ -9,8 +9,8 @@ include $(TOPDIR)/rules.mk
 PKG_ARCH_DOCKERMANAGER:=$(ARCH)
 
 PKG_NAME:=dockermanager
-PKG_VERSION:=linkease-app-entry-runtime-v3.0.22
-PKG_RELEASE:=12
+PKG_VERSION:=kai-runtime-v0.0.25
+PKG_RELEASE:=13
 PKG_SOURCE:=$(PKG_NAME)-binary-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/istoreos/istoreos-app-hub/releases/download/dockermanager-runtime-v$(PKG_VERSION)/
 PKG_HASH:=skip
