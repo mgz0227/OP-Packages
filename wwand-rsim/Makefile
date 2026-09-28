@@ -21,12 +21,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-rsim
-PKG_VERSION:=0.0.1_p37
-PKG_RELEASE:=3
+PKG_VERSION:=0.0.1_p55
+PKG_RELEASE:=4
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand-rsim.git
-PKG_SOURCE_VERSION:=3e933800737725d38ae55e67af6e0d5bedbaeb63
+PKG_SOURCE_VERSION:=13625a74ffcb3714b4c5c0651d59d092a6d88c99
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -151,8 +151,10 @@ define Package/rsim-card/description
  libusb) or the SIM of a modem it reaches over its AT port (at:<tty>,
  AT+CSIM; that modem's radio is switched off while its card is lent), and
  speaks JSON lines on stdin/stdout; a paired phone's SIM over the
- Bluetooth SIM Access Profile (bt:<address>, kernel sockets only).
- `rsim-card --list` shows what the machine offers; `rsim-card --serve` is
+ Bluetooth SIM Access Profile (bt:<address>, kernel sockets only); or a
+ card in an osmo-remsim SIM bank, as its RSPRO client
+ (rspro:<server>[:port][/<bank>:<slot>], used by the router itself — never
+ served over SSH). `rsim-card --list` shows what the machine offers; `rsim-card --serve` is
  the forced command for the router's SSH key. Install it on a router that only holds
  the reader or the modem (a SIM host); the router with the using modem
  reaches it over SSH (rsim_reader ssh:<user>@<host>:<reader>). Needs
