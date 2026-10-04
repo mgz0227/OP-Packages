@@ -50,12 +50,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.6.9_p2
-PKG_RELEASE:=68
+PKG_VERSION:=1.6.9_p14
+PKG_RELEASE:=69
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=e82b67689936839a249ae7a69b9a67e070db253d
+PKG_SOURCE_VERSION:=52670829452484c05c1b47498807f7b036b59d20
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -342,6 +342,9 @@ define Package/wwand-qmi/install
 	$(INSTALL_DATA) $(WWAND_UCODE)/qmi_backend.uc $(1)$(UCDIR)/
 	$(INSTALL_DATA) $(WWAND_UCODE)/callend.uc $(1)$(UCDIR)/
 	$(INSTALL_DATA) $(WWAND_UCODE)/qmi_lazy.uc $(1)$(UCDIR)/
+	# modem.uc imports it at load time, so it ships beside it: without it
+	# every QMI modem fails to load, QRTR or not
+	$(INSTALL_DATA) $(WWAND_UCODE)/qmi_over_qrtr.uc $(1)$(UCDIR)/
 endef
 
 # ---------------------------------------------------------------------------
