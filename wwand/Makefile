@@ -50,8 +50,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.7.0_pre11
-PKG_RELEASE:=72
+PKG_VERSION:=1.7.0_pre15
+PKG_RELEASE:=73
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
