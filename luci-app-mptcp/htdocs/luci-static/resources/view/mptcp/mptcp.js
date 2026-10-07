@@ -21,7 +21,8 @@ return L.view.extend({
     load: function() {
 	return Promise.all([
 	    L.resolveDefault(callSystemBoard(), {}),
-	    L.resolveDefault(fs.read('/proc/sys/net/mptcp/available_path_managers'), '')
+	    L.resolveDefault(fs.read('/proc/sys/net/mptcp/available_path_managers'), ''),
+	    L.resolveDefault(fs.read('/proc/sys/net/mptcp/scheduler'), '')
 	]);
     },
 
@@ -36,6 +37,11 @@ return L.view.extend({
 	var availablePathManagers = String(res[1] || '').trim().split(/\s+/).filter(function(name) {
 		return name.length > 0;
 	});
+	// The scheduler the kernel actually runs. The mptcp init falls back to
+	// 'default' when the selected one can't be set (a BPF object that fails
+	// to register, a name this kernel doesn't know), and the list below would
+	// otherwise keep showing the selected one.
+	var activeScheduler = String(res[2] || '').trim();
 
 	function normalizeSchedulerValue(value) {
 		if (value == null)
@@ -158,6 +164,18 @@ return L.view.extend({
 		return m.checkDepends();
 	};
 
+	scheduler.renderWidget = function(section_id, option_index, cfgvalue) {
+		var widget = form.ListValue.prototype.renderWidget.apply(this, [section_id, option_index, cfgvalue]);
+		var selected = normalizeSchedulerValue(cfgvalue);
+
+		if (activeScheduler && selected && selected != activeScheduler)
+			L.dom.append(widget, E('div', { 'class': 'cbi-value-description' }, [
+				E('strong', {}, _('The kernel uses the %s scheduler: %s could not be enabled, see the system log.').format(activeScheduler, selected))
+			]));
+
+		return widget;
+	};
+
 	o = s.option(form.Flag, "mptcp_dscp_weight_vps_sync", _("Mirror DSCP/weight pins to gateway"),
 		_("When using a DSCP or weight BPF scheduler, also sync each WAN’s pin to the gateway (VPS) so it also holds for traffic the gateway sends (downloads), not just traffic the router sends (uploads). Disabling this only stops future syncs -- it does not remove pins already pushed to the gateway."));
 	o.default = "1";
@@ -188,7 +206,10 @@ return L.view.extend({
 	o = s.option(form.ListValue, "congestion", _("Congestion Control"),_("Default is cubic"));
 	o.load = function(section_id) {
 		return fs.exec_direct('/sbin/sysctl', ['-n', 'net.ipv4.tcp_available_congestion_control']).then(L.bind(function(entries) {
-			var congestioncontrol = entries.toString().split(' ');
+			/* sysctl ends its answer with a newline: split on ' ', the last
+			 * choice was "bbr\n", which matched neither the saved value nor
+			 * what the kernel takes */
+			var congestioncontrol = entries.toString().trim().split(/\s+/);
 			for (var d in congestioncontrol) {
 				this.value(congestioncontrol[d]);
 			};

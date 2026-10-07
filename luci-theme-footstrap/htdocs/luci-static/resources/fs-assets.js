@@ -212,8 +212,8 @@ function _sanitizeSvg(text) {
 	 * (Chromium and WebKit decline to run XSLT on an image/svg+xml document). A tile has no use for
 	 * one, and without the PI the embedded stylesheet is never applied. */
 
-	/* An external-DTD DOCTYPE prologue is left unvisited on purpose: verified-safe residual finding,
-	 * docs/architecture.md "The SVG sanitizer's residual, verified-safe findings". */
+	/* An external-DTD DOCTYPE prologue is left unvisited on purpose: no engine resolves an external DTD, and
+	 * the CGI answers a direct open with CSP `default-src 'none'; sandbox`. */
 	for (const n of [ ...doc.childNodes ])
 		if (n.nodeType === Node.PROCESSING_INSTRUCTION_NODE) { n.remove(); elements++; }
 
@@ -253,9 +253,8 @@ function _sanitizeSvg(text) {
 			 * one the spec gives them — a change to how SVG itself is interpreted, not something a
 			 * check here could see coming or catch. */
 			if ((/^on[a-z]+$/).test(n)) { el.removeAttribute(a.name); refs++; continue; }
-			/* A TAB-obfuscated `javascript:` (`href="javas&#9;cript:alert(1)"`) passes this regex:
-			 * verified-safe residual finding, docs/architecture.md "The SVG sanitizer's residual,
-			 * verified-safe findings". */
+			/* A TAB-obfuscated `javascript:` (`href="javas&#9;cript:alert(1)"`) passes this regex but
+			 * is only ever an image source, never a navigable `href`, and a direct open is CSP-sandboxed. */
 			if ((/^javascript:/i).test(v)) { el.removeAttribute(a.name); refs++; continue; }
 			/* Security review finding (LOW): `xml:base` (XML Base, W3C) is not itself a reference —
 			 * it changes what every RELATIVE one in the subtree UNDER IT resolves against. A perfectly
@@ -273,8 +272,8 @@ function _sanitizeSvg(text) {
 			 * consistent with this file avoiding a second grammar it would have to maintain. */
 			if (n === 'xml:base') { el.removeAttribute(a.name); refs++; continue; }
 			/* A presentation attribute's `url(` (`fill`, `stroke`, `filter`, …) is only checked below
-			 * for `style`, not here: verified-safe residual finding, docs/architecture.md "The SVG
-			 * sanitizer's residual, verified-safe findings". */
+			 * for `style`, not here: the bundle is only an image source, so the
+			 * worst reach is a second fetch with no script and no navigation. */
 			if (n === 'style') {
 				const cleaned = _sanitizeStyleValue(v);
 				if (cleaned.removed) {
@@ -304,7 +303,7 @@ function _sanitizeSvg(text) {
  * The other axes are per-browser with a router default; this one has no browser layer. An admin
  * uploads an image once, it becomes the router-wide background for every device and shows
  * pre-login, so it is absent from AXIS_KEYS, snapshotAxes() and matchesSavedDefault() — it must not
- * move the Save button — and needs no factory, so tools/axes.mjs never sees it.
+ * move the Save button — and needs no factory, so axis-contract checks never see it.
  *
  * The image is a served file, uhttpd having no gzip to make inlining it in every <head> viable;
  * only its cache-bust token lives in uci -> window.__fsSD -> the url() head.ut stamps. The path is

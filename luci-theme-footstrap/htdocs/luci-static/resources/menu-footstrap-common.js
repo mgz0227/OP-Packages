@@ -53,15 +53,17 @@ function wirePageModules() {
  * and the warm pass that uses it, so both live here, in the file every page already loads.
  *
  * The palette reads the list back from localStorage when it opens, so the two halves share the key
- * and nothing else — the constant itself is named once, in fs-search.js (RECENT_KEY, RECENT_MAX),
- * since that module owns the "recently visited" feature; the literal below has to match it exactly. */
+ * and nothing else — fs-search.js owns the "recently visited" feature, so RECENT_KEY and RECENT_MAX
+ * below have to match its constants of the same name exactly. */
+const RECENT_KEY = 'fs-recent';
+const RECENT_MAX = 8;
 const RECENT_WARM = 5;
 
 /* A key is a menu path — what the router can navigate to and what warmRecent() prefetches. */
 function remember(key) {
 	if (typeof key !== 'string' || !key) return;
-	const recent = prefs.lsGetArr('fs-recent').filter((x) => typeof x === 'string');
-	prefs.lsSet('fs-recent', JSON.stringify([ key ].concat(recent.filter((p) => p !== key)).slice(0, 8)));
+	const recent = prefs.lsGetArr(RECENT_KEY).filter((x) => typeof x === 'string');
+	prefs.lsSet(RECENT_KEY, JSON.stringify([ key ].concat(recent.filter((p) => p !== key)).slice(0, RECENT_MAX)));
 }
 
 /* ---- warm the pages this admin actually uses ----
@@ -79,7 +81,7 @@ function warmRecent() {
 	try { if (navigator.connection && navigator.connection.saveData) return; } catch (e) {}
 	const here = (L.env.dispatchpath || []).join('/');
 	/* already de-duplicated: remember() drops the key from its old slot before re-adding it */
-	const keys = prefs.lsGetArr('fs-recent').filter((p) => typeof p === 'string');
+	const keys = prefs.lsGetArr(RECENT_KEY).filter((p) => typeof p === 'string');
 	const paths = keys.filter((p) => p !== here).slice(0, RECENT_WARM);
 	if (!paths.length) return;
 	const go = () => paths.forEach((p) => router.prefetchSegs(p.split('/')));
@@ -199,8 +201,7 @@ function findProgressbarLabel(pg) {
  * cannot pick a wrong number out of a title carrying several. An empty title or one with no
  * percentage in any of the three shapes yields null, on purpose — nothing to annotate. `%d` is the
  * unclamped percentage, so the result can still read past 100 or under 0 and is clamped by the
- * caller, the same way `window.progressbar` clamps its own `level`, below. Exported for
- * tests/meter.test.mjs, which is the only caller that needs the parse on its own. */
+ * caller, the same way `window.progressbar` clamps its own `level`, below. */
 function parseMeterPercent(title) {
 	if (title == null) return null;
 	const m = (/\((-?\d+)%\)\s*$/).exec(title) || (/(-?\d+)%\s*$/).exec(title) || (/^(-?\d+)%/).exec(title);
