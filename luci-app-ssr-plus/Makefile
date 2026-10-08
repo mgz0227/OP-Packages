@@ -4,7 +4,7 @@ LUCI_TITLE:=luci-app-ssr-plus
 LUCI_PKGARCH:=all
 PKG_NAME:=luci-app-ssr-plus
 PKG_VERSION:=196
-PKG_RELEASE:=82
+PKG_RELEASE:=83
 
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_$(PKG_NAME)_Iptables_Transparent_Proxy \
@@ -129,8 +129,7 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Mihomo
 	bool "Include Mihomo (Clash Support)"
 	select PACKAGE_mihomo
 	select PACKAGE_v2ray-geoip
-	depends on aarch64||arm||i386||loongarch64||riscv64||x86_64
-	default y if aarch64||arm||i386||loongarch64||riscv64||x86_64
+	default y if i386||loongarch64||riscv64||x86_64
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_GeoData
 	bool "Include GeoData (GeoIP and GeoSite)"

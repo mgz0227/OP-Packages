@@ -67,6 +67,8 @@ It also supports automatic and manual switching between light and dark modes.
 - The login page supports local images, videos, and online wallpapers as backgrounds.
 - Works with [luci-app-argon-config][config-link] for a more complete theme configuration experience.
 
+Choose **Classic sidebar** (default) or **Centered card** under **System → Argon Config → Login page style**. Both layouts use the same wallpaper, color and authentication settings. Update both the theme and configuration plugin to use the selector; missing or unsupported `login_style` values fall back to `classic`.
+
 Unsplash wallpapers require an Unsplash API access key. The current `luci-app-argon-config` UI does not expose this setting; after choosing Unsplash, set it through UCI:
 
 ```sh
@@ -83,7 +85,7 @@ Support is focused on modern LuCI environments based on [Official OpenWrt][offic
 
 ## Version History
 
-The latest version is v2.4.7 [Click here][en-us-release-log] to view the full version history record.
+The latest version is v2.4.8 [Click here][en-us-release-log] to view the full version history record.
 
 ## Getting started
 
