@@ -9,13 +9,10 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=miniupnpd
 PKG_VERSION:=2.3.11
-PKG_RELEASE:=11
+PKG_RELEASE:=12
 
-#PKG_SOURCE_URL:=https://github.com/miniupnp/miniupnp/releases/download/miniupnpd_$(subst .,_,$(PKG_VERSION))
-#PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-#PKG_HASH:=66cb3c3d697ab2bb3a61d3c48628166d6ba328d7c2dbeb95898fdf2a3202af7b
-# Build from GitHub tag archives, as release archive differ in code comments to the public repository
-PKG_SOURCE_VERSION:=63ac33eaa49332cde15fd509b539a260b531da05
+# Build from GitHub archives, as release archives differ from Git in code comments; patches cannot be 1:1 applied
+PKG_SOURCE_VERSION:=f8c4f4c3320820e615b281147b3043f66c195f17
 PKG_SOURCE_URL:=https://codeload.github.com/miniupnp/miniupnp/tar.gz/$(PKG_SOURCE_VERSION)?
 PKG_SOURCE:=miniupnp-$(PKG_SOURCE_VERSION).tar.gz
 PKG_HASH:=skip

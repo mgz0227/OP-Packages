@@ -126,7 +126,7 @@ upnpd_generate_config() {
 			log "IPv6 not ready yet; delay start"
 			sleep 5
 			pass=$((pass + 1))
-			[ "$pass" = "4" ] && log "IPv6 GUA not yet available, UPnP IGD mapping not possible" && break
+			[ "$pass" = "2" ] && log "IPv6 GUA not yet available, UPnP IGDv2 IPv6 mapping may not work" && break
 		done
 	fi
 	# Only perform an STUN CGNAT test if necessary, with a private/CGNAT-reserved external IPv4
