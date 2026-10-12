@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 LUCI_TITLE:=Argon Theme
 LUCI_DEPENDS:=+USE_APK:wget-any +!USE_APK:wget +jsonfilter
 PKG_VERSION:=2.4.8
-PKG_RELEASE:=15
+PKG_RELEASE:=16
 
 CONFIG_LUCI_CSSTIDY:=
 # Ship template source across stable and snapshot runtimes. Precompiled
