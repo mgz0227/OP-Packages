@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=grpcurl
 PKG_VERSION:=1.9.4
-PKG_RELEASE:=6
+PKG_RELEASE:=7
 
 PKG_SOURCE:=v$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/fullstorydev/grpcurl/archive/refs/tags/
@@ -21,7 +21,7 @@ PKG_MAINTAINER:=Yannick Chabanois <ycarus@zugaina.org>
 
 PKG_BUILD_DEPENDS:=golang/host
 PKG_BUILD_PARALLEL:=1
-PKG_USE_MIPS16:=0
+PKG_BUILD_FLAGS:=no-mips16
 
 GO_PKG:=github.com/fullstorydev/grpcurl
 GO_PKG_BUILD_PKG:=github.com/fullstorydev/grpcurl/cmd/grpcurl
