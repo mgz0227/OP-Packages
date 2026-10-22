@@ -302,7 +302,7 @@ jobs:
         git_clone https://github.com/RymFred11/luci-app-nettask nettask && mv nettask/luci-app-nettask ./;rm -rf nettask
         git_clone https://github.com/jarod360/luci-app-xupnpd
         git_clone https://github.com/fuqiang03/openwrt-caddy
-        git_clone https://github.com/lmq8267/luci-app-caddy luci-caddy && mv luci-caddy/luci-app-caddy ./;rm -rf luci-caddy
+        #git_clone https://github.com/lmq8267/luci-app-caddy luci-caddy && mv luci-caddy/luci-app-caddy ./;rm -rf luci-caddy
         git_clone https://github.com/sbwml/luci-app-smbuser
         git_clone https://github.com/rushxrushx/luci-app-redsocks
         git_clone https://github.com/luochongjun/luci-app-dynv6
