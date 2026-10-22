@@ -1,0 +1,745 @@
+# luci-app-substore 简体中文翻译
+#
+# 目录名是 zh_Hans（LUCI_LANG 的键），语言代码取别名 zh-cn
+# （LUCI_LC_ALIAS.zh_Hans=zh-cn）。luci.mk 据此自动生成独立的翻译包
+# luci-i18n-substore-zh-cn，由它自己调 po2lmo 编译出
+# /usr/lib/lua/luci/i18n/substore.zh-cn.lmo —— 该 .lmo 不再打进主包
+# luci-app-substore 的 ipk/apk。详见 Makefile 末尾的说明。
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh-cn\n"
+
+# 菜单 / 页面标题
+msgid "Subscriptions"
+msgstr "订阅管理"
+
+msgid "Add subscription"
+msgstr "添加订阅"
+
+msgid "Edit subscription"
+msgstr "编辑订阅"
+
+msgid "Nodes"
+msgstr "节点"
+
+msgid "Output"
+msgstr "输出"
+
+msgid "Merged"
+msgstr "合并"
+
+# 通用按钮 / 标签
+msgid "Back"
+msgstr "返回"
+
+msgid "Name"
+msgstr "名称"
+
+msgid "URL"
+msgstr "订阅地址"
+
+msgid "Updated"
+msgstr "更新时间"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Subscription link"
+msgstr "订阅链接转换"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Save"
+msgstr "保存"
+
+msgid "Copy"
+msgstr "复制"
+
+msgid "Update"
+msgstr "更新"
+
+msgid "Edit"
+msgstr "编辑"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Format"
+msgstr "格式"
+
+msgid "Generate"
+msgstr "生成"
+
+# 订阅列表
+msgid "Pending"
+msgstr "待更新"
+
+msgid "OK"
+msgstr "正常"
+
+msgid "Select format"
+msgstr "选择格式"
+
+msgid "No subscriptions yet."
+msgstr "暂无订阅"
+
+msgid "Delete this subscription?"
+msgstr "确定删除该订阅？"
+
+# 订阅页：勾选批量删除
+msgid "Delete selected subscriptions?"
+msgstr "确定删除选中的订阅？"
+
+msgid "Please select subscriptions first"
+msgstr "请先勾选订阅"
+
+# 订阅编辑表单
+msgid "Subscription URL"
+msgstr "订阅 URL"
+
+msgid "Nodes:"
+msgstr "节点数:"
+
+msgid "Last updated:"
+msgstr "更新时间:"
+
+msgid "Remaining traffic:"
+msgstr "剩余流量:"
+
+msgid "Remaining time:"
+msgstr "剩余时长:"
+
+# 节点页筛选
+msgid "Protocol"
+msgstr "协议"
+
+msgid "All"
+msgstr "全部"
+
+msgid "Keyword"
+msgstr "关键词"
+
+msgid "Sort by"
+msgstr "排序方式"
+
+msgid "Desc"
+msgstr "降序"
+
+msgid "Filter"
+msgstr "筛选"
+
+msgid "Server"
+msgstr "服务器"
+
+msgid "Port"
+msgstr "端口"
+
+msgid "No nodes found."
+msgstr "未找到节点"
+
+# 节点探测结果
+msgid "Node"
+msgstr "节点"
+
+msgid "Address"
+msgstr "地址"
+
+msgid "Latency"
+msgstr "延迟"
+
+msgid "URL Test"
+msgstr "URL 测试"
+
+# 组合订阅
+msgid "Add combination"
+msgstr "添加组合订阅"
+
+msgid "Edit combination"
+msgstr "编辑组合订阅"
+
+msgid "Combination"
+msgstr "组合"
+
+msgid "Source subscriptions"
+msgstr "来源订阅"
+
+# 本地订阅
+msgid "Add subscription link"
+msgstr "添加订阅链接"
+
+msgid "Add local subscription"
+msgstr "添加本地订阅"
+
+msgid "Edit local subscription"
+msgstr "编辑本地订阅"
+
+msgid "Subscription info"
+msgstr "订阅信息"
+
+msgid "Text import"
+msgstr "文本导入"
+
+msgid "Form import"
+msgstr "表单导入"
+
+msgid "Local"
+msgstr "本地"
+
+msgid "Add node"
+msgstr "添加节点"
+
+msgid "Paste a node list here — one format at a time (URI / Base64 / YAML / JSON / WireGuard .conf); protocols may be mixed within that format."
+msgstr "在此粘贴节点列表 —— 一次只支持一种格式（URI / Base64 / YAML / JSON / WireGuard .conf）；同一种格式内可混用协议。"
+
+msgid "Add nodes via form below. Each node will be saved as JSON and parsed on save."
+msgstr "在下方表单中添加节点，保存时将序列化为 JSON 并解析。"
+
+# 表单导入字段标签
+msgid "Password"
+msgstr "密码"
+
+msgid "Cipher"
+msgstr "加密"
+
+msgid "Encryption method"
+msgstr "加密方式"
+
+msgid "Security"
+msgstr "安全设置"
+
+msgid "Network"
+msgstr "传输方式"
+
+msgid "Path"
+msgstr "路径"
+
+msgid "Obfs"
+msgstr "混淆"
+
+msgid "Obfs password"
+msgstr "混淆密码"
+
+msgid "Camouflage type"
+msgstr "伪装类型"
+
+msgid "Obfs param"
+msgstr "混淆参数"
+
+msgid "Protocol param"
+msgstr "协议参数"
+
+msgid "Skip cert verify"
+msgstr "跳过证书验证"
+
+msgid "Private key"
+msgstr "私钥"
+
+msgid "Peer public key"
+msgstr "对端公钥"
+
+# Reality / AnyTLS 新增字段标签（模板里以 <%:...%> 包裹，故需要对应 msgid）
+msgid "Short ID"
+msgstr "Short ID"
+
+msgid "Spider X"
+msgstr "Spider X"
+
+msgid "ALPN"
+msgstr "ALPN"
+
+msgid "Fingerprint"
+msgstr "指纹"
+
+msgid "Default"
+msgstr "默认"
+
+# 规则区（本地订阅表单）
+msgid "Enable rules"
+msgstr "启用规则"
+
+msgid "When enabled, apply keyword include/exclude and dedup rules to nodes"
+msgstr "启用后，按关键词包含/排除、去重规则处理节点"
+
+msgid "Keyword include"
+msgstr "关键词包含"
+
+msgid "Keyword exclude"
+msgstr "关键词排除"
+
+msgid "Dedup"
+msgstr "去重"
+
+msgid "Protocol filter"
+msgstr "协议筛选"
+
+msgid "Protocol filter: with none ticked no filtering is applied."
+msgstr "协议筛选：全部不勾选 = 不筛选（保留所有协议）。"
+
+msgid "Rename"
+msgstr "重命名"
+
+msgid "Separate multiple keywords with commas (e.g. HK,US,JP); include = keep if any matches, exclude = drop if any matches."
+msgstr "多条关键词用逗号分隔（如：香港,美国,日本）；包含 = 命中任一即保留，排除 = 命中任一即去除。"
+
+msgid "Rename: one rule per line (# starts a comment); rules apply top to bottom and are chained. The three forms differ in scope:"
+msgstr "重命名每行一条（# 开头为注释），规则自上而下逐条叠加。三种写法作用范围不同："
+
+msgid "OLD=NEW — exact match: renames only nodes named exactly OLD."
+msgstr "旧名称=新名称 —— 精确匹配：只改名字完全相同的节点。"
+
+msgid "PATTERN -> REPLACEMENT — regex: replaces matches in the name of every node (Lua patterns, not PCRE; $1 for captures)."
+msgstr "模式 -> 替换 —— 正则替换：替换所有节点名字中的匹配部分（Lua 模式，非 PCRE；捕获引用写 $1）。"
+
+msgid "{server}_{port}_{proto} — placeholder template: renames every node unconditionally."
+msgstr "{server}_{port}_{proto} —— 占位符模板：无条件重命名所有节点。"
+
+msgid "Placeholders: {server} {port} {proto} {name} {uuid} {password} {group}."
+msgstr "可用占位符：{server} {port} {proto} {name} {uuid} {password} {group}。"
+
+# 节点分组 / 单节点编辑
+msgid "Group"
+msgstr "分组"
+
+msgid "Edit node"
+msgstr "编辑节点"
+
+msgid "Node not found."
+msgstr "节点不存在或已被删除。"
+
+msgid "Delete this node?"
+msgstr "确定删除该节点？"
+
+msgid "Failed to set group"
+msgstr "分组设置失败"
+
+msgid "Note: edits to this node are overwritten the next time the subscription is updated or re-saved."
+msgstr "注意：对该节点的修改会在订阅下次更新或重新保存后被覆盖。"
+
+# 节点页：刷新 / 勾选批量删除
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Delete selected nodes?"
+msgstr "确定删除选中的节点？"
+
+msgid "Please select nodes first"
+msgstr "请先勾选节点"
+
+# 节点页 / 订阅页的失败提示（控制器经 ?err= 带回）
+msgid "Operation failed"
+msgstr "操作失败"
+
+# 订阅页：导出格式下拉的说明
+msgid "Pick a format to generate the subscription link; you can switch formats at any time"
+msgstr "选择格式后生成订阅链接，格式可随时切换"
+
+# 订阅页：未解析出节点时格式下拉被禁用，说明原因
+msgid "Update and parse nodes before choosing a format"
+msgstr "更新并解析出节点后才能选择格式"
+
+# 节点表头 / 节点编辑表单里的字段标签
+msgid "Type"
+msgstr "类型"
+
+# 订阅表单：下载代理
+msgid "Subscription proxy"
+msgstr "订阅代理"
+
+msgid "Proxy address"
+msgstr "代理地址"
+
+msgid "Download the subscription through a proxy (leave empty to disable); http:// and socks5:// addresses are supported, e.g. socks5://192.168.5.1:1080"
+msgstr "通过代理下载订阅（留空则不使用），支持 http:// 或 socks5:// 地址，如 socks5://192.168.5.1:1080"
+
+# 订阅表单：客户端类型（User-Agent）
+msgid "Client type"
+msgstr "订阅客户端类型"
+
+msgid "Default (not set)"
+msgstr "默认（不设置）"
+
+msgid "Custom"
+msgstr "自定义"
+
+msgid "Some airports hand out nodes based on the client type: on the same link, only the right type parses into real nodes — the wrong one yields a placeholder node saying your client is incompatible. Keep “Default” if unsure."
+msgstr "部分机场按客户端类型下发节点：同一链接只有选对类型才解析得出真实节点，选错会得到「与您使用客户端不兼容」的占位节点。不确定就保持「默认」。"
+
+msgid "“Custom” is for clients the presets do not cover: enter the User-Agent header to send verbatim, in the same shape as the preset values, i.e. client-name/version — for example clash-verge/v2.5.0, v2rayN/7.22.0, mihomo.party/v2.0.0 (clash.meta)."
+msgstr "「自定义」用于预设里没有的客户端：填要原样发送的 User-Agent 请求头，格式与预设里的值同形，即 客户端名/版本号 —— 例如 clash-verge/v2.5.0、v2rayN/7.22.0、mihomo.party/v2.0.0 (clash.meta)。"
+
+msgid "Visible characters such as spaces, parentheses, semicolons and underscores are allowed (the whole string is sent verbatim — not parsed or rewritten); control characters such as newlines are not. Maximum length is 256 characters. Set the version to the minimum version the airport accepts; check the airport or client documentation for the exact value."
+msgstr "可以含空格、括号、分号、下划线等可见字符（整串原样发送，不解析、不改写）；不能含换行等控制字符，最长 256 字符。版本号填机场要求的最低可用版本，具体填什么以机场或客户端说明为准。"
+
+msgid "Selecting “Custom” but leaving it empty sends no User-Agent (same as “Default”)."
+msgstr "选「自定义」但留空 = 不发送 User-Agent（等同「默认」）。"
+
+msgid "Custom User-Agent"
+msgstr "自定义 User-Agent"
+
+# 订阅表单：定时更新
+msgid "Enable scheduled update"
+msgstr "启用定时更新"
+
+msgid "Scheduled update time"
+msgstr "定时更新时间"
+
+msgid "Minute"
+msgstr "分钟"
+
+msgid "Hour"
+msgstr "小时"
+
+msgid "Day"
+msgstr "日"
+
+msgid "Month"
+msgstr "月"
+
+msgid "Week"
+msgstr "周"
+
+# 组合订阅表单：规则说明（与另两个表单共用同一批 msgid，仅作用范围措辞不同）
+msgid "When enabled, apply keyword include/exclude and dedup rules to the merged nodes"
+msgstr "启用后，按关键词包含 / 排除、去重规则筛选合并后的节点"
+
+# 订阅列表：启用了定时更新的订阅，在名称下方显示 cron 表达式
+msgid "Schedule:"
+msgstr "定时:"
+
+# 控制器回显的失败原因（controller/admin/substore.lua 里经 _() 包裹后
+# 由 ?err= 带回页面显示）。msgid 是控制器里的英文原文。
+msgid "Request validation failed (missing token), please refresh the page and try again"
+msgstr "请求校验失败（缺少 token），请刷新页面后重试"
+
+msgid "Request validation failed (token mismatch), please refresh the page and try again"
+msgstr "请求校验失败（token 不匹配），请刷新页面后重试"
+
+msgid "Name and URL cannot be empty"
+msgstr "名称和 URL 不能为空"
+
+msgid "Invalid rules"
+msgstr "规则无效"
+
+msgid "Invalid subscription client type"
+msgstr "订阅客户端类型无效"
+
+msgid "Failed to create subscription"
+msgstr "创建订阅失败"
+
+msgid "Missing subscription ID"
+msgstr "缺少订阅 ID"
+
+msgid "Save failed"
+msgstr "保存失败"
+
+msgid "Name cannot be empty"
+msgstr "名称不能为空"
+
+msgid "Subscription content cannot be empty"
+msgstr "订阅内容不能为空"
+
+msgid "Failed to create local subscription"
+msgstr "创建本地订阅失败"
+
+msgid "Failed to parse subscription content"
+msgstr "解析订阅内容失败"
+
+msgid "No subscription selected for deletion"
+msgstr "未指定要删除的订阅"
+
+msgid "Delete failed: subscription not found"
+msgstr "删除失败：订阅不存在"
+
+msgid "Deleted %d, %d failed"
+msgstr "已删除 %d 个，另有 %d 个删除失败"
+
+msgid "Node not found or invalid index"
+msgstr "节点不存在或下标无效"
+
+msgid "Submitted content is empty"
+msgstr "提交内容为空"
+
+msgid "Failed to parse form data"
+msgstr "表单数据解析失败"
+
+msgid "Failed to write node data"
+msgstr "写入节点数据失败"
+
+msgid "No node selected for deletion"
+msgstr "未指定要删除的节点"
+
+msgid "Node not found or already deleted"
+msgstr "节点不存在或已被删除"
+
+msgid "Failed to save combination"
+msgstr "保存组合订阅失败"
+
+msgid "Subscription not found"
+msgstr "订阅不存在"
+
+msgid "Update failed"
+msgstr "更新失败"
+
+# 后端模块（root/usr/share/substore/*.lua）返回的失败原因
+#
+# 这些 msgid 由后端**原样**返回（后端不能 require("luci.i18n")，见 msg.lua 的
+# 文件头），翻译发生在显示边界：控制器 back_to_list / back_to_nodes 负责 ?err=
+# 这条链路，视图里的 msg.translate 负责 meta.error 与 output.generate 的返回值。
+#
+# 带结尾冒号 / 左括号 / 前导空格的条目是 msg.compose 拼出来的**组合消息的片段**
+# （如 "Invalid proxy config: " .. reason）：显示边界按分隔符拆开后逐段查表，
+# 所以片段必须各自成条，且要与后端拼接时用的字符串逐字符一致。
+msgid "Unknown subscription client type: "
+msgstr "未知的订阅客户端类型: "
+
+msgid "Subscription list file is corrupted, cannot parse: "
+msgstr "订阅列表文件已损坏，无法解析："
+
+msgid "Subscription list file is corrupted, contains an invalid entry: "
+msgstr "订阅列表文件已损坏，存在非法条目："
+
+msgid "Subscription list is being modified by another process, please retry later"
+msgstr "订阅列表正被另一个进程修改，请稍后重试"
+
+msgid "Name/URL must not be empty"
+msgstr "名称/URL 不能为空"
+
+msgid "Name/Content must not be empty"
+msgstr "名称/内容 不能为空"
+
+msgid "Invalid subscription token"
+msgstr "无效的订阅 token"
+
+msgid "No available nodes (update the subscription first)"
+msgstr "暂无可用的节点（请先更新订阅）"
+
+msgid "Failed to generate the target format"
+msgstr "无法生成目标格式"
+
+msgid "Invalid ID"
+msgstr "非法 ID"
+
+msgid "Local subscription content is empty"
+msgstr "本地订阅内容为空"
+
+msgid "Failed to parse local content"
+msgstr "本地解析失败"
+
+msgid "Failed to update status"
+msgstr "更新状态失败"
+
+msgid "No subscription URL"
+msgstr "无订阅 URL"
+
+msgid "Write failed"
+msgstr "写入失败"
+
+msgid "Download failed"
+msgstr "下载失败"
+
+msgid "Parse failed"
+msgstr "解析失败"
+
+msgid "Select at least one subscription"
+msgstr "请选择至少一个订阅"
+
+msgid "Proxy address is empty"
+msgstr "代理地址为空"
+
+msgid "Invalid proxy config: "
+msgstr "代理配置无效: "
+
+msgid "Invalid User-Agent: "
+msgstr "User-Agent 无效: "
+
+msgid "Invalid URL"
+msgstr "无效 URL"
+
+msgid "Only http/https is supported"
+msgstr "仅支持 http/https"
+
+msgid "Invalid hostname"
+msgstr "无效主机名"
+
+msgid "Invalid port"
+msgstr "端口无效"
+
+msgid "User-Agent is too long (at most 256 characters)"
+msgstr "User-Agent 过长（最多 256 字符）"
+
+msgid "User-Agent must not contain control characters"
+msgstr "User-Agent 不能包含控制字符"
+
+msgid "Invalid proxy format"
+msgstr "代理格式无效"
+
+msgid "Unsupported proxy protocol: "
+msgstr "不支持的代理协议: "
+
+msgid "Proxy username/password contains invalid characters"
+msgstr "代理用户名/密码含非法字符"
+
+msgid "Invalid proxy host"
+msgstr "代理主机无效"
+
+msgid "An IPv6 proxy address must be bracketed, e.g. http://[::1]:1080"
+msgstr "IPv6 代理地址必须加方括号，例如 http://[::1]:1080"
+
+msgid "Invalid proxy port"
+msgstr "代理端口无效"
+
+msgid "Empty hostname"
+msgstr "空主机名"
+
+msgid "Hostname contains the invalid character @"
+msgstr "主机名含非法字符 @"
+
+msgid "Hostname contains invalid characters"
+msgstr "主机名含非法字符"
+
+msgid "Target is a private/reserved address"
+msgstr "目标为内网/保留地址"
+
+msgid "Target is localhost"
+msgstr "目标为 localhost"
+
+msgid "Cannot resolve the target hostname"
+msgstr "无法解析目标主机名"
+
+msgid "No local DNS resolution; the peer address will be verified at connect time"
+msgstr "本机无 DNS 解析能力，改由连接时校验对端地址"
+
+msgid "Target resolves only to private/reserved addresses"
+msgstr "目标仅解析到内网/保留地址"
+
+msgid "Invalid redirect target: "
+msgstr "重定向目标无效: "
+
+msgid "Unsafe redirect target: "
+msgstr "重定向目标不安全: "
+
+msgid "Cannot verify the target address (no local DNS resolution and no peer IP obtained)"
+msgstr "无法校验目标地址（本机无 DNS 解析能力，且未取得对端 IP）"
+
+msgid "Target actually connects to a private/reserved address ("
+msgstr "目标实际连接到内网/保留地址 ("
+
+msgid "Response exceeds the size limit ("
+msgstr "响应超过大小限制 ("
+
+msgid " bytes)"
+msgstr " 字节)"
+
+msgid "Failed to read the response"
+msgstr "读取响应失败"
+
+msgid "Redirect without a Location header"
+msgstr "重定向无 Location"
+
+msgid "Invalid redirect target"
+msgstr "重定向目标无效"
+
+msgid "Too many redirects"
+msgstr "重定向次数过多"
+
+msgid "HTTP error "
+msgstr "HTTP 错误 "
+
+msgid "The current download backend (wget) does not support "
+msgstr "当前下载后端 (wget) 不支持 "
+
+msgid " proxies; install curl or use an http proxy"
+msgstr " 代理，请安装 curl 或改用 http 代理"
+
+msgid "No local DNS resolution: the wget backend cannot verify the target address and refused the download (install curl and retry)"
+msgstr "本机无 DNS 解析能力，wget 后端无法校验目标地址，已拒绝下载（安装 curl 后重试）"
+
+msgid "Download failed (wget exit code is non-zero)"
+msgstr "下载失败（wget 退出码非 0）"
+
+msgid "Download failed or the content is empty"
+msgstr "下载失败或内容为空"
+
+msgid "No download tool available (curl/wget)"
+msgstr "无可用下载工具 (curl/wget)"
+
+msgid "Rename rule line "
+msgstr "重命名规则第 "
+
+msgid ": invalid regular expression ("
+msgstr " 行：正则表达式无效（"
+
+msgid "URI link"
+msgstr "URI 链接"
+
+msgid "Surge/Loon config"
+msgstr "Surge/Loon 配置"
+
+msgid "Failed to parse JSON"
+msgstr "JSON 解析失败"
+
+msgid "Base64 decoding failed"
+msgstr "Base64 解码失败"
+
+msgid "Unrecognized subscription format"
+msgstr "无法识别的订阅格式"
+
+msgid "The AmneziaWG options must be a valid JSON object"
+msgstr "AmneziaWG 参数必须是合法的 JSON 对象"
+
+msgid "Mixed formats in one text ("
+msgstr "同一份文本里混用了多种格式（"
+
+msgid " + "
+msgstr " + "
+
+msgid "): only one format can be imported at a time; split the text and import the parts separately"
+msgstr "）：一次只能导入一种格式，请拆开后分次导入"
+
+msgid "No WireGuard node to export"
+msgstr "没有可导出的 WireGuard 节点"
+
+msgid "A WireGuard .conf file can hold only one tunnel, but there are "
+msgstr "WireGuard .conf 每个文件只能包含一条隧道，当前有 "
+
+msgid " WireGuard nodes; export a single node instead"
+msgstr " 个 WireGuard 节点；请只导出单个节点"
+
+msgid "This WireGuard node has no private key (private-key), cannot export .conf"
+msgstr "该 WireGuard 节点没有私钥 (private-key)，无法导出 .conf"
+
+msgid "Expired"
+msgstr "已过期"
+
+msgid " days"
+msgstr "天"
+
+msgid " hours"
+msgstr "小时"
+
+msgid " minutes"
+msgstr "分钟"
+
+msgid "Less than a minute"
+msgstr "不足1分钟"
+
+msgid "Unsupported output format: "
+msgstr "不支持的输出格式："
+
+msgid "A WireGuard .conf file has no [Peer] section"
+msgstr "WireGuard .conf 文件里没有 [Peer] 段"
+
+msgid "A WireGuard .conf file has no [Peer] with a usable Endpoint"
+msgstr "WireGuard .conf 文件里没有任何带可用 Endpoint 的 [Peer]"
+
+msgid "JSON"
+msgstr "JSON"
+
+msgid "Clash YAML"
+msgstr "Clash YAML"
+
+msgid "WireGuard .conf"
+msgstr "WireGuard .conf"

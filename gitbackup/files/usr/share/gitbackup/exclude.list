@@ -1,0 +1,18 @@
+# gitbackup hard-exclude list: one glob per line, matched against absolute
+# paths (collect.sh). "/**" matches the path and everything under it;
+# otherwise plain shell `case` glob rules. Enforced at every visibility.
+
+# The package's own credentials never go into its own backup.
+/etc/gitbackup/**
+
+# --- excluded only while scrubbing ---
+# "#public: <pattern>" lines are DATA: collect.sh excludes them when the run
+# scrubs (forced on by visibility=public). Whole-file secrets; no redaction
+# makes them safe to publish.
+#public: /etc/shadow
+#public: /etc/dropbear/*_host_key*
+#public: /etc/uhttpd.key
+#public: /etc/ssl/private/**
+# VERIFY: no OpenWrt package is known to write here (UCI wireguard keeps keys
+# inline, see scrub.list); wg-quick convention, kept for hand-made keys.
+#public: /etc/wireguard/**

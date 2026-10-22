@@ -2057,9 +2057,6 @@ msgstr "Filtro de regiones"
 msgid "Unlock Nodes Filter"
 msgstr "Filtro de nodos desbloqueados"
 
-msgid "Start Auto Select Unlock Proxy..."
-msgstr "Iniciando selección automática de nodo desbloqueado..."
-
 msgid "Group:"
 msgstr "Grupo:"
 
@@ -3119,11 +3116,17 @@ msgstr "Descargando..."
 msgid "Downloading config..."
 msgstr "Descargando configuración..."
 
+msgid "Downloading core..."
+msgstr "Descargando núcleo..."
+
 msgid "Fetching subscription..."
 msgstr "Obteniendo suscripción..."
 
 msgid "Logging in..."
 msgstr "Iniciando sesión..."
+
+msgid "Saving token..."
+msgstr "Guardando token..."
 
 msgid "Sniff the domain name of the traffics to avoid rule-based proxy failure"
 msgstr "Analiza los dominios del tráfico para evitar fallos de proxy basados en reglas"
@@ -3256,6 +3259,9 @@ msgstr "Error en la subida"
 
 msgid "Upload failed:"
 msgstr "Error en la subida:"
+
+msgid "Failed to read file"
+msgstr "Error al leer el archivo"
 
 msgid "Please enter subscription config name"
 msgstr "Introduce el nombre de la configuración de suscripción"
@@ -3653,6 +3659,9 @@ msgstr "Comando de sobrescritura no válido, ignorado"
 msgid "skip unsafe Overwrite command"
 msgstr "Comando de sobrescritura no seguro, ignorado"
 
+msgid "skip Overwrite Module with undefined variable"
+msgstr "Variable no definida, módulo de sobrescritura ignorado"
+
 msgid "Processing Overwrite Module"
 msgstr "Procesando módulo de sobrescritura"
 
@@ -3794,6 +3803,12 @@ msgstr "Cerrando sesión..."
 msgid "Checkin..."
 msgstr "Registrando..."
 
+msgid "oixCloud Login Successful"
+msgstr "Inicio de sesión en oixCloud exitoso"
+
+msgid "Note: oixCloud need a specific core installed, OpenClash will auto download, After the core start, an oixCloud nodes provider will be added, which you can customize as needed"
+msgstr "Nota: oixCloud requiere un núcleo específico. OpenClash lo descargará y añadirá un proveedor de nodos personalizable."
+
 msgid "oixCloud Login Failed"
 msgstr "Fallo al iniciar sesión en oixCloud"
 
@@ -3875,41 +3890,38 @@ msgstr "Contraseña de la cuenta"
 msgid "Checkin Multiple"
 msgstr "Multiplicador de registro"
 
-msgid "Node Filter"
-msgstr "Filtro de nodos"
+msgid "Optional Parameters"
+msgstr "Parámetros opcionales"
 
-msgid "Open the oixCloud website to choose the nodes delivered to OpenClash"
-msgstr "Abrir el sitio web de oixCloud para elegir los nodos que recibe OpenClash"
+msgid "Optional parameters saved"
+msgstr "Parámetros opcionales guardados"
 
-msgid "oixCloud configuration and nodes are ready"
-msgstr "La configuración y los nodos de oixCloud están listos"
+msgid "Failed to save optional parameters, please try again"
+msgstr "Error al guardar parámetros opcionales, inténtelo de nuevo"
 
-msgid "Loading managed nodes..."
-msgstr "Cargando los nodos administrados..."
+msgid "For more information, please visit the"
+msgstr "Para más información, visite la"
 
-msgid "The oixCloud core did not start"
-msgstr "El núcleo de oixCloud no se inició; consulta el registro"
+msgid "official documentation"
+msgstr "documentación oficial"
 
-msgid "Unable to load managed nodes"
-msgstr "No se pudieron cargar los nodos administrados; comprueba la red y tu cuenta"
+msgid "Must start with &"
+msgstr "Debe comenzar con &"
 
-msgid "No managed nodes were loaded"
-msgstr "No se cargaron nodos administrados; comprueba el filtro de nodos"
+msgid "Params must not contain spaces"
+msgstr "Los parámetros no deben contener espacios"
 
-msgid "Managed nodes are not referenced by any proxy group"
-msgstr "Ningún grupo de proxies utiliza los nodos administrados"
+msgid "Params too long, max 8192 characters"
+msgstr "Parámetros demasiado largos, máximo 8192 caracteres"
 
-msgid "Unable to fetch managed configuration"
-msgstr "No se pudo obtener la configuración administrada; comprueba la red y tu plan"
+msgid "Invalid params format"
+msgstr "Formato de parámetros no válido"
 
-msgid "Unable to update the oixCloud core"
-msgstr "No se pudo actualizar el núcleo de oixCloud; comprueba la red y la arquitectura seleccionada"
+msgid "Invalid params format, must start with & and use key=value pairs"
+msgstr "Formato de parámetros no válido, debe comenzar con & y usar pares clave=valor"
 
-msgid "Unable to select the OpenClash account"
-msgstr "No se pudo seleccionar el token de OpenClash; inténtalo más tarde"
-
-msgid "Installing oixCloud core and restarting..."
-msgstr "Instalando el núcleo de oixCloud y reiniciando..."
+msgid "Params too long"
+msgstr "Parámetros demasiado largos"
 
 msgid "Usage Help"
 msgstr "Ayuda de uso"
@@ -4403,8 +4415,8 @@ msgstr "Al editar un archivo de configuración normal también aparece aquí el 
 msgid "A config holds your proxies, groups and rules, this is the step that gets OpenClash working"
 msgstr "La configuración contiene tus nodos, grupos y reglas; este paso pone OpenClash en marcha"
 
-msgid "Upload a config file, or add a subscription link"
-msgstr "Sube un archivo de configuración o añade un enlace de suscripción"
+msgid "Upload a config file, or restore the whole setup from a backup"
+msgstr "Sube un archivo de configuración o restaura toda la configuración desde una copia de seguridad"
 
 msgid "An older version rolls back after a bad release"
 msgstr "Una versión anterior permite volver atrás si una release falla"
@@ -4661,8 +4673,8 @@ msgstr "El interruptor de la derecha lo activa o lo desactiva"
 msgid "The tag tells where it comes from"
 msgstr "La etiqueta indica de dónde viene"
 
-msgid "The four header buttons:"
-msgstr "Los cuatro botones de la cabecera:"
+msgid "The three header buttons:"
+msgstr "Los tres botones de la cabecera:"
 
 msgid "The two header icons redraw the same numbers:"
 msgstr "Los dos iconos de la cabecera redibujan los mismos números:"
@@ -4736,8 +4748,8 @@ msgstr "muestra todo como tarjetas"
 msgid "pick it here, or choose Custom and type your own"
 msgstr "elígelo aquí, o usa Personalizado y escribe el tuyo"
 
-msgid "query the IP addresses, latency and unlock checks again"
-msgstr "consulta otra vez las direcciones IP, la latencia y las comprobaciones de desbloqueo"
+msgid "query addresses and latency again"
+msgstr "consulta otra vez las direcciones y la latencia"
 
 msgid "redirect mode, TCP and UDP"
 msgstr "modo redirect, TCP y UDP"
@@ -5422,6 +5434,3 @@ msgstr "Restaurar configuración predeterminada"
 
 msgid "Start Test"
 msgstr "Iniciar prueba"
-
-msgid "switch the list to unlock checks, press again to pick the services"
-msgstr "cambia la lista a las comprobaciones de desbloqueo, pulsa otra vez para elegir los servicios"

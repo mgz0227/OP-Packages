@@ -1,0 +1,273 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Reconcile only allow domains inserted on behalf of SmartSafeHub Hub.
+# A locally existing allow entry is never claimed or deleted.
+set -eu
+umask 077
+
+RESPONSE="${1:?missing device sync response}"
+STATE="${SMARTSAFEHUB_RECOMMENDED_STATE_FILE:-/etc/smartsafehub/recommended-rules.state}"
+JSONFILTER="${SMARTSAFEHUB_DEVICE_JSONFILTER_BIN:-jsonfilter}"
+UBUS="${SMARTSAFEHUB_DEVICE_UBUS_BIN:-ubus}"
+RUNTIME="${SMARTSAFEHUB_DEVICE_RUNTIME_DIR:-/tmp/smartsafehub}"
+RECEIPT="${SMARTSAFEHUB_RECOMMENDED_RECEIPT_FILE:-${RUNTIME}/recommended-rules.receipt.json}"
+CATALOG="${SMARTSAFEHUB_RECOMMENDED_CATALOG_FILE:-${RUNTIME}/recommended-rules.catalog.json}"
+mkdir -p "$RUNTIME" "${STATE%/*}"
+LOCK="$RUNTIME/recommended-rules.lock"
+if ! mkdir "$LOCK" 2>/dev/null; then
+  # A crashed reconciler may have left its lock; a live one must win.
+  owner="$(cat "$LOCK/pid" 2>/dev/null || true)"
+  case "$owner" in ''|*[!0-9]*) exit 1 ;; esac
+  kill -0 "$owner" 2>/dev/null && exit 75
+  rm -f "$LOCK/pid"
+  rmdir "$LOCK" 2>/dev/null || exit 1
+  mkdir "$LOCK" 2>/dev/null || exit 1
+fi
+printf '%s\n' "$$" > "$LOCK/pid"
+DESIRED="$RUNTIME/recommended-desired.$$"
+OWNED="$RUNTIME/recommended-owned.$$"
+SNAPSHOT="$RUNTIME/recommended-snapshot.$$"
+REPLY="$RUNTIME/recommended-reply.$$"
+ALLOW="$RUNTIME/recommended-allow.$$"
+VERIFY="$RUNTIME/recommended-verify.$$"
+cleanup() { rm -f "$DESIRED" "$OWNED" "$SNAPSHOT" "$REPLY" "$ALLOW" "$VERIFY" "$LOCK/pid"; rmdir "$LOCK" 2>/dev/null || true; }
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+
+field() { "$JSONFILTER" -i "$1" -e "$2" 2>/dev/null || true; }
+valid_hash() { [ "${#1}" -eq 64 ] && ! printf '%s' "$1" | LC_ALL=C grep -q '[^0-9a-f]'; }
+# jsonfilter returns 1 when [*] matches no elements, even for a valid empty
+# array. Verify the array itself before treating that specific result as empty.
+extract_array() {
+  local file="$1" path="$2" output="$3" status
+  [ "$("$JSONFILTER" -i "$file" -t "$path" 2>/dev/null)" = array ] || return 1
+  if "$JSONFILTER" -i "$file" -e "${path}[*]" > "$output"; then
+    return 0
+  else
+    status=$?
+    [ "$status" -eq 1 ] && [ ! -s "$output" ]
+  fi
+}
+valid_domain() {
+  [ -n "$1" ] && [ "${#1}" -le 253 ] || return 1
+  printf '%s\n' "$1" | LC_ALL=C grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$' || return 1
+  ! printf '%s\n' "$1" | LC_ALL=C grep -Eq '\.[0-9]+$' || return 1
+  rest="$1"
+  while [ -n "$rest" ]; do
+    label="${rest%%.*}"
+    [ "${#label}" -le 63 ] || return 1
+    case "$rest" in *.*) rest="${rest#*.}" ;; *) break ;; esac
+  done
+}
+
+revision="$(field "$RESPONSE" '@.recommended_rules.revision')"
+# Do not erase cloud-managed rules if the server is not yet sending this feature.
+[ -n "$revision" ] || exit 0
+# A prior receipt is trustworthy for its own revision until a new reconciliation
+# changes the allow list. The RPC compares the receipt's revision to STATE.
+valid_hash "$revision" || exit 1
+extract_array "$RESPONSE" '@.recommended_rules.domains' "$DESIRED" || exit 1
+[ "$(wc -l < "$DESIRED")" -le 100 ] || exit 1
+while IFS= read -r domain || [ -n "$domain" ]; do valid_domain "$domain" || exit 1; done < "$DESIRED"
+sort -u "$DESIRED" -o "$DESIRED"
+
+previous=''
+: > "$OWNED"
+if [ -e "$STATE" ]; then
+  [ -f "$STATE" ] && [ ! -L "$STATE" ] || exit 1
+  previous="$(sed -n '1p' "$STATE")"
+  [ "$previous" = '-' ] || valid_hash "$previous" || exit 1
+  sed '1d' "$STATE" > "$OWNED"
+  while IFS= read -r domain || [ -n "$domain" ]; do valid_domain "$domain" || exit 1; done < "$OWNED"
+  sort -u "$OWNED" -o "$OWNED"
+fi
+persist() {
+  temp="${STATE}.tmp.$$"
+  { printf '%s\n' "$1"; sort -u "$OWNED"; } > "$temp"
+  chmod 600 "$temp"
+  mv -f "$temp" "$STATE"
+}
+
+# Report progress from the worker itself. The parent daemon only commits a
+# final result; a pending phase survives SafeShield refresh deferral.
+phase() {
+  stage="$1"
+  tmp="$RUNTIME/recommended-phase.$$.json"
+  printf '{"status":"pending","stage":"%s","reason":"","checkedAt":%s}\n' \
+    "$stage" "$(date +%s)" > "$tmp"
+  mv -f "$tmp" "${SMARTSAFEHUB_RECOMMENDED_SYNC_STATUS_FILE:-$RUNTIME/recommended-rules.sync.json}"
+}
+
+# Only status=running denotes an actual protection-list refresh. The refreshd
+# service can be running permanently, so never use runtime.refreshd_running.
+safeshield_refreshing() {
+  status_file="$RUNTIME/recommended-safeshield-status.$$.json"
+  if "$UBUS" call safeshield status '{}' > "$status_file" 2>/dev/null; then
+    status_value="$(field "$status_file" '@.status')"
+  else
+    status_value=''
+  fi
+  rm -f "$status_file"
+  [ "$status_value" = running ]
+}
+
+# Defer a different desired revision before calling potentially busy SafeShield
+# rules_list, which can itself be delayed during a long refresh.
+if [ "$previous" != "$revision" ] && safeshield_refreshing; then
+  phase safeshield_refreshing
+  exit 75
+fi
+
+# No changes have been made yet, but this attempt needs a fresh verification.
+# Keep the old receipt only when deferring before this point.
+rm -f "$RECEIPT"
+if ! "$UBUS" call safeshield rules_list '{}' > "$REPLY"; then
+  if safeshield_refreshing; then phase safeshield_refreshing; exit 75; fi
+  exit 1
+fi
+[ "$(field "$REPLY" '@.ok')" != false ] || exit 1
+# A broken or truncated rules_list must never be mistaken for an empty list.
+LC_ALL=C grep -Eq '"allow"[[:space:]]*:[[:space:]]*\[' "$REPLY" || exit 1
+extract_array "$REPLY" '@.allow' "$ALLOW" || exit 1
+while IFS= read -r domain || [ -n "$domain" ]; do valid_domain "$domain" || exit 1; done < "$ALLOW"
+sort -u "$ALLOW" -o "$ALLOW"
+
+# Do not mutate overrides while a full protection refresh is already running.
+# Retain ownership and let the 30-second poll retry when SafeShield settles.
+changes_needed=0
+[ "$previous" = '-' ] && changes_needed=1
+while IFS= read -r domain; do
+  [ -n "$domain" ] || continue
+  if ! grep -Fxq "$domain" "$ALLOW"; then changes_needed=1; fi
+done < "$DESIRED"
+while IFS= read -r domain; do
+  [ -n "$domain" ] || continue
+  if ! grep -Fxq "$domain" "$DESIRED" && grep -Fxq "$domain" "$ALLOW"; then changes_needed=1; fi
+done < "$OWNED"
+if [ "$changes_needed" -eq 1 ] && safeshield_refreshing; then
+  phase safeshield_refreshing
+  exit 75
+fi
+if [ "$changes_needed" -eq 1 ]; then phase applying; fi
+
+mutate() {
+  method="$1"; domain="$2"
+  "$UBUS" call safeshield "$method" "{\"action\":\"allow\",\"domain\":\"$domain\",\"refresh\":false}" > "$REPLY" || return 1
+  [ "$(field "$REPLY" '@.ok')" != false ] || return 1
+}
+
+# Refresh is retried after a partial or unsuccessful reconciliation.
+need_refresh=0
+[ "$previous" = '-' ] && need_refresh=1
+cp "$OWNED" "$SNAPSHOT"
+while IFS= read -r domain; do
+  [ -n "$domain" ] || continue
+  if ! grep -Fxq "$domain" "$DESIRED"; then
+    if grep -Fxq "$domain" "$ALLOW"; then
+      mutate rule_delete "$domain" || exit 1
+      need_refresh=1
+    fi
+    # Keep the ownership claim until the final SafeShield read confirms the
+    # domain is gone. A refresh failure must not turn a leftover cloud entry
+    # into an apparently user-created allow rule on the next assignment.
+    persist '-'
+  fi
+done < "$SNAPSHOT"
+
+while IFS= read -r domain; do
+  [ -n "$domain" ] || continue
+  if ! grep -Fxq "$domain" "$ALLOW"; then
+    # Write the ownership intent before creating the allow entry. If the
+    # process is interrupted after rule_add, the retry must still recognize
+    # the entry as cloud-managed rather than silently treating it as manual.
+    if ! grep -Fxq "$domain" "$OWNED"; then
+      printf '%s\n' "$domain" >> "$OWNED"
+      persist '-'
+    fi
+    mutate rule_add "$domain" || exit 1
+    need_refresh=1
+    persist '-'
+  fi
+done < "$DESIRED"
+
+if [ "$need_refresh" -eq 1 ]; then
+  phase safeshield_refreshing
+  if ! "$UBUS" call safeshield refresh '{}' > "$REPLY"; then
+    if safeshield_refreshing; then phase safeshield_refreshing; exit 75; fi
+    exit 1
+  fi
+  if [ "$(field "$REPLY" '@.ok')" = false ] || [ "$(field "$REPLY" '@.accepted')" = false ]; then
+    if safeshield_refreshing; then phase safeshield_refreshing; exit 75; fi
+    exit 1
+  fi
+fi
+# Read the actual SafeShield rule list again rather than trusting rule_add results.
+if [ "$changes_needed" -eq 1 ] || [ "$previous" != "$revision" ]; then phase verifying; fi
+if ! "$UBUS" call safeshield rules_list '{}' > "$REPLY"; then
+  if safeshield_refreshing; then phase safeshield_refreshing; exit 75; fi
+  exit 1
+fi
+[ "$(field "$REPLY" '@.ok')" != false ] || exit 1
+LC_ALL=C grep -Eq '"allow"[[:space:]]*:[[:space:]]*\[' "$REPLY" || exit 1
+extract_array "$REPLY" '@.allow' "$VERIFY" || exit 1
+while IFS= read -r domain || [ -n "$domain" ]; do valid_domain "$domain" || exit 1; done < "$VERIFY"
+sort -u "$VERIFY" -o "$VERIFY"
+while IFS= read -r domain; do
+  [ -n "$domain" ] || continue
+  grep -Fxq "$domain" "$VERIFY" || exit 1
+done < "$DESIRED"
+# Do not retire ownership if a previously managed, now-unassigned domain is
+# still present in SafeShield. It may reappear during a failed refresh or an
+# overlapping request, and a subsequent recommendation must not adopt it as a
+# manual rule. Retry the deletion while the ownership marker remains intact.
+while IFS= read -r domain; do
+  [ -n "$domain" ] || continue
+  if ! grep -Fxq "$domain" "$DESIRED" && grep -Fxq "$domain" "$VERIFY"; then
+    exit 1
+  fi
+done < "$OWNED"
+# Only after successful reconciliation may we forget ownership of removed
+# domains. The preserved marker survives a failed refresh and a reassignment.
+cp "$OWNED" "$SNAPSHOT"
+: > "$OWNED"
+while IFS= read -r domain; do
+  [ -n "$domain" ] || continue
+  if grep -Fxq "$domain" "$DESIRED"; then
+    printf '%s\n' "$domain" >> "$OWNED"
+  fi
+done < "$SNAPSHOT"
+# The receipt describes *allow-list presence*, not proven DNS query results.
+# Domains not in OWNED existed before this recommendation (manual configuration).
+receipt_tmp="${RECEIPT}.tmp.$$"
+{
+  printf '{"revision":"%s","status":"confirmed","domains":[' "$revision"
+  first=1
+  while IFS= read -r domain; do
+    [ -n "$domain" ] || continue
+    if grep -Fxq "$domain" "$OWNED"; then source=managed; else source=manual; fi
+    [ "$first" -eq 1 ] || printf ','
+    printf '{"domain":"%s","source":"%s"}' "$domain" "$source"
+    first=0
+  done < "$DESIRED"
+  printf ']}\n'
+} > "$receipt_tmp"
+chmod 600 "$receipt_tmp"
+persist "$revision"
+mv -f "$receipt_tmp" "$RECEIPT"
+
+# Keep rule IDs and titles on tmpfs only. If the server still uses the old
+# domain-only contract, never keep metadata from a previous assignment.
+catalog_tmp="${CATALOG}.tmp.$$"
+rules_revision="$(field "$RESPONSE" '@.recommended_rules.rules_revision')"
+if valid_hash "$rules_revision" && [ "$("$JSONFILTER" -i "$RESPONSE" -t '@.recommended_rules.rules' 2>/dev/null)" = array ]; then
+  if "$JSONFILTER" -i "$RESPONSE" -e '@.recommended_rules' > "$catalog_tmp" \
+    && [ "$("$JSONFILTER" -i "$catalog_tmp" -e '@.revision' 2>/dev/null)" = "$revision" ] \
+    && [ "$("$JSONFILTER" -i "$catalog_tmp" -t '@.rules' 2>/dev/null)" = array ]; then
+    chmod 600 "$catalog_tmp"
+    mv -f "$catalog_tmp" "$CATALOG"
+  else
+    rm -f "$catalog_tmp" "$CATALOG"
+  fi
+else
+  rm -f "$catalog_tmp" "$CATALOG"
+fi

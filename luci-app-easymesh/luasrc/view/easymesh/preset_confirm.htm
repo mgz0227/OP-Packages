@@ -1,0 +1,71 @@
+<script type="text/javascript">
+//<![CDATA[
+(function() {
+
+    // =====================================================
+    // 1. Keep the two wired-port dropdowns in sync
+    // =====================================================
+    function syncWiredPorts() {
+        var top = document.querySelector('select[name*="preferred_wired_port"]');
+        var bottom = document.querySelector('select[name*="wired_if"]');
+        if (!top || !bottom) return;
+
+        if (!top._easymeshSynced) {
+            top.value = bottom.value;
+            top.addEventListener('change', function() {
+                bottom.value = this.value;
+            });
+            top._easymeshSynced = true;
+        }
+        if (!bottom._easymeshSynced) {
+            bottom.addEventListener('change', function() {
+                top.value = this.value;
+            });
+            bottom._easymeshSynced = true;
+        }
+    }
+
+    // =====================================================
+    // 2. Confirm dialog before applying any preset
+    // =====================================================
+    function attachPresetConfirm() {
+        var buttons = document.querySelectorAll('input[type="submit"]');
+        for (var i = 0; i < buttons.length; i++) {
+            var btn = buttons[i];
+            if (!btn.name || btn.name.indexOf('._preset_') === -1) continue;
+            if (btn._easymeshConfirmAttached) continue;
+            btn._easymeshConfirmAttached = true;
+
+            btn.addEventListener('click', function(ev) {
+                var msg =
+                    'Apply preset:\n\n    ' + this.value + '\n\n' +
+                    'A backup of the current config will be saved first.\n\n' +
+                    'CONFIRM: Are you on the correct router?\n' +
+                    '  \u2022 Server preset \u2192 must be applied on the MAIN router\n' +
+                    '  \u2022 Client preset \u2192 must be applied on the EXTENDER\n\n' +
+                    'Click OK to continue, Cancel to abort.';
+                if (!window.confirm(msg)) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+                    return false;
+                }
+            }, true);
+        }
+    }
+
+    function attachAll() {
+        syncWiredPorts();
+        attachPresetConfirm();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setInterval(attachAll, 500);
+        });
+    } else {
+        setInterval(attachAll, 500);
+    }
+})();
+//]]>
+</script>

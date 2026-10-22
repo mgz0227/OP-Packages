@@ -1,0 +1,302 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -eu
+
+RUNTIME_DIR="${SMARTSAFEHUB_RUNTIME_DIR:-/tmp/smartsafehub}"
+BACKUP_FILE="${SMARTSAFEHUB_BACKUP_FILE:-$RUNTIME_DIR/config-backup.tar.gz}"
+MAX_BACKUP_BYTES="${SMARTSAFEHUB_BACKUP_MAX_BYTES:-16777216}"
+SYSUPGRADE_BIN="${SMARTSAFEHUB_BACKUP_SYSUPGRADE_BIN:-/sbin/sysupgrade}"
+TAR_BIN="${SMARTSAFEHUB_BACKUP_TAR_BIN:-/bin/tar}"
+REBOOT_BIN="${SMARTSAFEHUB_BACKUP_REBOOT_BIN:-/sbin/reboot}"
+REBOOT_DELAY_S="${SMARTSAFEHUB_BACKUP_REBOOT_DELAY_S:-2}"
+UCI_BIN="${SMARTSAFEHUB_BACKUP_UCI_BIN:-/sbin/uci}"
+JSONFILTER_BIN="${SMARTSAFEHUB_BACKUP_JSONFILTER_BIN:-/usr/bin/jsonfilter}"
+FIRMWARE_METADATA_FILE="${SMARTSAFEHUB_BACKUP_FIRMWARE_METADATA_FILE:-/usr/share/smartsafehub/firmware.json}"
+ROM_FIRMWARE_METADATA_FILE="${SMARTSAFEHUB_BACKUP_ROM_FIRMWARE_METADATA_FILE:-/rom/usr/share/smartsafehub/firmware.json}"
+BOARD_NAME_FILE="${SMARTSAFEHUB_BACKUP_BOARD_NAME_FILE:-/tmp/sysinfo/board_name}"
+SMARTSAFEHUB_CONFIG_ARCHIVE_PATH="etc/config/smartsafehub"
+UPDATE_STATE_FILE="${SMARTSAFEHUB_BACKUP_UPDATE_STATE_FILE:-$RUNTIME_DIR/updates.state}"
+FIRMWARE_STATE_FILE="${SMARTSAFEHUB_BACKUP_FIRMWARE_STATE_FILE:-$RUNTIME_DIR/firmware.state}"
+UPDATE_LOCK_DIR="${SMARTSAFEHUB_BACKUP_UPDATE_LOCK_DIR:-$RUNTIME_DIR/updater.lock}"
+FIRMWARE_LOCK_DIR="${SMARTSAFEHUB_BACKUP_FIRMWARE_LOCK_DIR:-$RUNTIME_DIR/firmware.lock}"
+FIRMWARE_IMAGE_FILE="${SMARTSAFEHUB_BACKUP_FIRMWARE_IMAGE_FILE:-$RUNTIME_DIR/firmware.bin}"
+BACKUP_DEVICE_MISMATCH=65
+BACKUP_DEVICE_UNVERIFIED=66
+
+numeric_or_zero() {
+	case "${1:-}" in
+		'' | *[!0-9]*) printf '0' ;;
+		*) printf '%s' "$1" ;;
+	esac
+}
+
+file_size() {
+	local value
+	value="$(wc -c < "$1" 2>/dev/null | tr -d '[:space:]')"
+	numeric_or_zero "$value"
+}
+
+safe_identity_value() {
+	case "${1:-}" in
+		'' | *[!A-Za-z0-9._~:+-]*) return 1 ;;
+		*) return 0 ;;
+	esac
+}
+
+json_value() {
+	local file="$1" expression="$2"
+	[ -f "$file" ] || return 0
+	[ -x "$JSONFILTER_BIN" ] || return 0
+	"$JSONFILTER_BIN" -i "$file" -e "$expression" 2>/dev/null || true
+}
+
+firmware_metadata_value() {
+	local expression="$1" value
+
+	value="$(json_value "$ROM_FIRMWARE_METADATA_FILE" "$expression")"
+	if [ -n "$value" ]; then
+		printf '%s' "$value"
+		return 0
+	fi
+
+	json_value "$FIRMWARE_METADATA_FILE" "$expression"
+}
+
+board_device_code() {
+	local board
+	board="$(cat "$BOARD_NAME_FILE" 2>/dev/null || true)"
+	case "$board" in
+		iptime,ax3000sm) printf '%s' 'iptime-ax3000sm' ;;
+		iptime,a3004t) printf '%s' 'iptime-a3004t' ;;
+		iptime,ax3000se) printf '%s' 'iptime-ax3000se' ;;
+		glinet,gl-mt300n-v2) printf '%s' 'gl-mt300n-v2' ;;
+		xiaomi,mi-router-ax3000t|xiaomi,ax3000t) printf '%s' 'xiaomi-ax3000t' ;;
+		*) return 1 ;;
+	esac
+}
+
+current_device_code() {
+	local value
+
+	value="$(firmware_metadata_value '@.device_code')"
+	if safe_identity_value "$value"; then
+		printf '%s' "$value"
+		return 0
+	fi
+
+	board_device_code
+}
+
+archive_paths_are_safe() {
+	local list_file="$1" entry normalized has_config=0
+
+	while IFS= read -r entry || [ -n "$entry" ]; do
+		[ -n "$entry" ] || continue
+		normalized="${entry#./}"
+		case "$normalized" in
+			/* | .. | ../* | */.. | */../*) return 1 ;;
+		esac
+
+		case "$normalized" in
+			etc/config | etc/config/) ;;
+			etc/config/*) has_config=1 ;;
+		esac
+	done < "$list_file"
+
+	[ "$has_config" -eq 1 ]
+}
+
+backup_smartsafehub_config_archive_path() {
+	local list_file="$1" entry normalized found='' count=0
+
+	while IFS= read -r entry || [ -n "$entry" ]; do
+		normalized="${entry#./}"
+		if [ "$normalized" = "$SMARTSAFEHUB_CONFIG_ARCHIVE_PATH" ]; then
+			found="$entry"
+			count=$((count + 1))
+		fi
+	done < "$list_file"
+
+	[ "$count" -eq 1 ] || return 1
+	printf '%s' "$found"
+}
+
+config_device_code() {
+	local config_file="$1"
+	awk '
+	function dequote(value, first, last) {
+		first = substr(value, 1, 1)
+		last = substr(value, length(value), 1)
+		if ((first == "\"" && last == "\"") || (first == sprintf("%c", 39) && last == sprintf("%c", 39))) {
+			return substr(value, 2, length(value) - 2)
+		}
+		return value
+	}
+	$1 == "config" {
+		in_firmware = (dequote($2) == "firmware" && dequote($3) == "firmware")
+		next
+	}
+	in_firmware && $1 == "option" && dequote($2) == "device_code" {
+		print dequote($3)
+		exit
+	}
+	' "$config_file" 2>/dev/null || true
+}
+
+validate_backup_device() {
+	local list_file="$1" archive_path config_tmp config_size
+	local backup_device current_device
+
+	archive_path="$(backup_smartsafehub_config_archive_path "$list_file" 2>/dev/null || true)"
+	[ -n "$archive_path" ] || return "$BACKUP_DEVICE_UNVERIFIED"
+
+	config_tmp="${BACKUP_FILE}.smartsafehub-config.$$"
+	rm -f "$config_tmp"
+	if ! "$TAR_BIN" -xOzf "$BACKUP_FILE" "$archive_path" > "$config_tmp" 2>/dev/null; then
+		rm -f "$config_tmp"
+		return "$BACKUP_DEVICE_UNVERIFIED"
+	fi
+
+	config_size="$(file_size "$config_tmp")"
+	if [ "$config_size" -le 0 ] || [ "$config_size" -gt 65536 ]; then
+		rm -f "$config_tmp"
+		return "$BACKUP_DEVICE_UNVERIFIED"
+	fi
+
+	backup_device="$(config_device_code "$config_tmp")"
+	rm -f "$config_tmp"
+	safe_identity_value "$backup_device" || return "$BACKUP_DEVICE_UNVERIFIED"
+
+	current_device="$(current_device_code 2>/dev/null || true)"
+	safe_identity_value "$current_device" || return "$BACKUP_DEVICE_UNVERIFIED"
+
+	[ "$backup_device" = "$current_device" ] || return "$BACKUP_DEVICE_MISMATCH"
+	return 0
+}
+
+validate_backup() {
+	local size list_file device_status=0
+
+	[ -f "$BACKUP_FILE" ] && [ ! -L "$BACKUP_FILE" ] || return 1
+	size="$(file_size "$BACKUP_FILE")"
+	[ "$size" -gt 0 ] && [ "$size" -le "$MAX_BACKUP_BYTES" ] || return 1
+
+	list_file="${BACKUP_FILE}.list.$$"
+	if ! "$TAR_BIN" -tzf "$BACKUP_FILE" > "$list_file" 2>/dev/null; then
+		rm -f "$list_file"
+		return 1
+	fi
+
+	if ! archive_paths_are_safe "$list_file"; then
+		rm -f "$list_file"
+		return 1
+	fi
+
+	validate_backup_device "$list_file" || device_status=$?
+	rm -f "$list_file"
+	[ "$device_status" -eq 0 ] || return "$device_status"
+	return 0
+}
+
+phase_value() {
+	local file="$1"
+	[ -f "$file" ] || return 0
+	awk -F '\t' '$1 == "phase" { print $2; exit }' "$file" 2>/dev/null || true
+}
+
+lock_is_active() {
+	local lock_dir="$1" pid
+	[ -d "$lock_dir" ] || return 1
+	pid="$(cat "$lock_dir/pid" 2>/dev/null || true)"
+	[ -n "$pid" ] || return 1
+	kill -0 "$pid" 2>/dev/null
+}
+
+restore_is_busy() {
+	local phase
+
+	if lock_is_active "$UPDATE_LOCK_DIR"; then
+		return 0
+	fi
+
+	phase="$(phase_value "$UPDATE_STATE_FILE")"
+	case "$phase" in
+		checking | installing) return 0 ;;
+	esac
+
+	if lock_is_active "$FIRMWARE_LOCK_DIR"; then
+		return 0
+	fi
+
+	if [ -f "$FIRMWARE_IMAGE_FILE" ] || [ -f "${FIRMWARE_IMAGE_FILE}.part" ]; then
+		return 0
+	fi
+
+	phase="$(phase_value "$FIRMWARE_STATE_FILE")"
+	case "$phase" in
+		checking | downloading | verifying | ready | flashing) return 0 ;;
+	esac
+
+	return 1
+}
+
+sync_firmware_identity() {
+	local device_code build_id
+
+	[ -x "$UCI_BIN" ] || return 0
+
+	device_code="$(current_device_code 2>/dev/null || true)"
+	if safe_identity_value "$device_code"; then
+		"$UCI_BIN" -q set smartsafehub.firmware.device_code="$device_code" 2>/dev/null || true
+	fi
+
+	build_id="$(firmware_metadata_value '@.build_id')"
+	if safe_identity_value "$build_id"; then
+		"$UCI_BIN" -q set smartsafehub.firmware.current_build_id="$build_id" 2>/dev/null || true
+	fi
+
+	"$UCI_BIN" -q commit smartsafehub 2>/dev/null || true
+}
+
+perform_restore() {
+	local validation_status=0
+
+	validate_backup || validation_status=$?
+	[ "$validation_status" -eq 0 ] || return "$validation_status"
+	restore_is_busy && return 75
+
+	if ! "$SYSUPGRADE_BIN" --restore-backup "$BACKUP_FILE" >/dev/null 2>&1; then
+		return 1
+	fi
+
+	# A backup can carry an older cached firmware identity in /etc/config.
+	# Re-pin only the UCI cache from the currently booted immutable firmware;
+	# firmware.json itself is never part of a SmartSafeHub sysupgrade backup.
+	sync_firmware_identity
+	rm -f "$BACKUP_FILE"
+
+	(
+		sleep "$REBOOT_DELAY_S"
+		"$REBOOT_BIN"
+	) >/dev/null 2>&1 </dev/null &
+
+	return 0
+}
+
+mkdir -p "$RUNTIME_DIR" || exit 1
+
+case "${1:-}" in
+	validate)
+		validate_backup
+		;;
+	restore)
+		perform_restore
+		;;
+	discard)
+		rm -f "$BACKUP_FILE"
+		;;
+	*)
+		echo "usage: $0 {validate|restore|discard}" >&2
+		exit 2
+		;;
+esac

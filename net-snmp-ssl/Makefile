@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=net-snmp
 PKG_VERSION:=5.9.1
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=@SF/net-snmp
@@ -41,7 +41,7 @@ define Package/libnetsnmp-ssl
 $(call Package/net-snmp-ssl/Default)
   SECTION:=libs
   CATEGORY:=Libraries
-  DEPENDS:=+libnl-tiny +libpci +libpcre +libopenssl
+  DEPENDS:=+libnl-tiny +libpci +libpcre2 +libopenssl
   TITLE:=Open source SNMP implementation (libraries)
 endef
 

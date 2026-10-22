@@ -1,0 +1,18 @@
+#!/bin/sh
+
+. /lib/functions.sh
+case "$ACTION" in add|remove) ;; *) exit 0;; esac
+/etc/init.d/ksmbd enabled || exit 0
+
+enabled=0
+autoshare=1
+ksmbd_settings() {
+ config_get_bool enabled "$1" enabled 0
+ config_get_bool autoshare "$1" autoshare 1
+}
+config_load ksmbd
+config_foreach ksmbd_settings globals
+[ "$enabled" -eq 1 ] && [ "$autoshare" -eq 1 ] || exit 0
+
+# Synchronize automatic UCI shares and rebuild from current mounts.
+/etc/init.d/ksmbd reload

@@ -1,0 +1,51 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Preserve OpenWrt-generated metadata (including compat_version) and user
+# settings across firmware upgrades, except for the SmartSafeHub product
+# hostname which is intentionally fixed to SmartRouter. Missing safe defaults
+# are filled without replacing an existing timezone or other user values.
+uci_get() {
+	uci -q get "$1" 2>/dev/null || true
+}
+
+set_if_missing() {
+	local key="$1" value="$2"
+	[ -n "$(uci_get "$key")" ] || uci -q set "$key=$value" || exit 1
+}
+
+if ! uci -q get system.@system[0] >/dev/null 2>&1; then
+	uci -q add system system >/dev/null || exit 1
+fi
+
+hostname="$(uci_get system.@system[0].hostname)"
+if [ "$hostname" != 'SmartRouter' ]; then
+	uci -q set system.@system[0].hostname='SmartRouter' || exit 1
+fi
+
+# Keep the OpenWrt timezone untouched here. Fresh SmartSafeHub installations
+# carry smartsafehub.system.timezone_initialized=0 and the authenticated web UI
+# resolves the browser IANA timezone once. Existing installations do not gain
+# that marker through config-file upgrades, so their timezone is never changed
+# implicitly.
+
+set_if_missing system.@system[0].ttylogin '0'
+set_if_missing system.@system[0].log_size '64'
+set_if_missing system.@system[0].urandom_seed '0'
+
+if ! uci -q get system.ntp >/dev/null 2>&1; then
+	uci -q set system.ntp='timeserver' || exit 1
+fi
+
+set_if_missing system.ntp.enabled '1'
+set_if_missing system.ntp.enable_server '0'
+
+if [ -z "$(uci_get system.ntp.server)" ]; then
+	uci -q add_list system.ntp.server='0.openwrt.pool.ntp.org' || exit 1
+	uci -q add_list system.ntp.server='1.openwrt.pool.ntp.org' || exit 1
+	uci -q add_list system.ntp.server='2.openwrt.pool.ntp.org' || exit 1
+	uci -q add_list system.ntp.server='3.openwrt.pool.ntp.org' || exit 1
+fi
+
+uci -q commit system || exit 1
+exit 0

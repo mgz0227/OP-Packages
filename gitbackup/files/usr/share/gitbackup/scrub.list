@@ -1,0 +1,57 @@
+# gitbackup scrub list: UCI options whose value is a secret, redacted by
+# scrub.sh when scrubbing. Every entry must cite where the option was
+# confirmed to exist -- no entries from memory.
+#
+# Pattern: "<config>.@<type>[*].<option>"
+#   <type>  section TYPE, not name. A trailing "*" is a case-glob prefix
+#           (dynamic WireGuard peer types); anything else is literal.
+#   [*]     every section of that type, named or anonymous; an option not
+#           set on a section is left alone, never created.
+#
+# No inline secret: dropbear (dropbear.config), mwan3 (luci-app-mwan3 views).
+# Not listed: openvpn tls_auth/tls_crypt/secret/askpass/auth_user_pass are
+# file paths, not secret values; scrub.sh only rewrites values.
+
+# wireless -- WPA PSK on wifi-iface (not wifi-device), openwrt/luci
+# modules/luci-mod-network/htdocs/luci-static/resources/view/network/wireless.js:2531
+wireless.@wifi-iface[*].key
+# wireless -- WEP keys 1-4, wireless.js:1857-1882
+wireless.@wifi-iface[*].key1
+wireless.@wifi-iface[*].key2
+wireless.@wifi-iface[*].key3
+wireless.@wifi-iface[*].key4
+# wireless -- SAE/WPA3 password, wireless.js:2120,2531
+wireless.@wifi-iface[*].password
+# wireless -- 802.1X RADIUS secrets, wireless.js:1729,1746,1830
+wireless.@wifi-iface[*].auth_secret
+wireless.@wifi-iface[*].acct_secret
+wireless.@wifi-iface[*].dae_secret
+
+# network -- ppp-family login (pppoe, pptp, l2tp, pppoa), openwrt/luci
+# protocols/luci-proto-ppp/htdocs/luci-static/resources/protocol/{pppoe,pptp,l2tp,pppoa,ppp}.js
+network.@interface[*].username
+network.@interface[*].password
+# network -- OpenVPN cert passphrase after migration to network/interface,
+# openwrt/packages net/openvpn/files/openvpn.config:16,19 and
+# net/openvpn/files/etc/uci-defaults/60_openvpn_migrate.sh
+network.@interface[*].cert_password
+# network -- OpenConnect OTP password and inline PEM key, openwrt/luci
+# protocols/luci-proto-openconnect/htdocs/luci-static/resources/protocol/openconnect.js:148,166
+network.@interface[*].password2
+network.@interface[*].userkey
+# network -- WireGuard private key, openwrt/luci
+# protocols/luci-proto-wireguard/htdocs/luci-static/resources/protocol/wireguard.js:128,380
+network.@interface[*].private_key
+# network -- WireGuard peer PSK; peer type is dynamic "wireguard_<ifname>",
+# wireguard.js:195,344-384,572
+network.@wireguard_*[*].preshared_key
+
+# ddns -- update-URL credentials, openwrt/luci
+# applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:751,757-763
+ddns.@service[*].username
+ddns.@service[*].password
+
+# uhttpd -- Basic-Auth credentials, openwrt/openwrt
+# package/network/services/uhttpd/files/uhttpd.init:68-79
+uhttpd.@httpauth[*].username
+uhttpd.@httpauth[*].password

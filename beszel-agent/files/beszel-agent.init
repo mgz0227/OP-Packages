@@ -1,75 +1,124 @@
 #!/bin/sh /etc/rc.common
 
 START=99
-STOP=10
-
 USE_PROCD=1
+NAME=beszel-agent
 PROG=/usr/bin/beszel-agent
-DATA_DIR=/var/lib/beszel-agent
-FP_FILE="$DATA_DIR/fingerprint"
-OLD_FP_FILE=/usr/share/beszel-agent/fingerprint
+
+append_fs() {
+    local value="$1"
+    if [ -z "$FS_LIST" ]; then
+        FS_LIST="$value"
+    else
+        FS_LIST="$FS_LIST,$value"
+    fi
+}
+
+append_nic() {
+    local value="$1"
+    if [ -z "$NIC_LIST" ]; then
+        NIC_LIST="$value"
+    else
+        NIC_LIST="$NIC_LIST,$value"
+    fi
+}
+
+boot() {
+    local delay
+    delay="$(uci -q get $NAME.@main.boot_delay)"
+    sleep "${delay:-15}"
+    start "$@"
+}
 
 start_service() {
-  local enabled port key url token extra_fs fp
+    local enable data_dir docker_host gpu_collector hub_url intel_gpu_device key listen log_level port token skip_gpu skip_systemd system_name
 
-  config_load 'beszel-agent'
-  config_get_bool enabled 'agent' 'enabled' '0'
-  config_get port 'agent' 'port' '45876'
-  config_get key 'agent' 'public_key' ''
-  config_get url 'agent' 'hub_url' ''
-  config_get token 'agent' 'token' ''
-  config_get extra_fs 'agent' 'extra_filesystems' ''
-  config_get fp 'agent' 'fingerprint' ''
+    config_load "$NAME"
 
-  [ "$enabled" -eq 0 ] && return 0
+    config_get_bool enable "main" "enable" 0
+    [ "$enable" -eq 1 ] || return 0
 
-  [ -z "$key" ] && {
-    logger -t beszel-agent "Public key not set!"
-    return 1
-  }
+    config_get data_dir "main" "data_dir" "/etc/beszel-agent"
+    config_get docker_host "main" "docker_host" ""
+    config_get gpu_collector "main" "gpu_collector" ""
+    config_get hub_url "main" "hub_url" ""
+    config_get intel_gpu_device "main" "intel_gpu_device" ""
+    config_get key "main" "key" ""
+    config_get listen "main" "listen" ""
+    config_get log_level "main" "log_level" "info"
+    config_get port "main" "port" "45876"
+    config_get skip_gpu "main" "skip_gpu" "false"
+    case "$(uname -m)" in
+        x86_64|i?86)
+            if ! ls /sys/class/drm/card[0-9]* >/dev/null 2>&1; then
+                skip_gpu="true"
+            fi
+            ;;
+        *)
+            skip_gpu="true"
+            ;;
+    esac
+    config_get skip_systemd "main" "skip_systemd" "false"
+    config_get system_name "main" "system_name" ""
+    config_get token "main" "token" ""
 
-  if [ -n "$url" ] || [ -n "$token" ]; then
-    if [ -z "$url" ] || [ -z "$token" ]; then
-      logger -t beszel-agent "Outbound mode requires both hub_url and token, but only one set!"
-      return 1
+    if [ -n "$data_dir" ]; then
+        mkdir -p "$data_dir"
+        if [ -f /etc/sysupgrade.conf ]; then
+            if ! grep -qFx "$data_dir" /etc/sysupgrade.conf; then
+                echo "$data_dir" >> /etc/sysupgrade.conf
+            fi
+        fi
     fi
-  fi
 
-  mkdir -p "$DATA_DIR"
+    FS_LIST=""
+    config_list_foreach "main" "extra_filesystems" append_fs
 
-  # migrate from pre-UCI storage on flash
-  [ -z "$fp" ] && [ -s "$OLD_FP_FILE" ] && fp=$(cat "$OLD_FP_FILE")
+    NIC_LIST=""
+    config_list_foreach "main" "nics" append_nic
 
-  if [ -z "$fp" ]; then
-    DATA_DIR="$DATA_DIR" "$PROG" fingerprint > /dev/null 2>&1
-    [ -s "$FP_FILE" ] && fp=$(cat "$FP_FILE")
-  fi
+    procd_open_instance "beszel-agent"
+    procd_set_param command "$PROG"
 
-  if [ -n "$fp" ]; then
-    printf '%s' "$fp" > "$FP_FILE"
-    [ "$(uci -q get beszel-agent.agent.fingerprint)" = "$fp" ] || {
-      uci set beszel-agent.agent.fingerprint="$fp"
-      uci commit beszel-agent
-      logger -t beszel-agent "Fingerprint saved to UCI: $fp"
-    }
-  else
-    logger -t beszel-agent "Failed to obtain fingerprint, agent will generate one"
-  fi
+    procd_set_param env HOST_PROC="/proc" HOST_SYS="/sys"
 
-  procd_open_instance beszel-agent
-  procd_set_param command "$PROG" -listen "$port" -key "$key"
-  [ -n "$url" ] && [ -n "$token" ] && {
-    procd_append_param command -url "$url" -token "$token"
-  }
+    if [ -n "$listen" ]; then
+        procd_append_param env LISTEN="$listen"
+    else
+        procd_append_param env PORT="$port"
+    fi
 
-  procd_set_param env DATA_DIR="$DATA_DIR"
-  [ -n "$extra_fs" ] && procd_append_param env EXTRA_FILESYSTEMS="$extra_fs"
-  procd_set_param respawn 3600 5 5
-  procd_set_param stdout 1
-  procd_set_param stderr 1
-  procd_close_instance
+    [ -n "$docker_host" ] && procd_append_param env DOCKER_HOST="$docker_host"
+    [ -n "$data_dir" ] && procd_append_param env DATA_DIR="$data_dir"
+    [ -n "$FS_LIST" ] && procd_append_param env EXTRA_FILESYSTEMS="$FS_LIST"
+    [ -n "$hub_url" ] && procd_append_param env HUB_URL="$hub_url"
+    [ -n "$key" ] && procd_append_param env KEY="$key"
+    [ -n "$log_level" ] && procd_append_param env LOG_LEVEL="$log_level"
+    [ -n "$NIC_LIST" ] && procd_append_param env NICS="$NIC_LIST"
+    [ -n "$skip_gpu" ] && procd_append_param env SKIP_GPU="$skip_gpu"
+    [ -n "$skip_systemd" ] && procd_append_param env SKIP_SYSTEMD="$skip_systemd"
+    [ -n "$system_name" ] && procd_append_param env SYSTEM_NAME="$system_name"
+    [ -n "$token" ] && procd_append_param env TOKEN="$token"
+
+    if [ "$skip_gpu" = "false" ]; then
+        [ -n "$gpu_collector" ] && procd_append_param env GPU_COLLECTOR="$gpu_collector"
+        if [ "$gpu_collector" = "intel_gpu_top" ] || [ -z "$gpu_collector" ]; then
+            [ -n "$intel_gpu_device" ] && procd_append_param env INTEL_GPU_DEVICE="$intel_gpu_device"
+        fi
+    fi
+
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+
+    procd_set_param respawn
+    procd_close_instance
 }
 
 service_triggers() {
-  procd_add_reload_trigger 'beszel-agent'
+    procd_add_reload_trigger "beszel-agent"
+}
+
+reload_service() {
+    stop
+    start
 }

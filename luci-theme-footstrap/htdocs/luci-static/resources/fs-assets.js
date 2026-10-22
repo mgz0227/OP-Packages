@@ -505,5 +505,4 @@ return baseclass.extend({
 	removePattern: PATTERN.remove,
 	uploadLoginBg: LOGIN_BG.upload,
 	removeLoginBg: LOGIN_BG.remove,
-	_sanitizeSvg,	/* fs:probe */
 });

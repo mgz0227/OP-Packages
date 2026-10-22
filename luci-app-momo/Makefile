@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
-PKG_VERSION:=1.2.1
-PKG_RELEASE:=9
+PKG_VERSION:=1.2.2
+PKG_RELEASE:=10
 
 LUCI_TITLE:=LuCI Support for momo
 LUCI_DEPENDS:=+luci-base +momo

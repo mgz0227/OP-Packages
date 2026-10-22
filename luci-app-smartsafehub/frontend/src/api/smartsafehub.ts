@@ -1,0 +1,361 @@
+import type { ActivityHistory } from '../types/activity';
+import type {
+  ConfigurationBackupDiscardResult,
+  ConfigurationBackupRestoreResult,
+  ConfigurationBackupValidation,
+} from '../types/backup';
+import type { ConnectedDevicesSummary } from '../types/devices';
+import type { HealthAccepted, HealthStatus } from '../types/health';
+import type { IptvSettings, IptvSettingsInput, IptvUpdateResult } from '../types/iptv';
+import type { LanSettings, LanSettingsInput, LanUpdateResult } from '../types/lan';
+import type {
+  FirmwareAccepted,
+  FirmwareStatus,
+} from '../types/firmware';
+import type { SmartSafeHubStatus } from '../types/status';
+import type {
+  ScheduledRebootSettings,
+  ScheduledRebootSettingsInput,
+  SystemRebootResult,
+  SystemTimeSettings,
+  SystemTimeSyncResult,
+  SystemTimezoneInitializationResult,
+} from '../types/system';
+import type {
+  SoftwareUpdateAccepted,
+  SoftwareUpdateSettings,
+  SoftwareUpdateSettingsInput,
+  SoftwareUpdateStatus,
+} from '../types/updates';
+import type {
+  WifiQrCredentials,
+  GuestWifiSummary,
+  GuestWifiUpdateInput,
+  GuestWifiUpdateResult,
+  WifiSummary,
+  WifiUpdateInput,
+  WifiUpdateResult,
+} from '../types/wifi';
+import type {
+  WanReconnectResult,
+  WanSettings,
+  WanSettingsInput,
+  WanUpdateResult,
+} from '../types/wan';
+import type { RecommendedRulesStatus } from '../types/rules';
+import { callApi } from './rpc';
+
+const API_OBJECT = 'smartsafehub';
+const GUEST_API_OBJECT = 'smartsafehub_guest';
+const LAN_API_OBJECT = 'smartsafehub_network';
+
+export function fetchConnectedDevices(): Promise<ConnectedDevicesSummary> {
+  return callApi(API_OBJECT, 'connected_devices');
+}
+
+export async function fetchActivityHistory(): Promise<ActivityHistory> {
+  const activity = await callApi<ActivityHistory>(API_OBJECT, 'activity_history');
+
+  return {
+    ...activity,
+    cloud: {
+      ...activity.cloud,
+      // Cloud activity upload is explicit opt-in. Older or partial RPC
+      // responses without the toggle must render as OFF rather than opt in.
+      enabled: activity.cloud.enabled ?? false,
+    },
+  };
+}
+
+export function updateActivityCloudSync(enabled: boolean): Promise<ActivityHistory> {
+  return callApi(API_OBJECT, 'activity_cloud_sync_update', { enabled });
+}
+
+export function fetchStatus(): Promise<SmartSafeHubStatus> {
+  return callApi(API_OBJECT, 'status');
+}
+
+export interface DeviceRegistrationStatus {
+  schema: number;
+  component: 'device';
+  phase: string;
+  lastResult: string;
+  lastErrorCode: string | null;
+  accountRegistered: boolean | null;
+  plan: string | null;
+  pairingCode: string | null;
+  pairingExpiresAt: string | null;
+  nextSyncAt: number;
+  lastSuccessAt: number;
+}
+
+export function fetchRecommendedRulesStatus(): Promise<RecommendedRulesStatus> {
+  return callApi(API_OBJECT, 'device_recommended_rules_status', {}, { timeoutMs: 5000 });
+}
+
+export function refreshRecommendedRulesStatus(): Promise<RecommendedRulesStatus> {
+  return callApi(API_OBJECT, 'device_recommended_rules_refresh', {}, { timeoutMs: 30000 });
+}
+
+export function revokeRecommendedRule(ruleId: number): Promise<RecommendedRulesStatus> {
+  return callApi(API_OBJECT, 'device_recommended_rules_revoke', { rule_id: ruleId }, { timeoutMs: 30000 });
+}
+
+export function fetchDeviceRegistrationStatus(): Promise<DeviceRegistrationStatus> {
+  return callApi(API_OBJECT, 'device_registration_status', {}, { timeoutMs: 5000 });
+}
+
+export function refreshDeviceRegistrationStatus(): Promise<DeviceRegistrationStatus> {
+  return callApi(API_OBJECT, 'device_registration_refresh', {}, { timeoutMs: 30000 });
+}
+
+export function requestDevicePairingCode(): Promise<DeviceRegistrationStatus> {
+  return callApi(API_OBJECT, 'device_pairing_refresh', {}, { timeoutMs: 15000 });
+}
+
+export function fetchHealthStatus(): Promise<HealthStatus> {
+  return callApi(API_OBJECT, 'health_status');
+}
+
+export function requestHealthRun(): Promise<HealthAccepted> {
+  return callApi(API_OBJECT, 'health_run');
+}
+
+export function updateHealthReporter(enabled: boolean): Promise<HealthStatus> {
+  return callApi(API_OBJECT, 'health_reporter_update', { enabled });
+}
+
+export function fetchSoftwareUpdates(): Promise<SoftwareUpdateStatus> {
+  return callApi(API_OBJECT, 'updates_status');
+}
+
+export function fetchFirmwareStatus(): Promise<FirmwareStatus> {
+  return callApi(API_OBJECT, 'firmware_status');
+}
+
+export function requestFirmwareCheck(): Promise<FirmwareAccepted> {
+  return callApi(API_OBJECT, 'firmware_check');
+}
+
+export function requestFirmwarePrepare(): Promise<FirmwareAccepted> {
+  return callApi(API_OBJECT, 'firmware_prepare');
+}
+
+export function requestFirmwareUploadValidation(
+  filename: string,
+): Promise<FirmwareAccepted> {
+  return callApi(API_OBJECT, 'firmware_validate_upload', { filename });
+}
+
+export function requestFirmwareInstall(
+  keepSettings: boolean,
+): Promise<FirmwareAccepted> {
+  return callApi(API_OBJECT, 'firmware_install', {
+    confirm: 'install',
+    keep_settings: keepSettings,
+  });
+}
+
+export function requestFirmwareDiscard(): Promise<FirmwareAccepted> {
+  return callApi(API_OBJECT, 'firmware_discard');
+}
+
+export function requestSoftwareUpdateCheck(): Promise<SoftwareUpdateAccepted> {
+  return callApi(API_OBJECT, 'updates_check');
+}
+
+export function requestSoftwareUpdateInstall(): Promise<SoftwareUpdateAccepted> {
+  return callApi(API_OBJECT, 'updates_install', { confirm: 'install' });
+}
+
+export function updateSoftwareUpdateSettings(
+  input: SoftwareUpdateSettingsInput,
+): Promise<SoftwareUpdateSettings> {
+  return callApi(API_OBJECT, 'updates_settings_update', {
+    check_enabled: input.checkEnabled,
+    check_interval_s: input.checkIntervalSeconds,
+    auto_install: input.autoInstall,
+    auto_install_time: input.autoInstallTime,
+  });
+}
+
+export function fetchSystemTimeSettings(): Promise<SystemTimeSettings> {
+  return callApi(API_OBJECT, 'system_time_settings');
+}
+
+export function initializeSystemTimezone(
+  zonename: string,
+): Promise<SystemTimezoneInitializationResult> {
+  return callApi(API_OBJECT, 'system_timezone_initialize', { zonename });
+}
+
+export function updateSystemTimezone(
+  zonename: string,
+): Promise<SystemTimeSettings> {
+  return callApi(API_OBJECT, 'system_timezone_update', { zonename });
+}
+
+export function requestSystemTimeSync(): Promise<SystemTimeSyncResult> {
+  return callApi(API_OBJECT, 'system_time_sync');
+}
+
+export function fetchScheduledRebootSettings(): Promise<ScheduledRebootSettings> {
+  return callApi(API_OBJECT, 'system_scheduled_reboot_settings');
+}
+
+export function updateScheduledRebootSettings(
+  input: ScheduledRebootSettingsInput,
+): Promise<ScheduledRebootSettings> {
+  return callApi(API_OBJECT, 'system_scheduled_reboot_update', {
+    enabled: input.enabled,
+    frequency: input.frequency,
+    day_of_week: input.dayOfWeek,
+    time: input.time,
+  });
+}
+
+export function requestConfigurationBackupValidation(
+  filename: string,
+): Promise<ConfigurationBackupValidation> {
+  return callApi(API_OBJECT, 'system_backup_validate', { filename });
+}
+
+export function requestConfigurationBackupRestore(): Promise<ConfigurationBackupRestoreResult> {
+  return callApi(
+    API_OBJECT,
+    'system_backup_restore',
+    { confirm: 'restore' },
+    { timeoutMs: 35_000 },
+  );
+}
+
+export function requestConfigurationBackupDiscard(): Promise<ConfigurationBackupDiscardResult> {
+  return callApi(API_OBJECT, 'system_backup_discard');
+}
+
+export function requestSystemReboot(): Promise<SystemRebootResult> {
+  return callApi(API_OBJECT, 'system_reboot', { confirm: 'reboot' });
+}
+
+export function fetchWanSettings(): Promise<WanSettings> {
+  return callApi(LAN_API_OBJECT, 'wan_settings');
+}
+
+export function updateWanSettings(
+  input: WanSettingsInput,
+): Promise<WanUpdateResult> {
+  return callApi(
+    LAN_API_OBJECT,
+    'wan_update',
+    {
+      protocol: input.protocol,
+      pppoe_username: input.pppoeUsername,
+      pppoe_password: input.pppoePassword,
+      pppoe_password_changed: input.pppoePasswordChanged,
+      static_address: input.staticAddress,
+      static_prefix_length: input.staticPrefixLength,
+      static_gateway: input.staticGateway,
+      dns_primary: input.dnsPrimary,
+      dns_secondary: input.dnsSecondary,
+      confirm: 'apply',
+    },
+    { timeoutMs: 10_000 },
+  );
+}
+
+export function reconnectWan(): Promise<WanReconnectResult> {
+  return callApi(
+    LAN_API_OBJECT,
+    'wan_reconnect',
+    { confirm: 'reconnect' },
+    { timeoutMs: 10_000 },
+  );
+}
+
+export function fetchLanSettings(): Promise<LanSettings> {
+  return callApi(LAN_API_OBJECT, 'lan_settings');
+}
+
+export function updateLanSettings(
+  input: LanSettingsInput,
+): Promise<LanUpdateResult> {
+  return callApi(
+    LAN_API_OBJECT,
+    'lan_update',
+    {
+      ip_address: input.ipAddress,
+      prefix_length: input.prefixLength,
+      dhcp_enabled: input.dhcpEnabled,
+      dhcp_start: input.dhcpStart,
+      dhcp_end: input.dhcpEnd,
+      lease_time: input.leaseTime,
+      confirm: 'apply',
+    },
+    { timeoutMs: 10_000 },
+  );
+}
+
+export function applyRecommendedLanSubnet(): Promise<LanUpdateResult> {
+  return callApi(
+    LAN_API_OBJECT,
+    'lan_auto_subnet',
+    { confirm: 'apply' },
+    { timeoutMs: 10_000 },
+  );
+}
+
+export function fetchIptvSettings(): Promise<IptvSettings> {
+  return callApi(LAN_API_OBJECT, 'iptv_settings');
+}
+
+export function updateIptvSettings(
+  input: IptvSettingsInput,
+): Promise<IptvUpdateResult> {
+  return callApi(
+    LAN_API_OBJECT,
+    'iptv_update',
+    {
+      enabled: input.enabled,
+      provider: input.provider,
+      confirm: 'apply',
+    },
+    { timeoutMs: 20_000 },
+  );
+}
+
+export type { WifiQrCredentials } from '../types/wifi';
+
+export function fetchWifiQr(section: string): Promise<WifiQrCredentials> {
+  return callApi(API_OBJECT, 'wifi_qr', { section }, { timeoutMs: 8000 });
+}
+
+// A separate authenticated RPC, so guest credentials never enter summary responses.
+export function fetchGuestWifiQr(): Promise<WifiQrCredentials> {
+  return callApi(GUEST_API_OBJECT, 'wifi_guest_qr', {}, { timeoutMs: 8000 });
+}
+
+export async function fetchWifiSummary(): Promise<WifiSummary> {
+  // The optional guest RPC object must never break ordinary Wi-Fi management.
+  const summary = await callApi<Omit<WifiSummary, 'guest' | 'guestError'>>(API_OBJECT, 'wifi_summary');
+  try {
+    const guest = await callApi<GuestWifiSummary>(GUEST_API_OBJECT, 'wifi_guest_summary');
+    return { ...summary, guest, guestError: false };
+  } catch {
+    return { ...summary, guest: null, guestError: true };
+  }
+}
+
+export function updateWifiNetwork(
+  input: WifiUpdateInput,
+): Promise<WifiUpdateResult> {
+  return callApi(
+    API_OBJECT,
+    'wifi_update',
+    { ...input },
+    { timeoutMs: 35_000 },
+  );
+}
+
+export function updateGuestWifi(input: GuestWifiUpdateInput): Promise<GuestWifiUpdateResult> {
+  return callApi(GUEST_API_OBJECT, 'wifi_guest_update', { ...input }, { timeoutMs: 95_000 });
+}

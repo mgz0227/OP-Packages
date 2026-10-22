@@ -1,0 +1,65 @@
+#!/bin/sh /etc/rc.common
+# shellcheck shell=sh
+# shellcheck disable=SC2034  # START/USE_PROCD/EXTRA_COMMANDS are read by rc.common, not this file
+#
+# Not a daemon: applies the cron schedule and debounces config.change events
+# of backed-up packages into one `gitbackup run`.
+
+GB_SHARE="${GB_SHARE:-/usr/share/gitbackup}"
+GB_STATE_DIR="${GB_STATE_DIR:-/var/run/gitbackup}"
+GB_BIN="${GB_BIN:-/usr/sbin/gitbackup}"
+
+# shellcheck disable=SC1091  # GB_SHARE is a runtime path, not resolvable statically
+. "$GB_SHARE/lib.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/device.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/schedule.sh"
+
+START=60
+USE_PROCD=1
+
+# Lets rc.common dispatch the procd trigger target `config_change`.
+EXTRA_COMMANDS="config_change"
+EXTRA_HELP="	config_change	Internal: debounced trigger used by service_triggers, not for interactive use"
+
+start_service() {
+	reload_service
+}
+
+reload_service() {
+	gb_cron_apply
+}
+
+# UCI packages in the backup set, minus gitbackup (has the reload trigger).
+_gb_backed_up_packages() {
+	sysupgrade -l 2>/dev/null | sed -n 's#^/etc/config/##p' | sort -u | grep -v '^gitbackup$'
+}
+
+# (Re)arm one delayed run, cancelling the previous timer.
+# busybox `sleep` takes whole seconds only, hence the integer guard.
+config_change() {
+	_gb_debounce=$(gb_uci_get gitbackup.main.debounce 60)
+	case "$_gb_debounce" in ''|*[!0-9]*) _gb_debounce=60 ;; esac
+
+	mkdir -p "$GB_STATE_DIR"
+	_gb_pidfile="$GB_STATE_DIR/debounce.pid"
+
+	if [ -f "$_gb_pidfile" ]; then
+		_gb_prev_pid=$(cat "$_gb_pidfile")
+		kill -0 "$_gb_prev_pid" 2>/dev/null && kill "$_gb_prev_pid" 2>/dev/null
+	fi
+
+	( sleep "$_gb_debounce"; rm -f "$_gb_pidfile"; "$GB_BIN" run --trigger procd >/dev/null 2>&1 ) &
+	echo $! >"$_gb_pidfile"
+}
+
+service_triggers() {
+	procd_add_reload_trigger "gitbackup"
+
+	[ "$(gb_uci_get gitbackup.main.on_config_change 1)" = 1 ] || return 0
+
+	for _gb_pkg in $(_gb_backed_up_packages); do
+		procd_add_config_trigger "config.change" "$_gb_pkg" /etc/init.d/gitbackup config_change
+	done
+}

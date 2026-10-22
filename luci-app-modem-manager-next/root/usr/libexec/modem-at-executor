@@ -1,0 +1,202 @@
+#!/bin/sh
+# Modem AT Command Safe Executor (Zero-dependency, Dynamic Timeout)
+# Dante <dante@seckv.com>
+
+DEVICE=""
+COMMAND=""
+TIMEOUT=3
+BAUDRATE=115200
+
+SMS_TO=""
+SMS_MSG=""
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-d) DEVICE="$2"; shift 2 ;;
+		-c) COMMAND="$2"; shift 2 ;;
+		-t) TIMEOUT="$2"; shift 2 ;;
+		-b) BAUDRATE="$2"; shift 2 ;;
+		--sms-to) SMS_TO="$2"; shift 2 ;;
+		--sms-msg) SMS_MSG="$2"; shift 2 ;;
+		*) shift ;;
+	esac
+done
+
+if [ -z "$DEVICE" ]; then
+	echo "Usage: $0 -d <device> [-c <command>] [--sms-to <number> --sms-msg <text>]" >&2
+	exit 1
+fi
+
+if [ -z "$COMMAND" ] && [ -z "$SMS_TO" ]; then
+	echo "Usage: Either -c <command> or --sms-to <number> must be specified" >&2
+	exit 1
+fi
+
+case "$DEVICE" in
+	/dev/ttyUSB*|/dev/ttyACM*) ;;
+	*)
+		echo "ERROR: Invalid device path $DEVICE" >&2
+		exit 2
+		;;
+esac
+
+if [ ! -c "$DEVICE" ]; then
+	echo "ERROR: Device $DEVICE not found" >&2
+	exit 3
+fi
+
+# Dynamic Timeout auto-detection: long-running commands like AT+COPS=? or scan
+if [ -n "$SMS_TO" ]; then
+	[ "$TIMEOUT" -lt 15 ] && TIMEOUT=15
+else
+	case "$COMMAND" in
+		*COPS=\?*|*COPS\?*|*QSCAN*|*GTCCINFO*|*SCAN*)
+			[ "$TIMEOUT" -lt 60 ] && TIMEOUT=60
+			;;
+	esac
+fi
+
+LOCKFILE="/var/lock/modem_$(basename "$DEVICE").lock"
+mkdir -p /var/lock
+
+# Acquire exclusive file lock compatible with Busybox flock (-n -x FD)
+exec 9>"$LOCKFILE"
+locked=0
+waited=0
+while [ $waited -le "$TIMEOUT" ]; do
+	if flock -n -x 9 2>/dev/null; then
+		locked=1
+		break
+	fi
+	sleep 1
+	waited=$((waited + 1))
+done
+
+if [ $locked -eq 0 ]; then
+	echo "ERROR: Device $DEVICE busy, lock timed out" >&2
+	exit 4
+fi
+
+# Fast path: Prioritize native sms_tool engine if installed (zero echo loop, robust termios)
+if command -v sms_tool >/dev/null 2>&1; then
+	TMP_OUT="/tmp/at_sms_$$.tmp"
+	TMP_DONE="/tmp/at_sms_$$.done"
+	rm -f "$TMP_OUT" "$TMP_DONE"
+
+	(
+		if [ -n "$SMS_TO" ]; then
+			sms_tool -d "$DEVICE" -b "$BAUDRATE" send "$SMS_TO" "$SMS_MSG" > "$TMP_OUT" 2>&1
+		else
+			sms_tool -d "$DEVICE" -b "$BAUDRATE" at "$COMMAND" > "$TMP_OUT" 2>&1
+		fi
+		echo $? > "$TMP_DONE"
+	) &
+	CHILD_PID=$!
+
+	elapsed=0
+	while [ $elapsed -lt "$TIMEOUT" ]; do
+		if [ -f "$TMP_DONE" ] || ! kill -0 "$CHILD_PID" 2>/dev/null; then
+			break
+		fi
+		sleep 1
+		elapsed=$((elapsed + 1))
+	done
+
+	if [ ! -f "$TMP_DONE" ] && kill -0 "$CHILD_PID" 2>/dev/null; then
+		kill -9 "$CHILD_PID" 2>/dev/null || true
+		for p in $(pgrep -f "sms_tool.*$DEVICE" 2>/dev/null); do
+			kill -9 "$p" 2>/dev/null || true
+		done
+		RC=124
+		OUT="ERROR: Command timed out after ${TIMEOUT}s"
+	else
+		wait "$CHILD_PID" 2>/dev/null
+		RC=$(cat "$TMP_DONE" 2>/dev/null || echo 0)
+		OUT=$(cat "$TMP_OUT" 2>/dev/null)
+	fi
+	rm -f "$TMP_OUT" "$TMP_DONE"
+
+	flock -u 9 2>/dev/null || true
+	CLEAN_OUT=$(echo "$OUT" | tr -d "\r")
+	if [ $RC -eq 0 ] && ! echo "$CLEAN_OUT" | grep -qE "ERROR|\+CME ERROR|\+CMS ERROR"; then
+		if [ -z "$CLEAN_OUT" ]; then
+			echo "OK"
+		else
+			echo "$CLEAN_OUT"
+			case "$CLEAN_OUT" in
+				*OK*) ;;
+				*) echo "OK" ;;
+			esac
+		fi
+		exit 0
+	else
+		case "$COMMAND" in
+			*CFUN=1,1*|*CFUN=16*|*QPOWD*)
+				if ! echo "$CLEAN_OUT" | grep -qE "ERROR|\+CME ERROR|\+CMS ERROR"; then
+					[ -z "$CLEAN_OUT" ] && echo "OK" || echo "$CLEAN_OUT"
+					exit 0
+				fi
+				;;
+		esac
+		echo "$CLEAN_OUT"
+		exit ${RC:-1}
+	fi
+fi
+
+command -v stty >/dev/null 2>&1 && stty -F "$DEVICE" "$BAUDRATE" raw -echo -echoe -echok min 0 time 2 2>/dev/null || true
+
+OUT_FILE="/tmp/at_out_$$.tmp"
+rm -f "$OUT_FILE"
+
+(
+	exec 3<>"$DEVICE"
+	# Drain stale residual buffer
+	dd if="$DEVICE" of=/dev/null bs=512 count=1 2>/dev/null || true
+	cat <&3 > "$OUT_FILE" &
+	CAT_PID=$!
+
+	if [ -n "$SMS_TO" ]; then
+		# Text mode SMS sending
+		printf "AT+CMGF=1\r\n" >&3
+		sleep 1
+		printf "AT+CMGS=\"%s\"\r\n" "$SMS_TO" >&3
+		sleep 1
+		printf "%s\x1A" "$SMS_MSG" >&3
+
+		elapsed=0
+		while [ $elapsed -lt "$TIMEOUT" ]; do
+			sleep 1
+			elapsed=$((elapsed + 1))
+			if [ -f "$OUT_FILE" ]; then
+				if grep -q "\+CMGS:" "$OUT_FILE" 2>/dev/null && grep -q "OK" "$OUT_FILE" 2>/dev/null; then
+					break
+				elif grep -qE "\+CMS ERROR|\+CME ERROR|ERROR" "$OUT_FILE" 2>/dev/null; then
+					break
+				fi
+			fi
+		done
+	else
+		printf "%s\r\n" "$COMMAND" >&3
+
+		elapsed=0
+		while [ $elapsed -lt "$TIMEOUT" ]; do
+			sleep 1
+			elapsed=$((elapsed + 1))
+			if [ -f "$OUT_FILE" ] && grep -qE "OK|ERROR|\+CME ERROR|\+CMS ERROR" "$OUT_FILE" 2>/dev/null; then
+				break
+			fi
+		done
+	fi
+
+	kill -9 "$CAT_PID" 2>/dev/null || true
+	exec 3>&-
+)
+
+flock -u 9 2>/dev/null || true
+
+if [ -f "$OUT_FILE" ]; then
+	cat "$OUT_FILE" | tr -d "\r"
+	rm -f "$OUT_FILE"
+fi
+
+exit 0

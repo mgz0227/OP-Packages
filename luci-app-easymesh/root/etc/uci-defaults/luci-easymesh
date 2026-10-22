@@ -1,19 +1,14 @@
 #!/bin/sh
-[ ! -f "/usr/share/ucitrack/luci-app-easymesh.json" ] && {
-    cat > /usr/share/ucitrack/luci-app-easymesh.json << EEOF
-{
-    "config": "easymesh",
-    "init": "easymesh"
-}
-EEOF
-}
+[ -n "${IPKG_INSTROOT}" ] && exit 0
 
-uci -q batch <<-EOF >/dev/null
-	delete ucitrack.@easymesh[-1]
-	add ucitrack easymesh
-	set ucitrack.@easymesh[-1].init=easymesh
-	commit ucitrack
-EOF
+# Add easymesh backup dir to sysupgrade backups
+uci -q add_list system.@system[0].backup_path='/etc/easymesh-backups'
+uci commit system
 
-rm -f /tmp/luci-indexcache
+# Ensure the backup dir exists
+mkdir -p /etc/easymesh-backups
+
+# Enable the mesh service
+/etc/init.d/easymesh enable 2>/dev/null
+
 exit 0

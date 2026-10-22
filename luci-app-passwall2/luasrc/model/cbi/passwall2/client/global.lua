@@ -417,7 +417,7 @@ for k, v in pairs(nodes_table) do
 end
 
 m:appendTemplate("/global/footer")
-
+m:appendTemplate("/global/status_bottom")
 m:appendTemplate("/cbi/sortable", {sectiontype = s2.sectiontype})
 
 return api.return_map(m)

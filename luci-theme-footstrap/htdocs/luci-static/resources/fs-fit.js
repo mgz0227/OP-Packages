@@ -625,11 +625,6 @@ return baseclass.extend({
 	},
 
 	scrolling,
-	/* probe-only: the two trails of `makeTrail()` above */
-	lateWhy: () => _late.last(),	/* fs:probe */
-	lateTrail: () => _late.entries().slice(),	/* fs:probe */
-	anchorWhy: () => _anchor.last(),	/* fs:probe */
-	anchorTrail: () => _anchor.entries().slice(),	/* fs:probe */
 	deferMeasurement,
 
 	/* -> the offset this file last took a reference at, so a probe does not measure the guard instead

@@ -605,9 +605,5 @@ return baseclass.extend({
 		});
 	},
 
-	/* exported for tests/chrome-geometry.test.mjs (no tests ship in the package): driving the
-	 * arithmetic directly is the only way to cover every combination of layout, rail and width
-	 * without a browser */
-	columnWidth,	/* fs:probe */
 	wireRail
 });

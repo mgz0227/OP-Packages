@@ -837,7 +837,7 @@ function commitStage(stage, contentHost) {
  * with the transition and 213 ms without it, and the swap itself landed at 3,728 ms against 206 ms.
  * The reader spends that time looking at the page they navigated away from, under the new URL —
  * which is what a report of "the section is not where I expect it, F5 fixes it" looks like from the
- * outside (F5 being a full load and starting no transition.
+ * outside, F5 being a full load and starting no transition.
  *
  * A deadline was tried and does not hold: `skipTransition()` runs the update callback at once
  * (3-5 ms on WebKit, Chromium and Firefox alike), but it has to be called from a timer, and the
@@ -1511,20 +1511,6 @@ return baseclass.extend({
 	wire: wireRouter,
 	wireVisibility,
 	onNavigate,
-	/* test-only, driven against a hand-broken `L`: the one way to see the off branch */
-	contractBreaks,	/* fs:probe */
-	/* test-only: the navigation sweep around a visibilitychange, and the session verdict the
-	 * interceptors reached */
-	clearViewIntervals,	/* fs:probe */
-	sessionExpired,	/* fs:probe */
-	/* test-only: the deferred `poll-stop` listener's own check, called directly so a test need not
-	 * fake a microtask tick */
-	hidePollIndicatorIfEmpty,	/* fs:probe */
-	/* test-only: the body-litter classifier and counter, and navigate() to prove the early return
-	 * reaches them */
-	strayBodyNode,	/* fs:probe */
-	bodyLittered,	/* fs:probe */
-	navigate,	/* fs:probe */
 	/* fs-search warms its recents and the arrow-key-highlighted result, neither of which the
 	 * pointer/focus triggers above can see. The edge points search -> router, because the router
 	 * must keep no dependency on the palette. */

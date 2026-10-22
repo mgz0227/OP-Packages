@@ -1,0 +1,6 @@
+#!/bin/sh
+
+rm -f /tmp/luci-indexcache* 2>/dev/null
+rm -f /tmp/luci-modulecache/* 2>/dev/null
+rm -f /tmp/lucky_info_cache 2>/dev/null
+return 0

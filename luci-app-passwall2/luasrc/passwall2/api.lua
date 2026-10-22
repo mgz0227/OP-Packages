@@ -208,10 +208,11 @@ function get_cache_var(key)
 	return val
 end
 
-function get_new_port(p)
-	if not p then p = "auto" end
-	local cmd_format = ". /usr/share/passwall2/utils.sh ; echo -n $(get_new_port %s tcp,udp)"
-	return tonumber(sys.exec(string.format(cmd_format, p)))
+function get_new_port(start_port, protocol)
+	start_port = tonumber(start_port) or "auto"
+	if protocol ~= "tcp" and protocol ~= "udp" then protocol = "tcp,udp" end
+	local cmd_format = ". /usr/share/passwall2/utils.sh ; echo -n $(get_new_port %s %s)"
+	return tonumber(sys.exec(string.format(cmd_format, util.shellquote(tostring(start_port)), util.shellquote(protocol))))
 end
 
 function exec_call(cmd)
@@ -287,6 +288,35 @@ function UrlDecode(szText)
 	end) or nil
 end
 
+-- Calculate the MD5 hash of a file.
+function md5_file(path)
+	if type(path) ~= "string" then return "" end
+	local quoted = "'" .. path:gsub("'", "'\\''") .. "'"
+	local out = sys.exec("md5sum " .. quoted)
+	if not out then return "" end
+	return out:sub(1, 32)
+end
+
+-- Calculate the MD5 hash of a string.
+function md5_string(str)
+	if type(str) ~= "string" then return "" end
+	local path = trim(sys.exec("mktemp /tmp/md5.XXXXXX") or "")
+	if path == "" then return "" end
+	local md5 = fs.writefile(path, str) == #str and md5_file(path) or ""
+	fs.unlink(path)
+	return md5
+end
+
+-- Verify the SHA256 hash of a file.
+function verify_sha256(file, digest)
+	if type(digest) ~= "string" then return false end
+	local expected = digest:match("^sha256:(%x+)$")
+	if not expected or #expected ~= 64 then return false end
+	local code, output = exec_call("sha256sum " .. util.shellquote(file))
+	local actual = output:match("^(%x+)%s")
+	return code == 0 and actual ~= nil and actual:lower() == expected:lower()
+end
+
 -- Extract the domain name and port from the URL (no IP address).
 function get_domain_port_from_url(url)
 	local scheme, domain, port = string.match(url, "^(https?)://([%w%.%-]+):?(%d*)")
@@ -308,9 +338,14 @@ function resolve_domain(domain, dns)
 	address = (address or dns):gsub("^%[(.-)%]$", "%1")
 	port = port or "53"
 	local server = datatypes.ip6addr(address) and ("[" .. address .. "]") or address
+	local dns_servers = {server .. ":" .. port, address .. "#" .. port, "223.5.5.5"}
+	local version = sys.exec("LC_ALL=C busybox nslookup -v 2>&1"):match("BusyBox v(%d+%.%d+%.%d+)")
+	if version and compare_versions(version, "<", "1.35.0") then
+		dns_servers[1], dns_servers[2] = dns_servers[2], dns_servers[1]
+	end
 	local rc, result
-	for _, dns_server in ipairs({server .. ":" .. port, address .. "#" .. port, "223.5.5.5"}) do
-		rc, result = exec_call_as_gid("LC_ALL=C nslookup " .. util.shellquote(domain) .. " " .. util.shellquote(dns_server), DIRECT_GID)
+	for _, dns_server in ipairs(dns_servers) do
+		rc, result = exec_call_as_gid("LC_ALL=C busybox nslookup " .. util.shellquote(domain) .. " " .. util.shellquote(dns_server), DIRECT_GID)
 		local ips, seen, answer = {}, {}, false
 		for line in result:gmatch("[^\r\n]+") do
 			if line:match("^%s*Name:") then answer = true end
@@ -448,9 +483,10 @@ function repeat_exist(table, value)
 end
 
 function remove(...)
-	for index, value in ipairs({...}) do
-		if value and #value > 0 and value ~= "/" then
-			sys.call(string.format("rm -rf %s", value))
+	for i = 1, select("#", ...) do
+		local value = select(i, ...)
+		if type(value) == "string" and #value > 0 and value ~= "/" then
+			sys.call(string.format("rm -rf -- %s", value))
 		end
 	end
 end
@@ -1102,9 +1138,16 @@ function compare_versions(ver1, comp, ver2)
 	local n2 = table.getn(av2)
 	if (max < n2) then max = n2 end
 
+	local function version_part(value)
+		local number = tonumber(value)
+		if number then return number end
+		local revision = type(value) == "string" and value:match("^[rR](%d+)$")
+		return tonumber(revision) or 0
+	end
+
 	for i = 1, max, 1 do
-		local s1 = tonumber(av1[i] or 0) or 0
-		local s2 = tonumber(av2[i] or 0) or 0
+		local s1 = version_part(av1[i] or 0)
+		local s2 = version_part(av2[i] or 0)
 
 		if comp == "~=" and (s1 ~= s2) then return true end
 		if (comp == "<" or comp == "<=") and (s1 < s2) then return true end
@@ -1170,7 +1213,14 @@ local default_file_tree = {
 }
 
 function get_api_json(url)
-	local return_code, content = curl_auto(url, nil, curl_args)
+	local gh_proxy = uci_get_c("@global_app[0]", "gh_proxy_url") or ""
+	local return_code, content
+	if gh_proxy ~= "" then
+		url = gh_proxy .. url
+		return_code, content = curl_direct(url, nil, curl_args)
+	else
+		return_code, content = curl_auto(url, nil, curl_args)
+	end
 	if return_code ~= 0 or content == "" then return {} end
 	return jsonc.parse(content) or {}
 end
@@ -1187,6 +1237,17 @@ local function check_path(app_name)
 		code = 0,
 		app_path = path
 	}
+end
+
+local function cache_update_digests(app_name, assets)
+	local digests = {}
+	for _, asset in ipairs(assets) do
+		if asset.browser_download_url and type(asset.digest) == "string" then
+			digests[asset.browser_download_url] = asset.digest
+		end
+	end
+	fs.mkdirr(CACHE_PATH)
+	fs.writefile(CACHE_PATH .. "/update_" .. app_name .. ".json", jsonc.stringify(digests))
 end
 
 function to_check(arch, app_name)
@@ -1253,6 +1314,7 @@ function to_check(arch, app_name)
 		}
 	end
 
+	cache_update_digests(app_name, {asset})
 	return {
 		code = 0,
 		has_update = has_update,
@@ -1263,8 +1325,8 @@ function to_check(arch, app_name)
 	}
 end
 
-function to_download(app_name, url, size, task_id)
-	local result = check_path(app_name)
+function to_download(app_name, url, size, task_id, keep_files)
+	local result = app_name == appname and {code = 0} or check_path(app_name)
 	if result.code ~= 0 then
 		return result
 	end
@@ -1273,7 +1335,13 @@ function to_download(app_name, url, size, task_id)
 		return {code = 1, error = i18n.translate("Download url is required.")}
 	end
 
-	sys.call("/bin/rm -f /tmp/".. app_name .."_download.*")
+	local digests = jsonc.parse(fs.readfile(CACHE_PATH .. "/update_" .. app_name .. ".json") or "{}")
+	local digest = type(digests) == "table" and digests[url]
+	if type(digest) ~= "string" then
+		return {code = 1, error = i18n.translate("File verification failed.")}
+	end
+
+	if not keep_files then sys.call("/bin/rm -f /tmp/".. app_name .."_download.*") end
 
 	local tmp_file
 	if type(task_id) == "string" and task_id:match("^[%w_-]+$") then
@@ -1293,7 +1361,14 @@ function to_download(app_name, url, size, task_id)
 	local _curl_args = clone(curl_args)
 	table.insert(_curl_args, "--speed-limit 51200 --speed-time 15 --max-time 300")
 
-	local return_code, result = curl_auto(url, tmp_file, _curl_args)
+	local gh_proxy = uci_get_c("@global_app[0]", "gh_proxy_url") or ""
+	local return_code, result
+	if gh_proxy ~= "" then
+		url = gh_proxy .. url
+		return_code, result = curl_direct(url, tmp_file, _curl_args)
+	else
+		return_code, result = curl_auto(url, tmp_file, _curl_args)
+	end
 	result = return_code == 0
 
 	if not result then
@@ -1302,6 +1377,11 @@ function to_download(app_name, url, size, task_id)
 			code = 1,
 			error = i18n.translatef("File download failed or timed out: %s", url)
 		}
+	end
+
+	if not verify_sha256(tmp_file, digest) then
+		exec("/bin/rm", {"-f", tmp_file})
+		return {code = 1, error = i18n.translate("File verification failed.")}
 	end
 
 	return {code = 0, file = tmp_file, zip = com[app_name].zipped }
@@ -1315,6 +1395,12 @@ function to_download_progress(app_name, task_id, total_size)
 	total_size = tonumber(total_size) or 0
 	local tmp_file = "/tmp/" .. app_name .. "_download." .. task_id
 	local downloaded = tonumber(fs.stat(tmp_file, "size")) or 0
+	if app_name == appname then
+		downloaded = 0
+		for part = 1, 5 do
+			downloaded = downloaded + (tonumber(fs.stat(tmp_file .. part, "size")) or 0)
+		end
+	end
 	local percent
 	if total_size > 0 then
 		-- Leave 100% for the download request's success callback.
@@ -1451,44 +1537,137 @@ function to_move(app_name,file)
 end
 
 function get_version()
-	local version = sys.exec("opkg list-installed luci-app-passwall2 2>/dev/null | awk '{print $3}'")
-	if not version or #version == 0 then
-		version = sys.exec("apk list luci-app-passwall2 2>/dev/null | awk '/installed/ {print $1}' | cut -d'-' -f4-")
+	local version_file = CACHE_PATH .. "/passwall2_version"
+	local version = trim(fs.readfile(version_file) or "")
+	if version == "" then
+		version = trim(sys.exec("opkg list-installed luci-app-passwall2 2>/dev/null | awk '{print $3}'") or "")
+		if version == "" then
+			version = trim(sys.exec("apk list luci-app-passwall2 2>/dev/null | awk '/installed/ {print $1}' | cut -d'-' -f4-") or "")
+		end
+		if version ~= "" then
+			fs.mkdirr(CACHE_PATH)
+			fs.writefile(version_file, version)
+		end
 	end
-	return (version or ""):gsub("\n", ""):match("^([^-]+)")
+	return (version:gsub("%-[rR](%d+)$", "-%1"))
+end
+
+local function self_update_languages()
+	local current = uci:get("luci", "main", "lang") or "auto"
+	if current == "auto" then
+		current = _G.L and _G.L.dispatcher and _G.L.dispatcher.lang
+		if not current or current == "auto" then
+			local ok, request, accept = pcall(function()
+				local http = require "luci.http"
+				return http.getenv("REQUEST_METHOD") or http.getenv("REQUEST_URI"), http.getenv("HTTP_ACCEPT_LANGUAGE")
+			end)
+			current = lang
+			if ok and (request or accept) then
+				current = "en"
+				for item in (accept or ""):gmatch("[^,]+") do
+					local code = item:match("^%s*([%w_-]+)")
+					local quality = tonumber(item:match(";%s*q%s*=%s*([%d%.]+)")) or 1
+					if code and quality > 0 then
+						code = code:gsub("-", "_")
+						local lower = code:lower()
+						local alias = ({zh="zh_Hans", zh_cn="zh_Hans", zh_sg="zh_Hans", zh_tw="zh_Hant", zh_hk="zh_Hant", zh_mo="zh_Hant"})[lower]
+						if lower:match("^zh_hans") then alias = "zh_Hans" end
+						if lower:match("^zh_hant") then alias = "zh_Hant" end
+						local matched
+						for _, candidate in ipairs({code, lower, alias or "", code:match("^([^_]+)") or ""}) do
+							if uci:get("luci", "languages", candidate) then current = candidate; matched = true; break end
+						end
+						if matched then break end
+					end
+				end
+			end
+		end
+	end
+	current = (current or ""):lower():gsub("_", "-")
+	if current == "zh" or current == "zh-cn" or current == "zh-sg" or current:match("^zh%-hans") then current = "zh-cn" end
+	if current == "zh-tw" or current == "zh-hk" or current == "zh-mo" or current:match("^zh%-hant") then current = "zh-tw" end
+	if current:match("^fa%-") then current = "fa" end
+	if current:match("^ru%-") then current = "ru" end
+	local languages = {}
+	for _, code in ipairs({"fa", "ru", "zh-cn", "zh-tw"}) do
+		if current == code or is_install("luci-i18n-" .. appname .. "-" .. code) then languages[#languages + 1] = code end
+	end
+	return languages
 end
 
 function to_check_self()
-	local url = "https://raw.githubusercontent.com/Openwrt-Passwall/openwrt-passwall2/main/luci-app-passwall2/Makefile"
-	local tmp_file = "/tmp/passwall2_makefile"
-	local return_code, result = curl_auto(url, tmp_file, curl_args)
-	result = return_code == 0
-	if not result then
-		exec("/bin/rm", {"-f", tmp_file})
-		return {
-			code = 1,
-			error = i18n.translatef("Failed")
-		}
+	local release = get_api_json(com[appname]:get_url())
+	if type(release) == "table" and #release > 0 then release = release[1] end
+	if type(release) ~= "table" or not release.tag_name then
+		return {code = 1, error = i18n.translate("Get remote version info failed.")}
 	end
-	local local_version  = get_version()
-	local remote_version = sys.exec("echo -n $(grep '^PKG_VERSION' /tmp/passwall2_makefile | head -n 1 | awk -F '=' '{print $2}')")
-	exec("/bin/rm", {"-f", tmp_file})
-
-	local has_update = compare_versions(local_version, "<", remote_version)
-	if not has_update then
-		return {
-			code = 0,
-			local_version = local_version,
-			remote_version = remote_version
-		}
+	local local_version = get_version()
+	local remote_version = release.tag_name:gsub("^v", ""):gsub("%-r(%d+)$", "-%1")
+	local package_version = remote_version:gsub("%-(%d+)$", "-r%1")
+	local language_version = remote_version:match("^(%d+%.%d+%.%d+)") or remote_version
+	local apk = sys.call("command -v apk >/dev/null 2>&1") == 0
+	local main_name = "luci-app-" .. appname .. (apk and "-" .. package_version .. ".apk" or "_" .. package_version .. "_all.ipk")
+	local languages = self_update_languages()
+	local wanted, found = {}, {}
+	for _, code in ipairs(languages) do
+		local name = "luci-i18n-" .. appname .. "-" .. code .. (apk and "-" .. language_version .. ".apk" or "_" .. language_version .. "_all.ipk")
+		wanted[name] = code
 	end
+	local main
+	for _, asset in ipairs(release.assets or {}) do
+		if asset.name == main_name then main = asset end
+		if wanted[asset.name] then found[wanted[asset.name]] = asset end
+	end
+	local selected = {}
+	for _, code in ipairs(languages) do
+		if not found[code] then return {code = 1, error = i18n.translate("Get remote version info failed.")} end
+		selected[#selected + 1] = found[code]
+	end
+	if not main then return {code = 1, error = i18n.translate("Get remote version info failed.")} end
+	local assets = {main}
+	for _, asset in ipairs(selected) do assets[#assets + 1] = asset end
+	cache_update_digests(appname, assets)
 	return {
-		code = 1,
-		has_update = true,
-		local_version = local_version,
-		remote_version = remote_version,
-		error = i18n.translatef("The latest version: %s, currently does not support automatic update, if you need to update, please compile or download the ipk and then manually install.", remote_version)
+		code = 0, has_update = compare_versions(local_version, "<", remote_version),
+		local_version = local_version, remote_version = remote_version, html_url = release.html_url,
+		data = main, i18n = selected, languages = table.concat(languages, ",")
 	}
+end
+
+function to_install_self(id, force, languages)
+	if type(id) ~= "string" or not id:match("^[%w_-]+$") or (languages and type(languages) ~= "string") then return {code = 1} end
+	local selected, seen = {}, {}
+	for code in (languages or ""):gmatch("[^,]+") do
+		if not ({fa=true, ru=true, ["zh-cn"]=true, ["zh-tw"]=true})[code] or seen[code] then return {code = 1} end
+		selected[#selected + 1], seen[code] = code, true
+	end
+	local dir = "/tmp/" .. appname .. "_luci_update." .. id
+	local manager = sys.call("command -v apk >/dev/null 2>&1") == 0 and "apk" or "opkg"
+	local extension = manager == "apk" and ".apk" or ".ipk"
+	local status_dir = "/www/luci-static/resources/" .. appname .. "-update"
+	local status = status_dir .. "/" .. id .. ".json"
+	fs.mkdir(dir)
+	fs.mkdir(status_dir)
+	if exec("/bin/mv", {"/tmp/" .. appname .. "_download." .. id .. "1", dir .. "/luci-app-" .. appname .. extension}) ~= 0 then
+		remove(dir)
+		return {code = 1}
+	end
+	for part, code in ipairs(selected) do
+		if exec("/bin/mv", {"/tmp/" .. appname .. "_download." .. id .. (part + 1), dir .. "/luci-i18n-" .. appname .. "-" .. code .. extension}) ~= 0 then
+			remove(dir)
+			return {code = 1}
+		end
+	end
+	local script = dir .. "/luci_update.sh"
+	if exec("/bin/cp", {"/usr/share/" .. appname .. "/luci_update.sh", script}) ~= 0 then
+		remove(dir)
+		return {code = 1}
+	end
+	chmod_755(script)
+	fs.writefile(status, '{"installing":true}')
+	sys.call("nohup " .. script .. " " .. dir .. " " .. status .. " " .. manager .. " " ..
+		(force == "1" and "1" or "0") .. " >/dev/null 2>&1 </dev/null &")
+	return {code = 0}
 end
 
 function cacheFileCompareToLogic(file, str)

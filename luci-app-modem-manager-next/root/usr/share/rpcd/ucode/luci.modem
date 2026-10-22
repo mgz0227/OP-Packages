@@ -1,0 +1,1150 @@
+'use strict';
+
+import { connect } from 'ubus';
+import * as fs from 'fs';
+import { cursor } from 'uci';
+
+const DETECT_BIN = '/usr/libexec/modem-detect';
+const EXECUTOR_BIN = '/usr/libexec/modem-at-executor';
+const TEMPLATE_DIR = '/usr/share/modem-manager/templates';
+const LOG_FILE = '/var/log/modem-manager.log';
+const RUN_DIR = '/tmp/run/modem-manager';
+const CACHE_DEVICES = '/tmp/run/modem-manager/devices.json';
+const CACHE_STATUS = '/tmp/run/modem-manager/status.json';
+const TERMINAL_LOCK = '/var/lock/modem_terminal_active.lock';
+
+function log_message(msg) {
+	let ts = fs.popen("date '+%Y-%m-%d %H:%M:%S'", 'r');
+	let time_str = ts ? trim(ts.read('all')) : '';
+	if (ts) ts.close();
+
+	let line = `${time_str} ${msg}\n`;
+	let f = fs.open(LOG_FILE, 'a');
+	if (f) {
+		f.write(line);
+		f.close();
+	}
+}
+
+function touch_terminal_active() {
+	fs.writefile(TERMINAL_LOCK, 'active\n');
+}
+
+function is_terminal_active() {
+	let st = fs.stat(TERMINAL_LOCK);
+	if (st && st.mtime) {
+		let now = time();
+		if ((now - st.mtime) <= 15) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function get_effective_port(specified_port) {
+	let dev_content = fs.readfile(CACHE_DEVICES);
+	let data = dev_content ? json(dev_content) : null;
+	let dev = (data?.devices && length(data.devices) > 0) ? data.devices[0] : null;
+
+	if (specified_port && match(specified_port, /^\/dev\/tty(USB|ACM)[0-9]+$/)) {
+		if (!dev || !dev.ports || index(dev.ports, specified_port) >= 0)
+			return specified_port;
+	}
+
+	let c = cursor();
+	if (c) {
+		c.load('modem-manager');
+		let p = c.get('modem-manager', 'global', 'port');
+		if (p && match(p, /^\/dev\/tty(USB|ACM)[0-9]+$/)) {
+			if (!dev || !dev.ports || index(dev.ports, p) >= 0)
+				return p;
+		}
+	}
+
+	if (dev && dev.primary_port)
+		return dev.primary_port;
+
+	return specified_port || '/dev/ttyUSB2';
+}
+
+function safe_exec_at(port, cmd, timeout) {
+	if (!cmd)
+		return { success: false, output: 'Empty command' };
+
+	let effective_port = get_effective_port(port);
+	if (!effective_port || !match(effective_port, /^\/dev\/tty(USB|ACM)[0-9]+$/))
+		return { success: false, output: 'Invalid port parameter' };
+
+	let to = (timeout && timeout > 0 && timeout <= 30) ? int(timeout) : 3;
+	let clean_cmd = replace(cmd, /'/g, "'\\''");
+	let p = fs.popen(`${EXECUTOR_BIN} -d '${effective_port}' -c '${clean_cmd}' -t ${to} 2>&1`, 'r');
+	if (!p)
+		return { success: false, output: 'Failed to execute command helper' };
+
+	let output = p.read('all') || '';
+	let rc = p.close();
+
+	let success = (rc === 0 && match(output, /ERROR/) == null);
+	if (!success && match(output, /\bOK\b/) != null) success = true;
+	return { success: success, output: trim(output) };
+}
+
+function decode_ucs2_if_needed(text) {
+	if (!text || length(text) < 4 || (length(text) % 4) != 0)
+		return text;
+	if (!match(text, /^[0-9A-Fa-f]+$/))
+		return text;
+
+	let codes = [];
+	let has_cjk = false;
+	let has_ascii_prefix = false;
+	for (let i = 0; i < length(text); i += 4) {
+		let hex_part = substr(text, i, 4);
+		let code = int('0x' + hex_part);
+		if (!code || code <= 0) return text;
+		push(codes, code);
+		if (substr(hex_part, 0, 2) === '00') {
+			has_ascii_prefix = true;
+		}
+		if ((code >= 0x4E00 && code <= 0x9FFF) || (code >= 0x3000 && code <= 0x303F) || (code >= 0xFF00 && code <= 0xFFEF)) {
+			has_cjk = true;
+		}
+	}
+
+	// 若既无 00xx ASCII 前缀，也无 CJK 常用汉字或中文标点，判定为普通纯数字/文本，保持原样
+	if (!has_cjk && !has_ascii_prefix)
+		return text;
+
+	let decoded = '';
+	for (let i = 0; i < length(codes); i++) {
+		decoded += chr(codes[i]);
+	}
+	return (decoded != '') ? decoded : text;
+}
+
+function parse_csq(csq_str) {
+	let m = match(csq_str, /\+CSQ:\s*([0-9]+),([0-9]+)/);
+	if (!m)
+		return { raw: 99, csq: 0, rssi_dbm: null, percent: 0 };
+
+	let raw = int(m[1]);
+	let ber = int(m[2]);
+	if (raw === 99 || raw > 31)
+		return { raw: 99, csq: 0, rssi_dbm: null, percent: 0, ber: ber };
+
+	let dbm = -113 + (raw * 2);
+	let percent = int((raw * 100) / 31);
+	return { raw: raw, csq: raw, rssi_dbm: dbm, percent: percent, ber: ber };
+}
+
+function parse_cops(cops_str) {
+	let m = match(cops_str, /\+COPS:\s*[0-9]+,[0-9]+,\"([^\"]+)\"(,([0-9]+))?/);
+	if (!m)
+		return { operator: 'Unknown', act: 'Unknown' };
+
+	let op = m[1];
+	let act_num = (m[3] && m[3] != '') ? int(m[3]) : null;
+	let act = 'Cellular';
+
+	if (act_num === 7) act = 'LTE';
+	else if (act_num === 11 || act_num === 12 || act_num === 13) act = 'NR5G';
+	else if (act_num === 2) act = 'WCDMA';
+	else if (act_num === 0) act = 'GSM';
+
+	return { operator: op, act: act, act_raw: act_num };
+}
+
+let cached_imeis = {};
+let cached_fw = {};
+
+function parse_serving_cell(raw_output) {
+	let res = {
+		rat: 'LTE',
+		state: 'CAMPED',
+		is_5g: false,
+		mcc: '',
+		mnc: '',
+		cell_id: '',
+		pci: '',
+		tac: '',
+		band: '',
+		earfcn: '',
+		rsrp: null,
+		rsrq: null,
+		sinr: null
+	};
+
+	if (!raw_output)
+		return res;
+
+	let line = match(raw_output, /\+QENG:\s*\"servingcell\",([^\r\n]+)/);
+	if (!line || !line[1])
+		return res;
+
+	let p = split(line[1], ',');
+	if (length(p) < 8)
+		return res;
+
+	let rat_clean = replace(p[1], /\"/g, '');
+	if (rat_clean === 'NR5G-SA') {
+		res.rat = 'NR5G-SA';
+		res.is_5g = true;
+		res.mcc = p[3];
+		res.mnc = p[4];
+		res.cell_id = p[5];
+		res.pci = p[6];
+		res.tac = p[7];
+		res.earfcn = p[8];
+		res.band = 'N' + p[9];
+		res.bandwidth = p[10] + ' MHz';
+		let val_rsrp = int(p[11]);
+		if (val_rsrp < 0 && val_rsrp >= -145) res.rsrp = val_rsrp;
+		res.rsrq = int(p[12]);
+		res.sinr = int(p[13]);
+		return res;
+	} else if (rat_clean === 'LTE') {
+		res.rat = 'LTE';
+		res.is_5g = false;
+		res.mcc = p[3];
+		res.mnc = p[4];
+		res.cell_id = p[5];
+		res.pci = p[6];
+		res.earfcn = p[7];
+		res.band = 'B' + p[8];
+		res.tac = p[11];
+		let val_rsrp = int(p[12]);
+		if (val_rsrp < 0 && val_rsrp >= -145) res.rsrp = val_rsrp;
+		res.rsrq = int(p[13]);
+		if (length(p) >= 16) {
+			res.sinr = int(p[15]);
+		}
+		return res;
+	}
+
+	return res;
+}
+
+function do_collect_status(port, net_dev) {
+	let get_fallback_or_yield = function() {
+		let cached = fs.readfile(CACHE_STATUS);
+		return cached ? json(cached) : { success: false, yielded: true };
+	};
+
+	if (is_terminal_active())
+		return get_fallback_or_yield();
+
+	let info_res = safe_exec_at(port, 'ATI', 2);
+	if (is_terminal_active()) return get_fallback_or_yield();
+	let cpin_res = safe_exec_at(port, 'AT+CPIN?', 2);
+	if (is_terminal_active()) return get_fallback_or_yield();
+	let csq_res = safe_exec_at(port, 'AT+CSQ', 2);
+	if (is_terminal_active()) return get_fallback_or_yield();
+	let cops_res = safe_exec_at(port, 'AT+COPS?', 2);
+	if (is_terminal_active()) return get_fallback_or_yield();
+	let qeng_res = safe_exec_at(port, 'AT+QENG="servingcell"', 3);
+	if (is_terminal_active()) return get_fallback_or_yield();
+	let temp_res = safe_exec_at(port, 'AT+QTEMP', 2);
+
+	let csq_data = parse_csq(csq_res.output);
+	let cops_data = parse_cops(cops_res.output);
+	let cell_data = parse_serving_cell(qeng_res.output);
+
+	let fw_ver = cached_fw[port] || '';
+	if (!fw_ver) {
+		let m_rev = match(info_res.output, /Revision:\s*([^\r\n]+)/);
+		if (m_rev) {
+			fw_ver = trim(m_rev[1]);
+		} else {
+			let cgmr_res = safe_exec_at(port, 'AT+CGMR', 2);
+			let m_cgmr = match(cgmr_res.output, /([A-Za-z0-9_.-]+)\s*(\n|\r)+OK/);
+			if (m_cgmr) fw_ver = trim(m_cgmr[1]);
+		}
+		if (fw_ver) cached_fw[port] = fw_ver;
+	}
+
+	let imei_val = cached_imeis[port] || '';
+	if (!imei_val) {
+		let gsn_res = safe_exec_at(port, 'AT+GSN', 2);
+		let m_imei = match(gsn_res.output, /([0-9]{15})/);
+		if (m_imei) {
+			imei_val = m_imei[1];
+			cached_imeis[port] = imei_val;
+		}
+	}
+
+	let sim_status = 'NOT_INSERTED';
+	if (match(cpin_res.output, /\+CPIN:\s*READY/))
+		sim_status = 'READY';
+	else if (match(cpin_res.output, /\+CPIN:\s*SIM PIN/))
+		sim_status = 'PIN_LOCKED';
+	else if (match(cpin_res.output, /\+CPIN:\s*SIM PUK/))
+		sim_status = 'PUK_LOCKED';
+
+	let temp = null;
+	let m_temp = match(temp_res.output, /\+QTEMP:\s*\"[^\"]*\",\s*\"([0-9]+)\"/);
+	if (m_temp) {
+		temp = int(m_temp[1]);
+	} else {
+		let m_temp2 = match(temp_res.output, /([0-9]{2})/);
+		if (m_temp2) temp = int(m_temp2[1]);
+	}
+
+	let net_info = {
+		connected: false,
+		device: net_dev || '',
+		interface: '',
+		proto: '',
+		uptime: 0,
+		ip4: [],
+		ip6: [],
+		dns: [],
+		gateway: '',
+		rx_bytes: 0,
+		tx_bytes: 0,
+		rx_packets: 0,
+		tx_packets: 0
+	};
+	let u = connect();
+	if (u) {
+		let net_status = u.call('network.interface', 'dump');
+		if (net_status?.interface) {
+			for (let i = 0; i < length(net_status.interface); i++) {
+				let iface = net_status.interface[i];
+				let is_match = (net_dev && (iface.l3_device === net_dev || iface.device === net_dev)) ||
+				               (!net_dev && (iface.interface === 'wwan' || iface.proto === 'qmi' || iface.proto === 'modemmanager'));
+				if (is_match) {
+					if (!net_info.interface || net_info.interface === '') {
+						net_info.interface = iface.interface || '';
+					} else if (iface.interface && match(net_info.interface, iface.interface) == null) {
+						net_info.interface += ', ' + iface.interface;
+					}
+					net_info.device = iface.l3_device || iface.device || net_dev;
+					if (iface.up) net_info.connected = true;
+					if (iface.uptime && iface.uptime > net_info.uptime) net_info.uptime = iface.uptime;
+					if (!net_info.proto || net_info.proto === '') {
+						net_info.proto = iface.proto || '';
+					} else if (iface.proto && match(net_info.proto, iface.proto) == null) {
+						net_info.proto += '/' + iface.proto;
+					}
+					if (iface['ipv4-address']) {
+						for (let j = 0; j < length(iface['ipv4-address']); j++) {
+							let addr = iface['ipv4-address'][j];
+							let ip_str = addr.address + '/' + addr.mask;
+							let exists = false;
+							for (let x = 0; x < length(net_info.ip4); x++) {
+								if (net_info.ip4[x] === ip_str) { exists = true; break; }
+							}
+							if (!exists) push(net_info.ip4, ip_str);
+						}
+					}
+					if (iface['ipv6-address']) {
+						for (let k = 0; k < length(iface['ipv6-address']); k++) {
+							let addr = iface['ipv6-address'][k];
+							let ip_str = addr.address + '/' + addr.mask;
+							let exists = false;
+							for (let x = 0; x < length(net_info.ip6); x++) {
+								if (net_info.ip6[x] === ip_str) { exists = true; break; }
+							}
+							if (!exists) push(net_info.ip6, ip_str);
+						}
+					}
+					if (iface['dns-server']) {
+						for (let d = 0; d < length(iface['dns-server']); d++) {
+							let dns_item = iface['dns-server'][d];
+							let exists = false;
+							for (let x = 0; x < length(net_info.dns); x++) {
+								if (net_info.dns[x] === dns_item) { exists = true; break; }
+							}
+							if (!exists) push(net_info.dns, dns_item);
+						}
+					}
+					if (iface.route) {
+						for (let r = 0; r < length(iface.route); r++) {
+							if (iface.route[r].target === '0.0.0.0' && iface.route[r].nexthop) {
+								net_info.gateway = iface.route[r].nexthop;
+								break;
+							}
+						}
+					}
+					// Do not break: continue to aggregate companion dual-stack interfaces (e.g. wwan and wwan6)
+				}
+			}
+		}
+	}
+
+	let target_dev = net_info.device || net_dev;
+	if (target_dev) {
+		let stat_rx = `/sys/class/net/${target_dev}/statistics/rx_bytes`;
+		let stat_tx = `/sys/class/net/${target_dev}/statistics/tx_bytes`;
+		let stat_rx_pkt = `/sys/class/net/${target_dev}/statistics/rx_packets`;
+		let stat_tx_pkt = `/sys/class/net/${target_dev}/statistics/tx_packets`;
+		if (fs.access(stat_rx)) {
+			net_info.rx_bytes = int(trim(fs.readfile(stat_rx))) || 0;
+			net_info.tx_bytes = int(trim(fs.readfile(stat_tx))) || 0;
+			net_info.rx_packets = int(trim(fs.readfile(stat_rx_pkt))) || 0;
+			net_info.tx_packets = int(trim(fs.readfile(stat_tx_pkt))) || 0;
+		}
+		if (!net_info.connected) {
+			let oper = trim(fs.readfile(`/sys/class/net/${target_dev}/operstate`) || '');
+			let carrier = trim(fs.readfile(`/sys/class/net/${target_dev}/carrier`) || '');
+			if (oper === 'up' || carrier === '1') {
+				net_info.connected = true;
+			}
+		}
+		if (length(net_info.ip6) === 0) {
+			let p_ip6 = fs.popen(`ip -6 -o addr show dev '${target_dev}' scope global 2>/dev/null`, 'r');
+			if (p_ip6) {
+				let out_ip6 = p_ip6.read('all') || '';
+				p_ip6.close();
+				let lines_ip6 = split(trim(out_ip6), '\n');
+				for (let li = 0; li < length(lines_ip6); li++) {
+					let m_ip6 = match(lines_ip6[li], /inet6\s+([0-9a-fA-F:]+\/[0-9]+)\s+scope global/);
+					if (m_ip6) {
+						push(net_info.ip6, m_ip6[1]);
+					}
+				}
+			}
+		}
+	}
+
+	return {
+		success: true,
+		port: port,
+		firmware: fw_ver,
+		imei: imei_val,
+		sim_status: sim_status,
+		csq: csq_data,
+		operator: cops_data.operator,
+		act: cell_data.is_5g ? cell_data.rat : cops_data.act,
+		cell: cell_data,
+		temperature: temp,
+		network: net_info,
+		raw_info: info_res.output,
+		updated_at: time()
+	};
+}
+
+const methods = {
+	get_devices: {
+		call: function() {
+			let parsed = null;
+			if (fs.access(CACHE_DEVICES)) {
+				let cached = fs.readfile(CACHE_DEVICES);
+				if (cached) {
+					try {
+						parsed = json(cached);
+					} catch(e) {}
+				}
+			}
+
+			if (!parsed || !parsed.devices || length(parsed.devices) === 0) {
+				let p = fs.popen(`${DETECT_BIN} 2>/dev/null`, 'r');
+				if (p) {
+					let content = p.read('all');
+					p.close();
+					try {
+						parsed = json(content);
+					} catch(e) {}
+				}
+			}
+
+			if (!parsed || !parsed.devices) {
+				let cached = fs.readfile(CACHE_DEVICES);
+				if (cached) {
+					try {
+						parsed = json(cached);
+					} catch(e) {}
+				}
+			}
+
+			let res = parsed || { devices: [] };
+
+			// Inject user configured primary port from UCI
+			let c = cursor();
+			if (c) {
+				c.load('modem-manager');
+				let user_port = c.get('modem-manager', 'global', 'port');
+				if (user_port && user_port != '' && res.devices && length(res.devices) > 0) {
+					res.devices[0].user_configured_port = user_port;
+					if (res.devices[0].driver !== 'cdc_mbim' || user_port === res.devices[0].primary_port) {
+						res.devices[0].primary_port = user_port;
+					}
+				}
+			}
+
+			return res;
+		}
+	},
+
+	get_templates: {
+		call: function() {
+			let templates = [];
+			let files = fs.glob(`${TEMPLATE_DIR}/*.json`);
+			if (files) {
+				for (let i = 0; i < length(files); i++) {
+					let file = files[i];
+					let data = fs.readfile(file);
+					if (data) {
+						try {
+							push(templates, json(data));
+						} catch (e) {}
+					}
+				}
+			}
+			return { templates: templates };
+		}
+	},
+
+	collect_raw_status: {
+		args: { port: '', primary_net: '' },
+		call: function(req) {
+			let port = get_effective_port(req.args?.port);
+			let net_dev = req.args?.primary_net || 'usb0';
+			return do_collect_status(port, net_dev);
+		}
+	},
+
+	get_status: {
+		args: { port: '', primary_net: '' },
+		call: function(req) {
+			let port = get_effective_port(req.args?.port);
+			let net_dev = req.args?.primary_net || 'usb0';
+
+			// Non-blocking fast path: read decoupled background status cache directly
+			if (fs.access(CACHE_STATUS)) {
+				let cached = fs.readfile(CACHE_STATUS);
+				if (cached) {
+					try {
+						let data = json(cached);
+						if (data && data.success)
+							return data;
+					} catch(e) {}
+				}
+			}
+
+			// Cold start fallback: synchronously collect once and write cache
+			let status = do_collect_status(port, net_dev);
+			if (status && status.success) {
+				fs.mkdir(RUN_DIR);
+				fs.writefile(CACHE_STATUS, sprintf("%J\n", status));
+			}
+			return status;
+		}
+	},
+
+	refresh_status: {
+		args: { port: '', primary_net: '' },
+		call: function(req) {
+			let port = get_effective_port(req.args?.port);
+			let net_dev = req.args?.primary_net || 'usb0';
+			let status = do_collect_status(port, net_dev);
+			if (status && status.success) {
+				fs.mkdir(RUN_DIR);
+				fs.writefile(CACHE_STATUS, sprintf("%J\n", status));
+			}
+			return status;
+		}
+	},
+
+	send_at: {
+		args: { port: '', cmd: '', timeout: 3 },
+		call: function(req) {
+			let port = req.args?.port;
+			let cmd = req.args?.cmd;
+			let timeout = req.args?.timeout || 3;
+
+			if (!port || !cmd)
+				return { success: false, error: 'Missing port or command' };
+
+			// Active Yielding: touch terminal lock to notify background collector to yield
+			touch_terminal_active();
+
+			log_message(`[AT] >>> ${cmd}`);
+			let t0 = time();
+			let res = safe_exec_at(port, cmd, timeout);
+			let t1 = time();
+			let duration_ms = (t1 >= t0) ? ((t1 - t0) * 1000) : 0;
+			log_message(`[AT] <<< ${res.output}`);
+
+			return {
+				success: res.success,
+				cmd: cmd,
+				output: res.output,
+				duration_ms: duration_ms
+			};
+		}
+	},
+
+	set_mode: {
+		args: {
+			port: '',
+			mode: '',
+			template_id: '',
+			sync_network: false,
+			ifname: '',
+			device_net: ''
+		},
+		call: function(req) {
+			let port = req.args?.port;
+			let mode = req.args?.mode;
+			let ifname = req.args?.ifname || 'modem_wan';
+			let dev_net = req.args?.device_net || 'usb0';
+
+			if (!port || !mode)
+				return { success: false, error: 'Missing parameters' };
+
+			touch_terminal_active();
+
+			let mode_map = {
+				'ncm': '5',
+				'ecm': '1'
+			};
+			let val = mode_map[mode] || '5';
+			let cmd = `AT+QCFG="usbnet",${val}`;
+
+			log_message(`[MODE] Switching mode to ${mode} (Command: ${cmd})`);
+			let at_res = safe_exec_at(port, cmd, 5);
+
+			return {
+				success: at_res.success,
+				mode: mode,
+				output: at_res.output
+			};
+		}
+	},
+
+	set_cell_lock: {
+		args: {
+			port: '',
+			mode: '',
+			earfcn: '',
+			pci: ''
+		},
+		call: function(req) {
+			let port = req.args?.port;
+			let mode = req.args?.mode || 'none';
+			let earfcn = req.args?.earfcn;
+			let pci = req.args?.pci;
+
+			if (!port) return { success: false, error: 'Port required' };
+			touch_terminal_active();
+
+			if (mode === 'none' || mode === 'clear') {
+				log_message(`[CELL] Clearing cell lock`);
+				safe_exec_at(port, 'AT+QNWLOCK="common/5g",0', 3);
+				let r_lte = safe_exec_at(port, 'AT+QNWLOCK="common/lte",0', 3);
+				if (!r_lte.success) safe_exec_at(port, 'AT+QNWLOCK="common/4g",0', 3);
+				return { success: true, message: 'Cell locking disabled' };
+			}
+
+			if (!earfcn || !pci) {
+				return { success: false, error: 'Both ARFCN/EARFCN and PCI are required' };
+			}
+
+			if (!match(earfcn, /^[0-9]+$/) || !match(pci, /^[0-9]+$/)) {
+				return { success: false, error: 'Parameters earfcn and pci must be positive numeric integers' };
+			}
+
+			let cmd = '';
+			if (mode === 'nr5g') {
+				cmd = `AT+QNWLOCK="common/5g",1,${earfcn},${pci}`;
+			} else if (mode === 'lte') {
+				cmd = `AT+QNWLOCK="common/lte",1,${earfcn},${pci}`;
+			}
+
+			log_message(`[CELL] Setting cell lock: ${cmd}`);
+			let res = safe_exec_at(port, cmd, 5);
+			if (!res.success && mode === 'lte') {
+				cmd = `AT+QNWLOCK="common/4g",1,${earfcn},${pci}`;
+				res = safe_exec_at(port, cmd, 5);
+			}
+
+			return {
+				success: res.success,
+				cmd: cmd,
+				output: res.output
+			};
+		}
+	},
+
+	get_cell_lock: {
+		args: { port: '' },
+		call: function(req) {
+			let port = req.args?.port;
+			if (!port) return { locked: false, mode: 'none' };
+			touch_terminal_active();
+
+			let r_5g = safe_exec_at(port, 'AT+QNWLOCK="common/5g"', 3);
+			let r_lte = safe_exec_at(port, 'AT+QNWLOCK="common/lte"', 3);
+			if (!r_lte.success) r_lte = safe_exec_at(port, 'AT+QNWLOCK="common/4g"', 3);
+
+			let m_5g = match(r_5g.output, /\+QNWLOCK:\s*"common\/5g",([^\r\n]+)/);
+			if (m_5g && m_5g[1]) {
+				let parts = split(m_5g[1], ',');
+				if (length(parts) == 1 && int(parts[0]) == 0) {
+					// Explicitly unlocked
+				} else if (length(parts) == 2 && int(parts[0]) > 0 && int(parts[1]) >= 0) {
+					return { locked: true, mode: 'nr5g', earfcn: parts[0], pci: parts[1] };
+				} else if (length(parts) >= 3 && int(parts[0]) > 0 && int(parts[1]) > 0) {
+					return { locked: true, mode: 'nr5g', earfcn: parts[1], pci: parts[2] };
+				}
+			}
+
+			let m_lte = match(r_lte.output, /\+QNWLOCK:\s*"common\/[a-z0-9]+",([^\r\n]+)/);
+			if (m_lte && m_lte[1]) {
+				let parts = split(m_lte[1], ',');
+				if (length(parts) == 1 && int(parts[0]) == 0) {
+					// Explicitly unlocked
+				} else if (length(parts) == 2 && int(parts[0]) > 0 && int(parts[1]) >= 0) {
+					return { locked: true, mode: 'lte', earfcn: parts[0], pci: parts[1] };
+				} else if (length(parts) >= 3 && int(parts[0]) > 0 && int(parts[1]) > 0) {
+					return { locked: true, mode: 'lte', earfcn: parts[1], pci: parts[2] };
+				}
+			}
+
+			return { locked: false, mode: 'none', earfcn: '', pci: '' };
+		}
+	},
+
+	set_preferences: {
+		args: {
+			port: '',
+			rat: '',
+			bands_lte: [],
+			bands_nr5g: []
+		},
+		call: function(req) {
+			let port = req.args?.port;
+			let rat = req.args?.rat;
+
+			if (!port)
+				return { success: false, error: 'Port required' };
+
+			touch_terminal_active();
+
+			let results = [];
+			if (rat) {
+				let cmd = `AT+QNWPREFCFG="mode_pref",${rat}`;
+				log_message(`[PREF] Set network preference: ${cmd}`);
+				let r = safe_exec_at(port, cmd, 3);
+				push(results, r.output);
+			}
+
+			return { success: true, outputs: results };
+		}
+	},
+
+	get_apn: {
+		args: { port: '' },
+		call: function(req) {
+			let port = req.args?.port;
+			if (!port)
+				return { success: false, apn: '', pdp_type: 'IPV4V6' };
+
+			touch_terminal_active();
+
+			let res = safe_exec_at(port, 'AT+CGDCONT?', 3);
+			if (!res.success)
+				return { success: false, apn: '', pdp_type: 'IPV4V6' };
+
+			let m = match(res.output, /\+CGDCONT:\s*1,\s*"([^"]+)",\s*"([^"]*)"/);
+			if (m && m[1]) {
+				return {
+					success: true,
+					pdp_type: m[1],
+					apn: m[2] || ''
+				};
+			}
+			return { success: true, apn: '', pdp_type: 'IPV4V6' };
+		}
+	},
+
+	set_apn: {
+		args: {
+			port: '',
+			apn: '',
+			pdp_type: ''
+		},
+		call: function(req) {
+			let port = req.args?.port;
+			let apn = req.args?.apn || 'cmiot';
+			let pdp = req.args?.pdp_type || 'IPV4V6';
+
+			if (!port)
+				return { success: false, error: 'Port required' };
+
+			touch_terminal_active();
+
+			let cmd = `AT+CGDCONT=1,"${pdp}","${apn}"`;
+			log_message(`[APN] Set APN: ${cmd}`);
+			let res = safe_exec_at(port, cmd, 3);
+
+			return { success: res.success, output: res.output };
+		}
+	},
+
+	device_action: {
+		args: { port: '', action: '' },
+		call: function(req) {
+			let port = req.args?.port;
+			let action = req.args?.action;
+
+			if (!port || !action)
+				return { success: false, error: 'Missing port or action' };
+
+			touch_terminal_active();
+
+			let cmd = 'AT';
+			let timeout = 5;
+			if (action === 'reboot') {
+				cmd = 'AT+CFUN=1,1';
+				timeout = 10;
+			} else if (action === 'airplane_on') {
+				cmd = 'AT+CFUN=4';
+			} else if (action === 'airplane_off') {
+				cmd = 'AT+CFUN=1';
+			} else if (action === 'reset_radio') {
+				safe_exec_at(port, 'AT+CFUN=0', 3);
+				cmd = 'AT+CFUN=1';
+			}
+
+			log_message(`[ACTION] Executing ${action} via ${cmd}`);
+			let res = safe_exec_at(port, cmd, timeout);
+
+			if (action === 'reboot') {
+				let is_err = (res.output && match(res.output, /\bERROR\b|\+CME ERROR|\+CMS ERROR/i) != null);
+				if (!is_err) {
+					return { success: true, output: res.output || 'OK' };
+				}
+			}
+
+			return { success: res.success, output: res.output };
+		}
+	},
+
+	get_log: {
+		call: function() {
+			let content = fs.readfile(LOG_FILE) || '';
+			let lines = split(content, '\n');
+			let len = length(lines);
+			let start = len > 100 ? len - 100 : 0;
+			let out = [];
+			for (let i = start; i < len; i++) {
+				if (lines[i] != '') push(out, lines[i]);
+			}
+			return { log: join('\n', out) };
+		}
+	},
+
+	clear_log: {
+		call: function() {
+			fs.writefile(LOG_FILE, '');
+			return { success: true };
+		}
+	},
+
+	get_config: {
+		call: function() {
+			let c = cursor();
+			if (!c) return { port: '', baud: '115200', default_interface: 'modem_wan' };
+			c.load('modem-manager');
+			let port = c.get('modem-manager', 'global', 'port') || '';
+			let baud = c.get('modem-manager', 'global', 'baud') || '115200';
+			let ifname = c.get('modem-manager', 'global', 'default_interface') || 'modem_wan';
+			return { port: port, baud: baud, default_interface: ifname };
+		}
+	},
+
+	save_config: {
+		args: { port: '', baud: '', ifname: '' },
+		call: function(req) {
+			let c = cursor();
+			if (!c) return { success: false, error: 'Cannot open UCI cursor' };
+			c.load('modem-manager');
+			if (!c.get('modem-manager', 'global')) {
+				c.set('modem-manager', 'global', 'global');
+			}
+			if (req.args?.port != null) {
+				c.set('modem-manager', 'global', 'port', req.args.port);
+			}
+			if (req.args?.baud != null) {
+				c.set('modem-manager', 'global', 'baud', req.args.baud);
+			}
+			if (req.args?.ifname != null && req.args.ifname != '') {
+				c.set('modem-manager', 'global', 'default_interface', req.args.ifname);
+			}
+			c.commit('modem-manager');
+			system("/etc/init.d/modem-manager restart >/dev/null 2>&1 &");
+			return { success: true };
+		}
+	},
+
+	get_sms_status: {
+		args: { port: '' },
+		call: function(req) {
+			let c = cursor();
+			let enabled = false;
+			if (c) {
+				c.load('modem-manager');
+				let val = c.get('modem-manager', 'global', 'sms_enable');
+				enabled = (val === '1' || val === 1);
+			}
+
+			if (!enabled) {
+				return { enabled: false, used: 0, total: 0, reason: 'SMS module is disabled to protect IoT cards' };
+			}
+
+			let port = get_effective_port(req.args?.port);
+			if (!port) {
+				return { enabled: true, used: 0, total: 0, error: 'No serial port available' };
+			}
+
+			touch_terminal_active();
+
+			// Fast path: sms_tool status
+			let has_smstool = (fs.stat('/usr/sbin/sms_tool') != null || fs.stat('/usr/bin/sms_tool') != null);
+			if (has_smstool) {
+				let p = fs.popen(`sms_tool -d '${port}' status 2>/dev/null`, 'r');
+				if (p) {
+					let out = p.read('all') || '';
+					p.close();
+					let m = match(out, /used:\s*([0-9]+),\s*total:\s*([0-9]+)/);
+					if (m) {
+						return { enabled: true, used: int(m[1]), total: int(m[2]), raw: trim(out) };
+					}
+				}
+			}
+
+			let res = safe_exec_at(port, 'AT+CPMS?', 4);
+			let used = 0;
+			let total = 0;
+			if (res.success && res.output) {
+				let m = match(res.output, /\+CPMS:\s*"[^"]*",([0-9]+),([0-9]+)/);
+				if (m) {
+					used = int(m[1]);
+					total = int(m[2]);
+				}
+			}
+
+			return { enabled: true, used: used, total: total, raw: res.output };
+		}
+	},
+
+	set_sms_enable: {
+		args: { enabled: true, port: '' },
+		call: function(req) {
+			let is_enable = (req.args?.enabled === true || req.args?.enabled === '1' || req.args?.enabled === 1) ? '1' : '0';
+			let c = cursor();
+			if (!c) return { success: false, error: 'Cannot open UCI cursor' };
+			c.load('modem-manager');
+			if (!c.get('modem-manager', 'global')) {
+				c.set('modem-manager', 'global', 'global');
+			}
+			c.set('modem-manager', 'global', 'sms_enable', is_enable);
+			c.commit('modem-manager');
+
+			log_message(`[SMS] SMS feature toggled to: ${is_enable}`);
+
+			let port = get_effective_port(req.args?.port);
+			if (is_enable === '1' && port) {
+				touch_terminal_active();
+				safe_exec_at(port, 'AT+CMGF=1;+CSCS="GSM"', 3);
+			}
+
+			return { success: true, enabled: (is_enable === '1') };
+		}
+	},
+
+	get_sms_list: {
+		args: { port: '' },
+		call: function(req) {
+			let c = cursor();
+			let enabled = false;
+			if (c) {
+				c.load('modem-manager');
+				let val = c.get('modem-manager', 'global', 'sms_enable');
+				enabled = (val === '1' || val === 1);
+			}
+
+			if (!enabled) {
+				return { enabled: false, messages: [], reason: 'SMS module is disabled' };
+			}
+
+			let port = get_effective_port(req.args?.port);
+			if (!port) {
+				return { enabled: true, messages: [], error: 'No serial port available' };
+			}
+
+			touch_terminal_active();
+
+			// Fast path: sms_tool -j recv
+			let has_smstool = (fs.stat('/usr/sbin/sms_tool') != null || fs.stat('/usr/bin/sms_tool') != null);
+			if (has_smstool) {
+				let p = fs.popen(`sms_tool -d '${port}' -j recv 2>/dev/null`, 'r');
+				if (p) {
+					let out = p.read('all') || '';
+					p.close();
+					let data = null;
+					try { data = json(out); } catch(e) {}
+					if (data?.msg) {
+						let messages = [];
+						for (let i = 0; i < length(data.msg); i++) {
+							let item = data.msg[i];
+							push(messages, {
+								index: item.index,
+								status: 'REC READ',
+								sender: item.sender || '',
+								time: item.timestamp || '',
+								content: item.content || ''
+							});
+						}
+						return { enabled: true, messages: messages, count: length(messages) };
+					}
+				}
+			}
+
+			// Ensure text mode fallback
+			safe_exec_at(port, 'AT+CMGF=1', 3);
+			let res = safe_exec_at(port, 'AT+CMGL="ALL"', 10);
+
+			let messages = [];
+			if (res.success && res.output) {
+				let lines = split(res.output, '\n');
+				let cur_msg = null;
+				let total_lines = length(lines);
+				for (let i = 0; i < total_lines; i++) {
+					let l = trim(lines[i]);
+					if (l == '') continue;
+					let m = match(l, /\+CMGL:\s*([0-9]+),"([^"]*)","([^"]*)"/);
+					if (m) {
+						if (cur_msg) {
+							cur_msg.content = decode_ucs2_if_needed(cur_msg.content);
+							push(messages, cur_msg);
+						}
+						let time_match = match(l, /"([0-9]{2,4}\/[0-9]{2}\/[0-9]{2}[^"]*)"/);
+						let time_str = time_match ? time_match[1] : '';
+						cur_msg = {
+							index: int(m[1]),
+							status: m[2],
+							sender: m[3],
+							time: time_str,
+							content: ''
+						};
+					} else if (cur_msg) {
+						if (l != 'OK' && !match(l, /^\+CMGL:/)) {
+							if (cur_msg.content != '') cur_msg.content += '\n';
+							cur_msg.content += l;
+						}
+					}
+				}
+				if (cur_msg) {
+					cur_msg.content = decode_ucs2_if_needed(cur_msg.content);
+					push(messages, cur_msg);
+				}
+			}
+
+			return { enabled: true, messages: messages, count: length(messages) };
+		}
+	},
+
+	send_sms: {
+		args: { port: '', recipient: '', message: '' },
+		call: function(req) {
+			let c = cursor();
+			let enabled = false;
+			if (c) {
+				c.load('modem-manager');
+				let val = c.get('modem-manager', 'global', 'sms_enable');
+				enabled = (val === '1' || val === 1);
+			}
+
+			if (!enabled) {
+				return { success: false, error: 'SMS module is disabled. Please enable it before sending.' };
+			}
+
+			let port = get_effective_port(req.args?.port);
+			let to = req.args?.recipient;
+			let msg = req.args?.message;
+
+			if (!port || !to || !msg) {
+				return { success: false, error: 'Missing port, recipient or message body' };
+			}
+
+			let clean_to = replace(to, /[^0-9+]/g, '');
+			let clean_msg = replace(msg, /'/g, "'\\''");
+
+			touch_terminal_active();
+			log_message(`[SMS] Sending SMS to ${clean_to}`);
+
+			// Fast path: sms_tool send
+			let has_smstool = (fs.stat('/usr/sbin/sms_tool') != null || fs.stat('/usr/bin/sms_tool') != null);
+			if (has_smstool) {
+				let p = fs.popen(`sms_tool -d '${port}' send '${clean_to}' '${clean_msg}' 2>&1`, 'r');
+				let out = p ? p.read('all') : '';
+				if (p) p.close();
+				let success = (match(out, /ERROR/) == null);
+				return { success: success, output: trim(out || '') };
+			}
+
+			let p = fs.popen(`${EXECUTOR_BIN} -d '${port}' --sms-to '${clean_to}' --sms-msg '${clean_msg}' -t 15 2>&1`, 'r');
+			if (!p) {
+				return { success: false, error: 'Failed to launch SMS executor' };
+			}
+			let output = p.read('all') || '';
+			p.close();
+
+			let success = (match(output, /\+CMGS:/) != null && match(output, /\+CMS ERROR|\+CME ERROR/) == null);
+			return { success: success, output: trim(output) };
+		}
+	},
+
+	delete_sms: {
+		args: { port: '', index: 0 },
+		call: function(req) {
+			let c = cursor();
+			let enabled = false;
+			if (c) {
+				c.load('modem-manager');
+				let val = c.get('modem-manager', 'global', 'sms_enable');
+				enabled = (val === '1' || val === 1);
+			}
+
+			if (!enabled) {
+				return { success: false, error: 'SMS module is disabled' };
+			}
+
+			let port = get_effective_port(req.args?.port);
+			let idx = req.args?.index;
+
+			if (!port || idx == null) {
+				return { success: false, error: 'Missing port or message index' };
+			}
+
+			touch_terminal_active();
+
+			// Fast path: sms_tool delete
+			let has_smstool = (fs.stat('/usr/sbin/sms_tool') != null || fs.stat('/usr/bin/sms_tool') != null);
+			if (has_smstool) {
+				let target = (idx === 'all' || idx === -1) ? 'all' : int(idx);
+				let p = fs.popen(`sms_tool -d '${port}' delete ${target} 2>&1`, 'r');
+				let out = p ? p.read('all') : '';
+				if (p) p.close();
+				return { success: true, output: trim(out || '') };
+			}
+
+			let cmd = '';
+			if (idx === 'all' || idx === -1) {
+				cmd = 'AT+CMGD=1,4';
+				log_message(`[SMS] Deleting all SMS messages`);
+			} else {
+				cmd = `AT+CMGD=${int(idx)}`;
+				log_message(`[SMS] Deleting SMS at index ${idx}`);
+			}
+
+			let res = safe_exec_at(port, cmd, 5);
+			return { success: res.success, output: res.output };
+		}
+	}
+};
+
+return { 'luci.modem': methods };

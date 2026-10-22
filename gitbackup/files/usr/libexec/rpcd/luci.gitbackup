@@ -1,0 +1,316 @@
+#!/bin/sh
+# shellcheck shell=sh
+#
+# rpcd plugin for ubus object "luci.gitbackup": translates calls into
+# `gitbackup` CLI runs. Always prints JSON and exits 0: a non-zero exit would
+# become a bodyless ubus error. Failures answer {"reason": ...}.
+# The method list is mirrored in acl.d/luci-app-gitbackup.json (tested).
+
+set -u
+
+GB_SHARE="${GB_SHARE:-/usr/share/gitbackup}"
+GB_STATE_DIR="${GB_STATE_DIR:-/var/run/gitbackup}"
+GB_BIN="${GB_BIN:-/usr/sbin/gitbackup}"
+GB_SYSUPGRADE_CONF="${GB_SYSUPGRADE_CONF:-/etc/sysupgrade.conf}"
+
+# shellcheck disable=SC1091  # GB_SHARE is a runtime path
+. "$GB_SHARE/lib.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/schedule.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/paths.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/card.sh"
+
+_gb_rpc_param() {
+	printf '%s' "$1" | jsonfilter -e "$2" 2>/dev/null
+}
+
+_gb_rpc_error() {
+	printf '{ "reason": %s }\n' "$(gb_json_str "$1")"
+}
+
+_gb_rpc_text() {
+	printf '{ "%s": %s }\n' "$1" "$(gb_json_str "$2")"
+}
+
+# _gb_rpc_relay <key|-> <gitbackup args...> -- "-" relays JSON as is, else
+# wraps as {"<key>": ...}. stderr stays out of a success answer: one gb_log
+# notice in front of the JSON breaks the whole reply.
+_gb_rpc_relay() {
+	_gb_rpc_key="$1"
+	shift
+	_gb_rpc_errf=$(mktemp "${TMPDIR:-/tmp}/gbrpc-err.XXXXXX") || {
+		_gb_rpc_error 'could not create a scratch file under /tmp'
+		return 0
+	}
+	_gb_rpc_out=$("$GB_BIN" "$@" 2>"$_gb_rpc_errf")
+	_gb_rpc_rc=$?
+	_gb_rpc_err=$(cat "$_gb_rpc_errf")
+	rm -f "$_gb_rpc_errf"
+	if [ "$_gb_rpc_rc" -ne 0 ]; then
+		_gb_rpc_error "$(printf '%s\n%s' "$_gb_rpc_err" "$_gb_rpc_out" | grep .)"
+	elif [ "$_gb_rpc_key" = - ]; then
+		printf '%s\n' "$_gb_rpc_out"
+	else
+		_gb_rpc_text "$_gb_rpc_key" "$_gb_rpc_out"
+	fi
+}
+
+gbrpc_status() {
+	_gb_rpc_out=$("$GB_BIN" status 2>/dev/null)
+	if [ -n "$_gb_rpc_out" ]; then
+		printf '%s\n' "$_gb_rpc_out"
+	else
+		_gb_rpc_error 'gitbackup status produced no output'
+	fi
+}
+
+gbrpc_log() {
+	_gb_rpc_lines=$(_gb_rpc_param "$1" '@.lines')
+	case "$_gb_rpc_lines" in '' | *[!0-9]*) _gb_rpc_lines=200 ;; esac
+	_gb_rpc_text text "$("$GB_BIN" log "$_gb_rpc_lines" 2>/dev/null)"
+}
+
+gbrpc_pubkey() {
+	_gb_rpc_relay pubkey pubkey
+}
+
+gbrpc_list_paths() {
+	_gb_rpc_relay - paths list --json
+}
+
+gbrpc_audit_paths() {
+	_gb_rpc_relay - paths audit
+}
+
+gbrpc_validate_cron() {
+	_gb_rpc_expr=$(_gb_rpc_param "$1" '@.expr')
+	if _gb_rpc_why=$(gb_cron_valid "$_gb_rpc_expr" 2>&1 >/dev/null); then
+		printf '{ "valid": true }\n'
+	else
+		printf '{ "valid": false, "reason": %s }\n' "$(gb_json_str "$_gb_rpc_why")"
+	fi
+}
+
+gbrpc_history() {
+	_gb_rpc_limit=$(_gb_rpc_param "$1" '@.limit')
+	case "$_gb_rpc_limit" in '' | *[!0-9]*) _gb_rpc_limit=20 ;; esac
+	_gb_rpc_relay - history --limit "$_gb_rpc_limit"
+}
+
+# In the ACL's WRITE tier: it returns backed-up content (shadow hash, host
+# keys, PSKs); tiers split on "may see secrets", not "changes something".
+gbrpc_diff() {
+	_gb_rpc_from=$(_gb_rpc_param "$1" '@.from')
+	_gb_rpc_to=$(_gb_rpc_param "$1" '@.to')
+	if [ -z "$_gb_rpc_from" ] || [ -z "$_gb_rpc_to" ]; then
+		_gb_rpc_error 'both "from" and "to" commit shas are required'
+		return 0
+	fi
+	_gb_rpc_relay diff diff "$_gb_rpc_from" "$_gb_rpc_to"
+}
+
+# Live config vs last commit, by manifest -- sees a chmod `git diff` cannot.
+gbrpc_config_diff() {
+	if ! _gb_rpc_out=$("$GB_BIN" diff 2>&1); then
+		_gb_rpc_error "$_gb_rpc_out"
+	elif [ -n "$_gb_rpc_out" ]; then
+		printf '{ "differs": true, "text": %s }\n' "$(gb_json_str "$_gb_rpc_out")"
+	else
+		printf '{ "differs": false, "text": "" }\n'
+	fi
+}
+
+gbrpc_run() {
+	"$GB_BIN" run --trigger luci </dev/null >/dev/null 2>&1 &
+	printf '{ "started": true }\n'
+}
+
+# stdin is /dev/null, so an unknown host key ends as "needs confirmation";
+# the web flow then goes through `hostkey`.
+gbrpc_test() {
+	"$GB_BIN" test </dev/null >/dev/null 2>&1 &
+	printf '{ "started": true }\n'
+}
+
+# No fingerprint: show the remote's host key. With one: accept exactly it.
+gbrpc_hostkey() {
+	_gb_rpc_fp=$(_gb_rpc_param "$1" '@.fingerprint')
+	if [ -n "$_gb_rpc_fp" ]; then
+		_gb_rpc_relay - hostkey accept "$_gb_rpc_fp"
+	else
+		_gb_rpc_relay - hostkey show
+	fi
+}
+
+# keygen over an existing key needs --force --confirm <fingerprint>; exit 4
+# means "confirm first" and carries the fingerprint on its first line.
+gbrpc_keygen() {
+	_gb_rpc_force=$(_gb_rpc_param "$1" '@.force')
+	_gb_rpc_confirm=$(_gb_rpc_param "$1" '@.confirm')
+	set -- keygen
+	case "$_gb_rpc_force" in true | 1) set -- "$@" --force ;; esac
+	[ -z "$_gb_rpc_confirm" ] || set -- "$@" --confirm "$_gb_rpc_confirm"
+	_gb_rpc_out=$("$GB_BIN" "$@" 2>&1)
+	_gb_rpc_rc=$?
+	if [ "$_gb_rpc_rc" -eq 0 ]; then
+		printf '{ "ok": true, "message": %s }\n' "$(gb_json_str "$_gb_rpc_out")"
+	elif [ "$_gb_rpc_rc" -eq 4 ]; then
+		_gb_rpc_fp=$(printf '%s\n' "$_gb_rpc_out" | sed -n '1s/^confirm-required //p')
+		printf '{ "ok": false, "confirm_required": true, "fingerprint": %s, "reason": %s }\n' \
+			"$(gb_json_str "$_gb_rpc_fp")" "$(gb_json_str "$_gb_rpc_out")"
+	else
+		printf '{ "ok": false, "reason": %s }\n' "$(gb_json_str "$_gb_rpc_out")"
+	fi
+}
+
+# Writes the token to token_file (0600 in a 0700 dir). The value never goes
+# to argv, UCI or the log; there is no method to read it back.
+gbrpc_set_secret() {
+	_gb_rpc_value=$(_gb_rpc_param "$1" '@.value')
+	_gb_rpc_file=$(gb_uci_get gitbackup.origin.token_file /etc/gitbackup/token)
+	if [ -z "$_gb_rpc_file" ]; then
+		_gb_rpc_error 'gitbackup.origin.token_file is empty'
+		return 0
+	fi
+
+	_gb_rpc_dir=$(dirname "$_gb_rpc_file")
+	mkdir -p "$_gb_rpc_dir" 2>/dev/null
+	chmod 0700 "$_gb_rpc_dir" 2>/dev/null
+
+	if [ -n "$_gb_rpc_value" ]; then
+		printf '%s\n' "$_gb_rpc_value" >"$_gb_rpc_file"
+	else
+		: >"$_gb_rpc_file"
+	fi
+	if ! chmod 0600 "$_gb_rpc_file" 2>/dev/null; then
+		_gb_rpc_error "could not set permissions on $_gb_rpc_file"
+		return 0
+	fi
+	gb_log notice "luci.gitbackup set_secret: wrote $_gb_rpc_file"
+
+	_gb_rpc_token_set=false
+	[ -s "$_gb_rpc_file" ] && _gb_rpc_token_set=true
+	printf '{ "ok": true, "token_set": %s }\n' "$_gb_rpc_token_set"
+}
+
+# Writes accepted entries verbatim, never the expanded effective set: files
+# created later under a directory would silently stop being backed up.
+gbrpc_set_paths() {
+	mkdir -p "$(dirname "$GB_SYSUPGRADE_CONF")" 2>/dev/null
+
+	_gb_rpc_tmp="${GB_SYSUPGRADE_CONF}.newtmp.$$"
+	: >"$_gb_rpc_tmp"
+	: >"$_gb_rpc_tmp.kept"
+	: >"$_gb_rpc_tmp.rej"
+
+	_gb_rpc_param "$1" '@.paths[*]' | while IFS= read -r _gb_rpc_p || [ -n "$_gb_rpc_p" ]; do
+		[ -n "$_gb_rpc_p" ] || continue
+		_gb_rpc_reason=$(gb_paths_validate "$_gb_rpc_p" 2>&1 >/dev/null)
+		if [ -n "$_gb_rpc_reason" ]; then
+			printf '{ "path": %s, "reason": %s }\n' \
+				"$(gb_json_str "$_gb_rpc_p")" "$(gb_json_str "$_gb_rpc_reason")" >>"$_gb_rpc_tmp.rej"
+		else
+			printf '%s\n' "$_gb_rpc_p" >>"$_gb_rpc_tmp"
+			gb_json_str "$_gb_rpc_p" >>"$_gb_rpc_tmp.kept"
+			echo >>"$_gb_rpc_tmp.kept"
+		fi
+	done
+
+	gb_paths_replace_entries "$(cat "$_gb_rpc_tmp" 2>/dev/null)"
+
+	printf '{ "ok": true, "written": [%s], "rejected": [%s] }\n' \
+		"$(gb_join_lines , <"$_gb_rpc_tmp.kept")" "$(gb_join_lines , <"$_gb_rpc_tmp.rej")"
+	rm -f "$_gb_rpc_tmp" "$_gb_rpc_tmp.kept" "$_gb_rpc_tmp.rej"
+}
+
+# Backgrounded like run/test; --yes because the view already asked twice.
+gbrpc_restore() {
+	_gb_rpc_device=$(_gb_rpc_param "$1" '@.device')
+	_gb_rpc_commit=$(_gb_rpc_param "$1" '@.commit')
+	_gb_rpc_dry=$(_gb_rpc_param "$1" '@.dry_run')
+	_gb_rpc_force=$(_gb_rpc_param "$1" '@.force')
+	_gb_rpc_pkgs=$(_gb_rpc_param "$1" '@.with_packages')
+
+	if [ -z "$_gb_rpc_device" ]; then
+		_gb_rpc_error 'device is required'
+		return 0
+	fi
+
+	set -- --device "$_gb_rpc_device" --yes
+	[ -n "$_gb_rpc_commit" ] && set -- "$@" --commit "$_gb_rpc_commit"
+	case "$_gb_rpc_dry" in true | 1) set -- "$@" --dry-run ;; esac
+	case "$_gb_rpc_force" in true | 1) set -- "$@" --force ;; esac
+	case "$_gb_rpc_pkgs" in true | 1) set -- "$@" --with-packages ;; esac
+
+	"$GB_BIN" restore "$@" </dev/null >/dev/null 2>&1 &
+	printf '{ "started": true }\n'
+}
+
+gbrpc_card() {
+	_gb_rpc_file=$(mktemp "${TMPDIR:-/tmp}/gbrpc-card.XXXXXX") || {
+		_gb_rpc_error 'could not create a scratch file under /tmp'
+		return 0
+	}
+	if gb_card "$_gb_rpc_file" 2>/dev/null; then
+		_gb_rpc_text card "$(cat "$_gb_rpc_file")"
+	else
+		_gb_rpc_error 'the recovery card could not be generated, see the log'
+	fi
+	rm -f "$_gb_rpc_file"
+}
+
+case "${1:-}" in
+	list)
+		cat <<'EOF'
+{
+	"status": {},
+	"log": { "lines": 0 },
+	"diff": { "from": "", "to": "" },
+	"config_diff": {},
+	"pubkey": {},
+	"list_paths": {},
+	"history": { "limit": 0 },
+	"audit_paths": {},
+	"validate_cron": { "expr": "" },
+	"run": {},
+	"keygen": { "force": true, "confirm": "" },
+	"test": {},
+	"hostkey": { "fingerprint": "" },
+	"set_secret": { "value": "" },
+	"set_paths": { "paths": [] },
+	"restore": { "device": "", "commit": "", "dry_run": true, "force": true, "with_packages": true },
+	"card": {}
+}
+EOF
+		;;
+	call)
+		# rpcd sends params with NO trailing newline: `read` fills the
+		# variable but returns 1, so `|| X='{}'` would drop every parameter.
+		IFS= read -r _gb_rpc_input || true
+		[ -n "$_gb_rpc_input" ] || _gb_rpc_input='{}'
+		case "${2:-}" in
+			status) gbrpc_status ;;
+			log) gbrpc_log "$_gb_rpc_input" ;;
+			diff) gbrpc_diff "$_gb_rpc_input" ;;
+			config_diff) gbrpc_config_diff ;;
+			pubkey) gbrpc_pubkey ;;
+			list_paths) gbrpc_list_paths ;;
+			history) gbrpc_history "$_gb_rpc_input" ;;
+			audit_paths) gbrpc_audit_paths ;;
+			validate_cron) gbrpc_validate_cron "$_gb_rpc_input" ;;
+			run) gbrpc_run ;;
+			keygen) gbrpc_keygen "$_gb_rpc_input" ;;
+			test) gbrpc_test ;;
+			hostkey) gbrpc_hostkey "$_gb_rpc_input" ;;
+			set_secret) gbrpc_set_secret "$_gb_rpc_input" ;;
+			set_paths) gbrpc_set_paths "$_gb_rpc_input" ;;
+			restore) gbrpc_restore "$_gb_rpc_input" ;;
+			card) gbrpc_card ;;
+			*) _gb_rpc_error "unknown method '${2:-}'" ;;
+		esac
+		;;
+esac
+
+exit 0

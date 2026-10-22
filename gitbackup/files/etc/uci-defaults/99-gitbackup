@@ -1,0 +1,10 @@
+# shellcheck shell=sh
+#
+# First boot, not postinst (postinst also runs at image build time).
+# Sourced by /etc/init.d/boot and deleted on exit 0: no shebang needed.
+
+[ -d /etc/gitbackup ] || mkdir -m 0700 /etc/gitbackup
+chown root:root /etc/gitbackup
+chmod 0700 /etc/gitbackup
+
+exit 0

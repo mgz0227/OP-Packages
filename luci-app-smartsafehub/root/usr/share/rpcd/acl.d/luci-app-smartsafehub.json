@@ -1,0 +1,107 @@
+{
+  "luci-app-smartsafehub": {
+    "description": "Grant access to the SmartSafeHub device application",
+    "read": {
+      "ubus": {
+        "smartsafehub": [
+          "system_root_password_status",
+          "status",
+          "connected_devices",
+          "wifi_summary",
+          "updates_status",
+          "firmware_status",
+          "system_time_settings",
+          "system_scheduled_reboot_settings",
+          "health_status",
+          "device_registration_status",
+          "device_recommended_rules_status",
+          "activity_history"
+        ],
+        "safeshield": [
+          "status",
+          "statistics",
+          "config",
+          "rules_list"
+        ],
+        "smartsafehub_network": [
+          "wan_settings",
+          "lan_settings",
+          "iptv_settings"
+        ],
+        "smartsafehub_guest": [
+          "wifi_guest_summary"
+        ]
+      },
+      "cgi-io": [
+        "backup"
+      ]
+    },
+    "write": {
+      "ubus": {
+        "smartsafehub": [
+          "system_root_password_set",
+          "system_root_password_change",
+          "wifi_update",
+          "wifi_qr",
+          "system_timezone_initialize",
+          "system_timezone_update",
+          "system_time_sync",
+          "system_scheduled_reboot_update",
+          "system_reboot",
+          "updates_check",
+          "updates_install",
+          "updates_settings_update",
+          "firmware_check",
+          "firmware_prepare",
+          "firmware_validate_upload",
+          "firmware_install",
+          "firmware_discard",
+          "system_backup_validate",
+          "system_backup_restore",
+          "system_backup_discard",
+          "activity_cloud_sync_update",
+          "health_run",
+          "health_reporter_update",
+          "device_registration_refresh",
+          "device_recommended_rules_refresh",
+          "device_recommended_rules_revoke",
+          "safeshield_set_enabled",
+          "safeshield_refresh",
+          "safeshield_statistics_update",
+          "safeshield_rule_add",
+          "safeshield_rule_delete",
+          "device_pairing_refresh"
+        ],
+        "safeshield": [
+          "set_enabled",
+          "config_update",
+          "refresh",
+          "rule_add",
+          "rule_delete"
+        ],
+        "smartsafehub_network": [
+          "wan_reconnect",
+          "wan_update",
+          "lan_update",
+          "lan_auto_subnet",
+          "iptv_update"
+        ],
+        "smartsafehub_guest": [
+          "wifi_guest_qr",
+          "wifi_guest_update"
+        ]
+      },
+      "cgi-io": [
+        "upload"
+      ],
+      "file": {
+        "/tmp/smartsafehub/firmware.bin": [
+          "write"
+        ],
+        "/tmp/smartsafehub/config-backup.tar.gz": [
+          "write"
+        ]
+      }
+    }
+  }
+}

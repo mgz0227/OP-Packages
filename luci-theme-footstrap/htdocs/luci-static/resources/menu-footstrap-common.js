@@ -349,11 +349,6 @@ return baseclass.extend({
 	 * the meters a stock Status -> Overview include draws with its own local progressbar() */
 	annotateMeters,
 
-	/* module-private otherwise: tests/meter.test.mjs drives the percent parse and the clamp/threshold
-	 * split directly rather than through a live `.cbi-progressbar[title]` walk */
-	parseMeterPercent,	/* fs:probe */
-	annotateMeter,	/* fs:probe */
-
 	init(renderMainMenu) {
 		/* First, and outside the promise: a third-party sheet that outranks the chrome is already
 		 * painting (fs-sheets: openclash's `* { margin: 0; padding: 0 }`). Deferring this to

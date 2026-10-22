@@ -1,0 +1,9 @@
+# Local AI planning notes
+/task_plan.md
+/progress.md
+/progess.md
+/findings.md
+
+# Python regression-test caches
+__pycache__/
+*.py[cod]

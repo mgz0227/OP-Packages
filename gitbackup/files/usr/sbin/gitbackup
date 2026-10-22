@@ -1,0 +1,1038 @@
+#!/bin/sh
+# shellcheck shell=sh
+#
+# gitbackup CLI. Exit codes, shared with every module: 0 ok, 1 general error,
+# 2 invalid configuration, 3 network or authentication, 4 refused for safety.
+
+set -u
+
+GB_SHARE="${GB_SHARE:-/usr/share/gitbackup}"
+GB_STATE_DIR="${GB_STATE_DIR:-/var/run/gitbackup}"
+
+# shellcheck disable=SC1091  # GB_SHARE is a runtime path, not resolvable statically
+. "$GB_SHARE/lib.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/device.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/remoteurl.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/visibility.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/auth.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/collect.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/scrub.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/gitio.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/restore.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/paths.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/schedule.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/card.sh"
+
+usage() {
+	cat <<'EOF'
+Usage: gitbackup <command> [options]
+
+Commands:
+  run        run a backup now
+  status     print current status as JSON
+  collect    build a backup set and manifest without pushing
+  diff       show what changed since the last successful run, or [from to]
+             (two full commit shas) for the diff between two backups
+  history    list this device's own backup commits as JSON
+  keygen     generate the SSH deploy key ([--force [--confirm <fingerprint>]]
+             to replace an existing one -- --force alone only shows its
+             fingerprint and refuses; naming it back with --confirm proceeds)
+  pubkey     print the deploy key's public key
+  test       verify connectivity and remote configuration
+  hostkey    show|accept <fingerprint> -- confirm the remote's SSH host key
+             without an interactive terminal (what the web UI uses)
+  paths      list [--json]|add|del|audit -- edit /etc/sysupgrade.conf
+  restore    restore configuration from a commit
+  card       print a recovery card
+  log        show recent gitbackup log entries
+EOF
+}
+
+# Guards every caller-supplied commit before it reaches a bare git argument:
+# an option-shaped value ("--upload-pack=...") must never get there.
+_gb_valid_full_sha() {
+	case "$1" in
+		''|*[!0-9a-f]*) return 1 ;;
+	esac
+	# The charset check alone passes abbreviated or overlong shas.
+	[ "${#1}" -eq 40 ]
+}
+
+# gb_remote -- sets GB_SCHEME, GB_HOST, GB_PORT; exit 2 on an unsupported URL.
+gb_remote() {
+	_gb_parsed=$(gb_parse_url "$GB_URL") ||
+		gb_die 2 "gitbackup.origin.url: '$GB_URL' does not match any supported remote URL form"
+	# shellcheck disable=SC2086  # word-splitting is the point: five fields from one line
+	set -- $_gb_parsed
+	GB_SCHEME="$1" GB_HOST="$2" GB_PORT="$3"
+}
+
+gb_branch() {
+	gb_expand "$(gb_uci_get gitbackup.origin.branch 'device/{device}')"
+}
+
+# gb_validate_config -- strict config check for commands that touch the
+# remote: exit 2 on the first unusable field. Sets GB_DEVICE, GB_URL, GB_SCRUB.
+gb_validate_config() {
+	gb_status_config
+	case " $GB_MISSING " in
+		*' device_id '*) GB_DEVICE=$(gb_device_id) || exit $? ;;
+	esac
+	case " $GB_MISSING " in
+		*' cron_expr '*) gb_die 2 "gitbackup.main.cron_expr: $(gb_cron_valid "$(gb_uci_get gitbackup.main.cron_expr)" 2>&1)" ;;
+	esac
+	[ -n "$GB_URL" ] || gb_die 2 'gitbackup.origin.url: empty, a repository url is required'
+}
+
+# _gb_effective_scrub -- a public remote is always scrubbed. Overrides only
+# this run's decision, never the saved gitbackup.security.scrub.
+_gb_effective_scrub() {
+	_gb_vis=$(gb_uci_get gitbackup.origin.visibility private)
+	_gb_scrub=$(gb_uci_get gitbackup.security.scrub 0)
+	if [ "$_gb_vis" = public ] && [ "$(gb_json_bool "$_gb_scrub")" != true ]; then
+		gb_log notice 'gitbackup.origin.visibility=public forces security.scrub on for this run'
+		_gb_scrub=1
+	fi
+	printf '%s\n' "$_gb_scrub"
+}
+
+# gb_status_config -- never exits: unusable fields go to GB_MISSING and
+# GB_CONFIGURED is false.
+gb_status_config() {
+	GB_MISSING=''
+
+	if ! GB_DEVICE=$(gb_device_id 2>/dev/null); then
+		GB_DEVICE=''
+		GB_MISSING="$GB_MISSING device_id"
+	fi
+
+	_gb_sched=$(gb_uci_get gitbackup.main.schedule daily)
+	if [ "$_gb_sched" = cron ]; then
+		_gb_cron=$(gb_uci_get gitbackup.main.cron_expr)
+		gb_cron_valid "$_gb_cron" >/dev/null 2>&1 || GB_MISSING="$GB_MISSING cron_expr"
+	fi
+
+	GB_URL=$(gb_uci_get gitbackup.origin.url)
+	[ -n "$GB_URL" ] || GB_MISSING="$GB_MISSING url"
+
+	GB_SCRUB=$(_gb_effective_scrub)
+
+	GB_CONFIGURED=true
+	[ -z "$GB_MISSING" ] || GB_CONFIGURED=false
+}
+
+cmd_status() {
+	_gb_enabled=$(gb_uci_get gitbackup.main.enabled 0)
+	_gb_token_file=$(gb_uci_get gitbackup.origin.token_file /etc/gitbackup/token)
+	_gb_token_set=false
+	[ -s "$_gb_token_file" ] && _gb_token_set=true
+
+	_gb_last_run='null'
+	[ -f "$GB_STATE_DIR/last_run" ] && _gb_last_run=$(cat "$GB_STATE_DIR/last_run")
+
+	printf '{\n'
+	printf '  "enabled": %s,\n' "$(gb_json_bool "$_gb_enabled")"
+	printf '  "configured": %s,\n' "$GB_CONFIGURED"
+	printf '  "device": %s,\n' "$(gb_json_str "$GB_DEVICE")"
+	printf '  "scrub": %s,\n' "$(gb_json_bool "$GB_SCRUB")"
+	printf '  "token_set": %s,\n' "$_gb_token_set"
+	printf '  "last_run": %s,\n' "$_gb_last_run"
+	printf '  "missing": ['
+	_gb_first=1
+	for _gb_m in $GB_MISSING; do
+		[ "$_gb_first" -eq 1 ] || printf ','
+		printf '%s' "$(gb_json_str "$_gb_m")"
+		_gb_first=0
+	done
+	printf ']\n'
+	printf '}\n'
+}
+
+# cmd_test -- exit 3 covers network and auth (one slot in the contract); the
+# message tells them apart. No gb_have_net precheck: git's error classifies.
+cmd_test() {
+	gb_remote
+	_gb_scheme="$GB_SCHEME" _gb_host="$GB_HOST" _gb_port="$GB_PORT"
+
+	# rc 3 means "could not verify", never "safe".
+	gb_visibility_ok "$GB_URL"
+	case $? in
+		4) gb_die 4 "$GB_URL is publicly visible to an anonymous request; push refused" ;;
+		3) gb_die 3 "could not verify whether $GB_URL is public (network or provider API unreachable); try again once connectivity is confirmed" ;;
+	esac
+
+	# Host keys are accepted only here, never in `run`.
+	if [ "$_gb_scheme" = ssh ]; then
+		# gb_accept_hostkey sets _gb_port to the effective port (0 -> 22).
+		gb_accept_hostkey "$_gb_host" "$_gb_port"
+		case $? in
+			0) ;;
+			1) gb_die 3 "$_gb_host:$_gb_port host key was not accepted" ;;
+			3)
+				# No stdin to ask on (e.g. rpcd): not the same as a typed decline.
+				gb_die 3 "$_gb_host:$_gb_port host key needs confirmation before this can proceed -- run 'gitbackup hostkey show' (or use the web UI) to see its fingerprint, then 'gitbackup hostkey accept <fingerprint>' to trust it"
+				;;
+			*) gb_die 3 "$_gb_host:$_gb_port host key could not be obtained -- is the network reachable?" ;;
+		esac
+	fi
+
+	# gb_git_env quotes its output for eval.
+	eval "$(gb_git_env)"
+	if _gb_err=$(git ls-remote "$GB_URL" 2>&1 >/dev/null); then
+		gb_log notice "gitbackup test: $GB_URL is reachable and authenticated"
+		# ls-remote proved the current key works: drop the `keygen --force` backup.
+		gb_keygen_forget_old
+		printf 'ok: %s is reachable and authenticated\n' "$GB_URL"
+		return 0
+	fi
+
+	_gb_test_classify "$_gb_host" "$_gb_err"
+}
+
+_gb_test_classify() {
+	_gb_h="$1"
+	_gb_e="$2"
+	case "$_gb_e" in
+		*'Could not resolve host'*|*'Failed to connect'*|*'Connection timed out'*| \
+		*'Connection refused'*|*'Network is unreachable'*|*'ssh: connect to host'*|*'No route to host'*)
+			gb_die 3 "cannot reach $_gb_h: $_gb_e"
+			;;
+		*)
+			gb_die 3 "authentication to $GB_URL failed: $_gb_e"
+			;;
+	esac
+}
+
+# cmd_hostkey show|accept <fingerprint> -- host key confirmation for the web
+# UI (rpcd runs `test` with no stdin). ssh:// only.
+cmd_hostkey() {
+	_gb_hk_sub="${1:-}"
+	[ -n "$_gb_hk_sub" ] && shift
+	_gb_hk_fp="${1:-}"
+
+	gb_remote
+	_gb_hk_scheme="$GB_SCHEME" _gb_hk_host="$GB_HOST" _gb_hk_port="$GB_PORT"
+	[ "$_gb_hk_port" != 0 ] || _gb_hk_port=22
+
+	if [ "$_gb_hk_scheme" != ssh ]; then
+		gb_die 2 "gitbackup.origin.url uses $_gb_hk_scheme://, not ssh:// -- there is no host key to show or accept"
+	fi
+
+	case "$_gb_hk_sub" in
+		show)
+			_gb_hk_out=$(gb_hostkey_show "$_gb_hk_host" "$_gb_hk_port")
+			_gb_hk_rc=$?
+			[ "$_gb_hk_rc" -eq 0 ] ||
+				gb_die 3 "could not reach $_gb_hk_host:$_gb_hk_port to obtain its host key -- is the network reachable?"
+
+			# shellcheck disable=SC2086  # word-splitting is the point
+			set -- $_gb_hk_out
+			_gb_hk_state="$1"
+			if [ "$_gb_hk_state" = trusted ]; then
+				printf '{ "host": %s, "port": %s, "trusted": true }\n' \
+					"$(gb_json_str "$_gb_hk_host")" "$_gb_hk_port"
+			else
+				shift 3
+				_gb_hk_fp_text="$*"
+				printf '{ "host": %s, "port": %s, "trusted": false, "fingerprint": %s }\n' \
+					"$(gb_json_str "$_gb_hk_host")" "$_gb_hk_port" "$(gb_json_str "$_gb_hk_fp_text")"
+			fi
+			;;
+		accept)
+			[ -n "$_gb_hk_fp" ] ||
+				gb_die 2 'gitbackup hostkey accept: a fingerprint argument is required (the exact text "hostkey show" printed)'
+			gb_hostkey_accept "$_gb_hk_host" "$_gb_hk_port" "$_gb_hk_fp"
+			case $? in
+				0) printf '{ "ok": true }\n' ;;
+				4) gb_die 4 "fingerprint for $_gb_hk_host:$_gb_hk_port does not match the pending host key; refusing to record it" ;;
+				*) gb_die 1 "no pending host key for $_gb_hk_host:$_gb_hk_port -- run 'gitbackup hostkey show' first" ;;
+			esac
+			;;
+		*)
+			gb_die 2 "gitbackup hostkey: unknown subcommand '$_gb_hk_sub' (expected show or accept)"
+			;;
+	esac
+}
+
+# ---------------------------------------------------------------------------
+# run -- cmd_run does the gates; _gb_run_backup the git half, treating GB_URL
+# as opaque so it can be tested against a local bare repository.
+# ---------------------------------------------------------------------------
+
+# Basenames of /etc/config/* entries differing in any field. sort | uniq -u:
+# the image ships no comm/diff.
+_gb_run_changed_configs() {
+	_gb_rcc_old="$1"
+	_gb_rcc_new="$2"
+	{
+		[ -r "$_gb_rcc_old" ] && grep '"path":"/etc/config/' "$_gb_rcc_old"
+		grep '"path":"/etc/config/' "$_gb_rcc_new"
+	} 2>/dev/null | sort | uniq -u | sed -n 's#.*"path":"/etc/config/\([^"]*\)".*#\1#p' | sort -u
+}
+
+_gb_run_write_message() {
+	_gb_rwm_file="$1"
+	_gb_rwm_trigger="$2"
+	_gb_rwm_list="$3"
+	_gb_rwm_count="$4"
+
+	_gb_rwm_when=$(date -u +'%Y-%m-%d %H:%M')
+
+	_gb_rwm_short=$(printf '%s\n' "$_gb_rwm_list" | sed -n '1,3p' | gb_join_lines ', ')
+	[ -n "$_gb_rwm_short" ] || _gb_rwm_short='config'
+	if [ "$_gb_rwm_count" -gt 3 ]; then
+		_gb_rwm_short="$_gb_rwm_short and $((_gb_rwm_count - 3)) more"
+	fi
+
+	_gb_rwm_paths=$(printf '%s\n' "$_gb_rwm_list" | sed -n '/./ s#^#/etc/config/#p' | gb_join_lines ', ')
+	[ -n "$_gb_rwm_paths" ] || _gb_rwm_paths='(no /etc/config/* entry changed)'
+
+	# The router's own file (not a backup's), so sourcing it is safe.
+	_gb_rwm_release=$(
+		DISTRIB_RELEASE='' DISTRIB_REVISION=''
+		# shellcheck disable=SC1090,SC1091
+		[ -r "${GB_ROOT:-}/etc/openwrt_release" ] && . "${GB_ROOT:-}/etc/openwrt_release"
+		printf '%s %s' "$DISTRIB_RELEASE" "$DISTRIB_REVISION"
+	)
+
+	{
+		printf '%s %s: %s\n' "$_gb_rwm_when" "$GB_DEVICE" "$_gb_rwm_short"
+		printf '\n'
+		printf 'Changed: %s\n' "$_gb_rwm_paths"
+		printf 'Trigger: %s\n' "$_gb_rwm_trigger"
+		printf 'OpenWrt: %s\n' "$_gb_rwm_release"
+		printf 'Device: %s\n' "$GB_DEVICE"
+	} >"$_gb_rwm_file"
+}
+
+# last_run and state.json live on tmpfs; git remains the source of truth.
+_gb_run_write_state() {
+	_gb_rws_result="$1"
+	_gb_rws_reason="$2"
+	_gb_rws_commit="${3:-}"
+	_gb_rws_timings="${4:-{\"collect_s\":0,\"compare_s\":0,\"push_s\":0}}"
+
+	mkdir -p "$GB_STATE_DIR" 2>/dev/null
+	_gb_rws_now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+	printf '%s\n' "$(gb_json_str "$_gb_rws_now")" >"$GB_STATE_DIR/last_run" 2>/dev/null
+	{
+		printf '{\n'
+		printf '  "generated": %s,\n' "$(gb_json_str "$_gb_rws_now")"
+		printf '  "result": %s,\n' "$(gb_json_str "$_gb_rws_result")"
+		printf '  "reason": %s,\n' "$(gb_json_str "$_gb_rws_reason")"
+		printf '  "branch": %s,\n' "$(gb_json_str "${_gb_branch:-}")"
+		printf '  "commit": %s,\n' "$(gb_json_str "$_gb_rws_commit")"
+		printf '  "timings": %s\n' "$_gb_rws_timings"
+		printf '}\n'
+	} >"$GB_STATE_DIR/state.json" 2>/dev/null
+}
+
+# Pushes an index README to "main" if it does not exist yet. Only on a
+# device's first push (saves an ls-remote per run); never fails the backup.
+_gb_run_ensure_main_index() {
+	_gb_rmi_repodir="$1"
+	_gb_rmi_branch="$2"
+
+	# Clear the device branch's parent: main gets its own root commit.
+	GB_PARENT=''
+
+	_gb_rmi_head=$(gb_remote_head main 2>/dev/null)
+	_gb_rmi_rc=$?
+	[ "$_gb_rmi_rc" -eq 0 ] || return 0
+	[ -z "$_gb_rmi_head" ] || return 0
+
+	_gb_rmi_readme="$WORK/main-readme.md"
+	{
+		printf '# gitbackup\n\n'
+		printf 'This repository holds automatic router configuration backups. Each\n'
+		printf 'router pushes to its own branch here -- by default named\n'
+		# shellcheck disable=SC2016  # backticks are markdown code spans in
+		# the generated document, not attempted command substitution
+		printf '`device/<id>`, e.g. `%s` for the router that just created this page.\n\n' "$_gb_rmi_branch"
+		# shellcheck disable=SC2016
+		printf 'Open one of the `device/*` branches above: its own README.md carries\n'
+		printf 'that router'\''s ready-made recovery instructions, including a one-line\n'
+		printf 'command to restore a freshly flashed replacement.\n'
+	} >"$_gb_rmi_readme" 2>/dev/null
+	[ -s "$_gb_rmi_readme" ] || return 0
+
+	_gb_rmi_msg="$WORK/main-readme-message"
+	printf 'gitbackup: initialize repository index\n\nSee device/* branches for each router'\''s own backup and recovery\ninstructions.\n' \
+		>"$_gb_rmi_msg" 2>/dev/null
+
+	# gb_build_tree still requires a non-empty GB_PREFIX; the README goes in via
+	# the extra-file pair.
+	_gb_rmi_emptydir="$WORK/main-readme-empty"
+	rm -rf "$_gb_rmi_emptydir"
+	mkdir -p "$_gb_rmi_emptydir" 2>/dev/null
+
+	_gb_rmi_tree=$(GB_PREFIX='.' gb_build_tree "$_gb_rmi_repodir" "$_gb_rmi_emptydir" "$_gb_rmi_readme" 'README.md' 2>/dev/null)
+	[ -n "$_gb_rmi_tree" ] || return 0
+
+	gb_commit_push "$_gb_rmi_repodir" "$_gb_rmi_tree" '' "$_gb_rmi_msg" main >/dev/null 2>&1
+	return 0
+}
+
+_gb_run_backup() {
+	_gb_trigger="$1"
+
+	_gb_branch=$(gb_branch)
+	_gb_prefix=$(gb_expand "$(gb_uci_get gitbackup.main.path_prefix 'devices/{device}')")
+	# shellcheck disable=SC2034  # read by gb_build_tree (gitio.sh) as an environment seam, not used in this file
+	GB_PREFIX="$_gb_prefix"
+
+	_gb_outdir="$WORK/tree"
+	_gb_repodir="$WORK/repo"
+	# A brand-new branch has no parent to fetch, but the plumbing still
+	# needs a .git here.
+	[ -d "$_gb_repodir/.git" ] || git init -q "$_gb_repodir" ||
+		gb_die 1 "gitbackup run: git init $_gb_repodir failed"
+
+	_gb_t_collect_start=$(date +%s)
+	gb_collect "$_gb_outdir" || gb_die 1 'gitbackup run: gb_collect failed'
+	if [ "$(gb_json_bool "$GB_SCRUB")" = true ]; then
+		gb_scrub "$_gb_outdir" 2>/dev/null | while IFS= read -r _gb_sl || [ -n "$_gb_sl" ]; do
+			[ -n "$_gb_sl" ] && gb_log info "gitbackup run: scrubbed $_gb_sl"
+		done
+	fi
+	_gb_t_collect_end=$(date +%s)
+
+	# GB_PARENT is an environment input to gb_build_tree.
+	_gb_t_compare_start=$(date +%s)
+	GB_PARENT=$(gb_remote_head "$_gb_branch")
+	_gb_head_rc=$?
+	[ "$_gb_head_rc" -eq 0 ] || gb_die 3 "gitbackup run: could not reach $GB_URL to resolve $_gb_branch"
+	# Captured before the retry loop can reassign GB_PARENT.
+	_gb_branch_was_new=""
+	[ -z "$GB_PARENT" ] && _gb_branch_was_new=1
+
+	_gb_old_manifest="$WORK/old_manifest.json"
+	_gb_changed=1
+	if [ -n "$GB_PARENT" ]; then
+		gb_fetch_meta "$_gb_branch" "$_gb_repodir" ||
+			gb_die 3 "gitbackup run: could not fetch $_gb_branch metadata from $GB_URL"
+		if git --git-dir="$_gb_repodir/.git" cat-file -p "$GB_PARENT:$_gb_prefix/manifest.json" \
+			>"$_gb_old_manifest" 2>/dev/null; then
+			if gb_manifest_equal "$_gb_old_manifest" "$(gb_manifest_path "$_gb_outdir")"; then
+				_gb_changed=0
+			fi
+		fi
+	fi
+	_gb_t_compare_end=$(date +%s)
+	_gb_t_collect_s=$((_gb_t_collect_end - _gb_t_collect_start))
+	_gb_t_compare_s=$((_gb_t_compare_end - _gb_t_compare_start))
+
+	if [ "$_gb_changed" -eq 0 ]; then
+		gb_log notice "gitbackup run: no changes since the last backup on $_gb_branch"
+		printf 'no changes\n'
+		_gb_run_write_state ok no-changes "$GB_PARENT" \
+			"{\"collect_s\":$_gb_t_collect_s,\"compare_s\":$_gb_t_compare_s,\"push_s\":0}"
+		gb_log notice "gitbackup run: timings -- collect ${_gb_t_collect_s}s, compare ${_gb_t_compare_s}s, push 0s"
+		exit 0
+	fi
+
+	# Archive only after the compare: sysupgrade -b's gzip is not
+	# byte-deterministic. Never when scrubbing: it reads the LIVE filesystem and
+	# would carry every value the scrub just removed.
+	if [ "$(gb_json_bool "$(gb_uci_get gitbackup.main.archive 1)")" = true ]; then
+		if [ "$(gb_json_bool "$GB_SCRUB")" = true ]; then
+			gb_log notice 'gitbackup run: scrubbing is on, so no backup.tar.gz is pushed -- sysupgrade -b reads the live filesystem and would carry exactly the values just scrubbed out of the tree'
+		else
+			sysupgrade -b "$_gb_outdir/backup.tar.gz" >/dev/null 2>&1 ||
+				gb_log warning 'gitbackup run: sysupgrade -b failed, continuing without backup.tar.gz'
+		fi
+	fi
+
+	# One gb_card call for both RECOVERY.md and the branch-root README.md, so
+	# the copies cannot drift.
+	_gb_readme_root=''
+	gb_card "$_gb_outdir/RECOVERY.md" 2>/dev/null
+	if [ -s "$_gb_outdir/RECOVERY.md" ]; then
+		_gb_readme_root="$WORK/branch-readme.md"
+		cp -f "$_gb_outdir/RECOVERY.md" "$_gb_readme_root" 2>/dev/null || _gb_readme_root=''
+	fi
+
+	_gb_changed_list=$(_gb_run_changed_configs "$_gb_old_manifest" "$(gb_manifest_path "$_gb_outdir")")
+	_gb_changed_count=$(printf '%s\n' "$_gb_changed_list" | grep -c .)
+	_gb_msgfile="$WORK/commit-message"
+	_gb_run_write_message "$_gb_msgfile" "$_gb_trigger" "$_gb_changed_list" "$_gb_changed_count"
+
+	# On non-fast-forward retry once on the new parent, reusing the collected set.
+	_gb_t_push_start=$(date +%s)
+	_gb_attempt=1
+	while :; do
+		_gb_tree=$(gb_build_tree "$_gb_repodir" "$_gb_outdir" "$_gb_readme_root" 'README.md')
+		[ -n "$_gb_tree" ] || gb_die 1 'gitbackup run: gb_build_tree failed'
+
+		_gb_commit=$(gb_commit_push "$_gb_repodir" "$_gb_tree" "$GB_PARENT" "$_gb_msgfile" "$_gb_branch")
+		_gb_push_rc=$?
+		case "$_gb_push_rc" in
+			0) break ;;
+			2)
+				if [ "$_gb_attempt" -ge 2 ]; then
+					gb_die 1 "gitbackup run: $_gb_branch changed again during the retry, giving up after one retry"
+				fi
+				gb_log notice "gitbackup run: $_gb_branch moved under us, retrying once"
+				_gb_attempt=2
+				GB_PARENT=$(gb_remote_head "$_gb_branch")
+				_gb_head_rc=$?
+				[ "$_gb_head_rc" -eq 0 ] || gb_die 3 "gitbackup run: could not re-resolve $_gb_branch for the retry"
+				gb_fetch_meta "$_gb_branch" "$_gb_repodir" ||
+					gb_die 3 "gitbackup run: could not re-fetch $_gb_branch metadata for the retry"
+				;;
+			1) gb_die 1 'gitbackup run: gb_commit_push could not build the commit, see log' ;;
+			*) gb_die 3 'gitbackup run: push failed, see log' ;;
+		esac
+	done
+	_gb_t_push_end=$(date +%s)
+	_gb_t_push_s=$((_gb_t_push_end - _gb_t_push_start))
+
+	gb_log notice "gitbackup run: pushed $_gb_commit to $_gb_branch"
+	printf 'pushed %s to %s\n' "$_gb_commit" "$_gb_branch"
+	_gb_run_write_state ok pushed "$_gb_commit" \
+		"{\"collect_s\":$_gb_t_collect_s,\"compare_s\":$_gb_t_compare_s,\"push_s\":$_gb_t_push_s}"
+	gb_log notice "gitbackup run: timings -- collect ${_gb_t_collect_s}s, compare ${_gb_t_compare_s}s, push ${_gb_t_push_s}s"
+
+	if [ -n "$_gb_branch_was_new" ]; then
+		_gb_run_ensure_main_index "$_gb_repodir" "$_gb_branch"
+	fi
+}
+
+# cmd_run [--trigger cron|manual|procd|luci] -- the crontab line passes no
+# flag, hence the cron default.
+cmd_run() {
+	_gb_trigger=cron
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			--trigger)
+				shift
+				[ "$#" -gt 0 ] && { _gb_trigger="$1"; shift; }
+				;;
+			--trigger=*) _gb_trigger="${1#--trigger=}"; shift ;;
+			*) shift ;;
+		esac
+	done
+
+	# Non-blocking flock on an fd. Busy -> skipped, exit 0: cron must not
+	# report an overlap that resolved itself.
+	_gb_lockfile="${GB_LOCK_FILE:-/var/run/gitbackup.lock}"
+	mkdir -p "$(dirname "$_gb_lockfile")" 2>/dev/null
+	exec 9>"$_gb_lockfile" || gb_die 1 "gitbackup run: cannot open lock file $_gb_lockfile"
+	if ! flock -n 9; then
+		gb_log notice 'gitbackup run: another run already holds the lock, skipped'
+		printf 'skipped: another run is already in progress\n'
+		exit 0
+	fi
+
+	gb_remote
+	_gb_scheme="$GB_SCHEME" _gb_host="$GB_HOST" _gb_port="$GB_PORT"
+	_gb_netport="$_gb_port"
+	if [ "$_gb_netport" = 0 ]; then
+		if [ "$_gb_scheme" = ssh ]; then _gb_netport=22; else _gb_netport=443; fi
+	fi
+	if ! gb_have_net "$_gb_host" "$_gb_netport"; then
+		gb_log notice "gitbackup run: $_gb_host:$_gb_netport unreachable, skipped"
+		printf 'skipped: %s is unreachable\n' "$_gb_host"
+		exit 0
+	fi
+
+	# $WORK holds a plaintext backup set and briefly credentials: /tmp only
+	# (never flash/USB), removed on any exit.
+	WORK=$(mktemp -d "${TMPDIR:-/tmp}/gitbackup.XXXXXX") ||
+		gb_die 1 'gitbackup run: cannot create a working directory under /tmp'
+	trap 'rm -rf "$WORK"' EXIT INT TERM
+
+	_gb_set_kb=$(gb_paths_size_kb)
+	_gb_need_kb=$((_gb_set_kb * 2 + 1024))
+	# TMPDIR may override /tmp: check the filesystem $WORK lives on.
+	_gb_free_kb=$(gb_free_kb "${TMPDIR:-/tmp}")
+	case "$_gb_free_kb" in '' | *[!0-9]*) _gb_free_kb=0 ;; esac
+	if [ "$_gb_free_kb" -lt "$_gb_need_kb" ]; then
+		gb_die 1 "gitbackup run: not enough space in /tmp -- need ~${_gb_need_kb} KB (backup set ~${_gb_set_kb} KB x2 + 1024 KB headroom), have ${_gb_free_kb} KB free; reduce the backup set (e.g. gitbackup.main.archive='0', or trim the sysupgrade path list) or free up /tmp"
+	fi
+
+	# Visibility gate: 3 (could not verify) is skipped like no network, never
+	# treated as private; 4 (public) always fails loudly.
+	gb_visibility_ok "$GB_URL"
+	case $? in
+		4) gb_die 4 "$GB_URL is publicly visible to an anonymous request; push refused" ;;
+		3)
+			gb_log notice "gitbackup run: could not verify whether $GB_URL is public, skipped"
+			printf 'skipped: could not verify repository visibility\n'
+			exit 0
+			;;
+	esac
+
+	eval "$(gb_git_env)"
+
+	_gb_run_backup "$_gb_trigger"
+}
+
+# cmd_restore -- no gb_validate_config: a bare router may not resolve its
+# device id. Only the URL is required.
+cmd_restore() {
+	_gb_r_device=''
+	_gb_r_commit=''
+	_gb_r_flags=''
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			--device) shift; _gb_r_device="${1:-}"; shift ;;
+			--device=*) _gb_r_device="${1#--device=}"; shift ;;
+			--commit) shift; _gb_r_commit="${1:-}"; shift ;;
+			--commit=*) _gb_r_commit="${1#--commit=}"; shift ;;
+			--dry-run|--force|--yes|--with-packages) _gb_r_flags="$_gb_r_flags $1"; shift ;;
+			*) shift ;;
+		esac
+	done
+
+	# No --device: restore this router's own backup.
+	[ -n "$_gb_r_device" ] || _gb_r_device=$(gb_device_id) || exit $?
+
+	GB_URL=$(gb_uci_get gitbackup.origin.url)
+	[ -n "$GB_URL" ] || gb_die 2 'gitbackup.origin.url: empty, a repository url is required'
+
+	gb_remote
+
+	# --commit reaches bare git arguments: allow only empty/HEAD or a full sha.
+	if [ -n "$_gb_r_commit" ] && [ "$_gb_r_commit" != HEAD ]; then
+		_gb_valid_full_sha "$_gb_r_commit" ||
+			gb_die 2 "gitbackup restore: --commit '$_gb_r_commit' must be a full 40-character commit sha, or omitted/HEAD for the branch tip"
+	fi
+
+	eval "$(gb_git_env)"
+
+	# shellcheck disable=SC2086  # word-splitting is the point: $_gb_r_flags is zero or more bare flag tokens
+	gb_restore "$_gb_r_device" "$_gb_r_commit" $_gb_r_flags
+	exit $?
+}
+
+# ---------------------------------------------------------------------------
+# history -- the branch's commits as JSON.
+# ---------------------------------------------------------------------------
+cmd_history() {
+	_gb_h_limit=20
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			--limit) shift; _gb_h_limit="${1:-20}"; shift ;;
+			--limit=*) _gb_h_limit="${1#--limit=}"; shift ;;
+			*) shift ;;
+		esac
+	done
+	case "$_gb_h_limit" in ''|*[!0-9]*) _gb_h_limit=20 ;; esac
+
+	gb_remote
+
+	_gb_h_branch=$(gb_branch) ||
+		gb_die 2 'gitbackup.origin.branch could not be expanded'
+
+	eval "$(gb_git_env)"
+
+	_gb_h_head=$(gb_remote_head "$_gb_h_branch")
+	_gb_h_head_rc=$?
+	[ "$_gb_h_head_rc" -eq 0 ] || gb_die 3 "gitbackup history: could not reach $GB_URL to resolve $_gb_h_branch"
+	if [ -z "$_gb_h_head" ]; then
+		printf '{ "branch": %s, "commits": [] }\n' "$(gb_json_str "$_gb_h_branch")"
+		return 0
+	fi
+
+	_gb_h_dir=$(mktemp -d "${TMPDIR:-/tmp}/gitbackup-history.XXXXXX") ||
+		gb_die 1 'gitbackup history: cannot create a scratch directory under /tmp'
+	trap 'rm -rf "$_gb_h_dir"' EXIT INT TERM
+
+	# Full history (empty depth), not gb_fetch_meta's --depth=1 default.
+	gb_fetch_meta "$_gb_h_branch" "$_gb_h_dir" '' ||
+		gb_die 3 "gitbackup history: could not fetch $_gb_h_branch from $GB_URL"
+
+	_gb_h_tab=$(printf '\t')
+	printf '{ "branch": %s, "commits": [' "$(gb_json_str "$_gb_h_branch")"
+	_gb_h_first=1
+	git -C "$_gb_h_dir" log -n "$_gb_h_limit" --format='%H%x09%s' FETCH_HEAD 2>/dev/null |
+		while IFS= read -r _gb_h_line || [ -n "$_gb_h_line" ]; do
+			_gb_h_sha="${_gb_h_line%%"$_gb_h_tab"*}"
+			_gb_h_subject="${_gb_h_line#*"$_gb_h_tab"}"
+			[ "$_gb_h_first" -eq 1 ] || printf ','
+			_gb_h_first=0
+			printf '{ "sha": %s, "subject": %s, "changed": [' \
+				"$(gb_json_str "$_gb_h_sha")" "$(gb_json_str "$_gb_h_subject")"
+			_gb_h_cfirst=1
+			# --root: without it diff-tree prints nothing for a root commit.
+			git -C "$_gb_h_dir" diff-tree --no-commit-id --name-only -r --root "$_gb_h_sha" 2>/dev/null |
+				while IFS= read -r _gb_h_path || [ -n "$_gb_h_path" ]; do
+					[ -n "$_gb_h_path" ] || continue
+					[ "$_gb_h_cfirst" -eq 1 ] || printf ','
+					_gb_h_cfirst=0
+					printf '%s' "$(gb_json_str "$_gb_h_path")"
+				done
+			printf '] }'
+		done
+	printf '] }\n'
+
+	rm -rf "$_gb_h_dir"
+	trap - EXIT INT TERM
+}
+
+# ---------------------------------------------------------------------------
+# collect -- gb_collect into --out for inspection; nothing pushed or scrubbed.
+# ---------------------------------------------------------------------------
+cmd_collect() {
+	_gb_c_out=''
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			--out) shift; _gb_c_out="${1:-}"; shift ;;
+			--out=*) _gb_c_out="${1#--out=}"; shift ;;
+			*) shift ;;
+		esac
+	done
+	[ -n "$_gb_c_out" ] || gb_die 2 'gitbackup collect: --out DIR is required'
+
+	mkdir -p "$_gb_c_out" || gb_die 1 "gitbackup collect: cannot create $_gb_c_out"
+	gb_collect "$_gb_c_out" || gb_die 1 'gitbackup collect: gb_collect failed'
+	printf 'collected backup set into %s\n' "$_gb_c_out"
+}
+
+# ---------------------------------------------------------------------------
+# diff -- live config vs the last commit by manifest.json, never git: git
+# tracks only three file modes and misses a chmod.
+# ---------------------------------------------------------------------------
+
+# A manifest path never holds a raw tab.
+_gb_diff_dump_line() {
+	_gb_dd_path=$(gb_manifest_field "$1" path)
+	[ -z "$_gb_dd_path" ] || printf '%s\t%s\n' "$_gb_dd_path" "$1"
+}
+
+_gb_diff_dump() {
+	if [ -r "$1" ]; then gb_manifest_each "$1" entries _gb_diff_dump_line; fi | sort >"$2"
+}
+
+_gb_diff_describe_change() {
+	_gb_ddc_old="$1"
+	_gb_ddc_new="$2"
+	_gb_ddc_path="$3"
+	_gb_ddc_parts=''
+
+	_gb_ddc_ot=$(gb_manifest_field "$_gb_ddc_old" type)
+	_gb_ddc_nt=$(gb_manifest_field "$_gb_ddc_new" type)
+	[ "$_gb_ddc_ot" = "$_gb_ddc_nt" ] || _gb_ddc_parts="$_gb_ddc_parts type $_gb_ddc_ot->$_gb_ddc_nt;"
+
+	_gb_ddc_om=$(gb_manifest_field "$_gb_ddc_old" mode)
+	_gb_ddc_nm=$(gb_manifest_field "$_gb_ddc_new" mode)
+	[ "$_gb_ddc_om" = "$_gb_ddc_nm" ] || _gb_ddc_parts="$_gb_ddc_parts mode $_gb_ddc_om->$_gb_ddc_nm;"
+
+	_gb_ddc_ou=$(gb_manifest_field "$_gb_ddc_old" uid)
+	_gb_ddc_nu=$(gb_manifest_field "$_gb_ddc_new" uid)
+	[ "$_gb_ddc_ou" = "$_gb_ddc_nu" ] || _gb_ddc_parts="$_gb_ddc_parts uid $_gb_ddc_ou->$_gb_ddc_nu;"
+
+	_gb_ddc_og=$(gb_manifest_field "$_gb_ddc_old" gid)
+	_gb_ddc_ng=$(gb_manifest_field "$_gb_ddc_new" gid)
+	[ "$_gb_ddc_og" = "$_gb_ddc_ng" ] || _gb_ddc_parts="$_gb_ddc_parts gid $_gb_ddc_og->$_gb_ddc_ng;"
+
+	_gb_ddc_osha=$(gb_manifest_field "$_gb_ddc_old" sha256)
+	_gb_ddc_nsha=$(gb_manifest_field "$_gb_ddc_new" sha256)
+	[ "$_gb_ddc_osha" = "$_gb_ddc_nsha" ] || _gb_ddc_parts="$_gb_ddc_parts content changed;"
+
+	_gb_ddc_otgt=$(gb_manifest_field "$_gb_ddc_old" target)
+	_gb_ddc_ntgt=$(gb_manifest_field "$_gb_ddc_new" target)
+	[ "$_gb_ddc_otgt" = "$_gb_ddc_ntgt" ] || _gb_ddc_parts="$_gb_ddc_parts symlink target $_gb_ddc_otgt->$_gb_ddc_ntgt;"
+
+	[ -n "$_gb_ddc_parts" ] && printf '~ %s:%s\n' "$_gb_ddc_path" "$_gb_ddc_parts"
+}
+
+# No join(1) on the image. No output = no changes.
+_gb_diff_compare() {
+	_gb_dc_old="$1"
+	_gb_dc_new="$2"
+	{ cut -f1 "$_gb_dc_old" 2>/dev/null; cut -f1 "$_gb_dc_new" 2>/dev/null; } | sort -u |
+		while IFS= read -r _gb_dc_p || [ -n "$_gb_dc_p" ]; do
+			[ -n "$_gb_dc_p" ] || continue
+			_gb_dc_o=$(awk -F'\t' -v p="$_gb_dc_p" '$1==p{print $2; exit}' "$_gb_dc_old" 2>/dev/null)
+			_gb_dc_n=$(awk -F'\t' -v p="$_gb_dc_p" '$1==p{print $2; exit}' "$_gb_dc_new" 2>/dev/null)
+			if [ -z "$_gb_dc_o" ] && [ -n "$_gb_dc_n" ]; then
+				printf '+ %s (%s)\n' "$_gb_dc_p" "$(gb_manifest_field "$_gb_dc_n" type)"
+			elif [ -n "$_gb_dc_o" ] && [ -z "$_gb_dc_n" ]; then
+				printf -- '- %s (%s)\n' "$_gb_dc_p" "$(gb_manifest_field "$_gb_dc_o" type)"
+			elif [ "$_gb_dc_o" != "$_gb_dc_n" ]; then
+				_gb_diff_describe_change "$_gb_dc_o" "$_gb_dc_n" "$_gb_dc_p"
+			fi
+		done
+}
+
+# cmd_diff [<from> <to>] -- no args: live vs last commit. Two full shas:
+# `git diff` between two backups (History).
+cmd_diff() {
+	gb_remote
+
+	if [ "$#" -eq 2 ]; then
+		_gb_d_from="$1"
+		_gb_d_to="$2"
+		_gb_valid_full_sha "$_gb_d_from" ||
+			gb_die 2 "gitbackup diff: 'from' must be a full 40-character commit sha, got '$_gb_d_from'"
+		_gb_valid_full_sha "$_gb_d_to" ||
+			gb_die 2 "gitbackup diff: 'to' must be a full 40-character commit sha, got '$_gb_d_to'"
+
+		_gb_dc_branch=$(gb_branch) ||
+			gb_die 2 'gitbackup.origin.branch could not be expanded'
+
+		_gb_dc_work=$(mktemp -d "${TMPDIR:-/tmp}/gitbackup-diffc.XXXXXX") ||
+			gb_die 1 'gitbackup diff: cannot create a working directory under /tmp'
+		trap 'rm -rf "$_gb_dc_work"' EXIT INT TERM
+
+		eval "$(gb_git_env)"
+
+		# Full history: either commit may be far back on the branch.
+		gb_fetch_meta "$_gb_dc_branch" "$_gb_dc_work" '' ||
+			gb_die 3 "gitbackup diff: could not fetch $_gb_dc_branch from $GB_URL"
+
+		# --end-of-options, not "--": for git diff "--" would turn the shas
+		# into pathspecs. Needs git >= 2.24.
+		_gb_dc_out=$(git -C "$_gb_dc_work" diff --end-of-options "$_gb_d_from" "$_gb_d_to" 2>&1)
+		_gb_dc_rc=$?
+		if [ "$_gb_dc_rc" -ne 0 ]; then
+			gb_die 3 "gitbackup diff: $_gb_dc_out"
+		fi
+		printf '%s\n' "$_gb_dc_out"
+		return 0
+	fi
+
+	if [ "$#" -ne 0 ]; then
+		gb_die 2 'gitbackup diff: expected either no arguments (live config vs the last commit) or exactly two (from-sha to-sha)'
+	fi
+
+	_gb_d_branch=$(gb_branch)
+	_gb_d_prefix=$(gb_expand "$(gb_uci_get gitbackup.main.path_prefix 'devices/{device}')")
+
+	_gb_d_work=$(mktemp -d "${TMPDIR:-/tmp}/gitbackup-diff.XXXXXX") ||
+		gb_die 1 'gitbackup diff: cannot create a working directory under /tmp'
+	trap 'rm -rf "$_gb_d_work"' EXIT INT TERM
+
+	eval "$(gb_git_env)"
+
+	_gb_d_parent=$(gb_remote_head "$_gb_d_branch")
+	_gb_d_head_rc=$?
+	[ "$_gb_d_head_rc" -eq 0 ] || gb_die 3 "gitbackup diff: could not reach $GB_URL to resolve $_gb_d_branch"
+
+	_gb_d_outdir="$_gb_d_work/tree"
+	gb_collect "$_gb_d_outdir" || gb_die 1 'gitbackup diff: gb_collect failed'
+	if [ "$(gb_json_bool "$GB_SCRUB")" = true ]; then
+		# Scrub like `run` does, or every scrubbed field would show as changed.
+		gb_scrub "$_gb_d_outdir" >/dev/null 2>&1
+	fi
+
+	_gb_d_old_manifest="$_gb_d_work/old_manifest.json"
+	: >"$_gb_d_old_manifest"
+	if [ -n "$_gb_d_parent" ]; then
+		_gb_d_repodir="$_gb_d_work/repo"
+		gb_fetch_meta "$_gb_d_branch" "$_gb_d_repodir" ||
+			gb_die 3 "gitbackup diff: could not fetch $_gb_d_branch metadata from $GB_URL"
+		git --git-dir="$_gb_d_repodir/.git" cat-file -p "$_gb_d_parent:$_gb_d_prefix/manifest.json" \
+			>"$_gb_d_old_manifest" 2>/dev/null
+	fi
+
+	_gb_d_old_tsv="$_gb_d_work/old.tsv"
+	_gb_d_new_tsv="$_gb_d_work/new.tsv"
+	_gb_diff_dump "$_gb_d_old_manifest" "$_gb_d_old_tsv"
+	_gb_diff_dump "$(gb_manifest_path "$_gb_d_outdir")" "$_gb_d_new_tsv"
+
+	_gb_diff_compare "$_gb_d_old_tsv" "$_gb_d_new_tsv"
+	return 0
+}
+
+_gb_paths_json_array() {
+	_gb_pja_first=1
+	printf '%s\n' "$1" | while IFS= read -r _gb_pja_p || [ -n "$_gb_pja_p" ]; do
+		[ -n "$_gb_pja_p" ] || continue
+		[ "$_gb_pja_first" -eq 1 ] || printf ','
+		printf '%s' "$(gb_json_str "$_gb_pja_p")"
+		_gb_pja_first=0
+	done
+}
+
+# ---------------------------------------------------------------------------
+# paths -- list|add|del|audit over /etc/sysupgrade.conf via paths.sh. Not
+# gated by gb_validate_config: works before a remote is configured.
+# ---------------------------------------------------------------------------
+cmd_paths() {
+	_gb_p_sub="${1:-list}"
+	[ "$#" -gt 0 ] && shift
+
+	case "$_gb_p_sub" in
+		list)
+			if [ "${1:-}" = '--json' ]; then
+				# "paths": the file verbatim. "entries": what to list and send back.
+				# "effective": read-only; saving it back would shrink a directory entry
+				# to the files present at save time.
+				_gb_p_raw=$(gb_paths_list)
+				_gb_p_entries=$(gb_paths_entries)
+				_gb_p_eff=$(sysupgrade -l 2>/dev/null)
+				printf '{ "paths": [%s], "entries": [%s], "effective": [%s], "size_kb": %s }\n' \
+					"$(_gb_paths_json_array "$_gb_p_raw")" "$(_gb_paths_json_array "$_gb_p_entries")" "$(_gb_paths_json_array "$_gb_p_eff")" "$(gb_paths_size_kb)"
+			else
+				gb_paths_list
+				printf '# total: %s KB (effective sysupgrade set, sysupgrade -l)\n' "$(gb_paths_size_kb)"
+			fi
+			;;
+		add)
+			_gb_p_path="${1:-}"
+			[ -n "$_gb_p_path" ] || gb_die 2 'gitbackup paths add: a path is required'
+			_gb_p_err=$(gb_paths_add "$_gb_p_path" 2>&1)
+			_gb_p_rc=$?
+			if [ "$_gb_p_rc" -eq 0 ]; then
+				printf 'added %s\n' "$_gb_p_path"
+			else
+				gb_die "$_gb_p_rc" "gitbackup paths add: $_gb_p_err"
+			fi
+			;;
+		del)
+			_gb_p_path="${1:-}"
+			[ -n "$_gb_p_path" ] || gb_die 2 'gitbackup paths del: a path is required'
+			gb_paths_del "$_gb_p_path"
+			printf 'removed %s\n' "$_gb_p_path"
+			;;
+		audit)
+			# Files changed since the base image (/overlay/upper) that are
+			# neither in `sysupgrade -l` nor gitbackup's own secrets.
+			# VERIFY: not checked against a real overlay mount; an absent
+			# directory yields an empty list.
+			_gb_p_upper="${GB_ROOT:-}/overlay/upper"
+			if [ ! -d "$_gb_p_upper" ]; then
+				printf '{ "paths": [] }\n'
+				return 0
+			fi
+			_gb_p_backed=$(sysupgrade -l 2>/dev/null)
+			printf '{ "paths": ['
+			_gb_p_first=1
+			( cd "$_gb_p_upper" 2>/dev/null && find . \( -type f -o -type l \) ) |
+				while IFS= read -r _gb_p_rel || [ -n "$_gb_p_rel" ]; do
+					_gb_p_abs="/${_gb_p_rel#./}"
+					case "$_gb_p_abs" in
+						/etc/gitbackup | /etc/gitbackup/*) continue ;;
+					esac
+					printf '%s\n' "$_gb_p_backed" | grep -qxF "$_gb_p_abs" && continue
+					[ "$_gb_p_first" -eq 1 ] || printf ','
+					_gb_p_first=0
+					printf '%s' "$(gb_json_str "$_gb_p_abs")"
+				done
+			printf '] }\n'
+			;;
+		*)
+			gb_die 2 "gitbackup paths: unknown subcommand '$_gb_p_sub' (expected list, add, del or audit)"
+			;;
+	esac
+}
+
+# ---------------------------------------------------------------------------
+# card -- write the recovery card to --out; gb_card never fails.
+# ---------------------------------------------------------------------------
+cmd_card() {
+	_gb_cd_out=''
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			--out) shift; _gb_cd_out="${1:-}"; shift ;;
+			--out=*) _gb_cd_out="${1#--out=}"; shift ;;
+			*) shift ;;
+		esac
+	done
+	[ -n "$_gb_cd_out" ] || gb_die 2 'gitbackup card: --out FILE is required'
+	gb_card "$_gb_cd_out"
+	printf 'wrote recovery card to %s\n' "$_gb_cd_out"
+}
+
+# cmd_log [lines] -- tag-filtered syslog (logread survives a reboot).
+cmd_log() {
+	_gb_lines="${1:-50}"
+	case "$_gb_lines" in '' | *[!0-9]*) _gb_lines=50 ;; esac
+	logread -e gitbackup 2>/dev/null | tail -n "$_gb_lines"
+}
+
+[ "$#" -ge 1 ] || { usage; exit 0; }
+
+cmd="$1"
+shift
+
+case "$cmd" in
+	status)
+		# Lenient: a fresh install's default config must not make status exit 2.
+		gb_status_config
+		cmd_status
+		;;
+	keygen)
+		# No gb_validate_config: the key is created before a remote URL exists.
+		_gb_force=''
+		_gb_confirm=''
+		while [ "$#" -gt 0 ]; do
+			case "$1" in
+				--force) _gb_force=1; shift ;;
+				--confirm) shift; _gb_confirm="${1:-}"; shift ;;
+				--confirm=*) _gb_confirm="${1#--confirm=}"; shift ;;
+				*) shift ;;
+			esac
+		done
+		_gb_kg_out=$(gb_keygen "$_gb_force" "$_gb_confirm")
+		_gb_kg_rc=$?
+		if [ "$_gb_kg_rc" -eq 4 ]; then
+			# Relay the "confirm-required <fingerprint>" line on stdout (rpcd
+			# parses it), then explain on stderr.
+			printf '%s\n' "$_gb_kg_out"
+			# shellcheck disable=SC2086  # word-splitting is the point: the fixed leading token, then the fingerprint text
+			set -- $_gb_kg_out
+			shift
+			gb_die 4 "$(gb_uci_get gitbackup.origin.key_file /etc/gitbackup/id_ed25519) already exists (fingerprint: $*) -- keygen --force destroys the private half beyond recovery, and the deploy key already added at your git provider stops working the instant it does; re-run 'gitbackup keygen --force --confirm \"$*\"' to proceed, then add the NEW public key at the provider"
+		fi
+		[ "$_gb_kg_rc" -eq 0 ] || exit 1
+		printf 'generated %s\n' "$(gb_uci_get gitbackup.origin.key_file /etc/gitbackup/id_ed25519)"
+		;;
+	pubkey)
+		# Needs no remote configuration either.
+		gb_pubkey || exit 1
+		;;
+	test)
+		gb_validate_config
+		cmd_test
+		;;
+	hostkey)
+		gb_validate_config
+		cmd_hostkey "$@"
+		;;
+	run)
+		gb_validate_config
+		cmd_run "$@"
+		;;
+	log)
+		# No gb_validate_config: must work on a half-configured router.
+		cmd_log "$@"
+		;;
+	restore)
+		cmd_restore "$@"
+		;;
+	collect|diff|card)
+		gb_validate_config
+		case "$cmd" in
+			collect) cmd_collect "$@" ;;
+			diff) cmd_diff "$@" ;;
+			card) cmd_card "$@" ;;
+		esac
+		;;
+	history)
+		gb_validate_config
+		cmd_history "$@"
+		;;
+	paths)
+		# No gb_validate_config: works before a remote is configured.
+		cmd_paths "$@"
+		;;
+	*)
+		usage >&2
+		gb_die 1 "unknown command '$cmd'"
+		;;
+esac

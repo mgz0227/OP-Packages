@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: \n"
-"PO-Revision-Date: 2026-02-28 09:36+0000\n"
-"Last-Translator: Oleksii Nazarenko <energy.aleks@gmail.com>\n"
+"PO-Revision-Date: 2026-05-12 09:06+0000\n"
+"Last-Translator: Oleksandr Yurov <oyurov@icloud.com>\n"
 "Language-Team: Ukrainian <https://hosted.weblate.org/projects/openwrt/"
 "luciapplicationsupnp/uk/>\n"
 "Language: uk\n"
@@ -11,9 +11,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
-"X-Generator: Weblate 5.16.1-dev\n"
+"X-Generator: Weblate 2026.5-dev\n"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:180
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:183
 msgctxt ""
 "A 900s interval will result in %s (%s = SSDP) notifications with the minimum "
 "max-age of 1800s"
@@ -21,72 +21,76 @@ msgid ""
 "A 900s interval will result in %s notifications with the minimum max-age of "
 "1800s"
 msgstr ""
-"Інтервал у 900 секунд призведе до %s сповіщень із мінімальним максимальним "
-"часом дії у 1800 секунд"
+"Інтервал у 900 секунд призведе до %s сповіщень із мінімальним максимальним "
+"часом дії у 1800 секунд"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:216
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:219
 msgid ""
 "ACL specify which client addresses and ports can be mapped, IPv6 always "
 "allowed."
 msgstr ""
-"Список контролю доступу (ACL) визначає, які зовнішні порти можуть бути "
-"переспрямовані на які внутрішні адреси й порти, IPv6 always allowed."
+"Список контролю доступу (ACL) визначає, які адреси й порти клієнтів можуть "
+"переспрямовуватися; для IPv6 завжди дозволено."
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:235
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:238
 msgid "Action"
 msgstr "Дія"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:129
 msgid "Active Service Port Maps"
-msgstr "Активні переспрямування"
+msgstr "Активні переспрямування портів служби"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:29
 msgid "Active UPnP IGD & PCP/NAT-PMP Port Maps"
-msgstr "Активні карти портів UPnP IGD & PCP/NAT-PMP"
+msgstr "Активні переспрямування портів UPnP IGD & PCP/NAT-PMP"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:135
 msgid "Advanced Settings"
 msgstr "Розширені налаштування"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:148
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:151
 msgid "Advertise as IGDv1 (IPv4 only) device instead of IGDv2"
 msgstr "Оголошувати як пристрій IGDv1 замість IGDv2"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:236
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:239
 msgid "Allow"
 msgstr "Дозволити"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:175
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:178
 msgid "Allow adding port maps for requesting IP addresses only"
 msgstr ""
 "Дозволити додавання переспрямування тільки для IP-адрес, що надсилають запити"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:199
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:147
+msgid "Allow private IPv4"
+msgstr "Дозволити приватні IPv4"
+
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:202
 msgid "Announced model number"
 msgstr "Оголошуваний номер моделі"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:202
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:205
 msgid "Announced serial number"
 msgstr "Оголошуваний серійний номер"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:41
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:99
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:223
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:226
 msgid "Client Address"
 msgstr "Адреса клієнта"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:40
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:98
 msgid "Client Name"
-msgstr "Ім'я клієнта"
+msgstr "Імʼя клієнта"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:42
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:100
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:227
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:230
 msgid "Client Port"
 msgstr "Порт клієнта"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:221
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:224
 msgid "Comment"
 msgstr "Примітка"
 
@@ -96,22 +100,22 @@ msgstr "Примітка"
 msgid "Delete"
 msgstr "Видалити"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:237
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:240
 msgid "Deny"
-msgstr "Відмовити"
+msgstr "Заборонити"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:46
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:104
 msgid "Description"
 msgstr "Опис"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:196
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:199
 msgid "Device UUID"
 msgstr "UUID пристрою"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:153
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:156
 msgid "Download speed"
-msgstr "Низхідне з'єднання"
+msgstr "Швидкість завантаження"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:144
 msgid "Enable PCP/NAT-PMP protocols"
@@ -121,11 +125,15 @@ msgstr "Увімкнути протоколи PCP/NAT-PMP"
 msgid "Enable UPnP IGD protocol"
 msgstr "Увімкнути протокол UPnP IGD"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:209
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:212
 msgid "Enable additional logging"
 msgstr "Увімкнути додаткове журналювання"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:174
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:148
+msgid "Enable forwarding for private/reserved IPv4 address"
+msgstr "Увімкнути переспрямування для приватних/зарезервованих IPv4-адрес"
+
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:177
 msgid "Enable secure mode"
 msgstr "Увімкнути захищений режим"
 
@@ -136,19 +144,19 @@ msgstr "Термін дії закінчується"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:43
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:101
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:231
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:234
 msgid "External Port"
 msgstr "Зовнішній порт"
 
 #: applications/luci-app-upnp/root/usr/share/rpcd/acl.d/luci-app-upnp.json:3
 msgid "Grant access to UPnP IGD & PCP/NAT-PMP"
-msgstr "Надайте доступ до UPnP IGD & PCP/NAT-PMP"
+msgstr "Надати доступ до UPnP IGD & PCP/NAT-PMP"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:179
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:182
 msgid "Notify interval"
 msgstr "Інтервал сповіщення"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:191
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:194
 msgid "Presentation URL"
 msgstr "URL презентації"
 
@@ -157,41 +165,41 @@ msgstr "URL презентації"
 msgid "Protocol"
 msgstr "Протокол"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:210
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:213
 msgid "Puts extra debugging information into the system log"
-msgstr "Включати додаткові відомості для налагодження до системного журналу"
+msgstr "Записує додаткову інформацію для налагодження у системний журнал"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:192
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:195
 msgid "Report custom router web interface (presentation) URL"
 msgstr ""
-"Повідомити про URL-адресу веб-інтерфейсу спеціального маршрутизатора "
+"Повідомляти користувацьку URL-адресу вебінтерфейсу маршрутизатора "
 "(презентації)"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:154
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:157
 msgid "Report maximum download speed in kByte/s"
-msgstr "Повідомте максимальну швидкість завантаження в кбайт/с"
+msgstr "Повідомляти максимальну швидкість завантаження у кбайт/с"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:158
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:161
 msgid "Report maximum upload speed in kByte/s"
-msgstr "Повідомте максимальну швидкість завантаження в кбайт/с"
+msgstr "Повідомляти максимальну швидкість вивантаження у кбайт/с"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:205
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:208
 msgid "Report system instead of service uptime"
-msgstr "Повідомляти час безвідмовної роботи системи, а не сервісу"
+msgstr "Повідомляти час безвідмовної роботи системи, а не служби"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:186
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:189
 msgid "SOAP/HTTP port"
-msgstr "Порт"
+msgstr "Порт SOAP/HTTP"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:165
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:168
 msgid "STUN host"
-msgstr "Хост STUN"
+msgstr "Вузол STUN"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:169
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:172
 msgid "STUN port"
 msgstr "Порт STUN"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:215
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:218
 msgid "Service Access Control List"
 msgstr "Список контролю доступу до служби"
 
@@ -203,13 +211,13 @@ msgstr "Налаштування служби"
 msgid "Service Setup"
 msgstr "Загальні налаштування"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:212
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:215
 msgid "Service lease file"
-msgstr "Файл оренди послуг"
+msgstr "Файл оренди служби"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:138
 msgid "Start autonomous port mapping service"
-msgstr "Запустити службу автономного відображення портів"
+msgstr "Запустити службу автономного переспрямування портів"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:137
 msgid "Start service"
@@ -223,8 +231,8 @@ msgid ""
 "The %s protocols allow clients on the local network to configure port maps/"
 "forwards on the router autonomously."
 msgstr ""
-"Протоколи %s дозволяють клієнтам у локальній мережі автоматично настроювати "
-"переспрямуванняна маршрутизаторі."
+"Протоколи %s дозволяють клієнтам у локальній мережі автономно налаштовувати "
+"переспрямування портів на маршрутизаторі."
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:80
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:76
@@ -232,12 +240,12 @@ msgstr ""
 msgid "There are no active port maps."
 msgstr "Немає активних переспрямувань."
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:163
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:166
 msgid ""
 "To detect the public IPv4 address for unrestricted full-cone/one-to-one NATs"
 msgstr ""
-"Щоб виявити загальнодоступну адресу IPv4 для необмеженого повного конуса/"
-"один-на-одному NAT"
+"Для виявлення публічної адреси IPv4 для необмежених NAT типу full-cone або "
+"one-to-one"
 
 #: applications/luci-app-upnp/root/usr/share/luci/menu.d/luci-app-upnp.json:3
 msgid "UPnP IGD & PCP"
@@ -245,11 +253,11 @@ msgstr "UPnP IGD та PCP"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:87
 msgid "UPnP IGD & PCP/NAT-PMP Service"
-msgstr "Сервіс UPnP IGD та PCP/NAT-PMP"
+msgstr "Служба UPnP IGD та PCP/NAT-PMP"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:147
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:150
 msgid "UPnP IGDv1 compatibility mode"
-msgstr "Увімкнути режим UPnP IGDv1"
+msgstr "Режим сумісності UPnP IGDv1"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:66
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:62
@@ -257,11 +265,11 @@ msgstr "Увімкнути режим UPnP IGDv1"
 msgid "Unknown"
 msgstr "Невідомо"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:157
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:160
 msgid "Upload speed"
-msgstr "Висхідне з'єднання"
+msgstr "Швидкість вивантаження"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:161
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:164
 msgctxt "Use %s (%s = STUN)"
 msgid "Use %s"
 msgstr "Використовувати %s"

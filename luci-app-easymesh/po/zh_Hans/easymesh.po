@@ -1,0 +1,420 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-easymesh\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "EasyMesh"
+msgstr "EasyMesh"
+
+msgid "Configure a Batman-adv mesh network."
+msgstr "配置基于 Batman-adv 的 Mesh 网络。"
+
+msgid "Active mesh links"
+msgstr "活动 Mesh 链路"
+
+msgid "stale"
+msgstr "已失效"
+
+msgid "Interface"
+msgstr "接口"
+
+msgid "Neighbor MAC"
+msgstr "邻居 MAC"
+
+msgid "Last seen"
+msgstr "最后在线"
+
+msgid "Latency"
+msgstr "延迟"
+
+msgid "RX rate"
+msgstr "接收速率"
+
+msgid "TX rate"
+msgstr "发送速率"
+
+msgid "Priority weight"
+msgstr "优先级权重"
+
+msgid "Wired backhaul details"
+msgstr "有线回传详情"
+
+msgid "State"
+msgstr "状态"
+
+msgid "Cable"
+msgstr "网线连接"
+
+msgid "Link speed"
+msgstr "链路速率"
+
+msgid "In LAN bridge"
+msgstr "在 LAN 桥中"
+
+msgid "Wired backhaul port"
+msgstr "有线回传端口"
+
+msgid "Convenience selector. Mirrors 'Wired backhaul interface' below. Presets that use wired backhaul will remove this port from the LAN bridge. Pick a port NOT used by your uplink or modem. Leave empty to disable wired backhaul entirely."
+msgstr "快捷选择器。与下方的“有线回传接口”同步。使用有线回传的预设会将此端口从 LAN 桥接中移除。请选择未被上行链路或光猫占用的端口。留空以完全禁用有线回传。"
+
+msgid "Preferred wired port"
+msgstr "首选有线端口"
+
+msgid "(none — wired presets will skip)"
+msgstr "（无 — 有线预设将跳过）"
+
+msgid "Boot-time reliability"
+msgstr "开机可靠性保障"
+
+msgid "The init script applies link priorities at boot and 90s later. On some hardware, mesh interfaces appear even later, leaving priority weight at 0. Enable cron fallback to reapply priority every minute. Safe (idempotent) but runs in the background. When disabled, the cron line is commented out in /etc/crontabs/root."
+msgstr "初始化脚本会在开机时及 90 秒后应用链路优先级。在部分硬件上，Mesh 接口可能出现得更晚，导致优先级权重保持为 0。启用计划任务（Cron）后备可在后台每分钟重新应用优先级。该操作安全且具备幂等性。禁用后，/etc/crontabs/root 中的对应计划任务将被注释。"
+
+msgid "Enable cron fallback"
+msgstr "启用计划任务后备"
+
+msgid "Link priority weights"
+msgstr "链路优先级权重"
+
+msgid "Batman-adv throughput_override values in Kbit/s. Higher = preferred. Set to 0 to let batman auto-decide per link. Defaults: wired=1000000, 6G=900000, 5G=600000, 2.4G=30000. Changes apply on next Save & Apply (or 'Reapply EasyMesh Settings')."
+msgstr "Batman-adv throughput_override（吞吐量重写）数值，单位为 Kbit/s。数值越高越优先。设为 0 则由 Batman 自动判定链路速率。默认值：有线=1000000，6G=900000，5G=600000，2.4G=30000。更改将在下次“保存并应用”（或“重新应用 EasyMesh 设置”）后生效。"
+
+msgid "Wired (Kbit/s)"
+msgstr "有线 (Kbit/s)"
+
+msgid "6 GHz wireless (Kbit/s)"
+msgstr "6 GHz 无线 (Kbit/s)"
+
+msgid "5 GHz wireless (Kbit/s)"
+msgstr "5 GHz 无线 (Kbit/s)"
+
+msgid "2.4 GHz wireless (Kbit/s)"
+msgstr "2.4 GHz 无线 (Kbit/s)"
+
+msgid "Mesh VLANs"
+msgstr "Mesh VLAN"
+
+msgid "Extend guest / IoT / hotspot networks across the mesh. Enter a comma-separated list of VLAN IDs (e.g. 10,20,30). The init script creates bat0.<vid> as an 8021q device for each ID. If a bridge named br-<vid>, br-lan<vid>, br-vlan<vid>, br-guest<vid>, or br-iot<vid> already exists, it is auto-added to that bridge. Otherwise, add the bat0.<vid> device manually in Network → Interfaces → Devices. Requires 802.1Q-capable switches on the physical wired backhaul."
+msgstr "通过 Mesh 网络扩展访客 / 物联网 (IoT) / 热点网络。请输入以英文逗号分隔的 VLAN ID 列表（例如：10,20,30）。初始化脚本会为每个 ID 创建对应的 bat0.<vid> 802.1q 设备。如果已存在名为 br-<vid>、br-lan<vid>、br-vlan<vid>、br-guest<vid> 或 br-iot<vid> 的桥接接口，将自动将其加入该桥接中。否则，请手动前往“网络 → 接口 → 设备”中添加 bat0.<vid> 设备。物理有线回传需要交换机支持 802.1Q。"
+
+msgid "VLAN IDs (comma-separated)"
+msgstr "VLAN ID（逗号分隔）"
+
+msgid "Example: 10,20,30 — Leave empty to disable"
+msgstr "示例：10,20,30 — 留空以禁用"
+
+msgid "Quick Setup"
+msgstr "快捷预设"
+
+msgid "Click a preset. A confirmation dialog will appear. Current config is backed up automatically before applying. Grouped by role: SERVER (has internet) → CLIENT (uses mesh) → NODE (relay only)."
+msgstr "点击预设方案。应用前会弹出确认对话框并自动备份当前配置。按节点角色分组：服务端 SERVER（提供网络）→ 客户端 CLIENT（接入 Mesh）→ 节点 NODE（纯中继）。"
+
+msgid "1. Server — 5 GHz wireless only"
+msgstr "1. 服务端 — 仅 5 GHz 无线"
+
+msgid "[SERVER] Gateway. Extenders join via 5 GHz mesh only."
+msgstr "[主路由/服务端] 网关节点。扩展节点仅通过 5 GHz Mesh 接入。"
+
+msgid "2. Server — 2.4 GHz wireless only"
+msgstr "2. 服务端 — 仅 2.4 GHz 无线"
+
+msgid "[SERVER] Extenders join via 2.4 GHz (longer range)."
+msgstr "[主路由/服务端] 扩展节点通过 2.4 GHz 接入（覆盖范围更广）。"
+
+msgid "3. Server — Dual-band wireless only"
+msgstr "3. 服务端 — 仅双频无线"
+
+msgid "[SERVER] Both radios carry backhaul."
+msgstr "[主路由/服务端] 双频射频同时承载回传。"
+
+msgid "4. Server — Wired backhaul only"
+msgstr "4. 服务端 — 仅有线回传"
+
+msgid "[SERVER] No wireless mesh — extenders connect by cable."
+msgstr "[主路由/服务端] 无无线 Mesh — 扩展节点通过网线连接。"
+
+msgid "5. Server — 5 GHz + Wired"
+msgstr "5. 服务端 — 5 GHz + 有线"
+
+msgid "[SERVER] 5 GHz mesh primary, Ethernet parallel."
+msgstr "[主路由/服务端] 5 GHz Mesh 为主，以太网并行传输。"
+
+msgid "6. Server — 2.4 GHz + Wired"
+msgstr "6. 服务端 — 2.4 GHz + 有线"
+
+msgid "[SERVER] 2.4 GHz mesh plus Ethernet."
+msgstr "[主路由/服务端] 2.4 GHz Mesh 配合以太网回传。"
+
+msgid "7. Server — Dual-band + Wired"
+msgstr "7. 服务端 — 双频 + 有线"
+
+msgid "[SERVER] Maximum redundancy. Both radios + Ethernet."
+msgstr "[主路由/服务端] 最大冗余。双频射频 + 以太网同时回传。"
+
+msgid "8. Client — 5 GHz wireless only"
+msgstr "8. 客户端 — 仅 5 GHz 无线"
+
+msgid "[CLIENT] Extender via 5 GHz. No cable."
+msgstr "[子路由/客户端] 通过 5 GHz 扩展，无网线。"
+
+msgid "9. Client — 2.4 GHz wireless only"
+msgstr "9. 客户端 — 仅 2.4 GHz 无线"
+
+msgid "[CLIENT] Extender via 2.4 GHz."
+msgstr "[子路由/客户端] 通过 2.4 GHz 扩展。"
+
+msgid "10. Client — Dual-band wireless only"
+msgstr "10. 客户端 — 仅双频无线"
+
+msgid "[CLIENT] Extender via both radios."
+msgstr "[子路由/客户端] 同时通过两个射频频段扩展。"
+
+msgid "11. Client — Wired backhaul only"
+msgstr "11. 客户端 — 仅有线回传"
+
+msgid "[CLIENT] Cable only, no wireless mesh."
+msgstr "[子路由/客户端] 仅网线连接，无无线 Mesh。"
+
+msgid "12. Client — 5 GHz + Wired fallback"
+msgstr "12. 客户端 — 5 GHz + 有线备用"
+
+msgid "[CLIENT] 5 GHz primary, Ethernet fallback."
+msgstr "[子路由/客户端] 5 GHz 为主，以太网备用。"
+
+msgid "13. Client — 2.4 GHz + Wired fallback"
+msgstr "13. 客户端 — 2.4 GHz + 有线备用"
+
+msgid "[CLIENT] 2.4 GHz primary, Ethernet fallback."
+msgstr "[子路由/客户端] 2.4 GHz 为主，以太网备用。"
+
+msgid "14. Client — Dual-band + Wired fallback"
+msgstr "14. 客户端 — 双频 + 有线备用"
+
+msgid "[CLIENT] Both radios + Ethernet. Maximum redundancy."
+msgstr "[子路由/客户端] 双频射频 + 以太网，提供最大冗余与稳定性。"
+
+msgid "15. Node — 5 GHz relay"
+msgstr "15. 纯中继节点 — 5 GHz 中继"
+
+msgid "[NODE] Relay only, 5 GHz. No client SSID."
+msgstr "[中继节点] 仅作为 5 GHz 中继，不发射终端接入 SSID。"
+
+msgid "16. Node — Dual-band relay"
+msgstr "16. 纯中继节点 — 双频中继"
+
+msgid "[NODE] Relay only, both radios."
+msgstr "[中继节点] 双频中继，不发射终端接入 SSID。"
+
+msgid "17. Node — Wired relay only"
+msgstr "17. 纯中继节点 — 仅有线中继"
+
+msgid "[NODE] Relay via cable only. No wireless."
+msgstr "[中继节点] 仅通过网线中继，无无线回传。"
+
+msgid "18. Detach wired backhaul"
+msgstr "18. 解绑有线回传"
+
+msgid "Removes Ethernet backhaul, restores port to bridge."
+msgstr "移除以太网回传，并将端口恢复加入网络桥接。"
+
+msgid "19. Disable mesh"
+msgstr "19. 禁用 Mesh"
+
+msgid "Turns off mesh. Radios stay enabled."
+msgstr "关闭 Mesh 网络功能，无线射频保持开启。"
+
+msgid "Mesh settings"
+msgstr "Mesh 设置"
+
+msgid "Enable EasyMesh"
+msgstr "启用 EasyMesh"
+
+msgid "Mesh role"
+msgstr "Mesh 角色"
+
+msgid "Off"
+msgstr "关闭"
+
+msgid "Server (gateway - has internet)"
+msgstr "服务端 (主网关 - 连接外网)"
+
+msgid "Client (uses mesh internet)"
+msgstr "客户端 (通过 Mesh 上网)"
+
+msgid "Node (relay only)"
+msgstr "节点 (纯中继)"
+
+msgid "Mesh mode"
+msgstr "Mesh 模式"
+
+msgid "Combined wireless band + wired backhaul. Wired variants use the port selected above."
+msgstr "无线频段与有线回传组合。包含有线的选项将使用上方选择的端口。"
+
+msgid "5 GHz wireless only"
+msgstr "仅 5 GHz 无线"
+
+msgid "2.4 GHz wireless only"
+msgstr "仅 2.4 GHz 无线"
+
+msgid "Dual-band wireless only"
+msgstr "仅双频无线"
+
+msgid "5 GHz wireless + Wired backhaul"
+msgstr "5 GHz 无线 + 有线回传"
+
+msgid "2.4 GHz wireless + Wired backhaul"
+msgstr "2.4 GHz 无线 + 有线回传"
+
+msgid "Dual-band wireless + Wired backhaul"
+msgstr "双频无线 + 有线回传"
+
+msgid "Wired only (no wireless mesh)"
+msgstr "仅有线 (无无线 Mesh)"
+
+msgid "Custom radio"
+msgstr "自定义射频设备"
+
+msgid "Custom mesh radio"
+msgstr "自定义 Mesh 射频"
+
+msgid "Mesh ID"
+msgstr "Mesh 网络名称 (Mesh ID)"
+
+msgid "Must match on all nodes. Ignored in wired-only mode."
+msgstr "所有节点必须保持一致。仅有线模式下忽略此项。"
+
+msgid "Require password (WPA3-SAE)"
+msgstr "需要密码 (WPA3-SAE)"
+
+msgid "Mesh password"
+msgstr "Mesh 密码"
+
+msgid "Must match on all nodes. Only used when 'Require password' is enabled."
+msgstr "所有节点必须保持一致。仅在启用“需要密码”时生效。"
+
+msgid "Enable 802.11k/v/r fast roaming"
+msgstr "启用 802.11k/v/r 快速漫游"
+
+msgid "Mobility domain"
+msgstr "移动域 (Mobility Domain)"
+
+msgid "Client WiFi — 2.4 GHz"
+msgstr "终端接入 WiFi — 2.4 GHz"
+
+msgid "Longer range, lower speed. Use a different SSID from 5 GHz."
+msgstr "覆盖距离更远，速率较低。建议使用与 5 GHz 不同的 SSID。"
+
+msgid "Broadcast 2.4 GHz"
+msgstr "广播 2.4 GHz"
+
+msgid "2.4 GHz SSID"
+msgstr "2.4 GHz SSID"
+
+msgid "2.4 GHz security"
+msgstr "2.4 GHz 安全模式"
+
+msgid "None (open)"
+msgstr "无 (开放网络)"
+
+msgid "WPA2-PSK"
+msgstr "WPA2-PSK"
+
+msgid "WPA3-SAE"
+msgstr "WPA3-SAE"
+
+msgid "WPA2/WPA3 transition"
+msgstr "WPA2/WPA3 混合模式"
+
+msgid "2.4 GHz password"
+msgstr "2.4 GHz 密码"
+
+msgid "Client WiFi — 5 GHz"
+msgstr "终端接入 WiFi — 5 GHz"
+
+msgid "Shorter range, much faster. Use a different SSID from 2.4 GHz."
+msgstr "速率更高，覆盖距离较近。建议使用与 2.4 GHz 不同的 SSID。"
+
+msgid "Broadcast 5 GHz"
+msgstr "广播 5 GHz"
+
+msgid "5 GHz SSID"
+msgstr "5 GHz SSID"
+
+msgid "5 GHz security"
+msgstr "5 GHz 安全模式"
+
+msgid "5 GHz password"
+msgstr "5 GHz 密码"
+
+msgid "Client WiFi — shared"
+msgstr "终端接入 WiFi — 公共设置"
+
+msgid "Attach client WiFi to network"
+msgstr "将终端 WiFi 绑定至网络接口"
+
+msgid "AP Mode (Dumb AP)"
+msgstr "AP 模式 (胖/瘦 AP 旁路模式)"
+
+msgid "Enable AP Mode (Dumb AP)"
+msgstr "启用 AP 模式 (Dumb AP)"
+
+msgid "IP mode"
+msgstr "IP 地址获取方式"
+
+msgid "DHCP (from Server)"
+msgstr "DHCP (从服务端自动获取)"
+
+msgid "Static IP"
+msgstr "静态 IP"
+
+msgid "IP address"
+msgstr "IP 地址"
+
+msgid "Netmask"
+msgstr "子网掩码"
+
+msgid "Gateway"
+msgstr "网关"
+
+msgid "DNS server"
+msgstr "DNS 服务器"
+
+msgid "Wired backhaul"
+msgstr "有线回传"
+
+msgid "Optional. Adds a physical Ethernet port as a batman hardif. Required on BOTH sides for a wired link. The port is auto-removed from the LAN bridge on apply."
+msgstr "可选功能。将指定的物理以太网端口添加为 Batman 底层接口 (hardif)。建立有线链路时两端节点均需配置。应用时该端口将自动从 LAN 桥接中移除。"
+
+msgid "Wired backhaul interface"
+msgstr "有线回传接口"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "Safety and actions"
+msgstr "安全与操作"
+
+msgid "Safe apply (60-second rollback)"
+msgstr "安全应用 (60 秒无响应自动回滚)"
+
+msgid "Reapply EasyMesh Settings"
+msgstr "重新应用 EasyMesh 设置"
+
+msgid "Restore from last backup"
+msgstr "从上一次备份恢复"
+
+msgid "Pair with another router"
+msgstr "与其他路由器配对"
+
+msgid "Enter pairing mode (2 minutes)"
+msgstr "进入配对模式 (2 分钟)"
+
+msgid "WPS-style pairing. Press the WPS button on both routers within 2 minutes. Auto-reverts on timeout."
+msgstr "类似 WPS 风格的一键配对。请在 2 分钟内在两台路由器上均触发配对。超时未配对成功将自动恢复原状。"

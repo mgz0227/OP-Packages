@@ -1,0 +1,15 @@
+{
+	"admin/services/beszel-agent": {
+		"title": "Beszel Agent",
+		"action": {
+			"type": "view",
+			"path": "beszel-agent"
+		},
+		"depends": {
+			"acl": [ "luci-app-beszel-agent" ],
+			"uci": {
+				"beszel-agent": true
+			}
+		}
+	}
+}

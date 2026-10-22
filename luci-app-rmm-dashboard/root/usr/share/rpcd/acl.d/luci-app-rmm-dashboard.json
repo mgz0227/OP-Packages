@@ -1,0 +1,47 @@
+{
+  "luci-app-rmm-dashboard": {
+    "description": "Router dashboard and client display names",
+    "read": {
+      "ubus": {
+        "system": [
+          "board",
+          "info"
+        ],
+        "network.interface": [
+          "dump"
+        ],
+        "network.device": [
+          "status"
+        ],
+        "service": [
+          "list"
+        ],
+        "iwinfo": [
+          "devices",
+          "info",
+          "assoclist"
+        ],
+        "luci-rpc": [
+          "getDHCPLeases"
+        ],
+        "rmm.dashboard": [
+          "clients",
+          "vendors"
+        ],
+        "network.rrdns": [
+          "lookup"
+        ]
+      },
+      "uci": [
+        "rmm-agent"
+      ]
+    },
+    "write": {
+      "ubus": {
+        "rmm.dashboard": [
+          "set_name"
+        ]
+      }
+    }
+  }
+}

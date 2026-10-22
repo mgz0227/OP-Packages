@@ -1,0 +1,119 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "Admin Panel"
+msgstr ""
+
+msgid "Admin Panel Settings"
+msgstr ""
+
+msgid "Admin Safe URL"
+msgstr ""
+
+msgid "Admin Web Listen Port"
+msgstr ""
+
+msgid "Allow Internet Access"
+msgstr ""
+
+msgid "Application Information"
+msgstr ""
+
+msgid "Architecture"
+msgstr ""
+
+msgid "Are you sure you want to reset the admin account and password to default (666:666)?"
+msgstr ""
+
+msgid "Compile Time"
+msgstr ""
+
+msgid "Config Directory Path"
+msgstr ""
+
+msgid "Configuration updated successfully"
+msgstr ""
+
+msgid "Configure basic settings for the Lucky high-performance routing service, including master enable switch and administrative ports."
+msgstr ""
+
+msgid "Current Status"
+msgstr ""
+
+msgid "Enable"
+msgstr ""
+
+msgid "Executing service action..."
+msgstr ""
+
+msgid "General Settings"
+msgstr ""
+
+msgid "Loading logs..."
+msgstr ""
+
+msgid "Loading..."
+msgstr ""
+
+msgid "Log"
+msgstr ""
+
+msgid "Logs"
+msgstr ""
+
+msgid "Lucky"
+msgstr ""
+
+msgid "No log available."
+msgstr ""
+
+msgid "Operation timeout, please refresh the page"
+msgstr ""
+
+msgid "Overview"
+msgstr ""
+
+msgid "Overview of your Lucky routing service status, real-time statistics, and control settings."
+msgstr ""
+
+msgid "Real-time query of the Lucky running logs to diagnose DDNS updates, port forwarding actions, and routing issues."
+msgstr ""
+
+msgid "Reset Account and Password"
+msgstr ""
+
+msgid "Reset to Default (666:666)"
+msgstr ""
+
+msgid "Restart"
+msgstr ""
+
+msgid "Running"
+msgstr ""
+
+msgid "Running (Unmanaged)"
+msgstr ""
+
+msgid "Service Status"
+msgstr ""
+
+msgid "Service action executed successfully"
+msgstr ""
+
+msgid "Service not running"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+msgid "Stopped"
+msgstr ""
+
+msgid "Update failed"
+msgstr ""
+
+msgid "Updating configuration and restarting service..."
+msgstr ""
+
+msgid "Version"
+msgstr ""

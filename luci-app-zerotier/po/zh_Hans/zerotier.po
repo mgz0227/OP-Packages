@@ -1,239 +1,768 @@
 msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"Project-Id-Version: \n"
+"PO-Revision-Date: 2026-10-10 12:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
 "Language: zh_Hans\n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:125
+msgid " (controller port "
+msgstr "（控制器端口 "
+
+msgid " — members will not receive an address from this pool."
+msgstr " —— 成员将不会从此地址池获得地址。"
+
+msgid "A node address is exactly 10 hex digits"
+msgstr "节点地址必须为 10 位十六进制数字"
+
+msgid "A pool needs a route covering the same subnet, otherwise members receive no address."
+msgstr "地址池需要一个覆盖相同子网的路由，否则成员将获取不到地址。"
+
+msgid "A ZeroTier controller or moon root must live on a server with a fixed public IP, reachable by SSH, with passwordless sudo for that user. The controller API has no TLS and refuses every non-loopback caller, so this page never talks to it directly: it opens an SSH tunnel from this router to the remote loopback interface and sends API calls through it. The controller authtoken is read over SSH on demand and is never stored here."
+msgstr "ZeroTier 控制器或 Moon 根节点必须运行在具有固定公网 IP 的服务器上，可经 SSH 访问，且该用户具有免密 sudo 权限。控制器 API 不支持 TLS 且拒绝所有非本机回环的调用方，因此本页面从不直接访问它：而是从本路由器向远程回环接口建立 SSH 隧道，经隧道发送 API 调用。控制器令牌按需经 SSH 读取，从不存储在本机。"
+
+msgid "Access mode"
+msgstr "接入方式"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Active bridge"
+msgstr "主动桥接"
+
+msgid "Add"
+msgstr "添加"
+
+msgid "Add a remote host"
+msgstr "添加远程主机"
+
+msgid "Add Moon"
+msgstr "加入 Moon"
+
+msgid "Add pool"
+msgstr "添加地址池"
+
+msgid "Add remote host"
+msgstr "添加远程主机"
+
+msgid "Add route"
+msgstr "添加路由"
+
+msgid "Address"
+msgstr "地址"
+
+msgid "Advanced options"
+msgstr "高级设置"
+
+msgid "Allow Default Route"
+msgstr "允许默认路由"
+
 msgid "Allow DNS"
 msgstr "允许 DNS"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:126
-msgid "Allow ZeroTier to set DNS servers."
-msgstr "允许 ZeroTier 设置 DNS 服务器。"
+msgid "Allow Global"
+msgstr "允许全局"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:113
-msgid ""
-"Allow ZeroTier to set IP addresses and routes (local/private ranges only)."
-msgstr "允许 ZeroTier 设置 IP 地址和路由（仅限本地/私有范围）。"
+msgid "Allow Managed"
+msgstr "允许管理"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:118
-msgid "Allow ZeroTier to set global/public/not-private range IPs and routes."
-msgstr "允许 ZeroTier 设置全局/公共/非私有范围的 IP 和路由。"
+msgid "Allow zerotier clients access your LAN network"
+msgstr "允许 Zerotier 的拨入客户端访问路由器 LAN 资源（需要在 Zerotier 管理页面设定到 LAN 网段的路由表）"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:122
-msgid "Allow ZeroTier to set the default route on the system."
-msgstr "允许 ZeroTier 设置系统的默认路由。"
+msgid "API key"
+msgstr "API 密钥"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:121
-msgid "Allow default route"
-msgstr "允许默认路由"
+msgid "API token stored"
+msgstr "API 令牌已存储"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:133
-msgid "Allow forward"
-msgstr "允许转发"
+msgid "assigning address..."
+msgstr "正在分配地址…"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:134
-msgid "Allow forward traffic from/to the ZeroTier network."
-msgstr "允许来自/到 ZeroTier 网络的转发流量。"
+msgid "Authorize"
+msgstr "授权"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:117
-msgid "Allow global IP/route"
-msgstr "允许全局 IP/路由"
+msgid "Authorize failed"
+msgstr "授权失败"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:129
-msgid "Allow input"
-msgstr "允许入站"
+msgid "Authorized"
+msgstr "已授权"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:87
-msgid "Allow input traffic"
-msgstr "允许入站流量"
+msgid "Auto NAT Clients"
+msgstr "自动允许客户端 NAT"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:130
-msgid "Allow input traffic from the ZeroTier network."
-msgstr "允许来自 ZeroTier 网络的入站流量。"
+msgid "Auto NAT: Disabled"
+msgstr "自动 NAT: 已禁用"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:88
-msgid "Allow input traffic to the ZeroTier daemon."
-msgstr "允许外部流量进入 ZeroTier 守护进程。"
+msgid "Auto NAT: Enabled"
+msgstr "自动 NAT: 已启用"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:112
-msgid "Allow managed IP/route"
-msgstr "允许管理 IP/路由"
+msgid "Backing up..."
+msgstr "正在备份..."
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:71
-msgid "Client secret"
-msgstr "客户端密钥"
+msgid "Backup failed"
+msgstr "备份失败"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:60
-msgid "Collecting data…"
-msgstr "正在收集数据中…"
+msgid "Backup Now"
+msgstr "立即备份"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:79
-msgid "Config path"
-msgstr "配置路径"
+msgid "Backup request failed"
+msgstr "备份请求失败"
 
-#: applications/luci-app-zerotier/root/usr/share/luci/menu.d/luci-app-zerotier.json:14
-msgid "Configuration"
+msgid "Base Setting"
+msgstr "基本设置"
+
+msgid "Broadcast"
+msgstr "广播"
+
+msgid "Building..."
+msgstr "构建中…"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Cannot reach the ZeroTier service"
+msgstr "无法连接到 ZeroTier 服务"
+
+msgid "Cannot read moons (is the ZeroTier service running?)"
+msgstr "无法读取 moon（ZeroTier 服务是否在运行？）"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "Collecting data..."
+msgstr "正在收集数据..."
+
+msgid "Collecting identity..."
+msgstr "正在获取地址..."
+
+msgid "Configuration folder"
+msgstr "运行配置目录"
+
+msgid "Configure"
 msgstr "配置"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:83
-msgid "Copy config path"
-msgstr "复制配置目录"
+msgid "Configured hosts"
+msgstr "已配置的主机"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:84
-msgid ""
-"Copy the contents of the persistent configuration directory to memory "
-"instead of linking it, this avoids writing to flash."
-msgstr "复制持久配置目录的内容到内存中，而不是链接它，以避免写入闪存。"
+msgid "Controller port"
+msgstr "控制器端口"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:91
-msgid ""
-"Create or manage your ZeroTier network, and auth clients who could access."
-msgstr "创建或管理您的 ZeroTier 网络，并允许客户端接入。"
+msgid "Controller reachable via tunnel"
+msgstr "控制器可经隧道访问"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:66
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:104
+msgid "Controller state present"
+msgstr "控制器状态存在"
+
+msgid "Copy configuration folder"
+msgstr "运行配置目录保护"
+
+msgid "Copy configuration folder to RAM to prevent writing to flash (for ZT controller mode)"
+msgstr "使用拷贝而不是链接，来保护原目录内容（一般用于预先配置的控制器模式）"
+
+msgid "Could not build a plan"
+msgstr "无法构建方案"
+
+msgid "Could not list members"
+msgstr "无法获取成员列表"
+
+msgid "Could not reach the controller"
+msgstr "无法连接控制器"
+
+msgid "Could not read any member of this network"
+msgstr "无法读取此网络的任何成员"
+
+msgid "Could not read these networks, so they are not shown: "
+msgstr "以下网络无法读取，因此未显示："
+
+msgid "Could not refresh the member list; the table is unchanged"
+msgstr "无法刷新成员列表；表格保持不变"
+
+msgid "Could not save the host"
+msgstr "无法保存主机"
+
+msgid "Create and sign the moon"
+msgstr "创建并签署 Moon"
+
+msgid "Create failed"
+msgstr "创建失败"
+
+msgid "Create network"
+msgstr "创建网络"
+
+msgid "Create or manage your zerotier network, and auth clients who could access"
+msgstr "点击跳转到 Zerotier 官网管理平台，新建或者管理网络，并允许客户端接入访问你私人网路（新接入的节点默认不允许访问）"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Delete failed"
+msgstr "删除失败"
+
+msgid "Detail for network"
+msgstr "网络详情"
+
+msgid "Delete network "
+msgstr "删除网络 "
+
+msgid "Deorbit failed"
+msgstr "退出失败"
+
+msgid "Deorbit request failed"
+msgstr "退出请求失败"
+
+msgid "Device"
+msgstr "设备"
+
+msgid "Diagnostics"
+msgstr "诊断"
+
+msgid "Diagnostics failed"
+msgstr "诊断失败"
+
+msgid "Direct"
+msgstr "直连"
+
+msgid "Distribute this file to members, then use Interface Info → Moons → Add Moon on each node. The signing secret never left the remote host."
+msgstr "将此文件分发给成员，然后在每个节点上使用「接口信息 → Moon → 添加 Moon」。签署密钥从未离开远程主机。"
+
+msgid "Download .moon"
+msgstr "下载 .moon"
+
+msgid "Edit"
+msgstr "编辑"
+
+msgid "Edit remote host"
+msgstr "编辑远程主机"
+
+msgid "empty = direct"
+msgstr "留空 = 直连"
+
 msgid "Enable"
 msgstr "启用"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:145
-msgid ""
-"Enable network address and port translation (NAT) for outbound traffic for "
-"this network."
-msgstr "为此网络的出站流量开启网络地址和端口转换（NAT 或 NAPT）。"
+msgid "Endpoints"
+msgstr "端点"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:137
-msgid "Forward interfaces"
-msgstr "转发接口"
+msgid "Error"
+msgstr "错误"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:64
-msgid "Global configuration"
-msgstr "全局配置"
+msgid "Error loading moons"
+msgstr "加载 moon 列表出错"
 
-#: applications/luci-app-zerotier/root/usr/share/rpcd/acl.d/luci-app-zerotier.json:3
-msgid "Grant access to ZeroTier configuration"
-msgstr "授予访问 ZeroTier 配置的权限"
+msgid "Error loading networks"
+msgstr "加载网络信息失败"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/interface.js:91
-msgid "IPv4 Address"
-msgstr "IPv4 地址"
+msgid "Error loading peers"
+msgstr "加载节点信息失败"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/interface.js:95
-msgid "IPv6 Address"
-msgstr "IPv6 地址"
+msgid "Error reading moon list"
+msgstr "读取 moon 列表出错"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/interface.js:83
-msgid "Interface Name"
-msgstr "接口名称"
+msgid "Failed to reload service, please run manually: /etc/init.d/luci-zerotier reload"
+msgstr "服务重载失败，请手动执行: /etc/init.d/luci-zerotier reload"
 
-#: applications/luci-app-zerotier/root/usr/share/luci/menu.d/luci-app-zerotier.json:22
-msgid "Interface info"
+msgid "Filter by name, address or IP"
+msgstr "按名称、地址或 IP 筛选"
+
+msgid "First IP"
+msgstr "起始 IP"
+
+msgid "Gateway"
+msgstr "网关"
+
+msgid "General options"
+msgstr "常规设置"
+
+msgid "Global Settings"
+msgstr "全局设置"
+
+msgid "Hide"
+msgstr "隐藏"
+
+msgid "How remote management works"
+msgstr "远程管理的工作原理"
+
+msgid "Interface Info"
 msgstr "接口信息"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:138
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:149
-msgid "Leave empty for all."
-msgstr "留空表示全部。"
+msgid "IP Address"
+msgstr "IP 地址"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:68
-msgid "Listen port"
-msgstr "监听端口"
+msgid "IP address"
+msgstr "IP 地址"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:74
-msgid "Local config path"
-msgstr "本地配置路径"
+msgid "IP assignment"
+msgstr "IP 分配"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/interface.js:87
-msgid "MAC Address"
-msgstr "MAC 地址"
+msgid "IP assignment pools"
+msgstr "IP 地址池"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/interface.js:99
+msgid "IP assignments"
+msgstr "IP 分配"
+
+msgid "IP must be an IPv4 address"
+msgstr "IP 必须为 IPv4 地址"
+
+msgid "Label"
+msgstr "标签"
+
+msgid "Last IP"
+msgstr "结束 IP"
+
+msgid "Latency"
+msgstr "延迟"
+
+msgid "Leave"
+msgstr "退出"
+
+msgid "Leave blank to keep the stored token"
+msgstr "留空则保留已存储的令牌"
+
+msgid "Leaving moon..."
+msgstr "正在退出 moon..."
+
+msgid "Left Moon"
+msgstr "已退出 Moon"
+
+msgid "Link"
+msgstr "链路"
+
+msgid "Loading..."
+msgstr "加载中..."
+
+msgid "Local configuration"
+msgstr "本地配置文件"
+
+msgid "Manage"
+msgstr "管理"
+
+msgid "Managed IPs must be IPv4 addresses, comma-separated"
+msgstr "托管 IP 必须为 IPv4 地址，以逗号分隔"
+
+msgid "Managed routes"
+msgstr "托管路由"
+
+msgid "Member detail"
+msgstr "成员详情"
+
+msgid "Member ID"
+msgstr "成员 ID"
+
+msgid "Member name"
+msgstr "成员名称"
+
+msgid "Members"
+msgstr "成员"
+
+msgid "members"
+msgstr "个成员"
+
+msgid "Moon"
+msgstr "Moon"
+
+msgid "Moon created: "
+msgstr "Moon 已创建："
+
+msgid "Moon creation failed"
+msgstr "Moon 创建失败"
+
+msgid "Moon ID"
+msgstr "Moon ID"
+
+msgid "Moon ID must be 10 hexadecimal digits (e.g. 123456abcd)"
+msgstr "Moon ID 必须是 10 位十六进制字符（例如 123456abcd）"
+
+msgid "Moon Seed"
+msgstr "Moon 种子节点"
+
+msgid "Moon Seed must be the 10-digit address of one of the moon's roots"
+msgstr "Moon 种子必须是该 moon 某个根节点的 10 位地址"
+
+msgid "Moon was not orbited"
+msgstr "本节点并未加入该 moon"
+
+msgid "moon.json on host"
+msgstr "主机上的 moon.json"
+
+msgid "Moons"
+msgstr "Moon"
+
 msgid "MTU"
 msgstr "MTU"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:148
-msgid "Masquerade interfaces"
-msgstr "伪装接口"
+msgid "Multicast limit"
+msgstr "多播限制"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:144
-msgid "Masquerading"
-msgstr "IP 动态伪装"
+msgid "My controller"
+msgstr "我的控制器"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:37
-msgid "NOT RUNNING"
-msgstr "未运行"
+msgid "Name"
+msgstr "名称"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:108
 msgid "Network ID"
 msgstr "网络 ID"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/interface.js:81
-msgid "Network Interface Information"
-msgstr "网络接口信息"
+msgid "Network ID must be 16 hex characters (0-9, a-f)"
+msgstr "网络 ID 必须是 16 位十六进制字符（0-9, a-f）"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:98
-msgid "Network configuration"
-msgstr "网络配置"
+msgid "Networks"
+msgstr "网络"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/interface.js:77
-msgid "No interface online."
-msgstr "没有在线的接口。"
+msgid "never connected"
+msgstr "从未连接"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:92
-msgid "Open website"
-msgstr "打开网站"
+msgid "no"
+msgstr "否"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:75
-msgid ""
-"Path of the optional file local.conf (see <a target=\"_blank\" "
-"href=\"%s\">documentation</a>)."
-msgstr ""
-"可选配置文件 local.conf 的路径（请参阅 <a target=\"_blank\" href=\"%s\">文档"
-"</a>）。"
+msgid "No IPs to ping"
+msgstr "没有可 Ping 的 IP"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:80
-msgid ""
-"Persistent configuration directory (to keep other configurations such as "
-"controller or moons, etc.)."
-msgstr "持久配置目录（用于保留其他配置，例如 controller 或 moon 等）。"
+msgid "No members have joined this network yet."
+msgstr "尚无成员加入此网络。"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:35
+msgid "No members match."
+msgstr "没有匹配的成员。"
+
+msgid "No moons orbited"
+msgstr "未加入任何 moon"
+
+msgid "No networks joined"
+msgstr "未加入任何网络"
+
+msgid "No peers"
+msgstr "无节点"
+
+msgid "no pool assigned"
+msgstr "未分配地址池"
+
+msgid "No pool — members get no managed address"
+msgstr "无地址池——成员不会获得托管地址"
+
+msgid "No remote hosts configured yet. Add one to manage a Controller or Moon that runs on a separate server."
+msgstr "尚未配置远程主机。添加一台以管理运行在其它服务器上的控制器或 Moon。"
+
+msgid "No route"
+msgstr "无路由"
+
+msgid "No route covers "
+msgstr "无路由覆盖 "
+
+msgid "No SSH key — add one before use"
+msgstr "无 SSH 密钥——请先添加再使用"
+
+msgid "no — required"
+msgstr "否——必需"
+
+msgid "Node address"
+msgstr "节点地址"
+
+msgid "Node address (10 hex)"
+msgstr "节点地址（10 位十六进制）"
+
+msgid "NOT RUNNING"
+msgstr "未运行"
+
+msgid "Online"
+msgstr "在线"
+
+msgid "Operating system"
+msgstr "操作系统"
+
+msgid "Orbit failed"
+msgstr "加入失败"
+
+msgid "Orbit registered. The moon definition is still being fetched from the seed - it will appear below once it arrives."
+msgstr "orbit 已注册。moon 定义仍在从种子节点获取中，到达后会显示在下方。"
+
+msgid "Orbit request failed"
+msgstr "加入请求失败"
+
+msgid "Orbited Moon"
+msgstr "已加入 Moon"
+
+msgid "Orbiting a moon adds its roots to this node's root set. ZeroTier keeps using the planetary roots as fallback. Note that upstream ZeroTier no longer recommends private moons and does not support them under its SLA."
+msgstr "加入 moon 会把它的根节点加入本节点的根集合，ZeroTier 仍会回落到 planet 根节点。注意：上游 ZeroTier 已不再推荐私有 moon，且不在其 SLA 支持范围内。"
+
+msgid "Orbiting..."
+msgstr "正在加入..."
+
+msgid "Passwordless sudo"
+msgstr "免密 sudo"
+
+msgid "Path"
+msgstr "路径"
+
+msgid "Path must be within /etc/zerotier"
+msgstr "路径必须在 /etc/zerotier 目录下"
+
+msgid "Path must be within /etc/zerotier, or /tmp"
+msgstr "路径必须在 /etc/zerotier 或 /tmp 目录下"
+
+msgid "Path to the local.conf. Imported into the configuration folder on save & apply."
+msgstr "local.conf 文件路径。保存并应用时会导入到配置目录中。"
+
+msgid "Peer address / latency"
+msgstr "对端地址 / 延迟"
+
+msgid "Peer status"
+msgstr "对端状态"
+
+msgid "Peer status unavailable"
+msgstr "对端状态不可用"
+
+msgid "Peers"
+msgstr "节点"
+
+msgid "persistent"
+msgstr "已持久化"
+
+msgid "Persistent configuration folder (for ZT controller mode)"
+msgstr "持久化运行配置目录（一般用于控制器模式），默认为空"
+
+msgid "Ping All"
+msgstr "全部 Ping"
+
+msgid "Pinging..."
+msgstr "正在 Ping..."
+
+msgid "Pool bounds must be IPv4 addresses"
+msgstr "地址池边界必须为 IPv4 地址"
+
+msgid "Port"
+msgstr "端口"
+
+msgid "Port must be a number"
+msgstr "端口必须是数字"
+
+msgid "Port must be between 0 and 65535"
+msgstr "端口必须在 0 到 65535 之间"
+
+msgid "Port of zerotier service, default 9993"
+msgstr "ZeroTier 运行端口，默认是 9993"
+
+msgid "Private"
+msgstr "私有"
+
+msgid "Public IP or host"
+msgstr "公网 IP 或主机名"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Registering the orbit..."
+msgstr "正在注册 orbit..."
+
+msgid "Remote Controller"
+msgstr "远程控制器"
+
+msgid "Remote host"
+msgstr "远程主机"
+
+msgid "Remote host report"
+msgstr "远程主机报告"
+
+msgid "Remove"
+msgstr "移除"
+
+msgid "Remove "
+msgstr "移除 "
+
+msgid "Remove member "
+msgstr "移除成员 "
+
+msgid "Rename"
+msgstr "重命名"
+
+msgid "Rename failed"
+msgstr "重命名失败"
+
+msgid "Required: the controller API token"
+msgstr "必填：控制器 API 令牌"
+
+msgid "Requirements: a fixed public IP · SSH access · a keypair whose public key is in the remote authorized_keys · passwordless sudo · ZeroTier built with the controller (1.14.2, or a 1.16 nonfree build)"
+msgstr "要求：固定公网 IP · SSH 访问 · 公钥已加入远程 authorized_keys 的密钥对 · 免密 sudo · 带控制器支持的 ZeroTier（1.14.2 或 1.16 nonfree 构建）"
+
+msgid "Role"
+msgstr "角色"
+
+msgid "Roots"
+msgstr "根节点数"
+
+msgid "Route target must be CIDR, e.g. 192.168.192.0/24"
+msgstr "路由目标必须为 CIDR 格式，例如 192.168.192.0/24"
+
+msgid "Route via must be an IPv4 address, or empty for a direct route"
+msgstr "路由网关必须为 IPv4 地址，留空表示直连路由"
+
+msgid "Routes"
+msgstr "路由"
+
+msgid "Run diagnostics"
+msgstr "运行诊断"
+
 msgid "RUNNING"
 msgstr "运行中"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/interface.js:103
-msgid "Total Download"
-msgstr "总下载"
+msgid "Running..."
+msgstr "运行中…"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/interface.js:107
-msgid "Total Upload"
-msgstr "总上传"
+msgid "Runtime state backed up to persistent storage"
+msgstr "运行时状态已备份到持久化存储"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/interface.js:30
-msgid "Unable to get interface %s info: %s."
-msgstr "无法获取接口 %s 的信息：%s。"
+msgid "Save"
+msgstr "保存"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/interface.js:15
-msgid "Unable to get interface info: %s."
-msgstr "无法获取接口信息：%s。"
+msgid "Save anyway?"
+msgstr "仍然保存？"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:35
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:37
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:46
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/interface.js:73
-#: applications/luci-app-zerotier/root/usr/share/luci/menu.d/luci-app-zerotier.json:3
+msgid "Save the current runtime state to the persistent configuration folder. Recommended after adding a moon with zerotier orbit, and essential for controller nodes (member data lives only in the runtime directory)."
+msgstr "将当前运行时状态保存到持久化配置目录。建议在用 zerotier orbit 添加 moon 后备份；对 controller 节点尤为关键（成员数据仅存于运行时目录）。"
+
+msgid "Saving to the persistent folder automatically. Until then the orbit is lost on daemon restart. If it stays in this state, use \"Backup Now\" under Settings -> Advanced options."
+msgstr "正在自动保存到持久化目录。在此之前，重启守护进程会丢失该 orbit。若长期停留在此状态，请到“基本设置 → 高级设置”中点击“立即备份”。"
+
+msgid "saving..."
+msgstr "正在保存..."
+
+msgid "Scan already in progress, please wait"
+msgstr "扫描正在进行中，请等待完成"
+
+msgid "Secret"
+msgstr "节点密钥"
+
+msgid "Secret of zerotier client. Displayed masked for security; paste a new identity.secret to replace it, or clear the field to remove it (a new identity is generated on next start)."
+msgstr "客户端密钥（identity.secret）。为安全起见显示为掩码；粘贴新密钥可替换，清空输入框则删除（下次启动时自动生成新身份）。"
+
+msgid "Service reload failed: "
+msgstr "服务重载失败: "
+
+msgid "Service state"
+msgstr "服务状态"
+
+msgid "Show plan"
+msgstr "查看方案"
+
+msgid "Signed .moon files"
+msgstr "已签署的 .moon 文件"
+
+msgid "Sort by this column"
+msgstr "按此列排序"
+
+msgid "SSH key installed"
+msgstr "SSH 密钥已安装"
+
+msgid "SSH port"
+msgstr "SSH 端口"
+
+msgid "SSH tunnel"
+msgstr "SSH 隧道"
+
+msgid "SSH user"
+msgstr "SSH 用户"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Storage"
+msgstr "持久化"
+
+msgid "Target"
+msgstr "目标"
+
+msgid "The 10-digit address of one of the moon's roots. ZeroTier fetches the moon definition from it."
+msgstr "moon 某个根节点的 10 位地址，ZeroTier 将从它获取 moon 定义文件。"
+
+msgid "The controller allocates addresses from these ranges and reports them per member."
+msgstr "控制器从这些地址段中分配地址，并按成员逐一报告。"
+
+msgid "The following will run on the remote host:"
+msgstr "以下命令将在远程主机上执行："
+
+msgid "The port the controller API listens on, e.g. 27893. Only reachable through the SSH tunnel."
+msgstr "控制器 API 监听的端口，例如 27893。仅可经 SSH 隧道访问。"
+
+msgid "The remote host becomes the single root of a new moon. Additional roots are not supported yet."
+msgstr "远程主机将成为新 Moon 的唯一根节点。暂不支持额外根节点。"
+
+msgid "This controller has no networks yet."
+msgstr "此控制器尚无网络。"
+
+msgid "This will create moon.json (holding the signing secret) and a signed .moon on the remote host. Continue?"
+msgstr "这将在远程主机上创建 moon.json（含签署密钥）以及已签署的 .moon 文件。是否继续？"
+
+msgid "Unknown error"
+msgstr "未知错误"
+
+msgid "unreadable"
+msgstr "个不可读"
+
+msgid "Update failed"
+msgstr "更新失败"
+
+msgid "updated"
+msgstr "更新于"
+
+msgid "Version"
+msgstr "版本"
+
+msgid "Via"
+msgstr "网关"
+
+msgid "waiting for the moon definition - this orbit is not persistent yet"
+msgstr "正在等待 moon 定义 — 该 join 尚未持久化"
+
+msgid "yes"
+msgstr "是"
+
 msgid "ZeroTier"
 msgstr "ZeroTier"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:90
-msgid "ZeroTier Central"
-msgstr "ZeroTier 管理中心"
+msgid "ZeroTier address"
+msgstr "ZeroTier 地址"
 
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/config.js:47
-#: applications/luci-app-zerotier/htdocs/luci-static/resources/view/zerotier/interface.js:74
-msgid "ZeroTier is an open source, cross-platform and easy to use virtual LAN."
-msgstr "ZeroTier 是一个开源、跨平台且易于使用的虚拟局域网 VPN。"
+msgid "ZeroTier direct"
+msgstr "ZeroTier 直连"
+
+msgid "ZeroTier installed"
+msgstr "ZeroTier 已安装"
+
+msgid "Zerotier is an open source, cross-platform and easy to use virtual LAN"
+msgstr "Zerotier 是一个开源，跨平台，而且适合内网穿透互联的傻瓜配置虚拟 VPN LAN"
+
+msgid "ZeroTier version"
+msgstr "ZeroTier 版本"
+
+msgid "SSH public key"
+msgstr "SSH 公钥"
+
+msgid "The public half of this router's dedicated key pair. Add it to the remote host's ~/.ssh/authorized_keys to authorize this router."
+msgstr "本路由器专用密钥对的公钥半边。把它添加到远程主机的 ~/.ssh/authorized_keys 即可授权本路由器。"
+
+msgid "No private key needed: when you save, this router generates a dedicated key pair and shows you the public key and the exact command to run on the remote host."
+msgstr "无需私钥：保存时本路由器会生成专用密钥对，并显示公钥与需要在远程主机上执行的确切命令。"
+
+msgid "Direct mode only. Over SSH the port is discovered from the remote daemon and remembered, so it never has to be typed."
+msgstr "仅直连模式需要。SSH 模式下端口会从远程守护进程自动发现并记住，无需填写。"
+
+msgid "Copy command"
+msgstr "复制命令"
+
+msgid "Copied. Run it on the remote host."
+msgstr "已复制。请在远程主机上执行。"
+
+msgid "Done"
+msgstr "完成"
+
+msgid "Authorize this router on the remote host"
+msgstr "在远程主机上授权本路由器"
+
+msgid "A dedicated key pair was generated on this router for host "%s". The private half never leaves this router. You already have access to the remote host, so run this command there to authorize the connection:"
+msgstr "本路由器已为主机“%s”生成专用密钥对。私钥半边永远不会离开本路由器。你本来就拥有远程主机的访问权，在那里执行以下命令即可授权连接："
+
+msgid " (controller port auto-discovered)"
+msgstr "（控制器端口将自动发现）"
+
