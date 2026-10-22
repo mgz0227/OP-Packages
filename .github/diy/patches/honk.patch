@@ -1,0 +1,11 @@
+--- a/honk/files/honk.config
++++ b/honk/files/honk.config
+@@ -1,7 +1,7 @@
+ 
+ config honk 'config'
+ 	option enabled '0'
+-	option advanced '0'
++	option advanced '1'
+ 	option dashboard 'none'
+ 	option config_file '/etc/honk/config.dae'
+ 

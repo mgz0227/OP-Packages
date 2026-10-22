@@ -1,3 +1,42 @@
+--- a/luci-app-store/root/etc/uci-defaults/luci-app-store
++++ b/luci-app-store/root/etc/uci-defaults/luci-app-store
+@@ -2,6 +2,12 @@
+ 
+ /etc/init.d/istore boot
+ 
++TARGET="/www/luci-static/istore/index.js"
++
++if [ -f "$TARGET" ]; then
++    sed -i 's/class:"tabs"/class:"cbi-tabmenu"/g' "$TARGET"
++fi
++
+ if [ -z "`uci -q get istore.istore.hide_docker`" ] && ! which docker >/dev/null; then
+     uci -q batch <<-EOF >/dev/null
+         set istore.istore.hide_docker=1
+
+--- a/luci-app-store/luasrc/controller/store.lua
++++ b/luci-app-store/luasrc/controller/store.lua
+@@ -3,7 +3,7 @@ module("luci.controller.store", package.seeall)
+ local myopkg = "is-opkg"
+ local is_backup = "/usr/libexec/istore/backup"
+ local is_overlay_backup = "/usr/libexec/istore/overlay-backup"
+-local page_index = {"admin", "store", "pages"}
++local page_index = {"admin", "services", "store", "pages"}
+ 
+ function index()
+     local function store_api(action, onlypost)
+@@ -14,8 +14,8 @@ function index()
+ 
+     local action
+ 
+-    entry({"admin", "store"}, call("redirect_index"), _("iStore"), 31)
+-    entry({"admin", "store", "pages"}, call("store_index")).leaf = true
++    entry({"admin", "services", "store"}, call("redirect_index"), _("iStore"), 31).dependent = true
++    entry({"admin", "services", "store", "pages"}, call("store_index")).leaf = true
+     if nixio.fs.access("/usr/lib/lua/luci/view/store/main_dev.htm") then
+         entry({"admin", "store", "dev"}, call("store_dev")).leaf = true
+     end
+
 --- a/luci-app-store/src/root-opkg/etc/opkg/compatfeeds.conf
 +++ b/luci-app-store/src/root-opkg/etc/opkg/compatfeeds.conf
 @@ -1 +1 @@
@@ -24,7 +63,7 @@
          v<%=id.version%>
      </a>
 +	<br/>
-+	<span style="font-weight:normal;font-size:70%; color:orangered">更多插件, 请使用 <a href="/cgi-bin/luci/admin/system/package-manager" style="text-decoration: none;">系统->软件包</a> </span>
++	<span style="font-weight:normal;font-size:70%; color:orangered">更多插件, 请使用 <a href="/cgi-bin/luci/admin/package-manager" style="text-decoration: none;">软件包</a> </span>
  </h2>
  <link rel="stylesheet" href="/luci-static/istore/style.css?v=<%=id.version%>">
  <div id="app">

@@ -1,32 +1,224 @@
---- a/luci-theme-footstrap/root/etc/config/footstrap
-+++ b/luci-theme-footstrap/root/etc/config/footstrap
-@@ -1,2 +1,6 @@
- 
- config footstrap 'settings'
-+	option pattern 'a583df0ec986a6b8454f7be514e8cb32'
-+	option darkmode 'dark'
-+	option wallpaper 'pattern'
-+	option layout 'sidebar'
+--- a/luci-app-vantage/htdocs/luci-static/resources/vantage/app.css
++++ b/luci-app-vantage/htdocs/luci-static/resources/vantage/app.css
+@@ -156,6 +156,8 @@ html[data-darkmode="true"] .vt-app {
+ 	position: static; z-index: auto; display: block; overflow: visible;
+ 	margin: 0; padding: 0; border: 0; border-radius: 0;
+ 	background: none; box-shadow: none; color: inherit; text-shadow: none;
++	width: 100%;
++    flex-direction: unset;
+ }
+ .vt-app :where(header, footer) :where(p, a, span) { line-height: inherit; text-shadow: none; }
+ .vt-app :where(header) :where(a) { color: inherit; }
+@@ -477,6 +479,12 @@ html[data-darkmode="true"] .vt-app {
+ 	display: flex; align-items: center; gap: 14px;
+ 	margin: 2px 0 14px;
+ }
++header::after {
++	height:0 !important;	
++}
++h2, h3{
++	background-color:transparent;
++}
+ .vt-app .vt-orb {
+ 	position: relative; flex: none;
+ 	width: 38px; height: 38px; border-radius: 50%;
 
---- a/luci-theme-footstrap/styles/02-tokens.css
-+++ b/luci-theme-footstrap/styles/02-tokens.css
-@@ -17,6 +17,11 @@
- 	 * docs/design-system.md. Light = :root; dark = :root[data-darkmode="true"].
- 	 * ============================================================ */
- 	:root {
-+		--card-bg-color: var(--fs-panel) !important;
-+		--border-color: var(--fs-border) !important;
-+		--app-container_title-color: var(--fs-text) !important;
-+		--item-label_key-span-color: var(--app-container_title-color) !important;
-+		--app-container_status-label_block: var(--app-container_title-color) !important;
- 		/* Palette COLOURS are in 03-palettes.css (one swappable block per colourway × mode);
- 		 * everything here is palette-INDEPENDENT or var()-derived, so it follows the active
- 		 * palette. The INKS (--fs-on-accent &c.) are in the palette blocks too, beside the
-diff --git a/luci-theme-footstrap/root/etc/footstrap/pattern.svg b/luci-theme-footstrap/root/etc/footstrap/pattern.svg
+--- a/luci-theme-vantage/htdocs/luci-static/vantage/vantage.css
++++ b/luci-theme-vantage/htdocs/luci-static/vantage/vantage.css
+@@ -14,9 +14,9 @@
+ 	color-scheme: light;
+ 
+ 	--font: system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
+-	--mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", "Cascadia Mono", Menlo, Consolas, monospace;
++	--mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", "Cascadia Mono", system-ui, Menlo, Consolas, monospace;
+ 
+-	--fs-micro: 10.5px;
++	--fs-micro: 11.5px;
+ 	--fs-sm: 12px;
+ 	--fs-base: 13px;
+ 	--fs-md: 14px;
+@@ -37,7 +37,7 @@
+ 	--r-lg: 8px;
+ 
+ 	--rail-w: 56px;
+-	--rail-w-pinned: 224px;
++	--rail-w-pinned: 204px;
+ 	--top-h: 52px;
+ 	--ctl-h: 36px;              /* every control: inputs, selects, buttons, tabs, chips */
+ 	--label-w: 180px;           /* form label column */
+@@ -328,7 +328,7 @@ html[data-darkmode="true"] .vt-brand-tile { fill: #16181b; }
+ 	white-space: nowrap;
+ }
+ .vt-rail-link svg { flex: none; width: 20px; height: 20px; }
+-.vt-rail-label { overflow: hidden; text-overflow: ellipsis; display: none; flex: 1 1 auto; }
++.vt-rail-label { overflow: hidden; text-overflow: ellipsis; display: none; flex: 1 1 auto; font-size: var(--fs-md) }
+ .vt-rail-caret { display: none; width: 14px; height: 14px; color: var(--text-3); transition: transform .15s; }
+ 
+ .vt-rail-link:hover, .vt-rail-item.is-open > .vt-rail-link { background: var(--s3); color: var(--text); }
+@@ -371,7 +371,7 @@ html[data-rail="pinned"] .vt-frame { margin-left: var(--rail-w-pinned); }
+ 	padding: 5px 10px;
+ 	border-left: 1px solid var(--line-2);
+ 	color: var(--text-2);
+-	font-size: var(--fs-sm);
++	font-size: var(--fs-base);
+ 	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+ 	text-decoration: none !important;
+ }
+@@ -716,6 +716,12 @@ html:has(.vt-tabs:not([hidden])) { --stick-top: calc(var(--top-h) + 41px); }
+ 	border-radius: 10px;
+ 	box-shadow: var(--v-shadow);
+ 	min-width: 0;
++	background-clip: padding-box;
++}
++.cbi-section > legend:first-child{
++    margin-left: 10px !important;
++    padding: 10px !important;
++    border: none !important;
+ }
+ /* card header row */
+ .cbi-section > h3:first-child, .cbi-section > legend:first-child, .cbi-section > .cbi-title:first-child,
+@@ -1982,7 +1988,28 @@ html:not([data-darkmode="true"]) .vt-login-page {
+ 		linear-gradient(90deg, rgba(20, 23, 26, .04) 1px, transparent 1px) 0 0 / 32px 32px,
+ 		var(--bg);
+ }
+-.vt-login { width: min(380px, 100%); }
++.vt-login {
++	width: min(380px, 100%);
++	z-index: 1;
++}
++.vt-login-page{
++	background:none !important;
++}
++.vt-login-page::before {
++	content: "";
++	position: absolute;
++	inset: 0;
++	background-image: url('/luci-static/vantage/pattern.svg');
++	background-size: 440px auto;
++	background-position: center;
++	opacity: 0.4;
++}
++html:not([data-darkmode="true"]) .vt-login-page::before {
++	opacity: 0.7;
++}
++#packages {
++ width: 100% !important;
++}
+ .vt-login-card {
+ 	padding: var(--sp-6);
+ 	background: var(--s1);
+@@ -2051,7 +2075,7 @@ html:not([data-darkmode="true"]) .vt-login-page {
+ .cbi-section-table .ifacebox-body img { width: 18px; height: 18px; }
+ [id$="-ifc-description"], .cbi-value-field > div[id$="-ifc-description"] {
+ 	display: flex; flex-wrap: wrap; align-items: flex-start;
+-	gap: 10px 28px;
++	gap: 10px 40px;
+ 	max-width: 72rem;
+ }
+ [id$="-ifc-description"] > br { display: none; }
+
+--- a/luci-theme-vantage/Makefile
++++ b/luci-theme-vantage/Makefile
+@@ -17,7 +17,7 @@ PKG_LICENSE:=GPL-3.0-or-later
+ LUCI_TITLE:=Vantage theme
+ LUCI_DESCRIPTION:=A console-style LuCI theme: icon rail with flyouts, \
+ 	breadcrumb, page tabs, Ctrl+K command palette, light and dark modes.
+-LUCI_DEPENDS:=+luci-base
++LUCI_DEPENDS:=+luci-base +luci-app-vantage
+ LUCI_MAINTAINER:=anothaDev <10740588+anothaDev@users.noreply.github.com>
+ LUCI_URL:=https://github.com/anothaDev/luci-theme-vantage
+ 
+diff --git a/luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json b/luci-app-vantage/root/usr/share/luci/menu.d/z-luci-app-vantage.json
+similarity index 85%
+rename from luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json
+rename to luci-app-vantage/root/usr/share/luci/menu.d/z-luci-app-vantage.json
+index ad0a166..c58c860 100644
+--- a/luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json
++++ b/luci-app-vantage/root/usr/share/luci/menu.d/z-luci-app-vantage.json
+@@ -1,5 +1,5 @@
+ {
+-	"admin/dashboard": {
++	"admin/status/dashboard": {
+ 		"title": "Dashboard",
+ 		"order": 1,
+ 		"action": {
+
+--- a/luci-theme-vantage/ucode/template/themes/vantage/header.ut
++++ b/luci-theme-vantage/ucode/template/themes/vantage/header.ut
+@@ -12,6 +12,8 @@
+ 	const authed = !!ctx.authsession;
+ 	const page_title = (authed && dispatched?.title) ? striptags(_(dispatched.title)) : 'LuCI';
+ 	const lang = entityencode(dispatcher.lang ?? 'en', true);
++	const boardinfo = ubus.call("system", "board");
++	const hostname = striptags(boardinfo?.hostname ?? '?');
+ -%}
+ <!DOCTYPE html>
+ <html lang="{{ lang }}" data-darkmode="true">
+@@ -22,8 +24,8 @@
+ <title>{{ entityencode(page_title, true) }} · LuCI</title>
+ <script>
+ (function (r) {
+-	var p = 'auto', rail = '';
+-	try { p = localStorage.getItem('vantage.theme') || 'auto'; rail = localStorage.getItem('vantage.rail') || ''; } catch (e) {}
++	var p = 'auto', rail = 'pinned';
++	try { p = localStorage.getItem('vantage.theme') || 'auto'; rail = localStorage.getItem('vantage.rail') || 'pinned'; } catch (e) {}
+ 	var dark = (p === 'dark') || (p !== 'light' && !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
+ 	r.setAttribute('data-darkmode', dark ? 'true' : 'false');
+ 	r.setAttribute('data-theme', p);
+@@ -46,8 +48,15 @@
+ {% if (authed): %}
+ 	<nav class="vt-rail" id="vt-rail" aria-label="{{ entityencode(_('Main navigation'), true) }}">
+ 		<a class="vt-brand" href="{{ dispatcher.build_url('admin') }}" aria-label="{{ entityencode(_('Home'), true) }}">
+-			<svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="7" class="vt-brand-tile"/><path d="M9 10.5 16 22" class="vt-brand-l"/><path d="M16 22 23 10.5" class="vt-brand-r"/><circle cx="23" cy="10.5" r="1.9" class="vt-brand-dot"/></svg>
+-			<span class="vt-brand-word">Vantage</span>
++			<svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
++			<rect x="1" y="1" width="30" height="30" rx="7" class="vt-brand-tile"></rect>
++			<path d="M10 10.5 10 21.5" class="vt-brand-l"></path>
++			<path d="M10 16 21.5 10.5" class="vt-brand-r"></path>
++			<path d="M10 16 21.5 21.5" class="vt-brand-r"></path>
++			<circle cx="21.5" cy="10.5" r="1.9" class="vt-brand-dot"></circle>
++			<circle cx="21.5" cy="21.5" r="1.9" class="vt-brand-dot"></circle>
++			</svg>
++			<span class="vt-brand-word">{{ hostname }}</span>
+ 		</a>
+ 		<ul class="vt-rail-list" id="vt-rail-list"></ul>
+ 		<div class="vt-rail-foot">
+
+--- a/luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut
++++ b/luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut
+@@ -12,6 +12,8 @@
+ 	if (type(tls) == 'string')
+ 		tls = split(tls, /\s+/);
+ 	const tls_ports = uniq(filter(map(tls, e => +(match(e, /\d+$/)?.[0] ?? 0)), p => (p > 0 && p <= 65535)));
++	const boardinfo = ubus.call("system", "board");
++	const hostname = striptags(boardinfo?.hostname ?? '?');
+ -%}
+ <!DOCTYPE html>
+ <html lang="{{ entityencode(dispatcher.lang ?? 'en', true) }}" data-darkmode="true">
+@@ -37,9 +39,16 @@
+ <main class="vt-login">
+ 	<div class="vt-login-card">
+ 		<div class="vt-login-head">
+-			<svg class="vt-login-mark" viewBox="0 0 32 32" width="44" height="44" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="7" class="vt-brand-tile"/><path d="M9 10.5 16 22" class="vt-brand-l"/><path d="M16 22 23 10.5" class="vt-brand-r"/><circle cx="23" cy="10.5" r="1.9" class="vt-brand-dot"/></svg>
++			<svg class="vt-login-mark" viewBox="0 0 32 32" width="44" height="44" aria-hidden="true">
++			<rect x="1" y="1" width="30" height="30" rx="7" class="vt-brand-tile"></rect>
++			<path d="M10 10.5 10 21.5" class="vt-brand-l"></path>
++			<path d="M10 16 21.5 10.5" class="vt-brand-r"></path>
++			<path d="M10 16 21.5 21.5" class="vt-brand-r"></path>
++			<circle cx="21.5" cy="10.5" r="1.9" class="vt-brand-dot"></circle>
++			<circle cx="21.5" cy="21.5" r="1.9" class="vt-brand-dot"></circle>
++			</svg>
+ 			<div>
+-				<h1 class="vt-login-title">Vantage</h1>
++				<h1 class="vt-login-title">{{ hostname }}</h1>
+ 				<p class="vt-login-sub"><span class="vt-login-dot" aria-hidden="true"></span>{{ entityencode(_('Authorization Required'), true) }}</p>
+ 			</div>
+ 		</div>
+diff --git a/luci-theme-vantage/htdocs/luci-static/vantage/pattern.svg b/luci-theme-vantage/htdocs/luci-static/vantage/pattern.svg
 new file mode 100644
 index 000000000..72eb03cdc
 --- /dev/null
-+++ b/luci-theme-footstrap/root/etc/footstrap/pattern.svg
++++ b/luci-theme-vantage/htdocs/luci-static/vantage/pattern.svg
 @@ -0,0 +1,550 @@
 +<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 +<svg

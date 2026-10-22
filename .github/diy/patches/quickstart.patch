@@ -1,3 +1,20 @@
+--- a/luci-app-quickstart/luasrc/view/quickstart/main.htm
++++ b/luci-app-quickstart/luasrc/view/quickstart/main.htm
+@@ -47,6 +47,13 @@
+           location.href = vue_prefix;
+         }
+       }
++    setTimeout(() => {
++  	  document.querySelectorAll('.item_container .item').forEach(el => {
++  	  if (el.textContent.trim() === '软件源配置') {
++  	  el.remove(); // 或 el.style.display = 'none';
++  	  }
++  	  });
++    }, 800);
+     })();
+ </script>
+ <div id="app">
+
 --- a/luci-app-quickstart/Makefile
 +++ b/luci-app-quickstart/Makefile
 @@ -6,7 +6,7 @@
@@ -21,3 +38,20 @@
          entry({"admin", "network_guide"}, call("networkguide_index"), _("NetworkGuide"), 2)
          entry({"admin", "network_guide", "pages"}, call("quickstart_index", {index={"admin", "network_guide", "pages"}})).leaf = true
          if uci:get("quickstart", "main", "wifi_menu") == "1" then
+diff --git a/luci-app-quickstart/root/usr/share/luci/menu.d/luci-app-quickstart.json b/luci-app-quickstart/root/usr/share/luci/menu.d/luci-app-quickstart.json
+deleted file mode 100644
+index d1667bb..0000000
+--- a/luci-app-quickstart/root/usr/share/luci/menu.d/luci-app-quickstart.json
++++ /dev/null
+@@ -1,10 +0,0 @@
+-{
+-	"admin/quickstart/*": {
+-		"title": "QuickStart",
+-		"order": 1,
+-		"action": {
+-			"type": "template",
+-			"path": "quickstart/home"
+-		}
+-	}
+-}
+\ No newline at end of file
