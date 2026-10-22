@@ -468,7 +468,7 @@ jobs:
         sound/spotifyd devel/go-rice devel/rust-bindgen admin/gotop \
         lang/lua/lua-periphery lang/lua/lua-neturl lang/lua/lua-maxminddb devel/gn
         git_clone https://github.com/koshev-msk/modemfeed && mv -n modemfeed/*/!(telephony)/!(ookla-speedtest) ./; rm -rf modemfeed
-        git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/luci" applications/luci-app-dockerman
+        git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/luci" applications/luci-app-dockerman themes/luci-theme-footstrap
         git_sparse_clone openwrt-25.12 "https://github.com/coolsnowwolf/luci" applications \
         libs/rpcd-mod-luci protocols/luci-proto-openvpnc themes/luci-theme-design
         mv -f applications luciapp;rm -rf luciapp/luci-app-homeproxy
