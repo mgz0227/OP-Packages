@@ -1,22 +1,3 @@
---- a/luci-app-argon-config/root/usr/share/luci/menu.d/luci-app-argon-config.json
-+++ b/luci-app-argon-config/root/usr/share/luci/menu.d/luci-app-argon-config.json
-@@ -8,7 +8,14 @@
- 		},
- 		"depends": {
- 			"acl": [ "luci-app-argon-config" ],
--			"uci": { "argon": true }
-+			"uci": {
-+				"argon": true,
-+				"luci": {
-+					"main": {
-+						"mediaurlbase": "/luci-static/argon"
-+					}
-+				}
-+			}
- 		}
- 	}
- }
-
 --- a/luci-theme-argon/ucode/template/themes/argon/head.ut
 +++ b/luci-theme-argon/ucode/template/themes/argon/head.ut
 @@ -67,7 +67,7 @@
