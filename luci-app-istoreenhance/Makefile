@@ -8,8 +8,8 @@ include $(TOPDIR)/rules.mk
 LUCI_TITLE:=LuCI support for KSpeeder
 LUCI_DEPENDS:=+istoreenhance +luci-lib-linkeaseauth +linkease-app-entry
 LUCI_PKGARCH:=all
-PKG_VERSION:=0.8.4
-PKG_RELEASE:=10
+PKG_VERSION:=0.8.4-r1
+PKG_RELEASE:=11
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

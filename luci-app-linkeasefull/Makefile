@@ -10,8 +10,8 @@ LUCI_TITLE:=LuCI support for linkeasefull
 LUCI_DEPENDS:=+linkeasefull +luci-lib-linkeaseauth +luci-lib-linkeasefile
 LUCI_PKGARCH:=all
 
-PKG_VERSION:=1.0.0
-PKG_RELEASE:=7
+PKG_VERSION:=1.0.0-r3
+PKG_RELEASE:=8
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
