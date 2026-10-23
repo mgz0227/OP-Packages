@@ -2,8 +2,8 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_VERSION:=0.8.5-r20260804
-PKG_RELEASE:=6
+PKG_VERSION:=0.8.5-r20261019
+PKG_RELEASE:=7
 
 LUCI_TITLE:=LuCI support for webvirtcloud
 LUCI_PKGARCH:=all

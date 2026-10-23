@@ -2,8 +2,8 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_VERSION:=1.2.3-r20260828
-PKG_RELEASE:=7
+PKG_VERSION:=1.2.3-r20261019
+PKG_RELEASE:=8
 
 LUCI_TITLE:=LuCI support for jellyfin
 LUCI_PKGARCH:=all
