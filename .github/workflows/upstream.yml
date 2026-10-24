@@ -203,7 +203,6 @@ jobs:
         git_clone https://github.com/lucas-albers-lz4/fwlive && mv -f fwlive/openwrt-feed/luci-app-fwlive ./;rm -rf fwlive
         git_clone https://github.com/2018nuoyan/openwrt_nezha && mv -n openwrt_nezha/*nezhav1 ./; rm -rf openwrt_nezha
         git clone https://github.com/Ausaci/luci-app-nat6-helper -b main-dev
-        git_clone https://github.com/vernesong/OpenClash && mv -f OpenClash/luci-app-openclash ./; rm -rf OpenClash
         ) &
         (
         # git_clone https://github.com/zzsj0928/luci-app-pushbot
@@ -316,7 +315,6 @@ jobs:
         git_clone https://github.com/yichya/openwrt-hv-tools
         git_clone https://github.com/ddimension/openwrt-repo && mv -f openwrt-repo/*wwand* ./;rm -rf openwrt-repo
         git_clone https://github.com/jerrykuku/luci-theme-argon
-        git_clone https://github.com/jerrykuku/luci-app-argon-config
         ) &
         (
         git_clone https://github.com/EasyTier/luci-app-easytier luci-app-easytier1 && mvdir luci-app-easytier1
