@@ -165,6 +165,7 @@
     --magenta-bright: #ff00bb;
     --magenta-bright-a15: rgba(255,0,187,0.15);
     --black: #000000;
+    --cm-log-text: #57606a;
     --orange: #FF6B00;
     --orange-a15: rgba(255,107,0,0.15);
     --blue: #0000FF;
@@ -344,6 +345,7 @@ html[data-darkmode="true"] .oc {
     --magenta: #c655ff;
     --magenta-a15: rgba(198,85,255,0.2);
     --black: #ffffff;
+    --cm-log-text: #ffffff;
     --orange: #ff6f00;
     --orange-a15: rgba(255,111,0,0.2);
     --blue: #82AAFF;
@@ -1248,7 +1250,7 @@ html[data-darkmode="true"] .oc svg {
     color: var(--text-secondary);
     font-size: 14px;
     font-weight: 500;
-    line-height: 1;
+    line-height: normal;
     cursor: pointer;
     transition: all var(--transition-fast);
 }
@@ -1273,7 +1275,7 @@ html[data-darkmode="true"] .oc svg {
 
 .oc .mode-tab span,
 .oc .add-row-btn span {
-    line-height: 1;
+    line-height: normal;
 }
 
 .oc .form-group {
@@ -1291,6 +1293,7 @@ html[data-darkmode="true"] .oc svg {
 
 .oc .form-select-wrapper {
     position: relative;
+    min-width: 0;
 }
 
 .oc .form-select-wrapper::after {
@@ -1312,6 +1315,7 @@ html[data-darkmode="true"] .oc svg {
     width: 100%;
     height: 40px;
     padding: 10px 12px;
+    min-width: 0;
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     background: var(--bg-white) !important;
@@ -2002,7 +2006,7 @@ ul {
     transition: all var(--transition-fast);
     white-space: nowrap;
     box-sizing: border-box;
-    line-height: 1;
+    line-height: normal;
 }
 
 .oc .footer-btn:hover:not(:disabled) {
@@ -2119,13 +2123,16 @@ ul {
 }
 
 .oc.cbi-button.cbi-button {
-    display: inline-flex;
+    display: flex !important;
     align-items: center;
     justify-content: center;
     gap: 6px;
     width: 100% !important;
     max-width: 320px;
-    padding: 10px 14px;
+    margin: 0 auto !important;
+    /* fixed height: the UA only centres the label while the content box fits the line */
+    height: 35px !important;
+    padding: 0 14px;
     border: 1px solid var(--primary-color) !important;
     border-radius: var(--radius-sm);
     background: var(--primary-color) !important;
@@ -2136,7 +2143,7 @@ ul {
     transition: all var(--transition-fast);
     white-space: nowrap;
     box-sizing: border-box;
-    line-height: 1;
+    line-height: normal;
 }
 
 .oc.cbi-button.cbi-button:hover:not(:disabled) {
@@ -2152,12 +2159,17 @@ ul {
     box-shadow: none;
 }
 
+@media (max-width: 1152px) {
+    .oc.cbi-button.cbi-button { max-width: none; }
+    .oc .oc-merge-cell { padding: 0; }
+}
+
 @media (max-width: 768px) {
-    .oc.cbi-button.cbi-button { font-size: 12px; padding: 6px 10px; height: 32px; }
+    .oc.cbi-button.cbi-button { font-size: 12px; padding: 0 10px; height: 32px !important; }
 }
 
 @media (max-width: 480px) {
-    .oc.cbi-button.cbi-button { font-size: 11px; padding: 5px 8px; gap: 4px; height: 30px; }
+    .oc.cbi-button.cbi-button { font-size: 11px; padding: 0 8px; gap: 4px; height: 30px !important; }
 }
 
 /* ==========================================================================
@@ -2441,6 +2453,7 @@ html[data-darkmode="true"] .oc-status-err {
     white-space: normal;
     line-height: 1.35;
     padding: 10px 16px;
+    height: auto !important;
 }
 
 .oc.oc-confirm-overlay {
@@ -2654,4 +2667,41 @@ html[data-darkmode="true"] .oc-warn-strip {
     line-height: 1.75;
     color: var(--text-secondary, #64748b);
     text-align: left;
+}
+
+/* ---- Stock CBI tables: theme responsive rules replace the table layout with flex rows ---- */
+/* no !important on rows/containers: LuCI hides helper rows with inline display:none */
+table.cbi-section-table {
+    display: table;
+}
+
+table.cbi-section-table > thead {
+    display: table-header-group;
+}
+
+table.cbi-section-table > tbody {
+    display: table-row-group;
+}
+
+table.cbi-section-table > tfoot {
+    display: table-footer-group;
+}
+
+table.cbi-section-table > tbody > tr {
+    display: table-row;
+}
+
+table.cbi-section-table > tbody > tr > th,
+table.cbi-section-table > tbody > tr > td {
+    display: table-cell !important;
+}
+
+table.cbi-section-table > tbody > tr > td::before {
+    content: none !important;
+    display: none !important;
+}
+
+/* the runtime-config column of the config merge table is a hidden data source, not a pane */
+tr.oc-merge-td > td.cbi-value:not(.oc-merge-value) {
+    display: none !important;
 }

@@ -676,7 +676,8 @@ var ocLang = window.ocLang || '';
                                     currentFileInfo = {
                                         mtime: file.mtime,
                                         size: file.size,
-                                        age: file.age
+                                        age: file.age,
+                                        schedule: file.schedule
                                     };
                                 }
                                 break;
@@ -862,7 +863,10 @@ var ocLang = window.ocLang || '';
                     var modifyTime = this.formatUnixTime(fileInfo.mtime);
                     var fileModifyTimeValue = document.getElementById('file-modify-time-value');
                     fileModifyTimeValue.textContent = modifyTime;
+                    fileModifyTimeElement.title = '<%:Modified%> · ' + modifyTime;
                 }
+
+                this.renderScheduleBadge(fileInfo.schedule, fileInfo);
 
                 if (detailsSection) {
                     detailsSection.style.display = 'flex';
@@ -885,6 +889,8 @@ var ocLang = window.ocLang || '';
                     fileModifyTimeValue.textContent = modifyTimeText;
                 }
 
+                this.renderScheduleBadge(null, null);
+
                 if (detailsSection) {
                     detailsSection.style.display = 'none';
                 }
@@ -897,6 +903,94 @@ var ocLang = window.ocLang || '';
         },
 
         formatUnixTime: ocFormatUnixTime,
+
+        renderScheduleBadge: function(schedule, fileInfo) {
+            var element = document.getElementById('file-next-update');
+            if (!element) return;
+
+            var badge = this.formatScheduleBadge(schedule, fileInfo);
+            if (!badge) {
+                element.title = '';
+                element.removeAttribute('aria-label');
+                element.classList.add('oc-hidden');
+                return;
+            }
+
+            var valueElement = document.getElementById('file-next-update-value');
+            var useElement = element.querySelector('use');
+            if (useElement) {
+                useElement.setAttribute('href', '#' + badge.icon);
+            }
+            if (valueElement) {
+                valueElement.textContent = badge.text;
+            }
+            element.title = badge.title;
+            element.setAttribute('aria-label', badge.title);
+            element.classList.remove('oc-hidden');
+        },
+
+        computeNextAppointment: function(week, hour) {
+            var now = new Date();
+            var next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0, 0, 0);
+            if (next.getTime() <= now.getTime()) {
+                next.setDate(next.getDate() + 1);
+            }
+            var target = parseInt(week, 10);
+            if (!isNaN(target)) {
+                next.setDate(next.getDate() + (target - next.getDay() + 7) % 7);
+            }
+            return next;
+        },
+
+        formatScheduleBadge: function(schedule, fileInfo) {
+            if (!schedule) return null;
+
+            var icon = 'oc-icon-calendar';
+            var text, title;
+
+            if (String(schedule.mode) === '1') {
+                var interval = parseInt(schedule.interval, 10);
+                if (isNaN(interval) || interval < 1) interval = 60;
+                if (interval % 1440 === 0) {
+                    text = (interval / 1440) + 'd';
+                } else if (interval % 60 === 0) {
+                    text = (interval / 60) + 'h';
+                } else {
+                    text = interval + 'm';
+                }
+                icon = 'oc-icon-history';
+                title = '<%:Auto Update%> · <%:Loop Mode%> · ' + interval + ' <%:Minutes%>';
+                if (fileInfo && fileInfo.mtime) {
+                    title += '\n<%:Modified%> · ' + this.formatUnixTime(fileInfo.mtime);
+                    var nextLoop = fileInfo.mtime + interval * 60;
+                    if (nextLoop * 1000 > Date.now()) {
+                        title += '\n<%:Next Update%> · ' + this.formatUnixTime(nextLoop);
+                    }
+                }
+            } else {
+                var hour = parseInt(schedule.hour, 10);
+                if (isNaN(hour) || hour < 0 || hour > 23) hour = 0;
+                var time = (hour < 10 ? '0' : '') + hour + ':00';
+                var week = schedule.week == null ? '*' : String(schedule.week);
+                var nextTime = null;
+                if (week === '*') {
+                    text = time;
+                    title = '<%:Auto Update%> · <%:Appointment Mode%> · <%:Every Day%> ' + time;
+                    nextTime = this.computeNextAppointment('*', hour);
+                } else {
+                    var shortNames = {'0': '<%:Sun%>', '1': '<%:Mon%>', '2': '<%:Tue%>', '3': '<%:Wed%>', '4': '<%:Thu%>', '5': '<%:Fri%>', '6': '<%:Sat%>'};
+                    var longNames = {'0': '<%:Every Sunday%>', '1': '<%:Every Monday%>', '2': '<%:Every Tuesday%>', '3': '<%:Every Wednesday%>', '4': '<%:Every Thursday%>', '5': '<%:Every Friday%>', '6': '<%:Every Saturday%>'};
+                    text = ((shortNames[week] || '') + ' ' + time).trim();
+                    title = '<%:Auto Update%> · <%:Appointment Mode%> · ' + (longNames[week] || '') + ' ' + time;
+                    nextTime = this.computeNextAppointment(shortNames[week] ? week : '*', hour);
+                }
+                if (nextTime) {
+                    title += '\n<%:Next Update%> · ' + this.formatUnixTime(Math.floor(nextTime.getTime() / 1000));
+                }
+            }
+
+            return {icon: icon, text: text, title: title};
+        },
 
         formatFileSize: ocFormatFileSize,
 
@@ -962,7 +1056,8 @@ var ocLang = window.ocLang || '';
                         selectedFileInfo = {
                             mtime: file.mtime,
                             size: file.size,
-                            age: file.age
+                            age: file.age,
+                            schedule: file.schedule
                         };
                     }
                     break;
@@ -1766,6 +1861,7 @@ var ocLang = window.ocLang || '';
                     modules.push({
                         name: moduleName,
                         type: moduleInfo.type || 'unknown',
+                        desc: moduleInfo.desc || '',
                         order: parseInt(moduleInfo.order, 10) || 0
                     });
                 }
@@ -1852,7 +1948,7 @@ var ocLang = window.ocLang || '';
                 var moduleItem = enabledModules[i];
                 var tag = document.createElement('span');
                 tag.className = 'subscription-overwrite-tag ' + this.getTypeClass(moduleItem.type);
-                tag.title = moduleItem.name;
+                tag.title = moduleItem.desc ? moduleItem.name + '\n' + moduleItem.desc : moduleItem.name;
                 tag.textContent = moduleItem.name;
                 tag.setAttribute('data-module', moduleItem.name);
                 tag.addEventListener('click', function(e) {
@@ -2024,6 +2120,8 @@ var ocLang = window.ocLang || '';
         retryCount: 0,
         maxRetries: 3,
         isEnabled: false,
+        cpuTicks: 0,
+        cpuTime: 0,
 
         ZERO_SYS_STATS: [
             {id: "cpu_t", html: ocStatHtml("0 %")},
@@ -2060,8 +2158,21 @@ var ocLang = window.ocLang || '';
             StateManager.cachedXHRGet('<%=url("admin", "services", "openclash", "toolbar_show_sys")%>', function(x, status) {
                 if (x && x.status == 200 && x.responseText != "" && status) {
                     self.retryCount = 0;
-                    var cpuValueNumber = Number(status.cpu);
-                    if (!isFinite(cpuValueNumber) || cpuValueNumber < 0) cpuValueNumber = 0;
+                    // two cumulative tick samples give the usage; USER_HZ is 100, so ticks/s is percent
+                    var ticks = Number(status.cpu_ticks);
+                    var now = Date.now();
+                    var cpuValueNumber = 0;
+                    if (isFinite(ticks) && ticks > 0) {
+                        if (self.cpuTicks && ticks >= self.cpuTicks && now > self.cpuTime) {
+                            cpuValueNumber = (ticks - self.cpuTicks) / ((now - self.cpuTime) / 1000);
+                            if (!isFinite(cpuValueNumber) || cpuValueNumber < 0) cpuValueNumber = 0;
+                            if (cpuValueNumber > 100) cpuValueNumber = 100;
+                        }
+                        self.cpuTicks = ticks;
+                        self.cpuTime = now;
+                    } else {
+                        self.cpuTicks = 0;
+                    }
                     var cpuColor = cpuValueNumber <= 50 ? "var(--success-color)" : (cpuValueNumber <= 80 ? "var(--tip-color)" : "var(--error-color)");
                     var cpuValue = ocFormatOneDecimal(cpuValueNumber) + " %";
                     document.getElementById("cpu_t").innerHTML = ocStatHtml(cpuValue, cpuColor);
@@ -2087,6 +2198,8 @@ var ocLang = window.ocLang || '';
 
         handleError: function() {
             this.retryCount = 0;
+            this.cpuTicks = 0;
+            this.cpuTime = 0;
             this.resetSysStats();
             StatsChart.feed("cpu", 0);
             StatsChart.feed("load", 0);
@@ -2103,6 +2216,8 @@ var ocLang = window.ocLang || '';
         retryCount: 0,
         maxRetries: 3,
         isEnabled: false,
+        lastTotals: null,
+        lastTime: 0,
 
         ZERO_STATS: [
             {id: "upload_", html: ocStatHtml("0 B/s")},
@@ -2157,18 +2272,26 @@ var ocLang = window.ocLang || '';
         },
 
         updateNetworkStats: function(status) {
-            var up = Number(status && status.up);
-            var down = Number(status && status.down);
             var upTotal = Number(status && status.up_total);
             var downTotal = Number(status && status.down_total);
             var mem = Number(status && status.mem);
             var connections = Number(status && status.connections);
-            if (!isFinite(up)) up = 0;
-            if (!isFinite(down)) down = 0;
             if (!isFinite(upTotal)) upTotal = 0;
             if (!isFinite(downTotal)) downTotal = 0;
             if (!isFinite(mem)) mem = 0;
             if (!isFinite(connections)) connections = 0;
+            // the totals are cumulative, two samples give the average rate since the last poll
+            var now = Date.now();
+            var up = 0, down = 0;
+            if (this.lastTotals && upTotal >= this.lastTotals.up && downTotal >= this.lastTotals.down && now > this.lastTime) {
+                var dt = (now - this.lastTime) / 1000;
+                if (dt > 0.2) {
+                    up = (upTotal - this.lastTotals.up) / dt;
+                    down = (downTotal - this.lastTotals.down) / dt;
+                }
+            }
+            this.lastTotals = { up: upTotal, down: downTotal };
+            this.lastTime = now;
             var updates = [
                 {element: document.getElementById("upload_"), content: ocStatHtml(bytesToSize(up) + "/s")},
                 {element: document.getElementById("download_"), content: ocStatHtml(bytesToSize(down) + "/s")},
@@ -2187,6 +2310,8 @@ var ocLang = window.ocLang || '';
 
         handleError: function() {
             this.retryCount = 0;
+            this.lastTotals = null;
+            this.lastTime = 0;
             this.resetStats();
             StatsChart.feed("up", 0);
             StatsChart.feed("down", 0);
@@ -2201,6 +2326,7 @@ var ocLang = window.ocLang || '';
 
     var SettingsManager = {
         pendingOperations: new Set(),
+        pendingSettings: new Set(),
         pausedPolls: new Set(),
 
         pausePoll: function(pollName, duration) {
@@ -2214,90 +2340,64 @@ var ocLang = window.ocLang || '';
             return this.pausedPolls.has(pollName);
         },
 
+        isPending: function(setting) {
+            return this.pendingSettings.has(setting);
+        },
+
+        elementsOf: function(setting) {
+            switch (setting) {
+                case 'meta_sniffer': return [DOMCache.meta_sniffer_on, DOMCache.meta_sniffer_off];
+                case 'respect_rules': return [DOMCache.respect_rules_on, DOMCache.respect_rules_off];
+                case 'oversea': return [DOMCache.oc_setting_oversea_0, DOMCache.oc_setting_oversea_1, DOMCache.oc_setting_oversea_2];
+                case 'stream_unlock': return [DOMCache.stream_unlock_on, DOMCache.stream_unlock_off];
+                case 'rule_mode': return DOMCache.radio;
+                case 'run_mode': return DOMCache.radio_ru;
+            }
+            return [];
+        },
+
+        currentValue: function(setting) {
+            var elements = this.elementsOf(setting);
+            for (var i = 0; i < elements.length; i++) {
+                if (elements[i] && elements[i].checked) return elements[i].value;
+            }
+            return null;
+        },
+
+        applyValue: function(setting, value) {
+            var elements = this.elementsOf(setting);
+            for (var i = 0; i < elements.length; i++) {
+                if (elements[i]) elements[i].checked = (elements[i].value === value);
+            }
+        },
+
+        setDisabled: function(setting, disabled) {
+            var elements = this.elementsOf(setting);
+            for (var i = 0; i < elements.length; i++) {
+                if (elements[i]) elements[i].disabled = disabled;
+            }
+        },
+
+        // Apply the new choice immediately and lock the group: status polling skips
+        // pending settings, so the old backend value cannot flip the controls back.
         updateUIState: function(setting, value) {
             setTimeout(() => {
-                function setCheckedAndDisabled(elements, checkedIndex) {
-                    for (let i = 0; i < elements.length; i++) {
-                        elements[i].checked = (i === checkedIndex);
-                        elements[i].disabled = true;
-                    }
-                }
-                switch(setting) {
-                    case 'meta_sniffer':
-                        var metaSnifferOn = document.getElementById('meta_sniffer_on');
-                        var metaSnifferOff = document.getElementById('meta_sniffer_off');
-                        if (metaSnifferOn && metaSnifferOff) {
-                            setCheckedAndDisabled([metaSnifferOn, metaSnifferOff], value === '1' ? 0 : 1);
-                            var changeEvent = new Event('change', { bubbles: true });
-                            (value === '1' ? metaSnifferOn : metaSnifferOff).dispatchEvent(changeEvent);
-                        }
-                        break;
-                    case 'respect_rules':
-                        var respectRulesOn = document.getElementById('respect_rules_on');
-                        var respectRulesOff = document.getElementById('respect_rules_off');
-                        if (respectRulesOn && respectRulesOff) {
-                            setCheckedAndDisabled([respectRulesOn, respectRulesOff], value === '1' ? 0 : 1);
-                            var changeEvent = new Event('change', { bubbles: true });
-                            (value === '1' ? respectRulesOn : respectRulesOff).dispatchEvent(changeEvent);
-                        }
-                        break;
-                    case 'oversea':
-                        var oversea0 = document.getElementById('oc_setting_oversea_0');
-                        var oversea1 = document.getElementById('oc_setting_oversea_1');
-                        var oversea2 = document.getElementById('oc_setting_oversea_2');
-                        if (oversea0 && oversea1 && oversea2) {
-                            setCheckedAndDisabled([oversea0, oversea1, oversea2], value === '0' ? 0 : (value === '1' ? 1 : 2));
-                            var changeEvent = new Event('change', { bubbles: true });
-                            [oversea0, oversea1, oversea2][value === '0' ? 0 : (value === '1' ? 1 : 2)].dispatchEvent(changeEvent);
-                        }
-                        break;
-                    case 'stream_unlock':
-                        var streamUnlockOn = document.getElementById('stream_unlock_on');
-                        var streamUnlockOff = document.getElementById('stream_unlock_off');
-                        if (streamUnlockOn && streamUnlockOff) {
-                            setCheckedAndDisabled([streamUnlockOn, streamUnlockOff], value === '1' ? 0 : 1);
-                            var changeEvent = new Event('change', { bubbles: true });
-                            (value === '1' ? streamUnlockOn : streamUnlockOff).dispatchEvent(changeEvent);
-                        }
-                        break;
-                    case 'rule_mode':
-                        var radioElements = document.getElementsByName("radios");
-                        if (radioElements && radioElements.length > 0) {
-                            for (var i = 0; i < radioElements.length; i++) {
-                                radioElements[i].checked = radioElements[i].value === value;
-                                radioElements[i].disabled = true;
-                                if (radioElements[i].checked) {
-                                    var changeEvent = new Event('change', { bubbles: true });
-                                    radioElements[i].dispatchEvent(changeEvent);
-                                }
-                            }
-                        }
-                        break;
-                    case 'run_mode':
-                        var radioRuElements = document.getElementsByName("radios-ru");
-                        if (radioRuElements && radioRuElements.length > 0) {
-                            for (var i = 0; i < radioRuElements.length; i++) {
-                                radioRuElements[i].checked = radioRuElements[i].value === value;
-                                radioRuElements[i].disabled = true;
-                                if (radioRuElements[i].checked) {
-                                    var changeEvent = new Event('change', { bubbles: true });
-                                    radioRuElements[i].dispatchEvent(changeEvent);
-                                }
-                            }
-                        }
-                        break;
-                }
+                this.applyValue(setting, value);
+                this.setDisabled(setting, true);
             }, 10);
         },
 
         switchSetting: function(setting, value, endpoint, additionalParams) {
             var operationKey = setting + '_' + value;
 
-            if (this.pendingOperations.has(operationKey)) {
+            if (this.pendingSettings.has(setting)) {
                 return false;
             }
 
+            this.pendingSettings.add(setting);
             this.pendingOperations.add(operationKey);
+
+            var previousValue = this.currentValue(setting);
 
             try {
                 this.updateUIState(setting, value);
@@ -2328,55 +2428,12 @@ var ocLang = window.ocLang || '';
             XHR.get(endpoint, params, function(x, status) {
                 setTimeout(function() {
                     self.pendingOperations.delete(operationKey);
-
-                    switch(setting) {
-                        case 'meta_sniffer':
-                            var metaSnifferOn = document.getElementById('meta_sniffer_on');
-                            var metaSnifferOff = document.getElementById('meta_sniffer_off');
-                            if (metaSnifferOn) metaSnifferOn.disabled = false;
-                            if (metaSnifferOff) metaSnifferOff.disabled = false;
-                            break;
-                        case 'respect_rules':
-                            var respectRulesOn = document.getElementById('respect_rules_on');
-                            var respectRulesOff = document.getElementById('respect_rules_off');
-                            if (respectRulesOn) respectRulesOn.disabled = false;
-                            if (respectRulesOff) respectRulesOff.disabled = false;
-                            break;
-                        case 'oversea':
-                            var oversea0 = document.getElementById('oc_setting_oversea_0');
-                            var oversea1 = document.getElementById('oc_setting_oversea_1');
-                            var oversea2 = document.getElementById('oc_setting_oversea_2');
-                            if (oversea0) oversea0.disabled = false;
-                            if (oversea1) oversea1.disabled = false;
-                            if (oversea2) oversea2.disabled = false;
-                            break;
-                        case 'stream_unlock':
-                            var streamUnlockOn = document.getElementById('stream_unlock_on');
-                            var streamUnlockOff = document.getElementById('stream_unlock_off');
-                            if (streamUnlockOn) streamUnlockOn.disabled = false;
-                            if (streamUnlockOff) streamUnlockOff.disabled = false;
-                            break;
-                        case 'rule_mode':
-                            var radioElements = document.getElementsByName("radios");
-                            if (radioElements && radioElements.length > 0) {
-                                for (var i = 0; i < radioElements.length; i++) {
-                                    radioElements[i].disabled = false;
-                                }
-                            }
-                            break;
-                        case 'run_mode':
-                            var radioRuElements = document.getElementsByName("radios-ru");
-                            if (radioRuElements && radioRuElements.length > 0) {
-                                for (var i = 0; i < radioRuElements.length; i++) {
-                                    radioRuElements[i].disabled = false;
-                                }
-                            }
-                            break;
-                    }
-
+                    self.pendingSettings.delete(setting);
                     self.pausedPolls.delete(pollName);
+                    self.setDisabled(setting, false);
 
                     if (!x || x.status !== 200) {
+                        if (previousValue !== null) self.applyValue(setting, previousValue);
                         ocAlert(self.getErrorMessage(setting));
                     } else if (window.ocToast) {
                         ocToast('<%:Switch Successful%>', 'success');
@@ -2632,7 +2689,7 @@ var ocLang = window.ocLang || '';
         N: 60,
         rightLeadMs: 1000,
         metric: 'traffic',
-        view: 'cards',
+        view: 'ac',
         chart: null,
         chartLoadPending: false,
         latest: { up: 0, down: 0, mem: 0, cpu: 0, load: 0, conn: 0 },
@@ -2667,6 +2724,9 @@ var ocLang = window.ocLang || '';
         requiredSources: function() {
             var ws = [];
             var sys = false;
+            if (this.view === 'ac') {
+                return { ws: [], sys: false };
+            }
             if (this.view === 'cards') {
                 ws = ['traffic', 'connections', 'memory'];
                 sys = true;
@@ -2688,12 +2748,12 @@ var ocLang = window.ocLang || '';
 
         init: function() {
             var savedView = localStorage.getItem('oc-stats-view');
-            if (savedView === 'chart' || savedView === 'cards') {
+            if (savedView === 'chart' || savedView === 'cards' || savedView === 'ac') {
                 this.view = savedView;
             }
             this.resetBuffer(Date.now());
             this.metrics = {
-                traffic: { unit: ' MB/s', series: [{ key: 'up', name: '<%:Up%>' }, { key: 'down', name: '<%:Down%>' }] },
+                traffic: { unit: ' MB/s', series: [{ key: 'up', name: '<%:Upload%>' }, { key: 'down', name: '<%:Download%>' }] },
                 memory: { unit: ' MB', series: [{ key: 'mem', name: '<%:Ram%>' }] },
                 cpu: { unit: ' %', series: [{ key: 'cpu', name: '<%:CPU%>' }] },
                 load: { unit: ' %', series: [{ key: 'load', name: '<%:Load Avg%>' }] },
@@ -2717,12 +2777,19 @@ var ocLang = window.ocLang || '';
         applyView: function() {
             document.getElementById('stats-view-cards').classList.toggle('oc-hidden', this.view !== 'cards');
             document.getElementById('stats-view-chart').classList.toggle('oc-hidden', this.view !== 'chart');
+            var acEl = document.getElementById('stats-view-ac');
+            if (acEl) acEl.classList.toggle('oc-hidden', this.view !== 'ac');
             var statsTabs = document.getElementById('stats-tabs');
             if (statsTabs) statsTabs.classList.toggle('oc-hidden', this.view !== 'chart');
             var cardsBtn = document.getElementById('stats-cards-btn');
             var chartBtn = document.getElementById('stats-chart-btn');
+            var acBtn = document.getElementById('stats-ac-btn');
             if (cardsBtn) cardsBtn.classList.toggle('active', this.view === 'cards');
             if (chartBtn) chartBtn.classList.toggle('active', this.view === 'chart');
+            if (acBtn) acBtn.classList.toggle('active', this.view === 'ac');
+            var sectionTitle = document.getElementById('stats-section-title');
+            if (sectionTitle) sectionTitle.textContent = this.view === 'ac' ? '<%:Access Control%>' : '<%:Statistics%>';
+            if (typeof ClientsAC !== 'undefined') ClientsAC.setActive(this.view === 'ac');
         },
 
         initCardDots: function() {
@@ -2849,11 +2916,15 @@ var ocLang = window.ocLang || '';
             var self = this;
             var cardsBtn = document.getElementById('stats-cards-btn');
             var chartBtn = document.getElementById('stats-chart-btn');
+            var acBtn = document.getElementById('stats-ac-btn');
             if (cardsBtn) {
                 cardsBtn.addEventListener('click', function() { self.setView('cards'); });
             }
             if (chartBtn) {
                 chartBtn.addEventListener('click', function() { self.setView('chart'); });
+            }
+            if (acBtn) {
+                acBtn.addEventListener('click', function() { self.setView('ac'); });
             }
             var tabs = document.getElementById('stats-tabs');
             if (tabs) {
@@ -2894,7 +2965,7 @@ var ocLang = window.ocLang || '';
         },
 
         setView: function(view) {
-            if (view !== 'cards' && view !== 'chart') return;
+            if (view !== 'cards' && view !== 'chart' && view !== 'ac') return;
             if (this.view === view) return;
             this.view = view;
             this.applyView();
@@ -3234,7 +3305,1407 @@ var ocLang = window.ocLang || '';
         }
     };
 
+    function acFmtRate(b) {
+        if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB/s';
+        if (b >= 1024) return Math.round(b / 1024) + ' KB/s';
+        return Math.round(b) + ' B/s';
+    }
+
+    function acEscape(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /* wordmarks render as wide, short ink; sizing by ink height keeps their visual weight even,
+       while the box cap keeps a gap between the wordmark and the badge edge */
+    var AC_LOGO_BOX = 30, AC_LOGO_INK = 11, AC_PICK_BOX = 38, AC_PICK_INK = 11;
+
+    var AC_INK_BOOST = { "LG": 11.5, "Signify": 11.8 };
+
+    var AC_SORT_KEY = 'oc-ac-sort';
+
+    function acWordmarkSize(vendor, boxPx, inkPx, boost) {
+        var ink = window.ocBrandInk && window.ocBrandInk[vendor];
+        if (!ink) return boxPx;
+        var target = (boost && boost[vendor]) || inkPx;
+        return Math.round(Math.min(boxPx, 24 * target / ink) * 10) / 10;
+    }
+
+    function acVendorOfBrandId(id) {
+        var slug = String(id).replace(/^brand_/, '');
+        for (var v in window.ocBrandLogos) {
+            if (v.toLowerCase().replace(/[^a-z0-9]+/g, '_') === slug) return v;
+        }
+        return '';
+    }
+
+    var ClientsAC = {
+        active: false,
+        bound: false,
+        query: '',
+        busy: 0,
+        running: false,
+        env: null,
+        devices: [],
+        stats: {},
+        hist: {},
+        histLen: 20,
+        sortKey: null,
+        sortDir: 0,
+        statsIdle: 0,
+        lastSig: null,
+        lastStruct: null,
+        sparks: {},
+        chartLoading: false,
+        lastUnknownRefresh: 0,
+        envTimer: null,
+        statsTimer: null,
+        envFails: 0,
+        envRetryTimer: null,
+        probeTimer: null,
+        statsTs: 0,
+        lastCost: 0,
+        pollSeq: 0,
+        prevFlows: null,
+        statsAbort: null,
+        statsCur: null,
+        statsUnknown: false,
+        ipmap: {},
+        v6map: {},
+        lanPrefixes: {},
+        renaming: null,
+        iconPick: null,
+
+        endpoints: {
+            ac: '<%=url("admin", "services", "openclash", "clients_ac")%>',
+            stats: '<%=url("admin", "services", "openclash", "clients_stats")%>',
+            set: '<%=url("admin", "services", "openclash", "clients_set")%>',
+            meta: '<%=url("admin", "services", "openclash", "clients_meta")%>',
+            dns: '<%=url("admin", "services", "openclash", "clients_dns_switch")%>'
+        },
+
+        icons: {
+            phone: 'oc-icon-device-mobile',
+            tablet: 'oc-icon-device-tablet',
+            laptop: 'oc-icon-device-laptop',
+            desktop: 'oc-icon-device-desktop',
+            tv: 'oc-icon-device-tv',
+            game: 'oc-icon-device-gamepad',
+            speaker: 'oc-icon-device-speaker',
+            nas: 'oc-icon-device-server',
+            camera: 'oc-icon-device-cctv',
+            iot: 'oc-icon-cpu',
+            printer: 'oc-icon-device-printer',
+            router: 'oc-icon-device-router',
+            unknown: 'oc-icon-device-unknown'
+        },
+
+        iconSet: [
+            { id: 'unknown', label: '<%:Unknown%>' },
+            { id: 'phone', label: '<%:Phone%>' },
+            { id: 'tablet', label: '<%:Tablet%>' },
+            { id: 'laptop', label: '<%:Laptop%>' },
+            { id: 'desktop', label: '<%:Desktop%>' },
+            { id: 'tv', label: '<%:TV%>' },
+            { id: 'game', label: '<%:Game Console%>' },
+            { id: 'speaker', label: '<%:Speaker%>' },
+            { id: 'nas', label: '<%:Server / NAS%>' },
+            { id: 'camera', label: '<%:Camera%>' },
+            { id: 'iot', label: '<%:Smart Device%>' },
+            { id: 'printer', label: '<%:Printer%>' },
+            { id: 'router', label: '<%:Router%>' }
+        ],
+
+        nameRules: [
+            [/tv|bravia|mitv|skyworth|chromecast|firestick|appletv|shield|电视/i, 'tv'],
+            [/switch[-_]|xbox|playstation|ps[45]/i, 'game'],
+            [/ipad|tablet|matepad|pad[-_ ]/i, 'tablet'],
+            [/iphone|android|redmi|huawei|honor|oppo|vivo|oneplus|pixel|手机/i, 'phone'],
+            [/macbook|imac|thinkpad|notebook|laptop|ideapad|笔记本/i, 'laptop'],
+            [/desktop|电脑|台式/i, 'desktop'],
+            [/speaker|sound|echo|homepod|音箱/i, 'speaker'],
+            [/nas|synology|qnap|raspberry|rpi|server|服务器/i, 'nas'],
+            [/cam|ipc|doorbell|摄像/i, 'camera'],
+            [/print|epson|canon|brother|ricoh|xerox|kyocera|打印/i, 'printer'],
+            [/router|gateway|openwrt|linksys|netgear|dlink|d-link|ubnt|ubiquiti|路由/i, 'router'],
+            [/esp|tuya|shelly|sonoff|smart|iot|智能/i, 'iot']
+        ],
+
+        ouiFind: function(mac) {
+            var d = window.ocOui;
+            var hex = String(mac || '').replace(/[^0-9a-f]/gi, '').toUpperCase();
+            if (!d || hex.length < 6) return null;
+            // locally administered bit: phones randomize the MAC, no vendor exists
+            if (parseInt(hex.slice(0, 2), 16) & 2) return null;
+            var key = hex.slice(0, 6), p = d.p, lo = 0, hi = p.length / 6 - 1;
+            while (lo <= hi) {
+                var mid = (lo + hi) >> 1, cur = p.substr(mid * 6, 6);
+                if (cur === key) {
+                    var i = d.v.charCodeAt(mid) - 33;
+                    return { vendor: d.n[i] || '', type: d.t[i] || '' };
+                }
+                if (cur < key) lo = mid + 1; else hi = mid - 1;
+            }
+            return null;
+        },
+
+        ensureOui: function() {
+            var self = this;
+            if (this.ouiLoading || (window.ocOui && window.ocBrandLogos)) return;
+            this.ouiLoading = true;
+            var ver = window.ocPluginVer || '';
+            var finish = function() {
+                self.ouiLoading = false;
+                self.bindBrandIcons();
+                if (self.raw) self.rebuildDevices(self.raw);
+                if (self.active) self.renderList();
+            };
+            var loadBrands = function() {
+                if (window.ocBrandLogos) { finish(); return; }
+                ocRequireScript('/luci-static/resources/openclash/js/brand-logos.js?v=' + ver, finish);
+            };
+            if (window.ocOui) { loadBrands(); return; }
+            ocRequireScript('/luci-static/resources/openclash/js/oui-data.js?v=' + ver, loadBrands);
+        },
+
+        init: function() {
+            this.portal();
+            this.loadSort();
+            this.bind();
+            this.bindBrandIcons();
+            this.syncSortUI();
+            this.observeCardWidth();
+            this.setActive(StatsChart.view === 'ac');
+        },
+
+        observeCardWidth: function() {
+            var card = document.querySelector('.ac-card');
+            if (!card) return;
+            var apply = function() {
+                var w = card.getBoundingClientRect().width;
+                card.classList.toggle('ac-w-sm', w > 0 && w <= 560);
+                card.classList.toggle('ac-w-xs', w > 0 && w <= 430);
+            };
+            apply();
+            if (typeof ResizeObserver === 'function') {
+                this.cardObserver = new ResizeObserver(apply);
+                this.cardObserver.observe(card);
+            } else {
+                window.addEventListener('resize', apply);
+            }
+        },
+
+        // the page wrapper carries position:relative + z-index:50, which caps every fixed child
+        // inside it, so the dialog and the floating buttons must live directly under body
+        portal: function() {
+            var host = document.getElementById('oc-portal');
+            if (!host) {
+                host = document.createElement('div');
+                host.id = 'oc-portal';
+                host.className = 'oc';
+                document.body.appendChild(host);
+            }
+            var ids = ['ac-rename-overlay', 'ac-max-overlay', 'oc-float-stack'];
+            for (var i = 0; i < ids.length; i++) {
+                var el = document.getElementById(ids[i]);
+                if (el && el.parentNode !== host) host.appendChild(el);
+            }
+        },
+
+        loadSort: function() {
+            try {
+                var v = JSON.parse(localStorage.getItem(AC_SORT_KEY) || 'null');
+                if (v && v.key && v.dir) {
+                    this.sortKey = v.key;
+                    this.sortDir = v.dir;
+                }
+            } catch (e) { }
+        },
+
+        saveSort: function() {
+            try {
+                if (!this.sortKey || !this.sortDir) localStorage.removeItem(AC_SORT_KEY);
+                else localStorage.setItem(AC_SORT_KEY, JSON.stringify({ key: this.sortKey, dir: this.sortDir }));
+            } catch (e) { }
+        },
+
+        bindBrandIcons: function() {
+            if (!window.ocBrandLogos || this.brandIconsBound) return;
+            this.brandIconsBound = true;
+            for (var vendor in window.ocBrandLogos) {
+                var id = 'brand_' + vendor.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+                this.icons[id] = window.ocBrandLogos[vendor];
+                this.iconSet.push({ id: id, label: vendor });
+            }
+        },
+
+        setActive: function(on) {
+            this.active = on;
+            if (on) this.ensureOui();
+            this.syncTimers();
+        },
+
+        syncTimers: function() {
+            var run = this.active && document.visibilityState === 'visible';
+            if (this.running === run) return;
+            this.running = run;
+            this.stopTimers();
+            if (!run) return;
+            var self = this;
+            this.statsIdle = 0;
+            this.refreshEnv();
+            this.refreshStats();
+            this.envTimer = setInterval(function() { self.refreshEnv(); }, 15000);
+        },
+
+        stopTimers: function() {
+            if (this.envTimer) { clearInterval(this.envTimer); this.envTimer = null; }
+            if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null; }
+            if (this.envRetryTimer) { clearTimeout(this.envRetryTimer); this.envRetryTimer = null; }
+            if (this.probeTimer) { clearTimeout(this.probeTimer); this.probeTimer = null; }
+            if (this.statsAbort) { this.statsAbort.abort(); this.statsAbort = null; }
+            this.prevFlows = null;
+            this.statsTs = 0;
+        },
+
+        scheduleStats: function(delay) {
+            var self = this;
+            if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null; }
+            if (!this.running) return;
+            this.statsTimer = setTimeout(function() { self.refreshStats(); }, delay);
+        },
+
+        kickStats: function() {
+            this.statsIdle = 0;
+            this.scheduleStats(this.statsDelay());
+        },
+
+        cardVisible: function() {
+            var el = document.getElementById('stats-view-ac');
+            if (!el) return false;
+            var r = el.getBoundingClientRect();
+            var h = window.innerHeight || document.documentElement.clientHeight || 0;
+            return r.width > 0 && r.bottom > 0 && r.top < h;
+        },
+
+        // the router reports how long one conntrack dump took; that cost grows with the flow
+        // count, so a heavy table falls back to 2 s instead of paying 1 s every time
+        statsDelay: function() {
+            if (!this.cardVisible()) return 5000;
+            if (this.statsIdle >= 5) return 5000;
+            if (this.statsIdle >= 2 || this.lastCost > 50) return 2000;
+            return 1000;
+        },
+
+        refreshEnv: function(cb) {
+            var self = this;
+            XHR.get(this.endpoints.ac, null, function(x, data) {
+                var ok = !!(x && x.status == 200 && data && data.ok);
+                if (ok) {
+                    self.envFails = 0;
+                    if (self.envRetryTimer) { clearTimeout(self.envRetryTimer); self.envRetryTimer = null; }
+                    self.env = data;
+                    self.rebuildDevices(data.devices || []);
+                    self.applyEnvUI();
+                    if (!self.busy) self.renderList();
+                    if (data.probing) {
+                        // the ping batch writes the neighbour state back within a couple of seconds
+                        if (self.probeTimer) clearTimeout(self.probeTimer);
+                        self.probeTimer = setTimeout(function() { self.probeTimer = null; self.refreshEnv(); }, 3000);
+                    }
+                } else if (self.running) {
+                    // a failed poll retries sooner than the regular 15 s tick
+                    self.envFails = (self.envFails || 0) + 1;
+                    if (self.envRetryTimer) clearTimeout(self.envRetryTimer);
+                    self.envRetryTimer = setTimeout(function() { self.refreshEnv(); }, Math.min(3000 * self.envFails, 12000));
+                }
+                if (cb) cb(ok);
+            });
+        },
+
+        refreshStats: function() {
+            if (!this.running) return;
+            if (document.visibilityState === 'hidden') return;
+            var self = this;
+            var finish = function() {
+                self.scheduleStats(self.statsDelay());
+            };
+            if (window.fetch && window.ReadableStream && window.TextDecoder && window.AbortController) {
+                if (this.statsAbort) this.statsAbort.abort();
+                var ctl = new AbortController();
+                this.statsAbort = ctl;
+                // lines are consumed while they arrive, so the parse overlaps the transfer
+                fetch(this.endpoints.stats, { cache: 'no-store', signal: ctl.signal }).then(function(res) {
+                    if (!res.ok || !res.body) throw new Error('http ' + res.status);
+                    var reader = res.body.getReader();
+                    var dec = new TextDecoder('utf-8');
+                    var pend = '';
+                    var started = false;
+                    var onLine = function(line) {
+                        if (!started) {
+                            started = true;
+                            self.statsBegin(line === '#acct=1');
+                        } else if (line) {
+                            self.statsLine(line);
+                        }
+                    };
+                    var pump = function() {
+                        return reader.read().then(function(step) {
+                            if (ctl !== self.statsAbort) return;
+                            if (step.done) {
+                                pend += dec.decode();
+                                if (pend) onLine(pend);
+                                self.statsEnd();
+                                self.statsAbort = null;
+                                finish();
+                                return;
+                            }
+                            pend += dec.decode(step.value, { stream: true });
+                            var lines = pend.split('\n');
+                            pend = lines.pop();
+                            for (var i = 0; i < lines.length; i++) onLine(lines[i]);
+                            return pump();
+                        });
+                    };
+                    return pump();
+                }).catch(function() {
+                    if (ctl === self.statsAbort) { self.statsAbort = null; finish(); }
+                });
+                return;
+            }
+            var req = new XMLHttpRequest();
+            req.open('GET', this.endpoints.stats, true);
+            req.onload = function() {
+                if (req.status != 200) {
+                    self.scheduleStats(self.statsDelay());
+                    return;
+                }
+                self.consumeConntrack(req.responseText || '');
+                self.scheduleStats(self.statsDelay());
+            };
+            req.onerror = function() { self.scheduleStats(self.statsDelay()); };
+            req.send();
+        },
+
+        // the router only dumps raw conntrack lines; flow diffing and per-device aggregation
+        // run here so the weak router CPU stays out of the 2 s hot path
+        consumeConntrack: function(text) {
+            var lines = text.split('\n');
+            this.statsBegin(lines[0] === '#acct=1');
+            for (var i = 1; i < lines.length; i++) {
+                if (lines[i]) this.statsLine(lines[i]);
+            }
+            this.statsEnd();
+        },
+
+        statsBegin: function(acct) {
+            this.statsCur = acct ? {} : null;
+            this.statsUnknown = false;
+        },
+
+        statsLine: function(line) {
+            if (line.charAt(0) === '#') {
+                var m0 = line.match(/^#cost=(\d+)/);
+                if (m0) this.lastCost = +m0[1];
+                return;
+            }
+            var cur = this.statsCur;
+            if (!cur) return;
+            var pos = line.indexOf('src=');
+            if (pos < 0) return;
+            var m = line.slice(pos).match(/^src=(\S+) dst=(\S+) sport=(\d+) dport=(\d+).*?bytes=(\d+).*?bytes=(\d+)/);
+            if (!m) return;
+            var src = m[1];
+            var key;
+            if (src.indexOf(':') >= 0) {
+                key = this.v6map[this.v6Canon(src)];
+            } else {
+                key = this.ipmap[src];
+                if (!key && this.lanPrefixes[src.replace(/\.\d+$/, '.')]) this.statsUnknown = true;
+            }
+            if (!key) return;
+            cur[src + '|' + m[2] + '|' + m[3] + '|' + m[4]] = [+m[5], +m[6], key];
+        },
+
+        statsEnd: function() {
+            var cur = this.statsCur;
+            var unknown = this.statsUnknown;
+            this.statsCur = null;
+            var now = Date.now();
+            var up = {}, down = {}, counts = {};
+            if (cur) {
+                var prev = this.prevFlows;
+                for (var fk in cur) {
+                    var f = cur[fk];
+                    var k2 = f[2];
+                    var du = 0, dd = 0;
+                    if (prev && prev[fk]) {
+                        du = f[0] - prev[fk][0];
+                        dd = f[1] - prev[fk][1];
+                        if (du < 0) du = 0;
+                        if (dd < 0) dd = 0;
+                    }
+                    up[k2] = (up[k2] || 0) + du;
+                    down[k2] = (down[k2] || 0) + dd;
+                    counts[k2] = (counts[k2] || 0) + 1;
+                }
+            }
+            this.prevFlows = cur;
+            var dt = (now - this.statsTs) / 1000;
+            var rateDt = (dt >= 0.5 && dt <= 15) ? dt : 0;
+            this.statsTs = now;
+            var stats = {};
+            for (var key2 in counts) {
+                stats[key2] = {
+                    ur: rateDt ? Math.floor(up[key2] / rateDt) : 0,
+                    dr: rateDt ? Math.floor(down[key2] / rateDt) : 0,
+                    c: counts[key2]
+                };
+            }
+            this.stats = stats;
+            var decaying = false;
+            for (var i2 = 0; i2 < this.devices.length; i2++) {
+                var d = this.devices[i2];
+                var st = this.statOf(d);
+                var tot = st ? (st.ur || 0) + (st.dr || 0) : 0;
+                if (d.ema === undefined) d.ema = tot;
+                else if (tot > 0) d.ema = Math.round(d.ema * 0.65 + tot * 0.35);
+                else d.ema = Math.round(d.ema * 0.5);
+                if (d.ema < 1024) d.ema = 0;
+                else if (tot === 0) decaying = true;
+                if (!st) continue;
+                var h = this.hist[d.key];
+                if (!h) continue;
+                h.up.push(st.ur);
+                h.down.push(st.dr);
+                if (h.up.length > this.histLen) h.up.shift();
+                if (h.down.length > this.histLen) h.down.shift();
+            }
+            var sig = 0, k3;
+            for (k3 in stats) sig += stats[k3].ur + stats[k3].dr + stats[k3].c * 7;
+            if (sig === this.lastSig && !decaying) this.statsIdle++;
+            else { this.statsIdle = 0; this.lastSig = sig; }
+            if (unknown && now - this.lastUnknownRefresh > 10000) {
+                this.lastUnknownRefresh = now;
+                this.refreshEnv();
+            }
+            this.pollSeq++;
+            if (!this.busy) this.renderList();
+        },
+
+        rebuildDevices: function(list) {
+            this.raw = list || [];
+            var prev = {};
+            for (var i = 0; i < this.devices.length; i++) {
+                prev[this.devices[i].key] = this.devices[i];
+            }
+            var out = [];
+            for (var j = 0; j < list.length; j++) {
+                var s = list[j];
+                var key = s.mac || s.ip || ('idx' + j);
+                var d = prev[key] || { key: key };
+                d.mac = s.mac || '';
+                d.ip = s.ip || '';
+                d.ip6 = s.ip6 || '';
+                d.hostname = s.hostname || '';
+                d.name = s.name || '';
+                d.icon = s.icon || '';
+                d.online = !!s.online;
+                d.dir = s.dir === 'direct' ? 'direct' : 'proxy';
+                d.listed = !!s.listed;
+                var oui = this.ouiFind(d.mac);
+                d.vendor = oui ? oui.vendor : '';
+                d.ouiType = oui ? oui.type : '';
+                d.autoType = this.classify(d);
+                if (!this.hist[key]) this.hist[key] = { up: [], down: [] };
+                out.push(d);
+            }
+            this.devices = out;
+            this.rebuildStatMaps();
+        },
+
+        rebuildStatMaps: function() {
+            var ipmap = {}, v6map = {}, lan = {};
+            for (var i = 0; i < this.devices.length; i++) {
+                var d = this.devices[i];
+                if (d.ip) {
+                    ipmap[d.ip] = d.key;
+                    lan[d.ip.replace(/\.\d+$/, '.')] = true;
+                }
+                if (d.ip6) v6map[this.v6Canon(d.ip6)] = d.key;
+            }
+            this.ipmap = ipmap;
+            this.v6map = v6map;
+            this.lanPrefixes = lan;
+        },
+
+        v6Canon: function(addr) {
+            addr = String(addr || '').replace(/%.*$/, '');
+            var groups;
+            var idx = addr.indexOf('::');
+            if (idx >= 0) {
+                var left = addr.slice(0, idx), right = addr.slice(idx + 2);
+                var lh = left ? left.split(':') : [];
+                var rh = right ? right.split(':') : [];
+                groups = lh.slice();
+                for (var z = 8 - lh.length - rh.length; z > 0; z--) groups.push('0');
+                groups = groups.concat(rh);
+            } else {
+                groups = addr.split(':');
+            }
+            var out = [];
+            for (var i = 0; i < 8; i++) out.push(('0000' + (parseInt(groups[i], 16) || 0).toString(16)).slice(-4));
+            return out.join(':');
+        },
+
+        classify: function(d) {
+            var host = d.hostname || '';
+            for (var i = 0; i < this.nameRules.length; i++) {
+                if (this.nameRules[i][0].test(host)) return this.nameRules[i][1];
+            }
+            return d.ouiType || 'unknown';
+        },
+
+        displayName: function(d) {
+            return d.name || d.hostname || d.ip || d.ip6 || d.mac || '<%:Unknown Device%>';
+        },
+
+        deviceIcon: function(d) {
+            return this.icons[d.icon || d.autoType] || this.icons.unknown;
+        },
+
+        deviceByKey: function(key) {
+            for (var i = 0; i < this.devices.length; i++) {
+                if (this.devices[i].key === key) return this.devices[i];
+            }
+            return null;
+        },
+
+        canControl: function() {
+            if (!this.env || this.env.need_fix) {
+                ocToast('<%:Switch DNS forwarding first%>', 'info');
+                return false;
+            }
+            return true;
+        },
+
+        acErrorToast: function(x, data) {
+            if (data && data.need_fix) {
+                ocToast('<%:Switch DNS forwarding first%>', 'info');
+                this.refreshEnv();
+            } else if (data && data.err === 'range_covered') {
+                ocToast('<%:Device is covered by a range entry; adjust it on the settings page%>', 'info');
+                this.refreshEnv();
+            } else {
+                ocToast('<%:Operation failed%>', 'error');
+            }
+        },
+
+        rescan: function(btn) {
+            var self = this;
+            if (btn) btn.classList.add('ac-working');
+            this.kickStats();
+            this.refreshEnv(function(ok) {
+                if (btn) btn.classList.remove('ac-working');
+                if (ok) ocToast('<%:Rescanned%>', 'success');
+                else ocToast('<%:Rescan failed%>', 'error');
+            });
+        },
+
+        lockSwitches: function() {
+            var listEl = document.getElementById('ac-list');
+            if (!listEl) return;
+            // direct DOM edits bypass the render cache, so the next render must rewrite
+            this.lastStruct = null;
+            var sws = listEl.querySelectorAll('.ac-switch');
+            for (var i = 0; i < sws.length; i++) {
+                sws[i].classList.add('ac-disabled');
+                var btns = sws[i].querySelectorAll('button');
+                for (var j = 0; j < btns.length; j++) btns[j].disabled = true;
+            }
+        },
+
+        setDevice: function(key, dir) {
+            if (!this.canControl()) return;
+            var d = this.deviceByKey(key);
+            if (!d || d.dir === dir) return;
+            var self = this;
+            this.busy++;
+            this.kickStats();
+            this.lastStruct = null;
+            var listEl = document.getElementById('ac-list');
+            var row = listEl ? listEl.querySelector('[data-dev="' + key + '"]') : null;
+            if (row) {
+                var sw = row.querySelector('.ac-switch');
+                if (sw) sw.classList.add('ac-disabled');
+                var btns = row.querySelectorAll('.ac-switch button');
+                for (var i = 0; i < btns.length; i++) {
+                    btns[i].disabled = true;
+                }
+            }
+            XHR.get(this.endpoints.set, { action: dir, scope: 'item', ip: d.ip || '', mac: d.mac || '' }, function(x, data) {
+                self.busy--;
+                if (x && x.status == 200 && data && data.ok) {
+                    d.dir = dir;
+                    ocToast(!data.core_running ? '<%:Saved; applies at the next start%>'
+                        : (dir === 'direct' ? '<%:Set as Direct%>' : '<%:Set as Proxy%>'), 'success');
+                } else {
+                    self.acErrorToast(x, data);
+                }
+                self.renderList();
+                setTimeout(function() { self.refreshEnv(); }, 800);
+            });
+        },
+
+        setAll: function(dir) {
+            if (!this.canControl()) return;
+            var self = this;
+            var btn = document.getElementById(dir === 'proxy' ? 'ac-all-proxy' : 'ac-all-direct');
+            var other = document.getElementById(dir === 'proxy' ? 'ac-all-direct' : 'ac-all-proxy');
+            this.busy++;
+            this.kickStats();
+            if (btn) { btn.classList.add('ac-working'); btn.disabled = true; }
+            if (other) other.disabled = true;
+            this.lockSwitches();
+            XHR.get(this.endpoints.set, { action: dir, scope: 'all' }, function(x, data) {
+                self.busy--;
+                if (btn) { btn.classList.remove('ac-working'); }
+                if (x && x.status == 200 && data && data.ok) {
+                    for (var i = 0; i < self.devices.length; i++) self.devices[i].dir = dir;
+                    if (self.env) {
+                        self.env.default_dir = dir;
+                        self.env.ac_mode = dir === 'proxy' ? 0 : 1;
+                    }
+                    ocToast(!data.core_running ? '<%:Saved; applies at the next start%>'
+                        : (dir === 'proxy' ? '<%:All set to Proxy%>' : '<%:All set to Direct%>'), 'success');
+                } else {
+                    self.acErrorToast(x, data);
+                }
+                self.renderList();
+                setTimeout(function() { self.refreshEnv(); }, 800);
+            });
+        },
+
+        switchDns: function() {
+            var self = this;
+            var btn = document.getElementById('ac-warn-fix-btn');
+            if (!btn || btn.classList.contains('ac-working')) return;
+            this.busy++;
+            btn.classList.add('ac-working');
+            XHR.get(this.endpoints.dns, null, function(x, data) {
+                btn.classList.remove('ac-working');
+                if (!(x && x.status == 200 && data && (data.ok || data.already))) {
+                    self.busy--;
+                    self.acErrorToast(x, data);
+                    return;
+                }
+                self.refreshEnv(function() {
+                    self.busy--;
+                    var fixed = self.env && !self.env.need_fix;
+                    ocToast(fixed ? '<%:DNS forwarding switched%>' : '<%:Operation timeout%>', fixed ? 'success' : 'error');
+                    self.renderList();
+                });
+            });
+        },
+
+        applyEnvUI: function() {
+            var env = this.env;
+            if (!env) return;
+            var fixEl = document.getElementById('ac-warn-fix');
+            if (fixEl) fixEl.classList.toggle('oc-hidden', !env.need_fix);
+        },
+
+        syncCounts: function() {
+            var proxy = 0, direct = 0;
+            for (var i = 0; i < this.devices.length; i++) {
+                if (this.devices[i].dir === 'proxy') proxy++;
+                else direct++;
+            }
+            var allEl = document.getElementById('ac-count-all');
+            var proxyEl = document.getElementById('ac-count-proxy');
+            var directEl = document.getElementById('ac-count-direct');
+            if (allEl) allEl.textContent = this.devices.length;
+            if (proxyEl) proxyEl.textContent = proxy;
+            if (directEl) directEl.textContent = direct;
+
+            var env = this.env || {};
+            var defaultDir = env.default_dir === 'direct' ? 'direct' : 'proxy';
+            var pill = document.getElementById('ac-def-pill');
+            if (pill) pill.textContent = '<%:Default%> ' + (defaultDir === 'proxy' ? '<%:Proxy%>' : '<%:Direct%>');
+
+            var locked = !!env.need_fix;
+            var allProxy = this.devices.length > 0 && direct === 0 && defaultDir === 'proxy';
+            var allDirect = this.devices.length > 0 && proxy === 0 && defaultDir === 'direct';
+            var btnProxy = document.getElementById('ac-all-proxy');
+            var btnDirect = document.getElementById('ac-all-direct');
+            if (btnProxy) {
+                btnProxy.disabled = locked || this.devices.length === 0 || allProxy;
+                btnProxy.title = defaultDir === 'proxy' ? '<%:Current default is proxy mode%>' : '<%:All devices default to proxy%>';
+                btnProxy.classList.toggle('active', defaultDir === 'proxy');
+                btnProxy.setAttribute('aria-pressed', defaultDir === 'proxy' ? 'true' : 'false');
+            }
+            if (btnDirect) {
+                btnDirect.disabled = locked || this.devices.length === 0 || allDirect;
+                btnDirect.title = defaultDir === 'direct' ? '<%:Current default is direct mode%>' : '<%:All devices default to direct%>';
+                btnDirect.classList.toggle('active', defaultDir === 'direct');
+                btnDirect.setAttribute('aria-pressed', defaultDir === 'direct' ? 'true' : 'false');
+            }
+        },
+
+        sortDevices: function() {
+            var arr = this.devices.slice();
+            var key = this.sortKey, dir = this.sortDir;
+            var q = this.query;
+            if (q) {
+                arr = arr.filter(function(d) {
+                    return (d.name || '').toLowerCase().indexOf(q) >= 0
+                        || (d.hostname || '').toLowerCase().indexOf(q) >= 0
+                        || (d.vendor || '').toLowerCase().indexOf(q) >= 0
+                        || (d.ip || '').indexOf(q) >= 0
+                        || (d.ip6 || '').indexOf(q) >= 0
+                        || (d.mac || '').indexOf(q) >= 0;
+                });
+            }
+            var self = this;
+            if (!key || !dir) {
+                // activity first: devices with live traffic or open flows float to the top,
+                // idle ones stay in name order so the list does not reshuffle on its own
+                var bucket = function(v) { return v > 0 ? Math.round(Math.log(v)) : 0; };
+                arr.sort(function(a, b) {
+                    if (a.online !== b.online) return a.online ? -1 : 1;
+                    var aa = self.isActive(a) ? 1 : 0, ab = self.isActive(b) ? 1 : 0;
+                    if (aa !== ab) return ab - aa;
+                    if (aa) {
+                        var ra = bucket(self.rateOf(a)), rb = bucket(self.rateOf(b));
+                        if (rb !== ra) return rb - ra;
+                        var ca = self.connsOf(a), cb = self.connsOf(b);
+                        if (cb !== ca) return cb - ca;
+                        var ea = a.ema || 0, eb = b.ema || 0;
+                        if (eb !== ea) return eb - ea;
+                    }
+                    return self.displayName(a).localeCompare(self.displayName(b));
+                });
+                return arr;
+            }
+            arr.sort(function(a, b) {
+                if (key === 'name' || key === 'dir') {
+                    var sa = key === 'name' ? self.displayName(a) : a.dir;
+                    var sb = key === 'name' ? self.displayName(b) : b.dir;
+                    return sa.localeCompare(sb) * dir;
+                }
+                var va, vb;
+                if (key === 'conns') { va = self.connsOf(a); vb = self.connsOf(b); }
+                else if (key === 'up') { va = self.rateOf(a, 'up'); vb = self.rateOf(b, 'up'); }
+                else { va = self.rateOf(a, 'down'); vb = self.rateOf(b, 'down'); }
+                if (va === vb) return self.displayName(a).localeCompare(self.displayName(b));
+                return (va - vb) * dir;
+            });
+            return arr;
+        },
+
+        statOf: function(d) {
+            if (!d.online) return null;
+            var k = d.mac || d.ip;
+            if (!k) return null;
+            return this.stats[k] || (d.ip ? this.stats[d.ip] : null) || null;
+        },
+
+        rateOf: function(d, kind) {
+            var st = this.statOf(d);
+            if (!st) return 0;
+            if (kind === 'up') return st.ur || 0;
+            if (kind === 'down') return st.dr || 0;
+            return (st.ur || 0) + (st.dr || 0);
+        },
+
+        isActive: function(d) {
+            return this.rateOf(d) > 0 || this.connsOf(d) > 0;
+        },
+
+        connsOf: function(d) {
+            var st = this.statOf(d);
+            return st ? (st.c || 0) : 0;
+        },
+
+        rowSig: function(arr) {
+            var parts = [];
+            for (var i = 0; i < arr.length; i++) {
+                var d = arr[i];
+                parts.push([d.key, d.name, d.hostname, d.ip, d.ip6, d.mac, d.vendor, d.autoType, d.dir, d.icon, d.online ? 1 : 0].join('~'));
+            }
+            return parts.join('|') + '#' + ((this.env && this.env.need_fix) ? 1 : 0) + '#' + this.query;
+        },
+
+        destroySparks: function() {
+            for (var key in this.sparks) {
+                var pair = this.sparks[key];
+                if (pair.up) pair.up.destroy();
+                if (pair.down) pair.down.destroy();
+            }
+            this.sparks = {};
+        },
+
+        loadChartLib: function() {
+            if (this.chartLoading || typeof Chart !== 'undefined' || !window.ocChartUrl) return;
+            this.chartLoading = true;
+            var self = this;
+            ocRequireScript(window.ocChartUrl, function() {
+                self.chartLoading = false;
+                self.lastStruct = null;
+                if (self.active) self.renderList();
+            });
+        },
+
+        alphaColor: function(color, alpha) {
+            var m = String(color || '').match(/rgba?\(([^)]+)\)/);
+            if (!m) return 'rgba(128,128,128,' + alpha + ')';
+            var p = m[1].split(',');
+            return 'rgba(' + p[0].trim() + ',' + p[1].trim() + ',' + p[2].trim() + ',' + alpha + ')';
+        },
+
+        createSpark: function(slot, kind, d) {
+            if (typeof Chart === 'undefined') { this.loadChartLib(); return null; }
+            var rate = slot.parentNode ? slot.parentNode.querySelector('.ac-rate-v') : null;
+            var color = rate ? getComputedStyle(rate).color : 'rgb(128,128,128)';
+            var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var canvas = document.createElement('canvas');
+            slot.appendChild(canvas);
+            var chart = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        data: [],
+                        borderColor: color,
+                        backgroundColor: this.alphaColor(color, 0.16),
+                        borderWidth: 1.3,
+                        pointRadius: 0,
+                        pointHitRadius: 0,
+                        fill: true,
+                        tension: 0.35
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: reduce ? false : { duration: 260, easing: 'easeOutQuad' },
+                    devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+                    events: [],
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    layout: { padding: { top: 1, right: 0, bottom: 1, left: 0 } },
+                    scales: {
+                        x: { type: 'linear', display: false, min: 0, max: this.histLen - 1 },
+                        y: { display: false, beginAtZero: true, min: 0 }
+                    },
+                    elements: { line: { borderCapStyle: 'round', borderJoinStyle: 'round' } }
+                }
+            });
+            var pair = this.sparks[d.key];
+            if (!pair) {
+                pair = { up: null, down: null };
+                this.sparks[d.key] = pair;
+            }
+            pair[kind] = chart;
+            return chart;
+        },
+
+        syncSpark: function(d, row, kind, shown) {
+            var slot = row.querySelector('.ac-spark-slot[data-kind="' + kind + '"]');
+            if (!slot) return;
+            var pair = this.sparks[d.key];
+            if (!shown || !slot.offsetWidth) {
+                if (pair && pair[kind]) {
+                    pair[kind].destroy();
+                    pair[kind] = null;
+                }
+                return;
+            }
+            var h = this.hist[d.key];
+            var data = h ? h[kind] : null;
+            if (!data || data.length < 2) return;
+            var chart = pair && pair[kind];
+            if (!chart) {
+                chart = this.createSpark(slot, kind, d);
+                if (!chart) return;
+            } else if (chart.pollSeq === this.pollSeq) {
+                return;
+            }
+            chart.pollSeq = this.pollSeq;
+            var pts = [];
+            for (var i = 0; i < data.length; i++) pts.push({ x: i, y: data[i] });
+            chart.data.datasets[0].data = pts;
+            // a freshly built chart has nothing to interpolate from, only later samples animate
+            chart.update(chart.hasPoints ? undefined : 'none');
+            chart.hasPoints = true;
+        },
+
+        setRate: function(cell, val) {
+            // offline cells keep the dash rendered by rowHTML
+            if (!cell || cell.classList.contains('ac-off')) return;
+            var span = cell.querySelector('.ac-rate-v');
+            if (!span) return;
+            var txt = acFmtRate(val);
+            if (span.textContent !== txt) span.textContent = txt;
+            cell.classList.toggle('ac-idle-val', Math.round(val) <= 0);
+        },
+
+        updateMetrics: function(arr, listEl) {
+            var rows = listEl.children;
+            var n = Math.min(arr.length, rows.length);
+            var box = listEl.getBoundingClientRect();
+            var rects = [];
+            for (var i = 0; i < n; i++) rects.push(rows[i].getBoundingClientRect());
+            for (var j = 0; j < n; j++) {
+                var d = arr[j], row = rows[j];
+                var st = this.statOf(d);
+                var conns = st ? (st.c || 0) : 0;
+                var cell = row.querySelector('.ac-conns');
+                if (cell) {
+                    cell.classList.toggle('ac-zero', conns <= 0);
+                    var v = cell.querySelector('.ac-conns-v');
+                    if (v && v.textContent !== String(conns)) v.textContent = conns;
+                }
+                this.setRate(row.querySelector('.ac-rc.ac-up'), st ? (st.ur || 0) : 0);
+                this.setRate(row.querySelector('.ac-rc.ac-down'), st ? (st.dr || 0) : 0);
+                var shown = rects[j].bottom > box.top && rects[j].top < box.bottom;
+                this.syncSpark(d, row, 'up', shown);
+                this.syncSpark(d, row, 'down', shown);
+            }
+        },
+
+        rowHTML: function(d) {
+            var st = this.statOf(d);
+            var conns = st ? (st.c || 0) : 0;
+            var up = st ? (st.ur || 0) : 0;
+            var down = st ? (st.dr || 0) : 0;
+            var hasTraffic = d.online && conns > 0;
+            var cls = 'ac-row' + (d.online ? ' ac-live' : ' ac-offline');
+            var env = this.env || {};
+            var locked = !!env.need_fix;
+            var ctlTitle = env.need_fix ? '<%:Switch DNS forwarding first%>' : '';
+
+            var name = this.displayName(d);
+            var ipLine = [d.ip, d.ip6].filter(Boolean).join(' · ');
+            var tipParts = [name];
+            if (d.vendor) tipParts.push(d.vendor);
+            if (d.ip) tipParts.push(d.ip);
+            if (d.ip6) tipParts.push(d.ip6);
+            if (d.mac) tipParts.push(d.mac);
+
+            var out = '<div class="' + cls + '" data-dev="' + acEscape(d.key) + '" title="' + acEscape(tipParts.join('\n')) + '">';
+            out += '<div class="ac-dev">';
+            var brandLogo = '', brandVendor = d.vendor;
+            if (!d.icon) {
+                brandLogo = (window.ocBrandLogos && window.ocBrandLogos[d.vendor]) || '';
+            } else if (d.icon.indexOf('brand_') === 0) {
+                brandLogo = this.icons[d.icon] || '';
+                brandVendor = acVendorOfBrandId(d.icon) || d.vendor;
+            }
+            var brandWordmark = brandLogo && window.ocBrandWordmark && window.ocBrandWordmark[brandVendor];
+            var brandVar = brandWordmark ? ' style="--wm:' + acWordmarkSize(brandVendor, AC_LOGO_BOX, AC_LOGO_INK, AC_INK_BOOST) + 'px"' : '';
+            var avatarInner;
+            if (brandLogo) {
+                avatarInner = '<svg class="ac-brand-logo' + (brandWordmark ? ' wordmark' : '') + '"' + brandVar + '><use href="#' + brandLogo + '"/></svg>';
+            } else if (d.vendor && !d.icon && (!d.autoType || d.autoType === 'unknown')) {
+                // known vendor without a legible mark keeps an identity without a coloured tile
+                avatarInner = '<span class="ac-brand-mark">' + acEscape(d.vendor.charAt(0).toUpperCase()) + '</span>';
+            } else {
+                avatarInner = '<svg><use href="#' + this.deviceIcon(d) + '"/></svg>';
+            }
+            out += '<span class="ac-avatar' + (brandWordmark ? ' wordmark' : '') + '">' + avatarInner + '<span class="ac-status"></span></span>';
+            out += '<div class="ac-id"><span class="ac-name" title="<%:Click to set name and icon%>"><span class="ac-name-text">' + acEscape(name) + '</span>';
+            if (!d.online) out += '<span class="ac-off-tag"><%:Offline%></span>';
+            if (d.vendor) out += '<span class="ac-vendor"><span class="ac-vendor-name">' + acEscape(d.vendor) + '</span></span>';
+            out += '<svg class="ac-name-edit" width="13" height="13"><use href="#oc-icon-edit"/></svg>';
+            out += '</span>'
+                + '<span class="ac-addr">' + (ipLine ? acEscape(ipLine) : '—') + '</span>'
+                + '<span class="ac-addr ac-mac">' + (d.mac ? acEscape(d.mac) : '—') + '</span>'
+                + '</div>';
+            out += '</div>';
+            out += '<div class="ac-ctrl"><span class="ac-switch' + (locked ? ' ac-disabled' : '') + '" role="group"' + (ctlTitle ? ' title="' + ctlTitle + '"' : '') + '>';
+            out += '<button type="button" class="' + (d.dir === 'proxy' ? 'on ac-on-proxy' : '') + '" data-dir="proxy"' + (locked ? ' disabled' : '') + ' aria-pressed="' + (d.dir === 'proxy') + '"><%:Proxy%></button>';
+            out += '<button type="button" class="' + (d.dir === 'direct' ? 'on ac-on-direct' : '') + '" data-dir="direct"' + (locked ? ' disabled' : '') + ' aria-pressed="' + (d.dir === 'direct') + '"><%:Direct%></button>';
+            out += '</span></div>';
+            out += '<div class="ac-metrics">';
+            out += '<div class="ac-conns' + (d.online ? (hasTraffic ? '' : ' ac-zero') : ' ac-zero ac-conns-off') + '">';
+            if (d.online) {
+                out += '<span class="ac-conns-v">' + conns + '</span><span class="ac-conns-label"><%:Conn.%></span>';
+            } else {
+                out += '<span class="ac-conns-dash">—</span><span class="ac-conns-off-label"><%:No connections%></span>';
+            }
+            out += '</div>';
+            out += '<div class="ac-rates">';
+            out += '<div class="ac-rc ac-up' + (d.online ? (Math.round(up) > 0 ? '' : ' ac-idle-val') : ' ac-off') + '">';
+            out += '<span class="ac-rate-v">' + (d.online ? acEscape(acFmtRate(up)) : '—') + '</span>';
+            if (d.online) out += '<span class="ac-spark ac-spark-slot" data-kind="up"></span>';
+            out += '</div>';
+            out += '<div class="ac-rc ac-down' + (d.online ? (Math.round(down) > 0 ? '' : ' ac-idle-val') : ' ac-off') + '">';
+            out += '<span class="ac-rate-v">' + (d.online ? acEscape(acFmtRate(down)) : '—') + '</span>';
+            if (d.online) out += '<span class="ac-spark ac-spark-slot" data-kind="down"></span>';
+            out += '</div>';
+            out += '</div>';
+            out += '</div>';
+            out += '</div>';
+            return out;
+        },
+
+        renderList: function() {
+            var listEl = document.getElementById('ac-list');
+            var emptyEl = document.getElementById('ac-empty');
+            if (!listEl || !emptyEl) return;
+            var arr = this.sortDevices();
+            var hasDevices = arr.length > 0;
+            emptyEl.classList.toggle('oc-hidden', hasDevices);
+            listEl.classList.toggle('oc-hidden', !hasDevices);
+            var thEl = document.querySelector('#stats-view-ac .ac-th');
+            if (thEl) thEl.classList.toggle('oc-hidden', !hasDevices);
+            var filtered = !!this.query && this.devices.length > 0;
+            var mainEl = document.getElementById('ac-empty-main');
+            if (mainEl) {
+                mainEl.textContent = filtered ? '<%:No matching devices%>' : '<%:No LAN devices found%>';
+                var subEl = document.getElementById('ac-empty-sub');
+                if (subEl) subEl.classList.toggle('oc-hidden', filtered);
+                var rfEl = document.getElementById('ac-empty-refresh');
+                if (rfEl) rfEl.classList.toggle('oc-hidden', filtered);
+            }
+            if (!hasDevices) {
+                if (this.lastStruct !== '') {
+                    this.lastStruct = '';
+                    this.destroySparks();
+                    listEl.innerHTML = '';
+                }
+                this.syncCounts();
+                return;
+            }
+            var sig = this.rowSig(arr);
+            if (sig !== this.lastStruct) {
+                this.lastStruct = sig;
+                var st = listEl.scrollTop;
+                var html = '';
+                for (var i = 0; i < arr.length; i++) html += this.rowHTML(arr[i]);
+                this.destroySparks();
+                listEl.innerHTML = html;
+                listEl.scrollTop = st;
+                // the list scrollbar shrinks the rows but not the header; pad the header to match
+                var sbw = listEl.offsetWidth - listEl.clientWidth;
+                if (thEl) thEl.style.paddingRight = (8 + (sbw > 0 ? sbw : 0)) + 'px';
+            }
+            this.updateMetrics(arr, listEl);
+            this.syncCounts();
+        },
+
+        syncSortUI: function() {
+            var self = this;
+            var ths = document.querySelectorAll('#stats-view-ac .ac-th-cell');
+            for (var i = 0; i < ths.length; i++) {
+                var key = ths[i].getAttribute('data-key');
+                var ind = ths[i].querySelector('.ac-sort-ind');
+                if (ind) ind.textContent = (key === self.sortKey && self.sortDir !== 0) ? (self.sortDir === 1 ? '▲' : '▼') : '';
+            }
+            var items = document.querySelectorAll('#ac-sort-menu button');
+            for (var j = 0; j < items.length; j++) {
+                var k2 = items[j].getAttribute('data-key');
+                var ind2 = items[j].querySelector('.ac-sort-ind');
+                var on = (k2 === self.sortKey && self.sortDir !== 0);
+                if (ind2) ind2.textContent = on ? (self.sortDir === 1 ? '▲' : '▼') : '';
+                items[j].classList.toggle('on', on);
+            }
+            var sortBtn = document.getElementById('ac-sort-btn');
+            if (sortBtn) {
+                var onBtn = !!self.sortKey && self.sortDir !== 0;
+                sortBtn.classList.toggle('on', onBtn);
+                var btnInd = sortBtn.querySelector('.ac-sort-ind');
+                if (btnInd) btnInd.textContent = onBtn ? (self.sortDir === 1 ? '▲' : '▼') : '';
+            }
+        },
+
+        cycleSort: function(key) {
+            if (key === 'reset') {
+                this.sortKey = null;
+                this.sortDir = 0;
+            } else if (key === this.sortKey) {
+                // cycle the natural direction, its reverse, then the default order
+                if (key === 'name' || key === 'dir') {
+                    this.sortDir = this.sortDir === 1 ? -1 : (this.sortDir === -1 ? 0 : 1);
+                } else {
+                    this.sortDir = this.sortDir === -1 ? 1 : (this.sortDir === 1 ? 0 : -1);
+                }
+            } else {
+                this.sortKey = key;
+                this.sortDir = (key === 'name' || key === 'dir') ? 1 : -1;
+            }
+            this.syncSortUI();
+            this.saveSort();
+            this.renderList();
+        },
+
+        openRename: function(d) {
+            if (!d) return;
+            this.renaming = d;
+            this.iconPick = d.icon || null;
+            var input = document.getElementById('ac-rename-input');
+            var hint = document.getElementById('ac-rename-hint');
+            var auto = document.getElementById('ac-rename-auto');
+            var overlay = document.getElementById('ac-rename-overlay');
+            if (!input || !overlay) return;
+            input.value = d.name || '';
+            if (hint) hint.textContent = '<%:Current name:%> ' + this.displayName(d);
+            if (auto) auto.classList.toggle('oc-hidden', !d.name && !d.icon);
+            this.renderIconGrid();
+            overlay.classList.add('show');
+            setTimeout(function() { input.focus(); }, 60);
+        },
+
+        closeRename: function() {
+            var overlay = document.getElementById('ac-rename-overlay');
+            if (overlay) overlay.classList.remove('show');
+            this.renaming = null;
+            this.iconPick = null;
+        },
+
+        // moves the live card into the dialog so search, sorting and switches keep working there
+        openMax: function() {
+            if (this.maxOpen) return;
+            var overlay = document.getElementById('ac-max-overlay');
+            var host = document.getElementById('ac-max-host');
+            var card = document.querySelector('.ac-card');
+            if (!overlay || !host || !card) return;
+            this.maxParent = card.parentNode;
+            this.maxNext = card.nextSibling;
+            host.appendChild(card);
+            overlay.classList.add('show');
+            this.maxOpen = true;
+            var maxBtn = document.getElementById('ac-max-btn');
+            if (maxBtn) maxBtn.setAttribute('aria-expanded', 'true');
+            var close = document.getElementById('ac-max-close');
+            if (close) setTimeout(function() { close.focus(); }, 60);
+        },
+
+        closeMax: function() {
+            if (!this.maxOpen) return;
+            var overlay = document.getElementById('ac-max-overlay');
+            var card = document.querySelector('.ac-card');
+            if (overlay) overlay.classList.remove('show');
+            if (card && this.maxParent) {
+                if (this.maxNext && this.maxNext.parentNode === this.maxParent) this.maxParent.insertBefore(card, this.maxNext);
+                else this.maxParent.appendChild(card);
+            }
+            this.maxParent = null;
+            this.maxNext = null;
+            this.maxOpen = false;
+            var btn = document.getElementById('ac-max-btn');
+            if (btn) {
+                btn.setAttribute('aria-expanded', 'false');
+                btn.focus();
+            }
+        },
+
+        defaultIconOf: function(d) {
+            if (!d) return 'unknown';
+            if (window.ocBrandLogos && window.ocBrandLogos[d.vendor]) {
+                return 'brand_' + d.vendor.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+            }
+            return d.autoType || 'unknown';
+        },
+
+        renderIconGrid: function() {
+            var grid = document.getElementById('ac-icon-grid');
+            if (!grid) return;
+            var cur = this.iconPick || (this.renaming ? this.defaultIconOf(this.renaming) : 'unknown');
+            var html = '';
+            for (var i = 0; i < this.iconSet.length; i++) {
+                var it = this.iconSet[i];
+                var brandCls = '', brandVar = '';
+                if (it.id.indexOf('brand_') === 0) {
+                    brandCls = ' class="brand' + (window.ocBrandWordmark && window.ocBrandWordmark[it.label] ? ' wordmark' : '') + '"';
+                    if (window.ocBrandWordmark && window.ocBrandWordmark[it.label]) brandVar = ' style="--wm:' + acWordmarkSize(it.label, AC_PICK_BOX, AC_PICK_INK) + 'px"';
+                }
+                html += '<button type="button" class="ac-icon-opt' + (it.id === cur ? ' on' : '') + '" data-icon="' + it.id + '" title="' + it.label + '"><svg' + brandCls + brandVar + '><use href="#' + (this.icons[it.id] || this.icons.unknown) + '"/></svg></button>';
+            }
+            grid.innerHTML = html;
+        },
+
+        saveRename: function() {
+            var d = this.renaming;
+            if (!d) return;
+            var self = this;
+            var input = document.getElementById('ac-rename-input');
+            var name = input ? input.value.trim() : '';
+            var icon = this.iconPick || '';
+            XHR.get(this.endpoints.meta, { mac: d.mac || '', name: name, icon: icon }, function(x, data) {
+                if (x && x.status == 200 && data && data.ok) {
+                    d.name = name;
+                    d.icon = icon;
+                    self.closeRename();
+                    ocToast('<%:Saved%>', 'success');
+                    self.renderList();
+                } else {
+                    self.acErrorToast(x, data);
+                }
+            });
+        },
+
+        restoreAuto: function() {
+            var d = this.renaming;
+            if (!d) return;
+            var self = this;
+            XHR.get(this.endpoints.meta, { mac: d.mac || '', name: '', icon: '' }, function(x, data) {
+                if (x && x.status == 200 && data && data.ok) {
+                    d.name = '';
+                    d.icon = '';
+                    self.closeRename();
+                    ocToast('<%:Auto detect restored%>', 'success');
+                    self.renderList();
+                } else {
+                    self.acErrorToast(x, data);
+                }
+            });
+        },
+
+        bind: function() {
+            if (this.bound) return;
+            this.bound = true;
+            var self = this;
+
+            var listEl = document.getElementById('ac-list');
+            if (listEl) {
+                listEl.addEventListener('click', function(e) {
+                    var t = e.target;
+                    var hit = t.closest ? t.closest('.ac-name, .ac-avatar') : null;
+                    if (hit) {
+                        var row = hit.closest('.ac-row');
+                        if (row) self.openRename(self.deviceByKey(row.getAttribute('data-dev')));
+                        return;
+                    }
+                    var dirBtn = t.closest ? t.closest('.ac-switch button') : null;
+                    if (dirBtn) {
+                        var row2 = dirBtn.closest('.ac-row');
+                        if (row2) self.setDevice(row2.getAttribute('data-dev'), dirBtn.getAttribute('data-dir'));
+                    }
+                });
+            }
+
+            var bindBtn = function(id, handler) {
+                var el = document.getElementById(id);
+                if (el) el.addEventListener('click', handler);
+            };
+            bindBtn('ac-all-proxy', function() { self.setAll('proxy'); });
+            bindBtn('ac-all-direct', function() { self.setAll('direct'); });
+            bindBtn('ac-refresh', function() { self.rescan(document.getElementById('ac-refresh')); });
+            bindBtn('ac-empty-refresh', function() { self.rescan(document.getElementById('ac-empty-refresh')); });
+
+            var searchEl = document.getElementById('ac-search');
+            var clearEl = document.getElementById('ac-search-clear');
+            var applyQuery = function(value) {
+                var q = String(value || '').trim().toLowerCase();
+                if (q === self.query) return;
+                self.query = q;
+                self.lastStruct = null;
+                if (clearEl) clearEl.classList.toggle('oc-hidden', !q);
+                self.renderList();
+            };
+            if (searchEl) {
+                var searchTimer = null;
+                searchEl.addEventListener('input', function() {
+                    if (searchTimer) clearTimeout(searchTimer);
+                    var val = this.value;
+                    searchTimer = setTimeout(function() { searchTimer = null; applyQuery(val); }, 120);
+                });
+                searchEl.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') { this.value = ''; applyQuery(''); }
+                });
+            }
+            if (clearEl) {
+                clearEl.addEventListener('click', function() {
+                    if (searchEl) { searchEl.value = ''; searchEl.focus(); }
+                    applyQuery('');
+                });
+            }
+            var searchBar = document.getElementById('ac-search-bar');
+            var searchBtn = document.getElementById('ac-search-btn');
+            var toggleSearch = function(show) {
+                if (!searchBar) return;
+                var open = (show === undefined) ? searchBar.classList.contains('oc-hidden') : !!show;
+                searchBar.classList.toggle('oc-hidden', !open);
+                if (searchBtn) searchBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (open) {
+                    if (searchEl) setTimeout(function() { searchEl.focus(); }, 30);
+                } else {
+                    if (searchEl) searchEl.value = '';
+                    applyQuery('');
+                }
+            };
+            if (searchBtn) searchBtn.addEventListener('click', function() { toggleSearch(); });
+            bindBtn('ac-warn-fix-btn', function() { self.switchDns(); });
+            document.addEventListener('visibilitychange', function() { self.syncTimers(); });
+
+            var sortBtn = document.getElementById('ac-sort-btn');
+            var sortMenu = document.getElementById('ac-sort-menu');
+            if (sortBtn && sortMenu) {
+                sortBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    self.syncSortUI();
+                    sortMenu.classList.toggle('oc-hidden');
+                });
+                sortMenu.addEventListener('click', function(e) {
+                    var item = e.target.closest('button');
+                    if (!item) return;
+                    self.cycleSort(item.getAttribute('data-key'));
+                    sortMenu.classList.add('oc-hidden');
+                });
+                document.addEventListener('click', function() {
+                    sortMenu.classList.add('oc-hidden');
+                });
+            }
+
+            var thCells = document.querySelectorAll('#stats-view-ac .ac-th-cell');
+            for (var i = 0; i < thCells.length; i++) {
+                thCells[i].addEventListener('click', function() {
+                    self.cycleSort(this.getAttribute('data-key'));
+                });
+            }
+
+            var grid = document.getElementById('ac-icon-grid');
+            if (grid) {
+                grid.addEventListener('click', function(e) {
+                    var opt = e.target.closest('.ac-icon-opt');
+                    if (!opt) return;
+                    self.iconPick = opt.getAttribute('data-icon');
+                    self.renderIconGrid();
+                });
+            }
+            bindBtn('ac-rename-close', function() { self.closeRename(); });
+            bindBtn('ac-rename-cancel', function() { self.closeRename(); });
+            bindBtn('ac-rename-save', function() { self.saveRename(); });
+            bindBtn('ac-rename-auto', function() { self.restoreAuto(); });
+            var overlay = document.getElementById('ac-rename-overlay');
+            if (overlay) {
+                overlay.addEventListener('click', function(e) {
+                    if (e.target === overlay) self.closeRename();
+                });
+            }
+
+            bindBtn('ac-max-btn', function() { if (self.maxOpen) self.closeMax(); else self.openMax(); });
+            bindBtn('ac-max-close', function() { self.closeMax(); });
+            var maxOverlay = document.getElementById('ac-max-overlay');
+            if (maxOverlay) {
+                maxOverlay.addEventListener('click', function(e) {
+                    if (e.target === maxOverlay) self.closeMax();
+                });
+            }
+            document.addEventListener('keydown', function(e) {
+                if (e.key !== 'Escape') return;
+                var rename = document.getElementById('ac-rename-overlay');
+                if (rename && rename.classList.contains('show')) { self.closeRename(); return; }
+                if (!self.maxOpen) return;
+                var tag = e.target && e.target.tagName;
+                if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+                self.closeMax();
+            });
+        }
+    };
+
     StatsChart.init();
+
+    ClientsAC.init();
 
     var pluginToggleUserAction = false;
     var coreMissing = null;
@@ -3245,6 +4716,7 @@ var ocLang = window.ocLang || '';
 
     XHR.poll(5, '<%=url("admin", "services", "openclash", "status")%>', null, function(x, status) {
         if (x && x.status == 200) {
+            StateManager.current_status = status;
             var updates = [];
 
             if (!pluginToggleUserAction) {
@@ -3256,7 +4728,7 @@ var ocLang = window.ocLang || '';
                 updatePluginToggleState(status.clash);
             }
 
-            if (status.run_mode && !SettingsManager.pendingOperations.has('run_mode_' + status.run_mode)) {
+            if (status.run_mode && !SettingsManager.isPending('run_mode')) {
                 var expectedValue = status.run_mode.split("-")[2] == undefined ? "" : ("-" + status.run_mode.split("-")[2]);
                 for (var i = 0; i < DOMCache.radio_ru.length; i++) {
                     if (DOMCache.radio_ru[i].value == expectedValue && !DOMCache.radio_ru[i].checked) {
@@ -3265,7 +4737,7 @@ var ocLang = window.ocLang || '';
                 }
             }
 
-            if (status.rule_mode && !SettingsManager.pendingOperations.has('rule_mode_' + status.rule_mode)) {
+            if (status.rule_mode && !SettingsManager.isPending('rule_mode')) {
                 for (var i = 0; i < DOMCache.radio.length; i++) {
                     if (DOMCache.radio[i].value == status.rule_mode && !DOMCache.radio[i].checked) {
                         DOMCache.radio[i].checked = true;
@@ -3274,20 +4746,20 @@ var ocLang = window.ocLang || '';
                 }
             }
 
-            if (!SettingsManager.pendingOperations.has('meta_sniffer_' + status.meta_sniffer)) {
+            if (!SettingsManager.isPending('meta_sniffer')) {
                 DOMCache.meta_sniffer_on.checked = status.meta_sniffer == "1";
                 DOMCache.meta_sniffer_off.checked = status.meta_sniffer != "1";
             }
-            if (!SettingsManager.pendingOperations.has('respect_rules_' + status.respect_rules)) {
+            if (!SettingsManager.isPending('respect_rules')) {
                 DOMCache.respect_rules_on.checked = status.respect_rules == "1";
                 DOMCache.respect_rules_off.checked = status.respect_rules != "1";
             }
-            if (!SettingsManager.pendingOperations.has('oversea_' + status.oversea)) {
+            if (!SettingsManager.isPending('oversea')) {
                 if (status.oversea == "0") DOMCache.oc_setting_oversea_0.checked = true;
                 else if (status.oversea == "1") DOMCache.oc_setting_oversea_1.checked = true;
                 else if (status.oversea == "2") DOMCache.oc_setting_oversea_2.checked = true;
             }
-            if (!SettingsManager.pendingOperations.has('stream_unlock_' + status.stream_unlock)) {
+            if (!SettingsManager.isPending('stream_unlock')) {
                 DOMCache.stream_unlock_on.checked = status.stream_unlock === '1';
                 DOMCache.stream_unlock_off.checked = status.stream_unlock !== '1';
             }
@@ -3338,8 +4810,6 @@ var ocLang = window.ocLang || '';
             }
 
             DOMCache.web_external.classList.toggle('hidden', !ocGetCustomDashboardURL(status));
-
-            StateManager.current_status = status;
 
             if (status.daip) {
                 var daipContent, dapoContent;
@@ -3804,9 +5274,10 @@ var ocLang = window.ocLang || '';
 
     function switch_dns_mode(value) {
         var opKey = 'dns_mode_' + value;
-        if (SettingsManager.pendingOperations.has(opKey) || value === currentDnsMode) {
+        if (SettingsManager.isPending('dns_mode') || value === currentDnsMode) {
             return false;
         }
+        SettingsManager.pendingSettings.add('dns_mode');
         SettingsManager.pendingOperations.add(opKey);
         SettingsManager.pausePoll('run_mode', 3000);
 
@@ -3832,6 +5303,7 @@ var ocLang = window.ocLang || '';
 
         function finish(success) {
             SettingsManager.pendingOperations.delete(opKey);
+            SettingsManager.pendingSettings.delete('dns_mode');
             if (DOMCache.dns_fakeip) DOMCache.dns_fakeip.disabled = false;
             if (DOMCache.dns_redirhost) DOMCache.dns_redirhost.disabled = false;
             for (var r = 0; r < DOMCache.radio_ru.length; r++) {
@@ -4376,7 +5848,7 @@ var ocLang = window.ocLang || '';
         if (isEnabled) LogManager.markCoreStart();
         LogManager.startLogDisplay(isEnabled ? '<%:Starting...%>' : '<%:Stopping...%>', false, 'init');
         XHR.get('<%=url("admin", "services", "openclash", "action")%>', requestParams, function(x, status) {
-            if (x && x.status == 200) {
+            if (x && x.status == 200 && status && status.status === 'success') {
                 setTimeout(function() {
                     pluginToggleUserAction = false;
                     updatePluginToggleState(StateManager.current_status.clash || false);
@@ -4542,7 +6014,7 @@ var ocLang = window.ocLang || '';
             if (restartBtn) {
                 restartBtn.disabled = false;
             }
-            if (x && x.status == 200) {
+            if (x && x.status == 200 && status && status.status === 'success') {
                 setTimeout(function() {
                     pluginToggleUserAction = false;
                     updatePluginToggleState(StateManager.current_status.clash || false);

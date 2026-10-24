@@ -6,7 +6,6 @@
 
 LOG_FILE="/tmp/openclash.log"
 CLASH="/etc/openclash/clash"
-CFG_UPDATE_INT=0
 SKIP_PROXY_ADDRESS=1
 SKIP_PROXY_ADDRESS_INTERVAL=30
 UPNP_INT=1
@@ -75,7 +74,12 @@ begin
          if provider.key?('path') and not provider['path'].empty?
             path = provider['path'].start_with?('./') ? '/etc/openclash/' + provider['path'][2..-1] : provider['path']
             if File.exist?(path)
-               file_is_age_encrypted = File.read(path, 512).include?('BEGIN AGE ENCRYPTED FILE') rescue false
+               if name == 'oixCloud'
+                  YAML.LOG('Set Proxies Address Skip: Bypass【oixCloud】')
+                  next
+               end
+               age_header = '-----BEGIN AGE ENCRYPTED FILE-----'.b
+               file_is_age_encrypted = File.binread(path, age_header.bytesize) == age_header rescue false
                begin
                   if provider.key?('age-secret-key') and not provider['age-secret-key'].to_s.empty?
                      begin
@@ -86,11 +90,7 @@ begin
                      end
                   else
                      if file_is_age_encrypted
-                        if name == 'oixCloud'
-                           YAML.LOG('Set Proxies Address Skip: Bypass【oixCloud】')
-                        else
-                           YAML.LOG_WARN('Set Proxies Address Skip: Failed【' + path + '】File is AGE encrypted but no secret key provided')
-                        end
+                        YAML.LOG_WARN('Set Proxies Address Skip: Failed【' + path + '】File is AGE encrypted but no secret key provided')
                         next
                      end
                      provider_config = YAML.load_file(path)
@@ -199,9 +199,6 @@ do
    router_self_proxy=$(uci_get_config "router_self_proxy" || echo 1)
    skip_proxy_address=$(uci_get_config "skip_proxy_address" || echo 0)
 
-   cfg_update=$(uci_get_config "auto_update")
-   cfg_update_mode=$(uci_get_config "config_auto_update_mode")
-   cfg_update_interval=$(uci_get_config "config_update_interval" || echo 60)
    stream_auto_select=$(uci_get_config "stream_auto_select" || echo 0)
    stream_auto_select_interval=$(uci_get_config "stream_auto_select_interval" || echo 30)
    stream_auto_select_netflix=$(uci_get_config "stream_auto_select_netflix" || echo 0)
@@ -259,14 +256,16 @@ fi
 
 ## 防火墙检查
    if [ "$FIREWALL_RELOAD" -le "$MAX_FIREWALL_RELOAD" ]; then
+      # dnsmasq restarts re-append their port-53 redirect at the tail (a platform
+      # init rule), DNS lines never carry the proxy jump order and are ignored here
       if [ -z "$FW4" ]; then
-         nat_last_line=$(iptables -t nat -nL PREROUTING --line-number 2>/dev/null | awk 'END {print $1}')
-         man_last_line=$(iptables -t mangle -nL PREROUTING --line-number 2>/dev/null | awk 'END {print $1}')
+         nat_last_line=$(iptables -t nat -nL PREROUTING --line-number 2>/dev/null | grep -Ev "DNS|dns" | awk 'END {print $1}')
+         man_last_line=$(iptables -t mangle -nL PREROUTING --line-number 2>/dev/null | grep -Ev "DNS|dns" | awk 'END {print $1}')
          nat_op_line=$(iptables -t nat -nL PREROUTING --line-number 2>/dev/null | grep -E "openclash|OpenClash" | grep -Ev "DNS|dns" | awk '{print $1}' | tail -1)
          man_op_line=$(iptables -t mangle -nL PREROUTING --line-number 2>/dev/null | grep -E "openclash|OpenClash" | grep -Ev "DNS|dns" | awk '{print $1}' | tail -1)
       else
-         nat_last_line=$(nft -a list chain inet fw4 dstnat 2>/dev/null | grep "# handle" | awk -F '# handle ' '{print $2}' | tail -1)
-         man_last_line=$(nft -a list chain inet fw4 mangle_prerouting 2>/dev/null | grep "# handle" | awk -F '# handle ' '{print $2}' | tail -1)
+         nat_last_line=$(nft -a list chain inet fw4 dstnat 2>/dev/null | grep "# handle" | grep -Ev "DNS|dns" | awk -F '# handle ' '{print $2}' | tail -1)
+         man_last_line=$(nft -a list chain inet fw4 mangle_prerouting 2>/dev/null | grep "# handle" | grep -Ev "DNS|dns" | awk -F '# handle ' '{print $2}' | tail -1)
          nat_op_line=$(nft -a list chain inet fw4 dstnat 2>/dev/null | grep -E "openclash|OpenClash" | grep -Ev "DNS|dns" | grep "# handle" | awk -F '# handle ' '{print $2}' | tail -1)
          man_op_line=$(nft -a list chain inet fw4 mangle_prerouting 2>/dev/null | grep -E "openclash|OpenClash" | grep -Ev "DNS|dns" | grep "# handle" | awk -F '# handle ' '{print $2}' | tail -1)
       fi
@@ -426,14 +425,6 @@ fi
 
 ##Dler Cloud Checkin
    /usr/share/openclash/openclash_oix_checkin.lua >/dev/null 2>&1
-
-## 配置文件循环更新
-   if [ "$cfg_update" -eq 1 ] && [ "$cfg_update_mode" -eq 1 ]; then
-      if [ "$CFG_UPDATE_INT" -ne 0 ]; then
-         [ "$(expr "$CFG_UPDATE_INT" % "$cfg_update_interval")" -eq 0 ] && /usr/share/openclash/openclash.sh
-      fi
-      CFG_UPDATE_INT=$(expr "$CFG_UPDATE_INT" + 1)
-   fi
 
 ##STREAMING_UNLOCK_CHECK
    if [ "$stream_auto_select" -eq 1 ] && [ "$router_self_proxy" -eq 1 ]; then

@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.3-r3] - 安装命令改用通配文件名，翻译包并入对应包管理器代码块（仅文档）
+
+`README.md` / `README.en.md` 的安装步骤不再写死版本号：opkg 用
+`luci-app-substore_*.ipk`，apk 用 `luci-app-substore-*.apk`，避免每次升
+PKG_RELEASE 后文档里的文件名立刻过期。简体中文翻译包的安装命令移入同一代码块，
+用注释标明「中文界面需额外安装翻译包」；原先单独的翻译包安装代码块随之删除，
+只保留 `PKG_PO_VERSION` 的说明。
+
+### 影响
+
+**仅文档，无代码、无测试变更。** PKG_RELEASE 按版本约定 `2.7.3-r2` → `2.7.3-r3`，
+README 与 `docs/INSTALL.md` 的版本号同步更新。全套 **59 个测试文件、179 条断言、
+0 失败**（未改动被测代码，跑一遍确认无意外）。
+
+## [2.7.3-r2] - README 章节重排：安装提前，构建并入「从源码编译」（仅文档）
+
+`README.md` / `README.en.md` 的「安装」整体移到「功能特性」之前，让拿到包的人先看到
+安装方式、再看能力清单；「安装」末尾新增 **从源码编译** 小节，原先独立成节的
+「构建」并入其中并删除。
+
+合并时修正了原「构建」段里一条**不存在的 make 目标**：
+`make package/luci-i18n-substore-zh-cn/compile` —— make 的目标按目录生成、不按包名，
+`.github/workflows/build.yml` 与 `docs/BUILD.md` 均已写明这一点。新小节改为经 CI
+验证过的做法：翻译包与主包同属 `package/luci-app-substore`，随同一条 `compile`
+命令产出；它是 HIDDEN 包（无 Kconfig prompt），编译前需显式打开语言符号：
+
+```sh
+echo "CONFIG_LUCI_LANG_zh_Hans=y" >> .config
+make defconfig
+```
+
+同时把 README 与 `docs/INSTALL.md` 中滞后的版本号 `2.7.2-r1` 同步为 `2.7.3-r2`。
+
+### 影响
+
+**仅文档，无代码、无测试变更。** PKG_RELEASE 按版本约定 `2.7.3-r1` → `-r2`。全套
+**59 个测试文件、179 条断言、0 失败**（未改动被测代码，跑一遍确认无意外）。
+
 ## [2.7.3-r1] - 结清「附：P2 修复范围」：改写为历史范围定义（仅文档）
 
 `docs/LEGACY_ISSUES.md` 末尾的「附：P2 修复范围」一节，是 P2 **开工时**写下的范围
