@@ -7,9 +7,9 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=openlist2
-PKG_VERSION:=4.2.8
-PKG_WEB_VERSION:=4.2.6
-PKG_RELEASE:=25
+PKG_VERSION:=4.2.9
+PKG_WEB_VERSION:=4.2.9
+PKG_RELEASE:=26
 
 PKG_SOURCE:=openlist-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/OpenListTeam/OpenList/tar.gz/v$(PKG_VERSION)?
@@ -76,6 +76,8 @@ define Build/Prepare
 	$(call Build/Prepare/Default)
 	mkdir -p $(PKG_BUILD_DIR)/public/dist
 	$(TAR) --strip-components=1 -C $(PKG_BUILD_DIR)/public/dist -xzf $(DL_DIR)/openlist-frontend-dist-v$(PKG_WEB_VERSION).tar.gz
+	mkdir -p $(PKG_BUILD_DIR)/public/dist/assets
+	$(CP) $(CURDIR)/src/public/dist/assets/* $(PKG_BUILD_DIR)/public/dist/assets/
 	$(SED) 's_https://res.oplist.org/logo_/assets_g' $(PKG_BUILD_DIR)/public/dist/index.html
 	$(SED) 's_https://res.oplist.org/logo_/assets_g' $(PKG_BUILD_DIR)/public/dist/static/manifest.json
 	find $(PKG_BUILD_DIR)/public/dist/assets -type f -name '*.js' -exec $(SED) 's_https://res.oplist.org/logo_/assets_g' {} +

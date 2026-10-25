@@ -7,7 +7,8 @@
 				"/tmp/run/thermal-guard.status": [ "read" ]
 			},
 			"ubus": {
-				"file": [ "read" ]
+				"file": [ "read" ],
+				"luci": [ "getUnixtime" ]
 			},
 			"uci": [ "thermal-guard" ]
 		},

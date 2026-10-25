@@ -10,7 +10,7 @@ config adguardhome 'config'
 	option enabled '0'
 	option redirect 'none'
 	option core_version 'latest'
-	option update_url 'https://static.adtidy.org/adguardhome/release/AdGuardHome_linux_${Arch}.tar.gz'
+	option update_source 'official'
 
 	# Files and directories that AdGuard Home has read-only access to
 	# list jail_mount '/etc/ssl/adguardhome.crt'

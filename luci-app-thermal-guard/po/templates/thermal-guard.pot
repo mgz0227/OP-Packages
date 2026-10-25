@@ -593,8 +593,14 @@ msgstr ""
 msgid "Modem model"
 msgstr ""
 
-msgid "%s, profile %s"
+msgid "Modem profile"
 msgstr ""
 
-msgid "%s, no profile"
+msgid "%d / %d °C (%s)"
+msgstr ""
+
+msgid "none, defaults %d / %d °C"
+msgstr ""
+
+msgid "none, configured %d / %d °C"
 msgstr ""

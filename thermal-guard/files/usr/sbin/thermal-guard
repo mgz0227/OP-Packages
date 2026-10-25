@@ -23,7 +23,7 @@
 
 set -u
 
-THERMAL_GUARD_VERSION="2.1.1.0"
+THERMAL_GUARD_VERSION="2.1.2.0"
 TAG=thermal-guard
 STATE_DIR="${STATE_DIR:-/var/run/thermal-guard}"
 STATE="$STATE_DIR/state"

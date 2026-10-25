@@ -5,8 +5,21 @@
 'require dom';
 'require fs';
 'require ui';
+'require rpc';
 
 var STATUS_FILE = '/var/run/thermal-guard.status';
+
+// The router's clock. Every time in the status file comes from it, and a
+// router without NTP can be days apart from the browser.
+var callUnixtime = rpc.declare({ object: 'luci', method: 'getUnixtime', expect: { result: 0 } });
+
+// Status file and router clock together; a failed read gives null for either.
+function readStatus() {
+	return Promise.all([
+		fs.read(STATUS_FILE).catch(function() { return null; }),
+		callUnixtime().catch(function() { return null; })
+	]);
+}
 // Seconds the page waits for the result of a clear: the daemon's RESET_WAIT
 // for a running cycle, its RESET_BUDGET for the undo, and 60 s for the flush,
 // the fence and admission, the same margin a joining "thermal-guard reset" waits.
@@ -111,10 +124,10 @@ function stageText(stage, st) {
 // stamps every write with "now": a file that stopped being written means the
 // service is gone, while a fresh file holding an old reading means it is
 // running but not measuring.
-function serviceState(st) {
+function serviceState(st, now) {
 	var written = parseInt(st.now, 10),
 	    interval = parseInt(st.interval, 10) || 30,
-	    age = written ? Math.floor(Date.now() / 1000) - written : null;
+	    age = written ? now - written : null;
 
 	// Three missed writes, with a floor so a short interval is not jumpy.
 	if (age !== null && age > Math.max(90, interval * 3))
@@ -124,11 +137,11 @@ function serviceState(st) {
 	return 'running';
 }
 
-function fmtAge(ts) {
+function fmtAge(ts, now) {
 	var n = parseInt(ts, 10);
 	if (!n)
 		return '-';
-	var age = Math.max(0, Math.floor(Date.now() / 1000) - n);
+	var age = Math.max(0, now - n);
 	if (age < 90)
 		return _('%d s ago').format(age);
 	return _('%d min ago').format(Math.round(age / 60));
@@ -180,10 +193,9 @@ function clearsItself(st) {
 // A reset holds the lock, so the daemon writes no status file while it runs. A
 // reset killed from outside leaves "running" for good, so the mark counts only
 // for as long as the page would wait for a clear.
-function clearRunning(st) {
+function clearRunning(st, now) {
 	var ts = num(st.reset_ts);
-	return st.reset_state === 'running' && ts !== null &&
-		Math.floor(Date.now() / 1000) - ts <= CLEAR_GIVE_UP;
+	return st.reset_state === 'running' && ts !== null && now - ts <= CLEAR_GIVE_UP;
 }
 
 // What the status says about the request the page waits for: null while it
@@ -220,10 +232,10 @@ function clearOutcome(wait, st) {
 
 return view.extend({
 	load: function() {
-		return fs.read(STATUS_FILE).catch(function() { return null; });
+		return readStatus();
 	},
 
-	render: function(text) {
+	render: function(data) {
 		var style = E('style', {}, [
 			'.tg-row{display:flex;align-items:center;gap:.6em;margin:.35em 0}',
 			'.tg-label{flex:0 0 12em}',
@@ -248,19 +260,21 @@ return view.extend({
 			body
 		]);
 
-		this.update(body, text);
+		this.update(body, data[0], data[1]);
 
 		poll.add(L.bind(function() {
-			return fs.read(STATUS_FILE)
-				.catch(function() { return null; })
-				.then(L.bind(function(t) { this.update(body, t); }, this));
+			return readStatus().then(L.bind(function(d) { this.update(body, d[0], d[1]); }, this));
 		}, this), 5);
 
 		return container;
 	},
 
-	update: function(body, text) {
+	// routerNow: the router's clock in seconds. Without it the browser's stands
+	// in, which is only right where both clocks agree.
+	update: function(body, text, routerNow) {
 		var st = (text === null) ? null : parseStatus(text);
+		var now = (typeof routerNow === 'number' && routerNow > 0)
+			? routerNow : Math.floor(Date.now() / 1000);
 		this.checkClear(st);
 		if (st === null) {
 			dom.content(body, E('div', { 'class': 'alert-message warning' },
@@ -284,10 +298,17 @@ return view.extend({
 				modem === null ? _('no reading') : '%d °C'.format(modem),
 				gauge(modem, modemWarn, modemCrit, (num(st.modem_crit) || 90) + 10)));
 
-		if (st.modem_model)
-			rows.push(row(_('Modem model'), st.modem_profile
-				? _('%s, profile %s').format(st.modem_model, st.modem_profile)
-				: _('%s, no profile').format(st.modem_model), null));
+		// The profile row gives the profile's own thresholds; without one, the
+		// thresholds in force: defaults only while neither limit is configured.
+		if (st.modem_model) {
+			rows.push(row(_('Modem model'), st.modem_model, null));
+			rows.push(row(_('Modem profile'), st.modem_profile
+				? _('%d / %d °C (%s)').format(num(st.modem_profile_warn),
+					num(st.modem_profile_crit), st.modem_profile)
+				: ((st.modem_warn_src === 'default' && st.modem_crit_src === 'default')
+					? _('none, defaults %d / %d °C')
+					: _('none, configured %d / %d °C')).format(modemWarn, modemCrit), null));
+		}
 
 		extraSensors(st).forEach(function(s) {
 			rows.push(row(s[0], '%d °C'.format(s[1]), gauge(s[1], null, null, 100)));
@@ -328,7 +349,7 @@ return view.extend({
 		}
 
 		var active = (stage !== null && stage >= 0),
-		    state = serviceState(st),
+		    state = serviceState(st, now),
 		    noSensor = (st.no_sensor === '1'),
 		    banner = [ E('strong', {}, noSensor
 				? _('This device does not report any temperature')
@@ -342,7 +363,7 @@ return view.extend({
 
 		// A stage that is still applied while nothing is watching is the one
 		// thing an operator has to be told about, so it comes before the rest.
-		if (state === 'stopped' && (this.clearWait || clearRunning(st)))
+		if (state === 'stopped' && (this.clearWait || clearRunning(st, now)))
 			banner.push(E('div', {}, _('Clearing is running, readings resume afterwards.')));
 		else if (state !== 'running' && !noSensor)
 			banner.push(E('div', {}, state === 'stopped'
@@ -394,7 +415,7 @@ return view.extend({
 			}, banner),
 			E('div', {}, rows),
 			E('div', { 'class': 'tg-meta' }, [
-				_('Last reading: %s').format(fmtAge(st.ts)),
+				_('Last reading: %s').format(fmtAge(st.ts, now)),
 				st.modem_src ? ' · ' + _('modem source: %s').format(st.modem_src) : '',
 				st.fan_mode ? ' · ' + _('fan mode: %s').format(st.fan_mode) : '',
 				st.version ? ' · ' + _('version %s').format(st.version) : ''

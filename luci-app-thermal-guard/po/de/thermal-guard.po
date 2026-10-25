@@ -598,8 +598,14 @@ msgstr "Erneut versuchen l채sst sich beim Zur체cksetzen nur die R체ckgabe des L�
 msgid "Modem model"
 msgstr "Modemmodell"
 
-msgid "%s, profile %s"
-msgstr "%s, Profil %s"
+msgid "Modem profile"
+msgstr "Modemprofil"
 
-msgid "%s, no profile"
-msgstr "%s, kein Profil"
+msgid "%d / %d 째C (%s)"
+msgstr "%d / %d 째C (%s)"
+
+msgid "none, defaults %d / %d 째C"
+msgstr "keins, Vorgabe %d / %d 째C"
+
+msgid "none, configured %d / %d 째C"
+msgstr "keins, eingestellt %d / %d 째C"
