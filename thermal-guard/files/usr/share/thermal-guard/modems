@@ -1,0 +1,17 @@
+# Modem profiles for thermal-guard: default modem limits per model.
+#
+# One line per profile: pattern, warn, crit, source, separated by blanks.
+#   pattern  shell glob, * and ? only, against the model the modem reports
+#            (AT+CGMM or the modem-model hook); case does not matter
+#   warn     modem_warn in whole degrees, 40 to 120
+#   crit     modem_crit, above warn, at most 120
+#   source   the rest of the line: the measurement or published limit the
+#            numbers come from. Required, a line without one is skipped.
+#
+# The first matching line wins, so specific patterns go above generic ones.
+# modem_warn and modem_crit set in /etc/config/thermal-guard override these
+# values one by one. thermal-guard reads the hottest sensor the modem
+# reports, which is a die or amplifier sensor, not the module case.
+#
+RM520N-GL*  85  95  GL-X3000 2026-10-19: 80 C after 90 min of 5G load, GL.iNet firmware sets no modem limit
+FM350-GL*   80  88  Banana Pi R3 Mini: plateau 73 to 74 C under sustained load (2026-09-19), 59 to 63 C with heatsink (2026-09-21)

@@ -7,17 +7,59 @@
 # ---- helpers ---------------------------------------------------------------
 
 # Keep integers only so a garbled sysfs read or AT reply cannot reach the logic.
+# Leading zeros go, ash arithmetic reads 010 as octal 8 and 09 as an error.
 tg_int() {
+	local sign="" d=""
 	case "$1" in
-		''|*[!0-9-]*|-|?*-*) echo "" ;;
-		*) echo "$1" ;;
+		''|*[!0-9-]*|-|?*-*) echo ""; return 0 ;;
+		-*) sign=-; d=${1#-} ;;
+		*) d=$1 ;;
 	esac
+	d=${d#"${d%%[!0]*}"}
+	if [ -n "$d" ]; then echo "$sign$d"; else echo 0; fi
 }
 
 # Whether a program or function is there. The one place that asks, so the
 # selftest can take a tool away without touching the host.
 tg_have() {
 	command -v "$1" >/dev/null 2>&1
+}
+
+# fd 7 is the state lock. A command that can wait gets it closed, and so does
+# a command substitution or pipeline around one ($(exec 7>&-; ...)): each is a
+# process of its own, and one left behind by a killed holder keeps the lock.
+
+# Runs a command under a time limit, KILL_AFTER seconds more for one that
+# ignores TERM. Once timeout sends KILL it ends its own process group, itself
+# included, and ash would print "Killed" to the daemon's stderr, which procd
+# hands to syslog. An sh with stderr on /dev/null waits instead and passes the
+# status on; every caller discards the command's stderr anyway. A separate sh,
+# not a subshell: a function called with 7>&- keeps a saved copy of fd 7, and a
+# subshell would hold it while it waits, the exec of sh drops it.
+tg_timeout() { # $1 seconds, then the command
+	# shellcheck disable=SC2016 # expanded by the inner sh
+	sh -c 'k=$1; shift; exec 2>/dev/null; timeout -k "$k" "$@"; exit $?' tg_timeout \
+		"$KILL_AFTER" "$@"
+}
+
+# Flushes what was written to the overlay. Only a flush that completed in time
+# says it survives a power cut; a hung one must not hold the lock for good.
+tg_sync() {
+	tg_timeout "$CMD_TIMEOUT" sync >/dev/null 2>&1 6>&- 7>&-
+}
+
+# Model names from a modem or a hook end up in the log, the status file and a
+# glob match: letters, digits, dot, underscore and dash, 1 to 32 characters.
+# The fan takeover record holds hwmon, cooling device and zone names the same way.
+tg_name_ok() {
+	case "$1" in
+		''|*[!A-Za-z0-9._-]*) return 1 ;;
+	esac
+	[ "${#1}" -le 32 ]
+}
+
+tg_name() {
+	if tg_name_ok "$1"; then echo "$1"; else echo ""; fi
 }
 
 # Absolute path, no .. and no wildcards. Stops UCI from pointing us at random files.
@@ -112,12 +154,24 @@ tg_notify_http() {
 	if [ "$tool" = curl ]; then
 		NOTIFY_HEADER_TOLD=""
 		mkdir -p "$STATE_DIR"
-		cfg="$STATE_DIR/notify.conf"
+		# The writer's own name: a detached reset may post while the daemon does.
+		tg_my_pid
+		cfg="$STATE_DIR/notify.conf.$MY_PID"
 		: > "$cfg"
-		chmod 600 "$cfg" 2>/dev/null
+		# Without a private file the address and header must not be written.
+		if ! chmod 600 "$cfg" 2>/dev/null; then
+			rm -f "$cfg"
+			[ "$NOTIFY_CHMOD_TOLD" = 1 ] ||
+				tg_log "could not protect the notify config, not sending over HTTP" warning
+			NOTIFY_CHMOD_TOLD=1
+			return 1
+		fi
+		NOTIFY_CHMOD_TOLD=0
 		printf 'url = "%s"\n' "$NOTIFY_URL" >> "$cfg"
 		[ -n "$NOTIFY_HEADER" ] && printf 'header = "%s"\n' "$NOTIFY_HEADER" >> "$cfg"
-		printf '%s\n' "$1" | curl -fsS -m 15 -K "$cfg" --data-binary @- >/dev/null 2>&1
+		# The pipeline element closes fd 7 for good: a function call would keep a copy.
+		printf '%s\n' "$1" | { exec 7>&-; tg_timeout "$HTTP_TIMEOUT" \
+			curl -fsS -m 15 -K "$cfg" --data-binary @- >/dev/null 2>&1; }
 		rc=$?
 		rm -f "$cfg"
 		return $rc
@@ -131,8 +185,8 @@ tg_notify_http() {
 		NOTIFY_HEADER_TOLD=$tool
 	fi
 	# -T bounds the network wait only, the outer limit also covers a hung DNS lookup.
-	timeout "$HTTP_TIMEOUT" "$tool" -q -T 15 -O /dev/null --post-data="$1" "$NOTIFY_URL" \
-		>/dev/null 2>&1
+	tg_timeout "$HTTP_TIMEOUT" "$tool" -q -T 15 -O /dev/null --post-data="$1" \
+		"$NOTIFY_URL" >/dev/null 2>&1 7>&-
 }
 
 # The escape hatch for anything HTTP cannot express, a local mailer for example.
@@ -141,16 +195,20 @@ tg_notify_http() {
 tg_notify_hook() {
 	local hook="$HOOK_DIR/notify"
 	[ -x "$hook" ] || return 1
-	printf '%s\n' "$1" | timeout -k 5 "$HOOK_TIMEOUT" "$hook" >/dev/null 2>&1
+	# Without fd 7, the state lock, like every hook (see tg_run_hook), closed for
+	# good in the pipeline element: a function call would keep a copy.
+	printf '%s\n' "$1" | { exec 7>&-; tg_timeout "$HOOK_TIMEOUT" "$hook" >/dev/null 2>&1; }
 }
 
 # Run an AT command through a lock. Several daemons and LuCI apps share one port
 # and the modem answers a collision with nothing at all. Both the wait for the
 # lock and the query are bounded: a modem that hangs, or a program that sits on
 # the lock, must not stop the whole loop. BusyBox flock has no -w, so the outer
-# timeout covers the wait and the inner one the query.
-# Without flock the query still runs, the modem reading matters more than the
-# lock. But another program on the port can garble it now, so say so once.
+# timeout covers the wait and the inner one the query. None of them gets fd 7:
+# this flock takes the AT lock, and a hung sms_tool must not hold the state lock.
+# The daemon and reset refuse to run without flock, so the branch without it is
+# a guard for a caller that got here anyway: the query still runs, but another
+# program on the port can garble it, so say so once.
 tg_at_unlocked() {
 	[ "$FLOCK_TOLD" = 1 ] && return 0
 	tg_cfg_log "no flock command, AT queries run without the shared lock"
@@ -171,18 +229,19 @@ tg_at() {
 			[ "$DAEMON" = 1 ] && AT_NO_TIMEOUT_TOLD=1
 		fi
 		if tg_have flock; then
-			flock "$lock" sms_tool -d "$port" at "$cmd" 2>/dev/null
+			flock "$lock" sms_tool -d "$port" at "$cmd" 2>/dev/null 7>&-
 		else
 			tg_at_unlocked
-			sms_tool -d "$port" at "$cmd" 2>/dev/null
+			sms_tool -d "$port" at "$cmd" 2>/dev/null 7>&-
 		fi
 		return
 	fi
 	if tg_have flock; then
-		timeout "$AT_WAIT" flock "$lock" timeout "$AT_TIMEOUT" sms_tool -d "$port" at "$cmd" 2>/dev/null
+		tg_timeout "$AT_WAIT" flock "$lock" timeout -k "$KILL_AFTER" "$AT_TIMEOUT" \
+			sms_tool -d "$port" at "$cmd" 2>/dev/null 7>&-
 	else
 		tg_at_unlocked
-		timeout "$AT_TIMEOUT" sms_tool -d "$port" at "$cmd" 2>/dev/null
+		tg_timeout "$AT_TIMEOUT" sms_tool -d "$port" at "$cmd" 2>/dev/null 7>&-
 	fi
 }
 
@@ -299,19 +358,21 @@ tg_fan_find_cdev() {
 
 # Fill in the pwm paths from the detected chip. A configured path that works is
 # left alone; one that stopped working is replaced, because a renumbered hwmon
-# is the likely reason and running without a fan is not an option here.
+# is the likely reason and running without a fan is not an option here. The mode
+# file is only ever the output's own: another chip's would switch that chip to
+# manual and leave the configured output on its controller.
 tg_fan_resolve_pwm() {
 	local h
-	[ -n "$PWM_PATH" ] && [ -w "$PWM_PATH" ] && [ -n "$PWM_ENABLE_PATH" ] && return 0
-
-	h=$(tg_fan_find_hwmon)
-	[ -n "$h" ] || return 0
-	tg_path_hwmon "$h" || return 0
-
 	if [ -z "$PWM_PATH" ] || [ ! -w "$PWM_PATH" ]; then
-		[ -w "$h/pwm1" ] && tg_fan_set_pwm_path "$h/pwm1"
+		h=$(tg_fan_find_hwmon)
+		if [ -n "$h" ] && tg_path_hwmon "$h" && [ -w "$h/pwm1" ]; then
+			tg_fan_set_pwm_path "$h/pwm1"
+			# A configured mode file went with the configured output, not this one.
+			PWM_ENABLE_PATH=""
+		fi
 	fi
-	[ -n "$PWM_ENABLE_PATH" ] || [ ! -e "$h/pwm1_enable" ] || PWM_ENABLE_PATH="$h/pwm1_enable"
+	[ -n "$PWM_ENABLE_PATH" ] || [ -z "$PWM_PATH" ] || [ ! -e "${PWM_PATH}_enable" ] ||
+		PWM_ENABLE_PATH="${PWM_PATH}_enable"
 	return 0
 }
 
@@ -354,45 +415,304 @@ tg_fan_find_zone() {
 	done
 }
 
-tg_fan_state() {
-	case "$FAN_VIEW" in
+# The fan a stage took over is recorded by identity, never by path: hwmonN and
+# cooling_deviceN are numbers handed out in probe order. Each part is checked
+# where it is recorded and where it is read, so none can add a line to the state.
+# FAN_TGT_* is the fan the next force, check or release works on.
+FAN_TGT_MODE=""; FAN_TGT_CDEV=""; FAN_TGT_ZONE=""; FAN_TGT_PWM=""; FAN_TGT_ENABLE=""
+FAN_TGT_FULL=""
+ID_NAME=""; ID_DEV=""; ID_ATTR=""; ID_ZONE=""; ID_FULL=""
+
+# Where the device link resolved to, empty for none. Only ever compared with
+# what a scan finds, never written to.
+tg_fan_dev_ok() { # $1 path
+	[ -z "$1" ] && return 0
+	[ "${#1}" -le 200 ] || return 1
+	case "$1" in *[!A-Za-z0-9_./:+@-]*) return 1 ;; esac
+	tg_path_under "$1" "$DEVICES_ROOT/"
+}
+
+tg_fan_attr_ok() {
+	case "$1" in pwm[0-9]|pwm[0-9][0-9]) return 0 ;; esac
+	return 1
+}
+
+# The full speed value a pwm takeover wrote, a canonical 0 to 255. The polarity
+# belongs to the record: a pwm_full changed during the stage, perhaps for an
+# inverted chip, must not reach the fan taken over.
+tg_fan_full_ok() {
+	case "$1" in ''|*[!0-9]*) return 1 ;; esac
+	[ "$1" = "$(tg_int "$1")" ] && [ "${#1}" -le 3 ] && [ "$1" -le 255 ]
+}
+
+tg_boot_ok() {
+	[ "${#1}" -eq 36 ] || return 1
+	case "$1" in *[!0-9a-f-]*) return 1 ;; esac
+	return 0
+}
+
+# This boot's id, empty where the kernel does not say.
+tg_boot_id() {
+	local b=""
+	[ -r "$BOOT_ID_FILE" ] && read -r b < "$BOOT_ID_FILE"
+	tg_boot_ok "$b" && echo "$b"
+	return 0
+}
+
+# The resolved device link of a hwmon or cooling device directory, if it has one.
+tg_fan_dev_of() { # $1 directory
+	[ -e "$1/device" ] && readlink -f "$1/device" 2>/dev/null
+	return 0
+}
+
+# Governor names, not free text: a saved policy is written back to sysfs.
+tg_fan_policy_name() {
+	case "$1" in
+		step_wise|fair_share|bang_bang|user_space|power_allocator) echo "$1" ;;
+		*) echo "" ;;
+	esac
+}
+
+# What the release needs to put the fan back: the record of which fan it is and
+# what it was doing before. POLICY is the zone's governor for cooling_device,
+# ENABLE and PWM the chip's mode and duty cycle. FAN_UNRESOLVED marks a record
+# that cannot name its fan; it is kept, and nothing is ever written from it.
+tg_fan_record_drop() {
+	FAN_TAKEN=""; FAN_BOOT=""; FAN_T_NAME=""; FAN_T_DEV=""; FAN_T_ATTR=""; FAN_T_ZONE=""
+	FAN_T_FULL=""
+	FAN_UNRESOLVED=0; FAN_SAVED_ENABLE=""; FAN_SAVED_PWM=""; FAN_SAVED_POLICY=""
+}
+
+# A record that names its fan in full, so a scan can find it again.
+tg_fan_recorded() {
+	[ "$FAN_UNRESOLVED" = 0 ] || return 1
+	tg_boot_ok "$FAN_BOOT" && tg_name_ok "$FAN_T_NAME" || return 1
+	case "$FAN_TAKEN" in
+		pwm)
+			tg_fan_attr_ok "$FAN_T_ATTR" && tg_fan_full_ok "$FAN_T_FULL" && [ -z "$FAN_T_ZONE" ] ;;
+		cooling_device) [ -z "$FAN_T_ATTR$FAN_T_FULL" ] ;;
+		*) return 1 ;;
+	esac
+}
+
+# Nothing to force: no fan configured, and none taken over that can be found.
+tg_fan_hands_off() {
+	[ "$FAN_MODE" = none ] && ! tg_fan_recorded
+}
+
+# The identity of the configured fan in ID_*. 1 where a part has none that
+# passes its check; that part stays empty.
+tg_fan_identity() {
+	local d e rc=0
+	ID_NAME=""; ID_DEV=""; ID_ATTR=""; ID_ZONE=""; ID_FULL=""
+	case "$FAN_MODE" in
+		pwm)
+			tg_path_hwmon "$PWM_PATH" || return 1
+			d=${PWM_PATH%/*}; ID_ATTR=${PWM_PATH##*/}; ID_NAME=$(cat "$d/name" 2>/dev/null)
+			tg_fan_attr_ok "$ID_ATTR" || { ID_ATTR=""; rc=1; }
+			# A resolved record finds the output's own mode file and no other. The
+			# same file may be named through /sys/class or /sys/devices.
+			if [ -n "$PWM_ENABLE_PATH" ] && [ "$PWM_ENABLE_PATH" != "${PWM_PATH}_enable" ]; then
+				e=$(readlink -f "$PWM_ENABLE_PATH" 2>/dev/null)
+				[ -n "$e" ] && [ "$e" = "$(readlink -f "${PWM_PATH}_enable" 2>/dev/null)" ] || rc=1
+			fi
+			ID_FULL=$(tg_int "$PWM_FULL")
+			tg_fan_full_ok "$ID_FULL" || { ID_FULL=""; rc=1; }
+			;;
 		cooling_device)
-			tg_path_thermal "$FAN_CDEV" || return
-			cat "$FAN_CDEV/cur_state" 2>/dev/null
+			tg_path_thermal "$FAN_CDEV" || return 1
+			d=$FAN_CDEV; ID_NAME=$(cat "$d/type" 2>/dev/null)
+			if [ -n "$FAN_ZONE" ]; then
+				ID_ZONE=$(cat "$FAN_ZONE/type" 2>/dev/null)
+				tg_name_ok "$ID_ZONE" || { ID_ZONE=""; rc=1; }
+			fi
+			;;
+		*) return 1 ;;
+	esac
+	tg_name_ok "$ID_NAME" || { ID_NAME=""; rc=1; }
+	ID_DEV=$(tg_fan_dev_of "$d")
+	tg_fan_dev_ok "$ID_DEV" || { ID_DEV=""; rc=1; }
+	return "$rc"
+}
+
+# The one directory matching $1* whose $2 (name or type) and device link are
+# the recorded ones. Without a recorded link the name alone has to be unique.
+tg_fan_find_recorded() { # $1 path prefix, $2 file holding the name
+	local d n=0 found=""
+	for d in "$1"*; do
+		[ "$(cat "$d/$2" 2>/dev/null)" = "$FAN_T_NAME" ] || continue
+		[ -z "$FAN_T_DEV" ] || [ "$(tg_fan_dev_of "$d")" = "$FAN_T_DEV" ] || continue
+		n=$((n + 1)); found=$d
+	done
+	[ "$n" = 1 ] && echo "$found"
+	return 0
+}
+
+# The one zone of the recorded type that links to cooling device $1.
+tg_fan_find_recorded_zone() { # $1 cooling device
+	local z c real n=0 found=""
+	real=$(readlink -f "$1")
+	for z in "$THERMAL_ROOT"/thermal_zone*; do
+		[ "$(cat "$z/type" 2>/dev/null)" = "$FAN_T_ZONE" ] || continue
+		for c in "$z"/cdev*; do
+			[ -e "$c" ] && [ "$(readlink -f "$c")" = "$real" ] || continue
+			n=$((n + 1)); found=$z
+			break
+		done
+	done
+	[ "$n" = 1 ] && echo "$found"
+	return 0
+}
+
+# Finds the recorded fan again, by scanning only, into FAN_TGT_*. No match or
+# several are unresolved: 1, and nothing gets written.
+tg_fan_resolve() {
+	local d z=""
+	case "$FAN_TAKEN" in
+		pwm)
+			d=$(tg_fan_find_recorded "$HWMON_ROOT/hwmon" name)
+			[ -n "$d" ] && [ -e "$d/$FAN_T_ATTR" ] && tg_path_hwmon "$d/$FAN_T_ATTR" || return 1
+			FAN_TGT_PWM="$d/$FAN_T_ATTR"; FAN_TGT_ENABLE=""; FAN_TGT_CDEV=""; FAN_TGT_ZONE=""
+			FAN_TGT_FULL=$FAN_T_FULL
+			[ -e "${FAN_TGT_PWM}_enable" ] && FAN_TGT_ENABLE="${FAN_TGT_PWM}_enable"
+			;;
+		cooling_device)
+			d=$(tg_fan_find_recorded "$THERMAL_ROOT/cooling_device" type)
+			[ -n "$d" ] && tg_path_thermal "$d" || return 1
+			if [ -n "$FAN_T_ZONE" ]; then
+				z=$(tg_fan_find_recorded_zone "$d")
+				[ -n "$z" ] && tg_path_thermal "$z" || return 1
+			fi
+			FAN_TGT_CDEV=$d; FAN_TGT_ZONE=$z; FAN_TGT_PWM=""; FAN_TGT_ENABLE=""; FAN_TGT_FULL=""
+			;;
+		*) return 1 ;;
+	esac
+	FAN_TGT_MODE=$FAN_TAKEN
+}
+
+# The configured fan as the target, where no record names one. Its full speed
+# value only exists with both ends of the scale known. $1 force: an empty
+# pwm_enable_path means the output's own mode file, as for a record.
+tg_fan_target_config() { # $1 force or release
+	FAN_TGT_MODE=$FAN_MODE; FAN_TGT_CDEV=$FAN_CDEV; FAN_TGT_ZONE=$FAN_ZONE
+	FAN_TGT_PWM=$PWM_PATH; FAN_TGT_ENABLE=$PWM_ENABLE_PATH; FAN_TGT_FULL=""
+	tg_fan_polarity_known && FAN_TGT_FULL=$(tg_int "$PWM_FULL")
+	[ "$1" = force ] && [ "$FAN_MODE" = pwm ] && [ -z "$FAN_TGT_ENABLE" ] &&
+		[ -n "$PWM_PATH" ] && [ -e "${PWM_PATH}_enable" ] && FAN_TGT_ENABLE="${PWM_PATH}_enable"
+	return 0
+}
+
+# A takeover. Which fan and what it was doing are saved before the first write,
+# so neither a crash nor a failed force loses the way back. Saved values without
+# a record are an older version's, of a fan nobody knows: they stay, nothing is
+# mixed in. Only the fan keys of the file change (tg_fan_record_save): a restore
+# writes them to the overlay, where its stage comes from, a cycle to the
+# working state as it loaded it.
+tg_fan_take() {
+	if [ -n "$FAN_SAVED_POLICY$FAN_SAVED_ENABLE$FAN_SAVED_PWM" ]; then
+		FAN_UNRESOLVED=1
+	else
+		FAN_TAKEN=$FAN_TGT_MODE; FAN_BOOT=$(tg_boot_id)
+		tg_fan_identity || FAN_UNRESOLVED=1
+		[ -n "$FAN_BOOT" ] || FAN_UNRESOLVED=1
+		FAN_T_NAME=$ID_NAME; FAN_T_DEV=$ID_DEV; FAN_T_ATTR=$ID_ATTR; FAN_T_ZONE=$ID_ZONE
+		FAN_T_FULL=$ID_FULL
+		case "$FAN_TGT_MODE" in
+			cooling_device)
+				[ -z "$FAN_TGT_ZONE" ] || FAN_SAVED_POLICY=$(tg_fan_policy_name \
+					"$(cat "$FAN_TGT_ZONE/policy" 2>/dev/null)") ;;
+			pwm)
+				[ -z "$FAN_TGT_ENABLE" ] ||
+					FAN_SAVED_ENABLE=$(tg_int "$(cat "$FAN_TGT_ENABLE" 2>/dev/null)")
+				FAN_SAVED_PWM=$(tg_int "$(cat "$FAN_TGT_PWM" 2>/dev/null)") ;;
+		esac
+	fi
+	# Forcing goes ahead even where the save failed: more cooling is the safe side.
+	tg_fan_record_save
+	return 0
+}
+
+# The settings still describe the recorded fan: same mode, same identity.
+tg_fan_settings_fit() {
+	tg_fan_identity && [ "$FAN_MODE" = "$FAN_TAKEN" ] &&
+		[ "$ID_NAME|$ID_DEV|$ID_ATTR|$ID_ZONE|$ID_FULL" = \
+		"$FAN_T_NAME|$FAN_T_DEV|$FAN_T_ATTR|$FAN_T_ZONE|$FAN_T_FULL" ]
+}
+
+# Said once while the configured fan is not the one the record holds.
+FAN_CHANGE_TOLD=0
+tg_fan_settings_check() {
+	local msg
+	if ! tg_fan_recorded || tg_fan_settings_fit; then
+		FAN_CHANGE_TOLD=0
+		return 0
+	fi
+	[ "$FAN_CHANGE_TOLD" = 1 ] && return 0
+	msg="fan settings changed since the fan was taken over: the fan taken at stage entry"
+	msg="$msg stays in use until it is handed back, the new settings apply from the next takeover"
+	tg_cfg_log "$msg"
+	[ "$DAEMON" = 1 ] && FAN_CHANGE_TOLD=1
+	return 0
+}
+
+# The fan as the status shows it, into FAN_PV_*. While a record names its fan,
+# that fan is the one in control and the one read, whatever the settings say by
+# now; their pwm scale applies only while they still describe it. Otherwise the
+# settings and the view tg_fan_pick_view chose. An empty scale means unknown.
+FAN_CONTROL=none; FAN_PV=none; FAN_PV_PWM=""; FAN_PV_CDEV=""; FAN_PV_IDLE=""; FAN_PV_FULL=""
+tg_fan_view_now() {
+	FAN_CONTROL=$FAN_MODE; FAN_PV=$FAN_VIEW; FAN_PV_PWM=$PWM_PATH; FAN_PV_CDEV=$FAN_CDEV
+	FAN_PV_IDLE=""; FAN_PV_FULL=""
+	if tg_fan_polarity_known; then
+		FAN_PV_IDLE=$(tg_int "$PWM_IDLE"); FAN_PV_FULL=$(tg_int "$PWM_FULL")
+	fi
+	tg_fan_recorded || return 0
+	FAN_CONTROL=$FAN_TAKEN; FAN_PV=$FAN_TAKEN; FAN_PV_PWM=""; FAN_PV_CDEV=""
+	tg_fan_settings_fit || { FAN_PV_IDLE=""; FAN_PV_FULL=""; }
+	tg_fan_resolve || return 0
+	FAN_PV_PWM=$FAN_TGT_PWM; FAN_PV_CDEV=$FAN_TGT_CDEV
+}
+
+tg_fan_state() {
+	case "$FAN_PV" in
+		cooling_device)
+			tg_path_thermal "$FAN_PV_CDEV" || return
+			cat "$FAN_PV_CDEV/cur_state" 2>/dev/null
 			;;
 		pwm)
-			tg_path_hwmon "$PWM_PATH" || return
-			cat "$PWM_PATH" 2>/dev/null
+			tg_path_hwmon "$FAN_PV_PWM" || return
+			cat "$FAN_PV_PWM" 2>/dev/null
 			;;
 	esac
 }
 
 tg_fan_max() {
-	case "$FAN_VIEW" in
+	case "$FAN_PV" in
 		cooling_device)
-			tg_path_thermal "$FAN_CDEV" || return
-			cat "$FAN_CDEV/max_state" 2>/dev/null
+			tg_path_thermal "$FAN_PV_CDEV" || return
+			cat "$FAN_PV_CDEV/max_state" 2>/dev/null
 			;;
-		pwm) tg_fan_polarity_known && echo "$PWM_FULL" ;;
+		pwm) [ -n "$FAN_PV_IDLE" ] && echo "$FAN_PV_FULL" ;;
 	esac
 }
 
 # Fan speed as 0..100 regardless of how the raw scale runs. For pwm that is the
-# span between PWM_IDLE and PWM_FULL, which may descend on an inverted board;
-# for a cooling device it is cur_state against max_state, which always ascends.
-# Without this the status page reports a fan at full speed as nearly stopped.
+# span between the idle and the full speed value, which may descend on an
+# inverted board; for a cooling device it is cur_state against max_state, which
+# always ascends. Without this the status page reports a fan at full speed as
+# nearly stopped.
 tg_fan_percent() { # $1 optional raw value, otherwise the live reading
 	local cur max span pct
 	cur=${1:-$(tg_fan_state)}
 	cur=$(tg_int "$cur")
 	[ -n "$cur" ] || return 0
 
-	case "$FAN_VIEW" in
+	case "$FAN_PV" in
 		pwm)
-			tg_fan_polarity_known || return 0
-			span=$((PWM_FULL - PWM_IDLE))
+			[ -n "$FAN_PV_IDLE" ] && [ -n "$FAN_PV_FULL" ] || return 0
+			span=$((FAN_PV_FULL - FAN_PV_IDLE))
 			[ "$span" -ne 0 ] || return 0
-			pct=$(( (cur - PWM_IDLE) * 100 / span ))
+			pct=$(( (cur - FAN_PV_IDLE) * 100 / span ))
 			;;
 		cooling_device)
 			max=$(tg_int "$(tg_fan_max)")
@@ -407,19 +727,30 @@ tg_fan_percent() { # $1 optional raw value, otherwise the live reading
 	echo "$pct"
 }
 
+# The fan lines of the status, after tg_fan_view_now.
+tg_fan_status() {
+	printf 'fan_control=%s\nfan_view=%s\nfan_state=%s\nfan_max=%s\nfan_percent=%s\n' \
+		"$FAN_CONTROL" "$FAN_PV" "$(tg_fan_state)" "$(tg_fan_max)" "$(tg_fan_percent)"
+}
+
 # We forced the fan when the stage was entered. If the value is gone the chip
 # belongs to someone else, a second fan daemon or a governor we did not take
 # over. Re-assert, because too much cooling is the safe direction, but say once
 # what is happening instead of quietly fighting every cycle.
-FAN_FOREIGN=0
+# FAN_REASSERT_TOLD: a failed reassert was notified, until one works or the stage clears.
+FAN_FOREIGN=0; FAN_REASSERT_TOLD=0
 tg_fan_check_owner() {
-	local want have
+	local want="" have="" msg
+	tg_fan_settings_check
 	if [ "$STAGE" -lt 0 ]; then
+		FAN_REASSERT_TOLD=0
 		# Idle, so nothing of ours is in there to compare against. For a
 		# cooling device the zone still tells: user_space means somebody took
 		# it off its governor, and it was not this daemon. Worth knowing
 		# before an incident rather than during one.
 		FAN_FOREIGN=0
+		# A release that did not read back left this daemon's own values there.
+		tg_fan_restore_pending && return 0
 		[ "$FAN_MODE" = cooling_device ] && [ -n "$FAN_ZONE" ] || return 0
 		tg_path_thermal "$FAN_ZONE" || return 0
 		[ "$(cat "$FAN_ZONE/policy" 2>/dev/null)" = user_space ] || return 0
@@ -428,21 +759,56 @@ tg_fan_check_owner() {
 		return 0
 	fi
 
-	case "$FAN_MODE" in
-		pwm) want=$PWM_FULL ;;
-		cooling_device) want=$(tg_int "$(tg_fan_max)") ;;
+	# The recorded fan, whatever the settings say by now. One that cannot be
+	# found again is not compared, and a reassert would fail the same way.
+	if tg_fan_recorded; then
+		tg_fan_resolve || return 0
+	elif tg_fan_hands_off; then
+		FAN_FOREIGN=0
+		return 0
+	else
+		tg_fan_target_config force
+	fi
+	case "$FAN_TGT_MODE" in
+		pwm)
+			tg_path_hwmon "$FAN_TGT_PWM" || return 0
+			want=$FAN_TGT_FULL; have=$(tg_int "$(cat "$FAN_TGT_PWM" 2>/dev/null)") ;;
+		cooling_device)
+			tg_path_thermal "$FAN_TGT_CDEV" || return 0
+			want=$(tg_int "$(cat "$FAN_TGT_CDEV/max_state" 2>/dev/null)")
+			have=$(tg_int "$(cat "$FAN_TGT_CDEV/cur_state" 2>/dev/null)") ;;
 		*) FAN_FOREIGN=0; return 0 ;;
 	esac
-	have=$(tg_int "$(tg_fan_state)")
 	[ -n "$want" ] && [ -n "$have" ] || return 0
 
 	if [ "$have" = "$want" ]; then
 		FAN_FOREIGN=0
 		return 0
 	fi
-	[ "$FAN_FOREIGN" = 1 ] || tg_log "fan was set to $want but reads $have, another controller owns it. Set fan_mode=none to leave it alone." warning
+	if [ "$FAN_FOREIGN" != 1 ]; then
+		msg="fan was set to $want but reads $have, another controller owns it."
+		# A taken fan stays forced whatever fan_mode says, so that hint would mislead.
+		if tg_fan_recorded; then
+			msg="$msg It is reasserted until it is handed back."
+		else
+			msg="$msg Set fan_mode=none to leave it alone."
+		fi
+		tg_log "$msg" warning
+	fi
 	FAN_FOREIGN=1
-	tg_fan_full || tg_log "could not reassert the fan (mode $FAN_MODE)" crit
+	if tg_fan_full; then
+		FAN_REASSERT_TOLD=0
+		return 0
+	fi
+	[ "$FAN_REASSERT_TOLD" = 1 ] && return 0
+	FAN_REASSERT_TOLD=1
+	tg_notify "$STAGE" "stage $STAGE: could not reassert the fan (mode $FAN_TGT_MODE). Check the fan."
+}
+
+# No stage, but a takeover record is still kept: the last release did not read
+# back or could not find its fan, and the next reset retries it.
+tg_fan_restore_pending() {
+	[ "$STAGE" -lt 0 ] && { [ -n "$FAN_TAKEN" ] || [ "$FAN_UNRESOLVED" = 1 ]; }
 }
 
 tg_fan_rpm() {
@@ -452,59 +818,90 @@ tg_fan_rpm() {
 	done
 }
 
-# Force full speed. cooling_device takes the zone away from the kernel governor,
-# pwm writes the duty cycle after taking manual control of the chip.
+# Force full speed and read it back. The recorded fan where a record names one,
+# whatever the settings say by now; otherwise the configured fan, taken over
+# first unless a record that cannot name its fan is still kept. Returns 0 only
+# when the readback matched, so a write the driver swallowed or an output that
+# is not there is a failed action.
 tg_fan_full() {
-	case "$FAN_MODE" in
+	if tg_fan_recorded; then
+		tg_fan_resolve || return 1
+	else
+		tg_fan_target_config force
+		tg_fan_ready || return 1
+		[ -n "$FAN_TAKEN" ] || [ "$FAN_UNRESOLVED" = 1 ] || tg_fan_take
+	fi
+	tg_fan_ready && tg_fan_write_full
+}
+
+# Whether FAN_TGT_* can be forced at all, checked before any write: a fan that
+# cannot be driven never costs the zone its governor and is never taken over.
+tg_fan_ready() {
+	local max
+	case "$FAN_TGT_MODE" in
 		cooling_device)
-			tg_path_thermal "$FAN_CDEV" || return 1
-			# Take the zone off its governor first, where there is one, and
-			# remember what it was on. Another program may already have taken
-			# it, and handing it back to the configured default rather than to
-			# what was actually there would cut that program's cooling short.
-			if [ -n "$FAN_ZONE" ]; then
-				tg_path_thermal "$FAN_ZONE" || return 1
-				[ -n "$FAN_SAVED_POLICY" ] ||
-					FAN_SAVED_POLICY=$(cat "$FAN_ZONE/policy" 2>/dev/null)
-				echo user_space > "$FAN_ZONE/policy" 2>/dev/null || return 1
-			fi
-			# max_state means maximum cooling whichever way the cooling-levels
-			# in the device tree run, so this mode needs no idea of polarity.
-			tg_fan_max > "$FAN_CDEV/cur_state" 2>/dev/null
+			tg_path_thermal "$FAN_TGT_CDEV" || return 1
+			# A max of 0 cools by nothing.
+			max=$(tg_int "$(cat "$FAN_TGT_CDEV/max_state" 2>/dev/null)")
+			[ -n "$max" ] && [ "$max" -gt 0 ] && [ -w "$FAN_TGT_CDEV/cur_state" ] || return 1
+			[ -z "$FAN_TGT_ZONE" ] || tg_path_thermal "$FAN_TGT_ZONE"
 			;;
 		pwm)
-			# Remember what the chip was doing before we take it over. The
-			# release writes this back, which beats asking the admin for a
-			# shell command and survives a daemon restart via the state file.
-			if [ -n "$PWM_ENABLE_PATH" ] && [ -z "$FAN_SAVED_ENABLE" ]; then
-				FAN_SAVED_ENABLE=$(tg_int "$(cat "$PWM_ENABLE_PATH" 2>/dev/null)")
-			fi
-			if [ -n "$PWM_PATH" ] && [ -z "$FAN_SAVED_PWM" ]; then
-				FAN_SAVED_PWM=$(tg_int "$(cat "$PWM_PATH" 2>/dev/null)")
-			fi
-
-			if [ -n "$PWM_ENABLE_PATH" ]; then
-				tg_path_hwmon "$PWM_ENABLE_PATH" || return 1
-				echo 1 > "$PWM_ENABLE_PATH" 2>/dev/null
-			fi
-			if [ -n "$PWM_PATH" ]; then
-				tg_path_hwmon "$PWM_PATH" || return 1
-				echo "$PWM_FULL" > "$PWM_PATH" 2>/dev/null
-			fi
+			# A full speed value, the record's or one from both ends of the configured
+			# scale, and an output to write.
+			[ -n "$FAN_TGT_FULL" ] || return 1
+			[ -n "$FAN_TGT_PWM" ] && tg_path_hwmon "$FAN_TGT_PWM" && [ -e "$FAN_TGT_PWM" ] ||
+				return 1
+			[ -z "$FAN_TGT_ENABLE" ] || tg_path_hwmon "$FAN_TGT_ENABLE"
 			;;
-		none) return 1 ;;
+		*) return 1 ;;
 	esac
 }
 
-# Hand the fan back. Only called on an explicit reset or a clean stop, never on
-# the escalation path, so a crash leaves the fan running.
+# cooling_device takes the zone away from the kernel governor, pwm writes the
+# duty cycle after taking manual control of the chip. Every write is attempted
+# before the checks: more cooling is the safe direction.
+tg_fan_write_full() {
+	local max got rc=0
+	case "$FAN_TGT_MODE" in
+		cooling_device)
+			# max_state means maximum cooling whichever way the cooling-levels
+			# in the device tree run, so this mode needs no idea of polarity.
+			max=$(tg_int "$(cat "$FAN_TGT_CDEV/max_state" 2>/dev/null)")
+			if [ -n "$FAN_TGT_ZONE" ]; then
+				{ echo user_space > "$FAN_TGT_ZONE/policy"; } 2>/dev/null
+			fi
+			{ echo "$max" > "$FAN_TGT_CDEV/cur_state"; } 2>/dev/null
+			if [ -n "$FAN_TGT_ZONE" ]; then
+				got=$(cat "$FAN_TGT_ZONE/policy" 2>/dev/null)
+				[ "$got" = user_space ] || rc=1
+			fi
+			got=$(tg_int "$(cat "$FAN_TGT_CDEV/cur_state" 2>/dev/null)")
+			[ "$got" = "$max" ] || rc=1
+			;;
+		pwm)
+			if [ -n "$FAN_TGT_ENABLE" ]; then
+				{ echo 1 > "$FAN_TGT_ENABLE"; } 2>/dev/null
+			fi
+			{ echo "$FAN_TGT_FULL" > "$FAN_TGT_PWM"; } 2>/dev/null
+			if [ -n "$FAN_TGT_ENABLE" ]; then
+				got=$(tg_int "$(cat "$FAN_TGT_ENABLE" 2>/dev/null)")
+				[ "$got" = 1 ] || rc=1
+			fi
+			got=$(tg_int "$(cat "$FAN_TGT_PWM" 2>/dev/null)")
+			[ "$got" = "$FAN_TGT_FULL" ] || rc=1
+			;;
+	esac
+	return $rc
+}
+
 # Hands the zone to governor $1 and reads the policy back. The kernel refuses
 # a governor it was built without, which would leave the zone on user_space
 # and the fan at full speed with nobody told. step_wise is in every kernel
 # with thermal support. Without available_policies the name is written as is.
 tg_fan_zone_policy() {
 	local want="$1" avail got
-	avail=$(cat "$FAN_ZONE/available_policies" 2>/dev/null)
+	avail=$(cat "$FAN_TGT_ZONE/available_policies" 2>/dev/null)
 	if [ -n "$avail" ]; then
 		case " $avail " in
 			*" $want "*) ;;
@@ -514,8 +911,8 @@ tg_fan_zone_policy() {
 		esac
 	fi
 	# Braces, so a failed open is as quiet as a failed write.
-	{ echo "$want" > "$FAN_ZONE/policy"; } 2>/dev/null
-	got=$(cat "$FAN_ZONE/policy" 2>/dev/null)
+	{ echo "$want" > "$FAN_TGT_ZONE/policy"; } 2>/dev/null
+	got=$(cat "$FAN_TGT_ZONE/policy" 2>/dev/null)
 	[ "$got" = "$want" ] && return 0
 	tg_log "zone still reports policy '${got:-nothing}' after handing it back" crit
 	return 1
@@ -531,36 +928,60 @@ tg_fan_write_back() {
 	return 1
 }
 
+# Hand the fan back. Called by reset and by the automatic recovery only, never on
+# the escalation path and not at a stop, so a crash or a stop leaves a forced fan
+# forced. The recorded fan, found again by identity; without a record (2.0.0
+# saved none) the configured one. Returns 1 when the record cannot name its
+# fan, the fan is not there once and only once, or a value did not read back.
+# The record then stays, so a later reset or recovery can try again with it.
 tg_fan_release() {
-	local mode=""
-	case "$FAN_MODE" in
+	local msg="the fan taken over"
+	if [ "$FAN_UNRESOLVED" = 1 ]; then
+		msg="$msg has no usable record, nothing was handed back."
+		tg_log "$msg Check the fan by hand, then run 'thermal-guard fan-forget'" crit
+		return 1
+	fi
+	if [ -z "$FAN_TAKEN" ]; then
+		tg_fan_target_config release
+	elif ! tg_fan_resolve; then
+		msg="$msg ($FAN_TAKEN $FAN_T_NAME) is not found exactly once, nothing was handed back"
+		tg_log "$msg" crit
+		return 1
+	fi
+	tg_fan_hand_back || return 1
+	tg_fan_record_drop
+	return 0
+}
+
+tg_fan_hand_back() {
+	local mode="" rc=0
+	case "$FAN_TGT_MODE" in
 		cooling_device)
 			# Nothing to hand back where no zone drives the cooling device.
-			[ -n "$FAN_ZONE" ] || return 0
-			tg_path_thermal "$FAN_ZONE" || return 0
+			[ -n "$FAN_TGT_ZONE" ] || return 0
+			tg_path_thermal "$FAN_TGT_ZONE" || return 0
 			# Back to whatever held the zone before, which may be another
 			# program's user_space rather than a kernel governor. Only where
 			# nothing was recorded, because the state was lost, does the
 			# configured default get used as the safety net.
 			if [ -n "$FAN_SAVED_POLICY" ]; then
-				tg_fan_zone_policy "$FAN_SAVED_POLICY"
+				tg_fan_zone_policy "$FAN_SAVED_POLICY" || return 1
 			else
 				tg_log "no saved fan policy, handing the zone to $FAN_GOVERNOR"
-				tg_fan_zone_policy "$FAN_GOVERNOR"
+				tg_fan_zone_policy "$FAN_GOVERNOR" || return 1
 			fi
-			FAN_SAVED_POLICY=""
 			;;
 		pwm)
 			# Put back what we found. The fallback 2 means "automatic" on the
 			# usual pwm chips; 0 is never written, because on some of them that
 			# stops the fan, which is the opposite of what a release should do.
-			if [ -n "$PWM_ENABLE_PATH" ] && tg_path_hwmon "$PWM_ENABLE_PATH"; then
+			if [ -n "$FAN_TGT_ENABLE" ] && tg_path_hwmon "$FAN_TGT_ENABLE"; then
 				mode=$FAN_SAVED_ENABLE
 				if [ -z "$mode" ] || [ "$mode" = 0 ]; then
 					tg_log "no saved fan control mode, handing the fan to automatic"
 					mode=2
 				fi
-				tg_fan_write_back "$PWM_ENABLE_PATH" "$mode" "fan control mode"
+				tg_fan_write_back "$FAN_TGT_ENABLE" "$mode" "fan control mode" || rc=1
 			fi
 			# The duty cycle only in manual mode, or where there is no mode to
 			# set. In any other mode the chip drives it: the value saved before
@@ -568,12 +989,13 @@ tg_fan_release() {
 			# and reading it back would report the chip's own value as failure.
 			case "$mode" in
 				''|1)
-					if [ -n "$FAN_SAVED_PWM" ] && [ -n "$PWM_PATH" ] && tg_path_hwmon "$PWM_PATH"; then
-						tg_fan_write_back "$PWM_PATH" "$FAN_SAVED_PWM" "fan pwm"
+					if [ -n "$FAN_SAVED_PWM" ] && [ -n "$FAN_TGT_PWM" ] &&
+						tg_path_hwmon "$FAN_TGT_PWM"; then
+						tg_fan_write_back "$FAN_TGT_PWM" "$FAN_SAVED_PWM" "fan pwm" || rc=1
 					fi
 					;;
 			esac
-			FAN_SAVED_ENABLE=""; FAN_SAVED_PWM=""
+			return "$rc"
 			;;
 	esac
 	return 0
@@ -663,8 +1085,8 @@ tg_modem_fibocom() {
 		| awk '$2 > 0 && $2 > m { m = $2 } END { if (m > 0) printf "%d", m / 1000 }'
 }
 
-# Sets MODEM_VAL and MODEM_SRC. Empty value means "no reading", which the logic
-# treats as "condition met" so a dead modem never blocks an escalation.
+# Sets MODEM_VAL and MODEM_SRC. Empty value means "no reading"; what that does
+# depends on the transition (see tg_candidate).
 tg_read_modem() {
 	local port v rc
 	MODEM_VAL=""; MODEM_SRC=""
@@ -673,7 +1095,17 @@ tg_read_modem() {
 		none) return 0 ;;
 		file)
 			tg_path_modem_file "$MODEM_TEMP_FILE" || return 0
-			v=$(tg_int "$(cat "$MODEM_TEMP_FILE" 2>/dev/null)")
+			# A fifo or a device would block the cycle, only a regular file is read.
+			[ -f "$MODEM_TEMP_FILE" ] || return 0
+			if tg_have timeout; then
+				v=$(exec 7>&-; tg_timeout "$AT_TIMEOUT" head -c 32 \
+					"$MODEM_TEMP_FILE" 2>/dev/null) || return 0
+			else
+				v=$(exec 7>&-; head -c 32 "$MODEM_TEMP_FILE" 2>/dev/null) || return 0
+			fi
+			v=$(tg_int "$v")
+			# Seven digits are plenty, a longer number would overflow the arithmetic.
+			[ "${#v}" -le 7 ] || return 0
 			[ -n "$v" ] && [ "$v" -gt 1000 ] && v=$((v / 1000))
 			[ -n "$v" ] && { MODEM_VAL=$v; MODEM_SRC="file"; }
 			return 0
@@ -681,7 +1113,7 @@ tg_read_modem() {
 		command)
 			# An executable from the hook directory, not a string from UCI.
 			[ -x "$HOOK_DIR/modem-temp" ] || return 0
-			v=$({ timeout -k 5 "$AT_TIMEOUT" "$HOOK_DIR/modem-temp"; } 2>/dev/null)
+			v=$(exec 7>&- 2>/dev/null; tg_timeout "$AT_TIMEOUT" "$HOOK_DIR/modem-temp")
 			rc=$?
 			# Stopped at its time limit: coreutils timeout says 124, or 137 for
 			# the KILL a hook that ignored TERM gets; a BusyBox timeout dies of
@@ -689,6 +1121,8 @@ tg_read_modem() {
 			# no reading.
 			[ "$rc" -eq 124 ] || [ "$rc" -gt 128 ] && return 0
 			v=$(tg_int "$v")
+			# The same bound as for the file, a hook is no more trusted.
+			[ "${#v}" -le 7 ] || return 0
 			[ -n "$v" ] && { MODEM_VAL=$v; MODEM_SRC="command"; }
 			return 0
 			;;
@@ -698,17 +1132,47 @@ tg_read_modem() {
 	[ -n "$port" ] || return 0
 
 	case "$MODEM_SOURCE" in
-		quectel) v=$(tg_modem_quectel "$port") ;;
-		fibocom) v=$(tg_modem_fibocom "$port") ;;
+		quectel) v=$(exec 7>&-; tg_modem_quectel "$port") ;;
+		fibocom) v=$(exec 7>&-; tg_modem_fibocom "$port") ;;
 		auto)
-			v=$(tg_modem_quectel "$port")
-			[ -n "$v" ] || v=$(tg_modem_fibocom "$port")
+			v=$(exec 7>&-; tg_modem_quectel "$port")
+			[ -n "$v" ] || v=$(exec 7>&-; tg_modem_fibocom "$port")
 			;;
 	esac
 
 	v=$(tg_int "$v")
 	[ -n "$v" ] && [ "$v" -ge 1 ] && [ "$v" -le 150 ] && { MODEM_VAL=$v; MODEM_SRC="at"; }
 	return 0
+}
+
+# The model as the modem names it, or nothing. AT+CGMM is plain 3GPP and needs
+# no vendor case. Where another program owns the port (ModemManager), the
+# modem-model hook answers instead, typically from that program's cache, so
+# nothing extra reaches the modem.
+tg_modem_model() {
+	local port v="" rc
+	case "$MODEM_SOURCE" in
+		none) return 0 ;;
+		file|command)
+			[ -x "$HOOK_DIR/modem-model" ] || return 0
+			v=$(exec 7>&- 2>/dev/null; tg_timeout "$AT_TIMEOUT" "$HOOK_DIR/modem-model")
+			rc=$?
+			# Same reading of the exit status as the modem-temp hook.
+			[ "$rc" -eq 124 ] || [ "$rc" -gt 128 ] && return 0
+			;;
+		*)
+			port=$(tg_modem_port)
+			[ -n "$port" ] || return 0
+			# Any other line starting with + is a result code the modem sent
+			# unasked, which can arrive before the reply.
+			v=$(exec 7>&-; tg_at "$port" 'AT+CGMM' | tr -d '\r' | sed -n \
+				's/^+CGMM: *//; /^+/d; /^AT/d; /^OK$/d; /^ERROR/d; /^[[:space:]]*$/d; p')
+			;;
+	esac
+	# Some modems quote the model.
+	v=$(printf '%s\n' "$v" | head -n1 |
+		sed 's/^[[:space:]]*//; s/[[:space:]]*$//; s/^"\(.*\)"$/\1/')
+	tg_name "$v"
 }
 
 # Everything else the board reports: Wi-Fi chips, ethernet phys, disks. Printed as
@@ -790,7 +1254,7 @@ tg_read_mtwifi() {
 		flags=$(cat "$NET_ROOT/$ifname/flags" 2>/dev/null)
 		case "$flags" in 0x[0-9a-fA-F]*) ;; *) continue ;; esac
 		[ $((flags & 1)) -eq 1 ] || continue
-		raw=$(tg_mtwifi_temp "$ifname")
+		raw=$(exec 7>&-; tg_mtwifi_temp "$ifname")
 		[ -n "$raw" ] || continue
 		printf 'mtwifi_phy%s=%s\n' "$n" "$raw"
 	done
@@ -799,9 +1263,9 @@ tg_read_mtwifi() {
 tg_mtwifi_temp() { # $1 interface
 	local out v
 	if tg_have timeout; then
-		out=$(timeout 3 iwpriv "$1" stat 2>/dev/null)
+		out=$(exec 7>&-; tg_timeout 3 iwpriv "$1" stat 2>/dev/null)
 	else
-		out=$(iwpriv "$1" stat 2>/dev/null)
+		out=$(exec 7>&-; iwpriv "$1" stat 2>/dev/null)
 	fi
 	v=$(printf '%s\n' "$out" | sed -n 's/^CurrentTemperature *= *\(-\{0,1\}[0-9]\{1,3\}\) *$/\1/p' | head -n 1)
 	v=$(tg_int "$v")
@@ -823,10 +1287,11 @@ tg_modem_cfun_set() { # $1 level
 	local port got="" i=0
 	port=$(tg_modem_port)
 	[ -n "$port" ] || return 1
-	while [ "$i" -lt 3 ]; do
-		[ "$i" -gt 0 ] && sleep "$CFUN_SETTLE"
+	while [ "$i" -lt "$CFUN_TRIES" ]; do
+		[ "$i" -gt 0 ] && sleep "$CFUN_SETTLE" 7>&-
 		tg_at "$port" "AT+CFUN=$1" >/dev/null 2>&1
-		got=$(tg_at "$port" 'AT+CFUN?' | tr -d '\r' | sed -n 's/^+CFUN: *\([0-9]\).*/\1/p' | head -n1)
+		got=$(exec 7>&-; tg_at "$port" 'AT+CFUN?' | tr -d '\r' |
+			sed -n 's/^+CFUN: *\([0-9]\).*/\1/p' | head -n1)
 		[ "$got" = "$1" ] && return 0
 		i=$((i + 1))
 	done
@@ -844,14 +1309,26 @@ tg_iface_name_ok() {
 
 # "true" or "false" as netifd reports it, empty for an interface it does not know.
 tg_iface_up_state() {
-	timeout "$UBUS_TIMEOUT" ubus call "network.interface.$1" status 2>/dev/null \
+	tg_timeout "$UBUS_TIMEOUT" ubus call "network.interface.$1" status 2>/dev/null 7>&- \
 		| jsonfilter -e '@.up' 2>/dev/null
 }
 
-tg_action_interface_down() { tg_iface_set "${ACTION_INTERFACE:-$UPLINK_INTERFACE}" false; }
-tg_action_interface_up() { tg_iface_set "${ACTION_INTERFACE:-$UPLINK_INTERFACE}" true; }
+# $1 the interface to take down, empty for the configured one.
+tg_action_interface_down() { tg_iface_set "${1:-${ACTION_INTERFACE:-$UPLINK_INTERFACE}}" false; }
+# $1 the interface that went down, empty for the configured one.
+tg_action_interface_up() { tg_iface_set "${1:-${ACTION_INTERFACE:-$UPLINK_INTERFACE}}" true; }
 
-# ifdown and ifup return before netifd has acted, so wait for its report.
+# $1 action name: the interface interface_down acts on, empty for any other
+# action and for an interface that is not usable.
+tg_action_iface() {
+	[ "$1" = interface_down ] || return 0
+	tg_iface_name_ok "${ACTION_INTERFACE:-$UPLINK_INTERFACE}" || return 0
+	echo "${ACTION_INTERFACE:-$UPLINK_INTERFACE}"
+}
+
+# ifdown and ifup return before netifd has acted, so wait for its report. Like
+# every command run under the state lock they do not get fd 7: a child they
+# leave behind would hold the lock after this process is gone.
 tg_iface_set() { # $1 interface, $2 true or false
 	local i=0 got=""
 	if ! tg_iface_name_ok "$1"; then
@@ -860,13 +1337,13 @@ tg_iface_set() { # $1 interface, $2 true or false
 	fi
 	tg_have ifdown || return 1
 	if [ "$2" = false ]; then
-		timeout "$CMD_TIMEOUT" ifdown "$1" >/dev/null 2>&1
+		tg_timeout "$CMD_TIMEOUT" ifdown "$1" >/dev/null 2>&1 7>&-
 	else
-		timeout "$CMD_TIMEOUT" ifup "$1" >/dev/null 2>&1
+		tg_timeout "$CMD_TIMEOUT" ifup "$1" >/dev/null 2>&1 7>&-
 	fi
-	while [ "$i" -lt 3 ]; do
-		[ "$i" -gt 0 ] && sleep "$CFUN_SETTLE"
-		got=$(tg_iface_up_state "$1")
+	while [ "$i" -lt "$IFACE_TRIES" ]; do
+		[ "$i" -gt 0 ] && sleep "$CFUN_SETTLE" 7>&-
+		got=$(exec 7>&-; tg_iface_up_state "$1")
 		[ "$got" = "$2" ] && return 0
 		i=$((i + 1))
 	done
@@ -883,7 +1360,8 @@ tg_action_wifi_on()  { tg_wifi_set up; }
 # without a "disabled" key at all.
 tg_wifi_radios() {
 	local json v radios=0 up=0
-	json=$(timeout "$UBUS_TIMEOUT" ubus call network.wireless status 2>/dev/null) || return 0
+	json=$(exec 7>&-; tg_timeout "$UBUS_TIMEOUT" ubus call network.wireless status \
+		2>/dev/null) || return 0
 	[ -n "$json" ] || return 0
 	for v in $(printf '%s\n' "$json" | jsonfilter -e '@[!(@.disabled=true)].up' 2>/dev/null); do
 		radios=$((radios + 1))
@@ -902,9 +1380,11 @@ tg_wifi_set() { # $1 down or up
 		return 1
 	fi
 	while [ "$i" -lt "$WIFI_TRIES" ]; do
-		timeout "$CMD_TIMEOUT" wifi "$1" >/dev/null 2>&1
-		[ "$WIFI_SETTLE" -gt 0 ] && sleep "$WIFI_SETTLE"
-		state=$(tg_wifi_radios)
+		# Without fd 7: some vendor wifi scripts start the radio daemons themselves,
+		# which would hold the state lock for as long as they run.
+		tg_timeout "$CMD_TIMEOUT" wifi "$1" >/dev/null 2>&1 7>&-
+		[ "$WIFI_SETTLE" -gt 0 ] && sleep "$WIFI_SETTLE" 7>&-
+		state=$(exec 7>&-; tg_wifi_radios)
 		if [ -n "$state" ]; then
 			radios=${state%% *}; up=${state#* }
 			# Nothing to switch off is not a success: the stage would claim an
@@ -934,13 +1414,14 @@ tg_wifi_set() { # $1 down or up
 # way out" from "the only way out is the thing we are about to switch off".
 tg_modem_l3dev() {
 	[ -n "$UPLINK_INTERFACE" ] || return 0
-	timeout "$UBUS_TIMEOUT" ubus call "network.interface.$UPLINK_INTERFACE" status 2>/dev/null \
+	tg_timeout "$UBUS_TIMEOUT" ubus call "network.interface.$UPLINK_INTERFACE" status \
+		2>/dev/null 7>&- \
 		| jsonfilter -e '@.l3_device' 2>/dev/null
 }
 
 tg_default_devs() {
 	tg_have ip || return 0
-	{ ip -4 route show default; ip -6 route show default; } 2>/dev/null \
+	{ ip -4 route show default; ip -6 route show default; } 2>/dev/null 7>&- \
 		| sed -n 's/.* dev \([^ ]*\).*/\1/p'
 }
 
@@ -958,12 +1439,12 @@ tg_uplink_unknown() {
 tg_alt_uplink() {
 	local md dev
 	tg_uplink_unknown && return 0
-	md=$(tg_modem_l3dev)
-	for dev in $(tg_default_devs); do
+	md=$(exec 7>&-; tg_modem_l3dev)
+	for dev in $(exec 7>&-; tg_default_devs); do
 		[ -n "$md" ] && [ "$dev" = "$md" ] && continue
 		return 0
 	done
 	return 1
 }
 
-tg_any_uplink() { tg_uplink_unknown || [ -n "$(tg_default_devs)" ]; }
+tg_any_uplink() { tg_uplink_unknown || [ -n "$(exec 7>&-; tg_default_devs)" ]; }

@@ -8,8 +8,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=thermal-guard
-PKG_VERSION:=2.0.0
-PKG_RELEASE:=1
+PKG_VERSION:=2.1.1.0
+PKG_RELEASE:=2
 
 PKG_LICENSE:=GPL-2.0-only
 PKG_LICENSE_FILES:=LICENSE
@@ -29,7 +29,9 @@ define Package/thermal-guard/description
   Watches SoC and modem temperature and escalates in stages when a router runs
   hot, typically after a fan failure: fan to full speed, modem radio off, Wi-Fi
   off. Stages do not roll back on their own, clearing them is an operator
-  decision, and they survive a reboot. Fan control works either through the
+  decision, and they survive a reboot. One optional exception, off by default:
+  the second stage clears itself when the modem alone caused it and has read
+  cool for a while. Fan control works either through the
   kernel thermal zone or through sysfs PWM, modem temperature through Quectel or
   Fibocom AT commands, a file or a hook script. Warnings are posted to a URL.
   Where the kernel drives the fan, it can lower the fan's trip points while the
@@ -59,6 +61,7 @@ define Package/thermal-guard/install
 	$(INSTALL_BIN) ./files/usr/sbin/thermal-guard $(1)/usr/sbin/thermal-guard
 	$(INSTALL_DATA) ./files/usr/share/thermal-guard/backends.sh $(1)/usr/share/thermal-guard/backends.sh
 	$(INSTALL_DATA) ./files/usr/share/thermal-guard/trips.sh $(1)/usr/share/thermal-guard/trips.sh
+	$(INSTALL_DATA) ./files/usr/share/thermal-guard/modems $(1)/usr/share/thermal-guard/modems
 	$(INSTALL_CONF) ./files/etc/config/thermal-guard $(1)/etc/config/thermal-guard
 	$(INSTALL_BIN) ./files/etc/init.d/thermal-guard $(1)/etc/init.d/thermal-guard
 	$(INSTALL_BIN) ./files/etc/uci-defaults/90-thermal-guard-trip-base $(1)/etc/uci-defaults/

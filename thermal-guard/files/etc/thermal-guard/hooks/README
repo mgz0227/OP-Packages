@@ -22,12 +22,22 @@ delivery that way, and a missing modem-temp hook means no modem reading.
 
   modem-temp    Runs when modem_source is 'command'. Has to print the modem
                 temperature in whole degrees Celsius on stdout, nothing else.
+                A number of more than seven significant digits counts as no
+                reading (leading zeros are dropped first, a minus sign counts).
+
+  modem-model   Runs at start, in cycles with a modem reading, up to three times
+                until it prints a valid model, when modem_source is 'command'
+                or 'file'. Prints the modem model on stdout, for the modem
+                table in /usr/share/thermal-guard/modems. With ModemManager:
+                  mmcli -m any -K | sed -n 's/^modem\.generic\.model *: *//p'
+                Letters, digits, dot, underscore and dash, up to 32 characters.
 
 Every hook runs under a time limit: 15 seconds for notify, stage1 and stage2,
-5 seconds for modem-temp, which runs every cycle. A hook still running then
-gets TERM, and KILL 5 seconds later. It counts as failed: a stage action is
-reported as not carried out, a modem-temp hook as no reading. Keep hooks short;
-a mail or HTTP call inside one needs its own, shorter time limit.
+5 seconds for modem-temp, which runs every cycle, and for modem-model. A hook
+still running then gets TERM, and KILL 5 seconds later. It counts as failed: a
+stage action is reported as not carried out, a modem-temp hook as no reading.
+Keep hooks short; a mail or HTTP call inside one needs its own, shorter time
+limit.
 
 Example, a notify hook for a local mailer:
 

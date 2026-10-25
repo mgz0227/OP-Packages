@@ -23,7 +23,7 @@ msgstr ""
 msgid "Thermal Guard"
 msgstr ""
 
-msgid "Monitors the temperature of the main processor and the modem. If the device gets too hot, it intervenes in up to three protection stages. Stages stay active until you clear them on the status page."
+msgid "Monitors the temperature of the main processor and the modem. If the device gets too hot, it intervenes in up to three protection stages. Stages stay active until you clear them on the status page, unless automatic undo is switched on (Actions tab)."
 msgstr ""
 
 msgid "General"
@@ -56,7 +56,7 @@ msgstr ""
 msgid "Interval"
 msgstr ""
 
-msgid "Seconds between two temperature readings. Values below five seconds are treated as five."
+msgid "Seconds between two temperature readings. From 5 to 300; values outside that range are set to the nearest limit."
 msgstr ""
 
 msgid "Processor temperature source"
@@ -392,7 +392,34 @@ msgstr ""
 msgid "Clearing failed: %s"
 msgstr ""
 
+msgid "Clearing started, the result follows in a moment."
+msgstr ""
+
 msgid "Protection stages cleared."
+msgstr ""
+
+msgid "Protection stages cleared. Still in force from an earlier clear: %s"
+msgstr ""
+
+msgid "Clearing could not undo everything. Still in force: %s"
+msgstr ""
+
+msgid "The daemon is busy with a stage action, try again in a minute."
+msgstr ""
+
+msgid "Clearing was aborted."
+msgstr ""
+
+msgid "The router restarted while clearing, the result is unknown."
+msgstr ""
+
+msgid "The result of this clear is no longer available. See the status and the log."
+msgstr ""
+
+msgid "No result for this clear arrived in time, the outcome is unknown."
+msgstr ""
+
+msgid "Clearing is running, readings resume afterwards."
 msgstr ""
 
 msgid "Temperatures"
@@ -501,4 +528,73 @@ msgid "Raw value per fan step from the device tree, with the duty cycle of the s
 msgstr ""
 
 msgid "step %d: %d (%d %%)"
+msgstr ""
+
+msgid "Empty uses the profile of the detected modem %s (%s): %d °C."
+msgstr ""
+
+msgid "Empty uses %d °C. No profile applies: the modem model is unknown or not in the modem table."
+msgstr ""
+
+msgid "Undo stage 2 of 3 automatically"
+msgstr ""
+
+msgid "Clears stage 2 of 3 on its own once the modem, which alone caused it, has read cool for the set time: at least the hysteresis below its warning level. Stage 3 of 3, stages in which the processor was warm and a custom script always wait for you to clear them."
+msgstr ""
+
+msgid "Cool time before undoing"
+msgstr ""
+
+msgid "Minutes the modem has to read cool without a gap. A missing reading starts the count again."
+msgstr ""
+
+msgid "Automatic undos per day"
+msgstr ""
+
+msgid "At most this many automatic undos in 24 hours. After that the stage stays until you clear it."
+msgstr ""
+
+msgid "Stage 2 of 3 active since %s: %s"
+msgstr ""
+
+msgid "The processor was warm during this incident, so it is not undone automatically. Clear it once the cause is fixed."
+msgstr ""
+
+msgid "The modem had no reading when this stage began, so it is not undone automatically."
+msgstr ""
+
+msgid "A custom script ran, so it is not undone automatically."
+msgstr ""
+
+msgid "No recorded cause, so it is not undone automatically. Clear it once the cause is fixed."
+msgstr ""
+
+msgid "The fan taken over has no usable record, so it is not undone automatically. Check the fan, clear the stage, then run thermal-guard fan-forget on the router."
+msgstr ""
+
+msgid "The action of stage 2 of 3 changed or cannot be undone, so it is not undone automatically."
+msgstr ""
+
+msgid "Automatic undo limit reached (%d in 24 hours), so it stays until you clear it. Clear it once the cause is fixed."
+msgstr ""
+
+msgid "Undone automatically in about %d min if the modem stays cool."
+msgstr ""
+
+msgid "Undone automatically once the modem has read cool for %d min."
+msgstr ""
+
+msgid "Still in force after a clear: %s. Check the device."
+msgstr ""
+
+msgid "Only the fan release can be tried again with Clear. Anything else stays listed here until the next protection stage or a reboot."
+msgstr ""
+
+msgid "Modem model"
+msgstr ""
+
+msgid "%s, profile %s"
+msgstr ""
+
+msgid "%s, no profile"
 msgstr ""

@@ -7,6 +7,10 @@
 'require ui';
 
 var STATUS_FILE = '/var/run/thermal-guard.status';
+// Seconds the page waits for the result of a clear: the daemon's RESET_WAIT
+// for a running cycle, its RESET_BUDGET for the undo, and 60 s for the flush,
+// the fence and admission, the same margin a joining "thermal-guard reset" waits.
+var CLEAR_GIVE_UP = 240 + 200 + 60;
 
 function parseStatus(text) {
 	var st = {};
@@ -88,12 +92,16 @@ function actionLabel(action) {
 	}
 }
 
+// fan_control is the fan the daemon drives now, a recorded one after the
+// settings changed included. Older status files only carry fan_mode.
 function stageText(stage, st) {
 	switch (stage) {
-		case 0: return st.fan_mode === 'none'
+		case 0: return (st.fan_control || st.fan_mode) === 'none'
 			? _('Stage 1 of 3 active: warning, fan left to its own controller')
 			: _('Stage 1 of 3 active: fan at full speed');
-		case 1: return _('Stage 2 of 3 active: %s').format(actionLabel(st.stage1_action));
+		case 1: return num(st.t1)
+			? _('Stage 2 of 3 active since %s: %s').format(fmtClock(st.t1), actionLabel(st.stage1_action))
+			: _('Stage 2 of 3 active: %s').format(actionLabel(st.stage1_action));
 		case 2: return _('Stage 3 of 3 active: %s').format(actionLabel(st.stage2_action));
 		default: return _('No intervention, temperatures within range');
 	}
@@ -124,6 +132,90 @@ function fmtAge(ts) {
 	if (age < 90)
 		return _('%d s ago').format(age);
 	return _('%d min ago').format(Math.round(age / 60));
+}
+
+// Router timestamp as a local wall clock time, for "since" in the banner.
+function fmtClock(ts) {
+	var n = parseInt(ts, 10);
+	return n ? new Date(n * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-';
+}
+
+// What happens next with stage 2 of 3. The daemon decides it (recover_state)
+// from its own state and clock, so the page only words it, and a browser with
+// a wrong clock cannot skew the time (recover_at against now).
+function recoveryText(st) {
+	var at = num(st.recover_at), now = num(st.now);
+	switch (st.recover_state) {
+		case 'cpu':
+			return _('The processor was warm during this incident, so it is not undone automatically. Clear it once the cause is fixed.');
+		case 'nomodem':
+			return _('The modem had no reading when this stage began, so it is not undone automatically.');
+		case 'nocause':
+			return _('No recorded cause, so it is not undone automatically. Clear it once the cause is fixed.');
+		case 'fan':
+			return _('The fan taken over has no usable record, so it is not undone automatically. Check the fan, clear the stage, then run thermal-guard fan-forget on the router.');
+		case 'action':
+			return st.stage1_action === 'command'
+				? _('A custom script ran, so it is not undone automatically.')
+				: _('The action of stage 2 of 3 changed or cannot be undone, so it is not undone automatically.');
+		case 'capped':
+			return _('Automatic undo limit reached (%d in 24 hours), so it stays until you clear it. Clear it once the cause is fixed.').format(num(st.recover_n) || 0);
+		case 'planned':
+			if (at !== null && now !== null)
+				return _('Undone automatically in about %d min if the modem stays cool.').format(Math.max(1, Math.ceil((at - now) / 60)));
+			return _('Undone automatically once the modem has read cool for %d min.').format(num(st.recover_minutes) || 10);
+		case 'cooling':
+			return _('Undone automatically once the modem has read cool for %d min.').format(num(st.recover_minutes) || 10);
+		default:
+			return null;
+	}
+}
+
+// Whether stage 2 of 3 is going to clear itself, which the generic "stays
+// until you clear it" line must not contradict.
+function clearsItself(st) {
+	return st.recover_state === 'planned' || st.recover_state === 'cooling';
+}
+
+// A reset holds the lock, so the daemon writes no status file while it runs. A
+// reset killed from outside leaves "running" for good, so the mark counts only
+// for as long as the page would wait for a clear.
+function clearRunning(st) {
+	var ts = num(st.reset_ts);
+	return st.reset_state === 'running' && ts !== null &&
+		Math.floor(Date.now() / 1000) - ts <= CLEAR_GIVE_UP;
+}
+
+// What the status says about the request the page waits for: null while it
+// says nothing, else its state and its own failure list. Only the boot and the
+// request id identify it, never a time, so a clock step cannot fake a result.
+function clearOutcome(wait, st) {
+	if (!wait.boot || !wait.id || !st)
+		return null;
+	// A new boot has no request record until its first clear, so the daemon's
+	// own boot id tells. Older daemons do not write it.
+	if (st.boot_id && st.boot_id !== wait.boot)
+		return { state: 'restarted' };
+	// No record yet: a snapshot from before the request.
+	if (!st.reset_boot)
+		return null;
+	// Generations and pids start again with every boot, so a record of another
+	// boot tells nothing about this request.
+	if (st.reset_boot !== wait.boot)
+		return { state: 'restarted' };
+	// reset_failed is the warning a later stage empties; the request keeps its
+	// own list. Older daemons publish only the warning.
+	if (st.reset_id === wait.id)
+		return { state: st.reset_state, failed: ('reset_req_failed' in st
+			? st.reset_req_failed : st.reset_failed) || '' };
+	if (st.reset_prev_id === wait.id)
+		return { state: st.reset_prev_state, failed: st.reset_prev_failed || '' };
+	// The record keeps two requests. Both later than this one means its result
+	// was pushed out and will not come back.
+	var gen = num(st.reset_gen), prev = num(st.reset_prev_gen);
+	if (wait.gen !== null && gen !== null && prev !== null && gen > wait.gen && prev > wait.gen)
+		return { state: 'evicted' };
+	return null;
 }
 
 return view.extend({
@@ -168,13 +260,14 @@ return view.extend({
 	},
 
 	update: function(body, text) {
-		if (text === null) {
+		var st = (text === null) ? null : parseStatus(text);
+		this.checkClear(st);
+		if (st === null) {
 			dom.content(body, E('div', { 'class': 'alert-message warning' },
 				_('No data yet. Check whether the Thermal Guard service is running.')));
 			return;
 		}
 
-		var st = parseStatus(text);
 		var cpu = num(st.cpu_c), modem = num(st.modem_c), stage = num(st.stage);
 		var cpuWarn = num(st.cpu_warn), cpuCrit = num(st.cpu_crit);
 		var modemWarn = num(st.modem_warn), modemCrit = num(st.modem_crit);
@@ -190,6 +283,11 @@ return view.extend({
 			rows.push(row(_('Modem temperature'),
 				modem === null ? _('no reading') : '%d °C'.format(modem),
 				gauge(modem, modemWarn, modemCrit, (num(st.modem_crit) || 90) + 10)));
+
+		if (st.modem_model)
+			rows.push(row(_('Modem model'), st.modem_profile
+				? _('%s, profile %s').format(st.modem_model, st.modem_profile)
+				: _('%s, no profile').format(st.modem_model), null));
 
 		extraSensors(st).forEach(function(s) {
 			rows.push(row(s[0], '%d °C'.format(s[1]), gauge(s[1], null, null, 100)));
@@ -212,7 +310,9 @@ return view.extend({
 				(fanPercent !== null) ? gauge(fanPercent, null, null, 100)
 					: ((fanState !== null && fanMax) ? gauge(fanState, null, null, fanMax) : null)));
 
-			if (st.fan_foreign === '1')
+			// A release that did not read back leaves the daemon's own values in
+			// place until the next clear; that is no other service.
+			if (st.fan_foreign === '1' && st.fan_restore_pending !== '1')
 				rows.push(row(_('Fan control'),
 					_('Another service is controlling this fan'), null));
 		}
@@ -242,7 +342,9 @@ return view.extend({
 
 		// A stage that is still applied while nothing is watching is the one
 		// thing an operator has to be told about, so it comes before the rest.
-		if (state !== 'running' && !noSensor)
+		if (state === 'stopped' && (this.clearWait || clearRunning(st)))
+			banner.push(E('div', {}, _('Clearing is running, readings resume afterwards.')));
+		else if (state !== 'running' && !noSensor)
 			banner.push(E('div', {}, state === 'stopped'
 				? (active
 					? _('The service is not running. Protection stages stay applied and the fan is not handed back.')
@@ -255,20 +357,40 @@ return view.extend({
 			banner.push(E('div', {},
 				_('The firmware brings new fan switching temperatures (%s °C). Your own values still apply; review them under System, Thermal Guard, Fan.').format((st.trip_dt || '').replace(/\//g, ', '))));
 
-		if (active)
-			banner.push(E('div', {}, [
-				E('div', {}, _('Protection stages stay active until you clear them. Clear them once the cause is fixed, for example a replaced fan.')),
-				E('button', {
-					'class': 'btn cbi-button cbi-button-reset',
-					'style': 'margin-top:.5em',
-					'click': ui.createHandlerFn(this, 'handleClear')
-				}, _('Clear protection stages'))
-			]));
+		var recovery = recoveryText(st);
+		if (recovery)
+			banner.push(E('div', {}, recovery));
+
+		// The stage is gone but something it did is still in force.
+		var resetFailed = st.reset_failed || '';
+		// A clear without a stage tries the fan release again and nothing else,
+		// so only a failed fan brings the button back.
+		var failedItems = resetFailed.split(',');
+		var fanRetry = failedItems.indexOf('fan') >= 0;
+		var notFan = failedItems.filter(function(t) { return t !== '' && t !== 'fan'; }).length > 0;
+		if (resetFailed)
+			banner.push(E('div', {},
+				_('Still in force after a clear: %s. Check the device.').format(resetFailed)));
+		if (notFan)
+			banner.push(E('div', {},
+				_('Only the fan release can be tried again with Clear. Anything else stays listed here until the next protection stage or a reboot.')));
+
+		if (active || fanRetry) {
+			var clear = [];
+			if (active && !clearsItself(st))
+				clear.push(E('div', {}, _('Protection stages stay active until you clear them. Clear them once the cause is fixed, for example a replaced fan.')));
+			clear.push(E('button', {
+				'class': 'btn cbi-button cbi-button-reset',
+				'style': 'margin-top:.5em',
+				'click': ui.createHandlerFn(this, 'handleClear')
+			}, _('Clear protection stages')));
+			banner.push(E('div', {}, clear));
+		}
 
 		dom.content(body, [
 			E('div', {
 				'class': 'tg-banner ' + ((state !== 'running' || noSensor) ? 'tg-warn-banner'
-					: (active ? 'tg-active' : 'tg-idle'))
+					: (active ? 'tg-active' : (resetFailed ? 'tg-warn-banner' : 'tg-idle')))
 			}, banner),
 			E('div', {}, rows),
 			E('div', { 'class': 'tg-meta' }, [
@@ -280,16 +402,70 @@ return view.extend({
 		]);
 	},
 
-	// Runs "thermal-guard reset": hands the fan back, radio on, stage cleared.
+	// Starts the reset detached: rpcd would kill one that waits for a cycle or
+	// undoes slowly. The result arrives with the status file, see checkClear.
 	handleClear: function() {
-		return fs.exec('/usr/sbin/thermal-guard', [ 'reset' ]).then(function(res) {
-			if (res.code !== 0)
+		return fs.exec('/usr/sbin/thermal-guard', [ 'reset-start' ]).then(L.bind(function(res) {
+			if (res.code !== 0) {
 				ui.addNotification(null, E('p', {}, _('Clearing failed: %s').format(res.stderr || res.stdout || res.code)), 'error');
-			else
-				ui.addNotification(null, E('p', {}, _('Protection stages cleared.')), 'info');
-		}).catch(function(err) {
+				return;
+			}
+			// A start that joined a running clear prints that request, so the
+			// wait is the same either way.
+			var req = parseStatus(res.stdout);
+			this.clearWait = {
+				boot: req.reset_boot || '',
+				id: req.reset_id || '',
+				gen: num(req.reset_gen),
+				until: Date.now() + CLEAR_GIVE_UP * 1000
+			};
+			ui.addNotification(null, E('p', {}, _('Clearing started, the result follows in a moment.')), 'info');
+		}, this)).catch(function(err) {
 			ui.addNotification(null, E('p', {}, _('Clearing failed: %s').format(err)), 'error');
 		});
+	},
+
+	// Called on every poll while a clear runs. Only the request reset-start
+	// named ends the wait, as the current or the previous one in the record;
+	// whatever else the status shows, nothing reads as success.
+	checkClear: function(st) {
+		var wait = this.clearWait;
+		if (!wait)
+			return;
+		var res = clearOutcome(wait, st) || {}, failed = res.failed;
+		var msg, type = 'warning';
+		switch (res.state) {
+			case 'done':
+				type = 'info';
+				// The list also names what an earlier clear left and this one did
+				// not try again: a clear with only those is done, not failed.
+				msg = failed
+					? _('Protection stages cleared. Still in force from an earlier clear: %s').format(failed)
+					: _('Protection stages cleared.');
+				break;
+			case 'failed':
+				msg = _('Clearing could not undo everything. Still in force: %s').format(failed || '-');
+				break;
+			case 'busy':
+				msg = _('The daemon is busy with a stage action, try again in a minute.');
+				break;
+			case 'aborted':
+				msg = _('Clearing was aborted.');
+				break;
+			case 'restarted':
+				msg = _('The router restarted while clearing, the result is unknown.');
+				break;
+			case 'evicted':
+				msg = _('The result of this clear is no longer available. See the status and the log.');
+				break;
+			default:
+				// Starting, running or not in the status yet.
+				if (Date.now() <= wait.until)
+					return;
+				msg = _('No result for this clear arrived in time, the outcome is unknown.');
+		}
+		this.clearWait = null;
+		ui.addNotification(null, E('p', {}, msg), type);
 	},
 
 	handleSave: null,

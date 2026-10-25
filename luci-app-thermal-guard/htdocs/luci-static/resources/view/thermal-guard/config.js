@@ -34,8 +34,14 @@ function tripList(v) {
 	return (v || '').split('/').filter(function(x) { return x !== ''; });
 }
 
+function num(v) {
+	var n = parseInt(v, 10);
+	return isNaN(n) ? null : n;
+}
+
 // The daemon's defaults, from tg_cfg_default_thresholds. An empty field means
-// the daemon uses these, so the order is checked against them as well.
+// the daemon uses these, so the order is checked against them as well. The
+// modem pair is replaced by the detected modem's profile in render().
 var THRESHOLD_DEFAULTS = {
 	cpu_warn: 70, cpu_crit: 80, cpu_emergency: 90, modem_warn: 80, modem_crit: 88
 };
@@ -94,8 +100,23 @@ return view.extend({
 		    tripDt = tripList(st.trip_dt),
 		    tripLimit = parseInt(st.trip_limit, 10);
 
+		// Empty modem fields take the profile of the detected modem, so the
+		// order checks and the placeholders use its values, as the daemon does.
+		var profileWarn = num(st.modem_profile_warn), profileCrit = num(st.modem_profile_crit);
+		if (profileWarn !== null && profileCrit !== null) {
+			THRESHOLD_DEFAULTS.modem_warn = profileWarn;
+			THRESHOLD_DEFAULTS.modem_crit = profileCrit;
+		}
+		var modemHint = function(option) {
+			return st.modem_profile
+				? _('Empty uses the profile of the detected modem %s (%s): %d °C.').format(
+					st.modem_model, st.modem_profile, THRESHOLD_DEFAULTS[option])
+				: _('Empty uses %d °C. No profile applies: the modem model is unknown or not in the modem table.').format(
+					THRESHOLD_DEFAULTS[option]);
+		};
+
 		m = new form.Map('thermal-guard', _('Thermal Guard'),
-			_('Monitors the temperature of the main processor and the modem. If the device gets too hot, it intervenes in up to three protection stages. Stages stay active until you clear them on the status page.'));
+			_('Monitors the temperature of the main processor and the modem. If the device gets too hot, it intervenes in up to three protection stages. Stages stay active until you clear them on the status page, unless automatic undo is switched on (Actions tab).'));
 
 		s = m.section(form.NamedSection, 'main', 'thermal-guard');
 		s.addremove = false;
@@ -114,8 +135,8 @@ return view.extend({
 		o.rmempty = false;
 
 		o = s.taboption('general', form.Value, 'interval', _('Interval'),
-			_('Seconds between two temperature readings. Values below five seconds are treated as five.'));
-		o.datatype = 'and(uinteger,min(5))';
+			_('Seconds between two temperature readings. From 5 to 300; values outside that range are set to the nearest limit.'));
+		o.datatype = 'and(uinteger,range(5,300))';
 		o.placeholder = '20';
 
 		o = s.taboption('general', form.Value, 'cpu_temp_path', _('Processor temperature source'),
@@ -145,26 +166,28 @@ return view.extend({
 			return checkOrder(this.section, id, 'cpu_emergency', v, 'cpu_crit', null, _('Processor critical'), null);
 		};
 
-		o = s.taboption('thresholds', form.Value, 'modem_warn', _('Modem warning (stage 1 of 3)'));
-		o.placeholder = '80';
+		o = s.taboption('thresholds', form.Value, 'modem_warn', _('Modem warning (stage 1 of 3)'),
+			modemHint('modem_warn'));
+		o.placeholder = String(THRESHOLD_DEFAULTS.modem_warn);
 		o.validate = function(id, v) {
 			return checkOrder(this.section, id, 'modem_warn', v, null, 'modem_crit', null, _('Modem critical'));
 		};
 
-		o = s.taboption('thresholds', form.Value, 'modem_crit', _('Modem critical (stage 2 of 3)'));
-		o.placeholder = '88';
+		o = s.taboption('thresholds', form.Value, 'modem_crit', _('Modem critical (stage 2 of 3)'),
+			modemHint('modem_crit'));
+		o.placeholder = String(THRESHOLD_DEFAULTS.modem_crit);
 		o.validate = function(id, v) {
 			return checkOrder(this.section, id, 'modem_crit', v, 'modem_warn', null, _('Modem warning'), null);
 		};
 
 		o = s.taboption('thresholds', form.Value, 'hold_minutes', _('Hold time'),
 			_('Minutes a stage has to last before the next one starts on time alone: stage 2 of 3 if the temperature has not dropped, stage 3 of 3 if it is still rising.'));
-		o.datatype = 'uinteger';
+		o.datatype = 'and(uinteger,range(1,60))';
 		o.placeholder = '3';
 
 		o = s.taboption('thresholds', form.Value, 'hysteresis', _('Hysteresis'),
 			_('How many degrees the temperature has to fall below the warning level before the device counts as cooled down.'));
-		o.datatype = 'uinteger';
+		o.datatype = 'and(uinteger,range(0,40))';
 		o.placeholder = '10';
 
 		// ---- fan ----
@@ -238,7 +261,7 @@ return view.extend({
 
 		o = s.taboption('fan', form.Value, 'trip_boost_offset', _('Modem allowance'),
 			_('Degrees the modem may run above the processor before the switching temperatures are lowered.'));
-		o.datatype = 'range(0,40)';
+		o.datatype = 'and(uinteger,range(0,40))';
 		o.placeholder = '15';
 		o.depends('trip_boost', 'modem');
 
@@ -369,6 +392,30 @@ return view.extend({
 		o = s.taboption('actions', form.DummyValue, '_stage1_hook', _('Script at stage 2 of 3'),
 			_('Runs /etc/thermal-guard/hooks/stage1. Place the file over SSH and make it executable.'));
 		o.depends('stage1_action', 'command');
+
+		o = s.taboption('actions', form.Flag, 'auto_recover', _('Undo stage 2 of 3 automatically'),
+			_('Clears stage 2 of 3 on its own once the modem, which alone caused it, has read cool for the set time: at least the hysteresis below its warning level. Stage 3 of 3, stages in which the processor was warm and a custom script always wait for you to clear them.'));
+		o.default = '0';
+		// Hidden while stage 2 of 3 runs a script; switching the action there
+		// and back must not delete the recovery settings.
+		o.retain = true;
+		[ 'modem_radio_off', 'wifi_off', 'interface_down', 'none' ].forEach(function(a) {
+			o.depends('stage1_action', a);
+		});
+
+		o = s.taboption('actions', form.Value, 'recover_minutes', _('Cool time before undoing'),
+			_('Minutes the modem has to read cool without a gap. A missing reading starts the count again.'));
+		o.datatype = 'and(uinteger,range(5,120))';
+		o.placeholder = '10';
+		o.retain = true;
+		o.depends('auto_recover', '1');
+
+		o = s.taboption('actions', form.Value, 'recover_max', _('Automatic undos per day'),
+			_('At most this many automatic undos in 24 hours. After that the stage stays until you clear it.'));
+		o.datatype = 'and(uinteger,range(1,10))';
+		o.placeholder = '3';
+		o.retain = true;
+		o.depends('auto_recover', '1');
 
 		o = s.taboption('actions', form.ListValue, 'stage2_action', _('Action at stage 3 of 3'));
 		o.value('wifi_off', _('Switch Wi-Fi off'));

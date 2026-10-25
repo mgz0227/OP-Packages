@@ -11,16 +11,19 @@
 #
 # Stages never roll back on their own. Cooling down is reported, but the operator
 # decides when the box is safe again ("thermal-guard reset"). That is deliberate:
-# a fan that failed once will fail again, and a silent recovery hides it.
+# a fan that failed once will fail again, and a silent recovery hides it. One
+# exception, off by default: auto_recover clears stage 1 when the modem alone
+# caused it and has read cool for recover_minutes, a few times a day at most.
 #
-# Usage: thermal-guard daemon|status|reset|test <cpu> <modem>|selftest|-V
+# Usage: thermal-guard daemon|status|reset|reset-start|trips-keep|fan-forget|test <cpu> <modem>|
+#        selftest|-V
 #
 # "test" is a dry run: it reports what the current state plus those readings
 # would decide, and runs and writes nothing. Safe on a live box.
 
 set -u
 
-THERMAL_GUARD_VERSION="2.0.0"
+THERMAL_GUARD_VERSION="2.1.1.0"
 TAG=thermal-guard
 STATE_DIR="${STATE_DIR:-/var/run/thermal-guard}"
 STATE="$STATE_DIR/state"
@@ -34,12 +37,18 @@ OUTBOX="$STATE_DIR/outbox"
 EVLOG="$STATE_DIR/log"
 STATUS_FILE="${STATUS_FILE:-/var/run/thermal-guard.status}"
 LIB_DIR="${LIB_DIR:-/usr/share/thermal-guard}"
+# Default modem limits per model, shipped with the package. Environment only:
+# UCI cannot name a file the daemon reads.
+MODEM_TABLE="${MODEM_TABLE:-$LIB_DIR/modems}"
 
 # Tests point these at a planted tree. Environment only, UCI cannot move them.
 THERMAL_ROOT="${THERMAL_ROOT:-/sys/class/thermal}"
 DT_ROOT="${DT_ROOT:-/sys/firmware/devicetree/base}"
 NET_ROOT="${NET_ROOT:-/sys/class/net}"
 HWMON_ROOT="${HWMON_ROOT:-/sys/class/hwmon}"
+# Where fan device links resolve to, and the id of this boot.
+DEVICES_ROOT="${DEVICES_ROOT:-/sys/devices}"
+BOOT_ID_FILE="${BOOT_ID_FILE:-/proc/sys/kernel/random/boot_id}"
 TG_FUNCTIONS="${TG_FUNCTIONS:-/lib/functions.sh}"
 # Only for tests, which point it at a stand-in so no line reaches the host's
 # syslog. A BusyBox that prefers its applets would bypass one on PATH.
@@ -49,14 +58,28 @@ TG_LOGGER="${TG_LOGGER:-logger}"
 AT_WAIT="${AT_WAIT:-10}"; AT_TIMEOUT="${AT_TIMEOUT:-5}"; AT_NO_TIMEOUT_TOLD=0
 # Seconds a notification post without curl may take, DNS lookup included.
 HTTP_TIMEOUT="${HTTP_TIMEOUT:-20}"
-# Seconds for wifi, ifdown and ifup, and for a hook. A hook that ignores TERM
-# is killed 5 s later.
-CMD_TIMEOUT="${CMD_TIMEOUT:-15}"; HOOK_TIMEOUT="${HOOK_TIMEOUT:-15}"
+# Seconds for wifi, ifdown, ifup and sync, and for a hook. Whatever ignores
+# TERM at its time limit gets KILL KILL_AFTER seconds later.
+CMD_TIMEOUT="${CMD_TIMEOUT:-15}"; HOOK_TIMEOUT="${HOOK_TIMEOUT:-15}"; KILL_AFTER=5
 # Seconds for a ubus call. netifd answers late while wifi down runs, and the
 # readback must not hang on exactly what it checks.
 UBUS_TIMEOUT="${UBUS_TIMEOUT:-5}"
-# Seconds between attempts when an action is read back.
-CFUN_SETTLE=2
+# Seconds a reset waits for a running cycle. Longer than the slowest one, fan,
+# modem and Wi-Fi retries included. Environment only.
+RESET_WAIT="${RESET_WAIT:-240}"
+case "$RESET_WAIT" in ''|*[!0-9]*|???????*) RESET_WAIT=240 ;; esac
+# Seconds a reset may spend undoing, once it holds the lock. An undo that might
+# not end in time is skipped and listed as not undone. The daemon alerts when a
+# holder keeps the lock longer. Environment only.
+RESET_BUDGET="${RESET_BUDGET:-200}"
+case "$RESET_BUDGET" in ''|*[!0-9]*|???????*) RESET_BUDGET=200 ;; esac
+# Seconds a reset request waits for admission. Its holders only read and
+# rename small files, so a wait this long means one of them hangs.
+# Environment only.
+ADMIT_WAIT="${ADMIT_WAIT:-10}"
+case "$ADMIT_WAIT" in ''|*[!0-9]*|???????*) ADMIT_WAIT=10 ;; esac
+# Seconds between attempts when an action is read back, and the attempts.
+CFUN_SETTLE=2; CFUN_TRIES=3; IFACE_TRIES=3
 # Wi-Fi restarts hostapd per radio, which takes longer than a modem answers.
 WIFI_SETTLE="${WIFI_SETTLE:-5}"; WIFI_TRIES=5
 # What the fan is read from, set by tg_fan_detect. FAN_MODE says what may be
@@ -69,7 +92,12 @@ FAN_VIEW=none
 tg_cfg_defaults() {
 	ENABLED=1; INTERVAL=20
 	tg_cfg_default_thresholds
+	# What UCI says about the modem pair, kept apart so tg_cfg_thresholds can
+	# tell an operator's value from the profile's. Empty means unset.
+	UCI_MODEM_WARN=""; UCI_MODEM_CRIT=""
 	HOLD_MINUTES=3; HYSTERESIS=10
+	# Off unless asked for: by default stages wait for a reset.
+	AUTO_RECOVER=0; RECOVER_MINUTES=10; RECOVER_MAX=3
 	CPU_TEMP_PATH="$THERMAL_ROOT/thermal_zone0/temp"
 	# Hands off the fan unless told otherwise: most boards that have one also
 	# have a regulator for it, and this is not meant to compete.
@@ -119,15 +147,31 @@ PWM_PATH_TOLD=""
 NOTIFY_TOLD=""
 # The fan_governor value last rejected, so it is said once until it changes.
 GOVERNOR_TOLD=""
+# Rejected enumeration and range values as "option=value " pairs, said once each.
+ENUM_TOLD=""
+# Set while a failed chmod of the curl config has been reported.
+NOTIFY_CHMOD_TOLD=0
 # Set once wifi_off has been checked against netifd, cleared when no stage
 # uses it any more, so adding it again checks again.
 WIFI_CHECKED=0
 # Set once a failed persist has been reported, until the next one succeeds.
-PERSIST_TOLD=0
+# LEDGER_TOLD does the same for the recovery count. LEDGER_UNFLUSHED is set
+# while the count file is in place but its flush failed.
+PERSIST_TOLD=0; LEDGER_TOLD=0; LEDGER_UNFLUSHED=0
 # Set once a missing ip or flock has been reported.
 IP_TOLD=0; FLOCK_TOLD=0
 # The fetcher that was told it cannot send notify_header.
 NOTIFY_HEADER_TOLD=""
+# The detected modem, the attempts that got a reading but no model, and the
+# profile found for it. PROFILE_MODEL is the model the profile was looked up
+# for, so tg_cfg, which runs every cycle, reads the table once per model.
+MODEM_MODEL=""; MODEL_TRIES=0
+PROFILE_MODEL=""; PROFILE_MATCH=""; PROFILE_WARN=""; PROFILE_CRIT=""
+# Where each modem limit came from: default, profile or uci.
+MODEM_WARN_SRC=default; MODEM_CRIT_SRC=default
+# The implausible values last reported, so each is said once.
+MODEM_THR_TOLD=""; CPU_THR_TOLD=""
+RECOVER_CFG_TOLD=""
 # Set by tg_daemon. Only the long running process narrates the configuration;
 # status, reset and test run the same checks but stay quiet about them.
 DAEMON=0
@@ -138,27 +182,249 @@ DAEMON=0
 . "$LIB_DIR/trips.sh"
 
 # ---- state -----------------------------------------------------------------
+# The stage 1 action names the state may hold. Anything else is no action at
+# all, so a junk value can neither reach the state file nor allow a recovery.
+tg_action_name() { # $1 action
+	case "$1" in
+		modem_radio_off|wifi_off|interface_down|command|none) echo "$1" ;;
+		*) echo "" ;;
+	esac
+}
+
 tg_state_clear() {
+	tg_state_clear_but_fan
+	tg_fan_record_drop
+}
+
+# Everything but the fan takeover record, which lives in the state so it
+# survives a daemon restart (see tg_fan_record_drop).
+tg_state_clear_but_fan() {
 	STAGE=-1; T0=0; T1=0; T2=0
 	# Readings at stage entry, empty where that reading was missing.
 	REF_CPU0=""; REF_MODEM0=""; REF_CPU1=""; REF_MODEM1=""
 	PENDING=-1; PENDING_N=0; COOLED=0
+	# Automatic recovery: who drove stage 1 and which action it ran, since when
+	# the readings are cool, and the 24 hour window with its count and whether
+	# its cap was reported.
+	CAUSE1=""; ACTION1=""; COOL_SINCE=0; RECOVER_WIN=0; RECOVER_N=0; RECOVER_TOLD=0
+	# What each stage ran and, for interface_down, which interface it took down,
+	# so a reset undoes that and not whatever the options say by then.
+	IFACE1=""; ACTION2=""; IFACE2=""
+	# What the last reset could not undo, comma separated. Survives that reset's
+	# own clear (tg_reset sets it after), ends with the next stage entry.
+	RESET_FAILED=""
+	# 1 once the processor read at or above cpu_warn at any point of the incident.
+	CPU_SEEN=0
 	LAST_CPU=""; LAST_MODEM=""; LAST_MODEM_SRC=""; LAST_TS=0
-	# What the fan was doing before we took it over, so the release can put it
-	# back. Lives in the state so it survives a daemon restart. POLICY is the
-	# thermal zone governor for cooling_device mode, the other two are the pwm
-	# chip's manual mode and duty cycle.
-	FAN_SAVED_ENABLE=""; FAN_SAVED_PWM=""; FAN_SAVED_POLICY=""
 	# Counts resets. The daemon compares it to spot a reset that happened while
 	# it was busy deciding. tg_reset restores the old value after clearing.
 	GEN=0
 }
 tg_state_clear
+# A fan record from another boot was dropped at load, said when that is saved.
+# RESTORING is set while a restore reapplies its stages.
+FAN_DISCARDED=0; RESTORING=0
 DECISION=none
+UNDO_FAILED=""
+# The reset request record as tg_reset_read found it: the current request, the
+# process that reserved it and its worker (pid and start time each), and the
+# request before it in this boot.
+RESET_BOOT=""; RESET_ID=""; RESET_GEN=""; RESET_STATE=""; RESET_TS=""; RESET_KIND=""
+RESET_REC_FAILED=""; RESET_RPID=""; RESET_RSTART=""; RESET_WPID=""; RESET_WSTART=""
+RESET_PREV_ID=""; RESET_PREV_GEN=""; RESET_PREV_STATE=""; RESET_PREV_FAILED=""; RESET_PREV_TS=""
+# The request this process runs or joined, and one a new request found dead.
+REQ_BOOT=""; REQ_GEN=""; REQ_ID=""; REQ_TS=""; REQ_JOINED=0; REQ_ABORTED=""
+PROC_START=""
 FROM_STAGE=0
 DRY=0
 MODEM_VAL=""
 MODEM_SRC=""
+
+# Reset and the daemon cycle both change the state and the hardware, so they
+# take turns: an exclusive flock on fd 7 of the running shell, where a subshell
+# would lose the globals. Only the holder writes the state file, the status file
+# or the hardware, and without a lock nobody does. LOCK_OK is empty until
+# opened, 1 open, 0 when it cannot be, with LOCK_ERR saying why.
+LOCK_OK=""; LOCK_ERR=""
+# The holder a blocked daemon cycle last found (its pid in lock.owner), since
+# when on the uptime, and the alerts sent for it.
+BLOCK_HOLDER=""; BLOCK_SINCE=""; BLOCK_TOLD=""
+MY_PID=$$
+
+# $$ is the parent's PID in a subshell, where the page's reset runs. The shell
+# reads /proc/self itself here, no fork in between.
+tg_my_pid() {
+	local p="" rest=""
+	[ -r /proc/self/stat ] && read -r p rest < /proc/self/stat
+	case "$p" in ''|*[!0-9]*) p=$$ ;; esac
+	MY_PID=$p
+}
+
+# A process is its pid and its start time, field 22 of its stat, so a pid the
+# kernel has given to another process does not count as the same one. Counted
+# after the last ")", the name before it may hold spaces and parentheses. A
+# zombie has ended and gets no start time.
+tg_stat_start() { # $1 stat line; sets PROC_START
+	local rest
+	PROC_START=""
+	case "$1" in *")"*) ;; *) return 0 ;; esac
+	rest=${1##*)}
+	# shellcheck disable=SC2086 # split into its fields on purpose
+	set -- $rest
+	case "${1:-}" in ''|Z|X|x) return 0 ;; esac
+	[ "$#" -ge 20 ] || return 0
+	shift 19
+	PROC_START=$(tg_int "$1")
+}
+
+tg_proc_start() { # $1 pid; sets PROC_START, empty for a process that is gone
+	local l=""
+	PROC_START=""
+	case "$1" in ''|*[!0-9]*) return 0 ;; esac
+	{ read -r l < "/proc/$1/stat"; } 2>/dev/null || return 0
+	tg_stat_start "$l"
+}
+
+tg_proc_is() { # $1 pid, $2 start time
+	[ -n "$2" ] || return 1
+	tg_proc_start "$1"
+	[ "$PROC_START" = "$2" ]
+}
+
+# Whole seconds since boot. Unlike the clock it never steps, so a timer on it
+# measures what it says. The clock where it cannot be read.
+tg_uptime() { # $1 file, /proc/uptime by default
+	local f="${1:-/proc/uptime}" u="" rest=""
+	[ -r "$f" ] && read -r u rest < "$f"
+	u=$(tg_int "${u%%.*}")
+	[ -n "$u" ] || u=$(date +%s)
+	echo "$u"
+}
+
+# Opens $2 on descriptor $1 for flock: 1 without flock, 2 where the file cannot
+# be opened. The kernel drops a flock only when the last descriptor on its open
+# file closes, so whatever starts while one is held must not inherit it.
+tg_lock_fd_open() { # $1 descriptor 3 to 9, $2 lock file
+	case "$1" in [3-9]) ;; *) return 2 ;; esac
+	tg_have flock || return 1
+	mkdir -p "${2%/*}" 2>/dev/null 7>&-
+	# command: a failed redirection must not end the shell. eval only sees the
+	# digit checked above, the file name stays a variable.
+	{ eval "command exec $1>\"\$2\""; } 2>/dev/null || return 2
+}
+
+# Never waits.
+tg_lock_fd_take() { # $1 descriptor
+	flock -n -x "$1" 2>/dev/null
+}
+
+tg_lock_open() {
+	local rc=0
+	[ -n "$LOCK_OK" ] && { [ "$LOCK_OK" = 1 ]; return; }
+	tg_lock_fd_open 7 "$STATE_DIR/lock" || rc=$?
+	case "$rc" in
+		0) LOCK_OK=1; return 0 ;;
+		1) LOCK_ERR="no flock command, the state lock cannot be taken" ;;
+		*) LOCK_ERR="cannot open $STATE_DIR/lock, the state lock cannot be taken" ;;
+	esac
+	LOCK_OK=0
+	return 1
+}
+
+# Never waits. 0 taken, 1 held by another process, 2 no lock to take.
+tg_lock_take() {
+	tg_lock_open || return 2
+	tg_lock_fd_take 7 || return 1
+	# A file of its own: opening the lock file truncates it. The daemon tells
+	# one holder from the next by this.
+	tg_my_pid
+	printf '%s\n' "$MY_PID" 2>/dev/null > "$STATE_DIR/lock.owner"
+	return 0
+}
+
+# BusyBox flock cannot wait with a limit, so poll once a second. Returns at
+# once with 2 where there is no lock to wait for.
+tg_lock_wait() { # $1 seconds
+	local n=0 rc
+	while :; do
+		rc=0; tg_lock_take || rc=$?
+		case "$rc" in 0|2) return "$rc" ;; esac
+		[ "$n" -lt "$1" ] || return 1
+		sleep 1
+		n=$((n + 1))
+	done
+}
+
+tg_lock_drop() {
+	[ "$LOCK_OK" = 1 ] && flock -u 7 2>/dev/null
+	return 0
+}
+
+# Admission to the reset request record, reset.admit on fd 6. A leaf lock: its
+# holder reads and writes small files with shell builtins, forks the detached
+# reset and runs no command but the rename of a record and the unlock; it never
+# waits for anything and never takes the state lock. A reset takes it while
+# holding the state lock, never the other way round, so the two cannot wait for
+# each other. fd 6 is open only while it is held, and what runs meanwhile gets
+# it closed, but for the rename of a record (tg_reset_put). 0 taken, 1 not
+# within ADMIT_WAIT, 2 no lock to take.
+tg_admit_take() {
+	local n=0
+	tg_lock_fd_open 6 "$STATE_DIR/reset.admit" || return 2
+	while ! flock -n -x 6 2>/dev/null 7>&-; do
+		if [ "$n" -ge "$ADMIT_WAIT" ]; then
+			exec 6>&-
+			return 1
+		fi
+		sleep 1 6>&- 7>&-
+		n=$((n + 1))
+	done
+}
+
+# Unlocks before closing: the detached reset inherits fd 6 and may not have
+# closed its copy yet, which would keep the lock held.
+tg_admit_drop() {
+	flock -u 6 2>/dev/null 7>&-
+	exec 6>&-
+}
+
+# The daemon neither waits nor goes on without the lock. A held lock has a live
+# holder, a reset as a rule, which may still write, however long it takes.
+tg_daemon_lock() {
+	tg_lock_take || return 1
+	BLOCK_HOLDER=""; BLOCK_SINCE=""; BLOCK_TOLD=""
+}
+
+# A cycle that found the lock held measures and alerts, nothing more. Once per
+# holder and level: held past RESET_BUDGET, a reading at a crit threshold, the
+# CPU at emergency, which stands for crit too. tg_notify queues what it cannot
+# deliver, so a failed post never turns into cycle work.
+tg_blocked() { # $1 cpu, $2 modem, $3 uptime
+	local owner held what="blocked by a reset while"
+	owner=$(tg_int "$(head -n1 "$STATE_DIR/lock.owner" 2>/dev/null)")
+	if [ -z "$BLOCK_SINCE" ] || [ "$owner" != "$BLOCK_HOLDER" ]; then
+		BLOCK_HOLDER=$owner; BLOCK_SINCE=$3; BLOCK_TOLD=""
+	fi
+	held=$(($3 - BLOCK_SINCE))
+	[ "$held" -gt "$RESET_BUDGET" ] && tg_blocked_alert budget \
+		"blocked by a reset for $held s, no action taken (cpu ${1:-?} C, modem ${2:-?} C)"
+	if [ -n "$1" ] && [ "$1" -ge "$CPU_EMERGENCY" ]; then
+		tg_blocked_alert emergency \
+			"$what the CPU is at $1 C, its emergency threshold, no action taken"
+		BLOCK_TOLD="$BLOCK_TOLD crit"
+	elif [ -n "$1" ] && [ "$1" -ge "$CPU_CRIT" ]; then
+		tg_blocked_alert crit "$what cpu is at $1 C, above its crit threshold, no action taken"
+	elif [ -n "$2" ] && [ "$2" -ge "$MODEM_CRIT" ]; then
+		tg_blocked_alert crit "$what modem is at $2 C, above its crit threshold, no action taken"
+	fi
+	return 0
+}
+
+tg_blocked_alert() { # $1 level, $2 text
+	case " $BLOCK_TOLD " in *" $1 "*) return 0 ;; esac
+	BLOCK_TOLD="$BLOCK_TOLD $1"
+	tg_notify blocked "$2"
+}
 
 # ---- decision logic, pure: touches variables only, no side effects ---------
 #
@@ -201,12 +467,119 @@ tg_candidate() {
 	echo "$c"
 }
 
+# Who drove stage 1: the modem alone, or anything involving the processor. A
+# missing modem reading counts as cpu, so recovery never rests on a guess.
+tg_cause1() { # $1 cpu, $2 modem
+	if [ -n "$2" ] && [ "$2" -ge "$MODEM_WARN" ] && { [ -z "$1" ] || [ "$1" -lt "$CPU_WARN" ]; }; then
+		echo modem
+	else
+		echo cpu
+	fi
+}
+
+# Marks the incident as processor involved. CAUSE1 only sees the readings at
+# stage 1 entry, this sees every cycle of an active stage.
+tg_cpu_seen() { # $1 cpu
+	[ "$STAGE" -ge 0 ] && [ -n "$1" ] && [ "$1" -ge "$CPU_WARN" ] && CPU_SEEN=1
+	return 0
+}
+
+# Whether stage 1 is the kind that may clear itself: switched on, caused by
+# the modem alone, the processor never warm during the incident, an action
+# that can be undone, and a fan record that can be handed back. An unresolved
+# one fails every release, and each try would switch the modem on and off.
+tg_recover_applies() {
+	[ "$AUTO_RECOVER" = 1 ] && [ "$STAGE" -eq 1 ] && [ "$CAUSE1" = modem ] &&
+		[ "$CPU_SEEN" = 0 ] && [ "$FAN_UNRESOLVED" = 0 ] && tg_recover_action_ok
+}
+
+# The action recorded at entry has a confirmed undo and is still the one
+# configured. A hook has no undo, and undoing an action other than the one
+# that ran would leave that one in force while the stage reads cleared.
+tg_recover_action_ok() {
+	[ "$ACTION1" = "$STAGE1_ACTION" ] || return 1
+	case "$ACTION1" in
+		modem_radio_off|wifi_off|interface_down|none) return 0 ;;
+	esac
+	return 1
+}
+
+# Once the cap blocked a recovery, the stage stays until a reset, whatever the
+# window does later. Before that, a count at the max holds within its window.
+tg_recover_capped() { # $1 now
+	[ "$RECOVER_TOLD" = 1 ] && return 0
+	[ "$RECOVER_N" -ge "$RECOVER_MAX" ] && [ "$RECOVER_WIN" -gt 0 ] &&
+		[ $(($1 - RECOVER_WIN)) -lt 86400 ]
+}
+
+# What the page says about the recovery of stage 1, decided here so the
+# browser has nothing to derive. Empty where no recovery is in question.
+tg_recover_state() { # $1 now
+	[ "$STAGE" -eq 1 ] && [ "$AUTO_RECOVER" = 1 ] || return 0
+	[ "$CPU_SEEN" = 1 ] && { echo cpu; return 0; }
+	# Judged cpu at entry with the processor never warm: the modem had no reading.
+	case "$CAUSE1" in
+		cpu) echo nomodem; return 0 ;;
+		'') echo nocause; return 0 ;;
+	esac
+	[ "$FAN_UNRESOLVED" = 1 ] && { echo fan; return 0; }
+	if ! tg_recover_action_ok; then
+		echo action
+	elif tg_recover_capped "$1"; then
+		echo capped
+	elif [ "$COOL_SINCE" -gt 0 ]; then
+		echo planned
+	else
+		echo cooling
+	fi
+}
+
+# DECISION=recover once the readings have been cool for recover_minutes, or
+# recover_capped the first time the cap alone holds it back. A missing reading
+# is not cool here, unlike for the cooled report: recovery turns a radio back
+# on and must not do that blind. A board without any sensor has no processor
+# reading to wait for, so there the modem alone decides.
+tg_recover_check() { # $1 cpu, $2 modem, $3 now
+	tg_recover_applies || { COOL_SINCE=0; return 1; }
+	# The cap latches: a new window does not reopen a stage it once held.
+	[ "$RECOVER_TOLD" = 1 ] && { COOL_SINCE=0; return 1; }
+	if [ -z "$2" ] || [ "$2" -gt $((MODEM_WARN - HYSTERESIS)) ] ||
+		{ [ -z "$1" ] && [ "$NO_SENSOR" = 0 ]; } ||
+		{ [ -n "$1" ] && [ "$1" -gt $((CPU_WARN - HYSTERESIS)) ]; }; then
+		COOL_SINCE=0
+		return 1
+	fi
+	# A gap is not a cool streak: a pause, a restart or a clock step starts over.
+	[ "$LAST_TS" -gt 0 ] && [ "$3" -ge "$LAST_TS" ] &&
+		[ $(($3 - LAST_TS)) -le $((INTERVAL * 3 + 60)) ] || COOL_SINCE=0
+	[ "$COOL_SINCE" -gt 0 ] || COOL_SINCE=$3
+	[ $(($3 - COOL_SINCE)) -ge $((RECOVER_MINUTES * 60)) ] || return 1
+	if [ "$RECOVER_WIN" -eq 0 ] || [ $(($3 - RECOVER_WIN)) -ge 86400 ]; then
+		RECOVER_WIN=$3; RECOVER_N=0
+	fi
+	if [ "$RECOVER_N" -ge "$RECOVER_MAX" ]; then
+		RECOVER_TOLD=1; DECISION=recover_capped
+		return 0
+	fi
+	DECISION=recover
+	return 0
+}
+
 tg_enter_stage() { # $1 stage, $2 cpu, $3 modem, $4 now
 	case "$1" in
 		0) T0=$4; REF_CPU0=${2:-}; REF_MODEM0=${3:-} ;;
-		1) T1=$4; REF_CPU1=${2:-}; REF_MODEM1=${3:-} ;;
-		2) T2=$4 ;;
+		1)
+			T1=$4; REF_CPU1=${2:-}; REF_MODEM1=${3:-}; CAUSE1=$(tg_cause1 "$2" "$3")
+			# A recovery and a reset undo what ran, even if the options change meanwhile.
+			ACTION1=$(tg_action_name "$STAGE1_ACTION"); IFACE1=$(tg_action_iface "$ACTION1")
+			;;
+		2)
+			T2=$4
+			ACTION2=$(tg_action_name "$STAGE2_ACTION"); IFACE2=$(tg_action_iface "$ACTION2")
+			;;
 	esac
+	# A failed reset stays visible until something new happens.
+	RESET_FAILED=""
 	STAGE=$1
 }
 
@@ -225,6 +598,8 @@ tg_decide() { # $1 cpu, $2 modem, $3 now -> DECISION
 	c=$(tg_candidate "$cpu" "$modem" "$now")
 
 	if [ "$c" -gt "$STAGE" ]; then
+		# A hit toward a higher stage is not cool, whatever came before.
+		COOL_SINCE=0
 		if [ "$c" -eq "$PENDING" ]; then
 			PENDING_N=$((PENDING_N + 1))
 		else
@@ -239,10 +614,14 @@ tg_decide() { # $1 cpu, $2 modem, $3 now -> DECISION
 			PENDING=-1; PENDING_N=0; COOLED=0
 			DECISION="stage:$c"
 		fi
+		tg_cpu_seen "$cpu"
 		return 0
 	fi
 
 	PENDING=-1; PENDING_N=0
+	tg_cpu_seen "$cpu"
+
+	tg_recover_check "$cpu" "$modem" "$now" && return 0
 
 	# Cooling down is reported once. Nothing is taken back, a missing reading counts as cool.
 	if [ "$STAGE" -ge 0 ] && [ "$COOLED" = 0 ]; then
@@ -265,10 +644,13 @@ tg_log() {
 		*) prio=info ;;
 	esac
 	# Never let logging fail a caller, not even where logger is missing.
-	"$TG_LOGGER" -t "$TAG" -p "daemon.$prio" "$1" 2>/dev/null
+	"$TG_LOGGER" -t "$TAG" -p "daemon.$prio" "$1" 2>/dev/null 7>&-
 	mkdir -p "$STATE_DIR"
 	printf '%s %s\n' "$(date '+%F %T')" "$1" >> "$EVLOG"
-	[ "$(wc -l < "$EVLOG")" -gt 50 ] && { tail -n 50 "$EVLOG" > "$EVLOG.tmp" && mv "$EVLOG.tmp" "$EVLOG"; }
+	# A temp name of its own: a reset request logs without the state lock.
+	tg_my_pid
+	[ "$(wc -l < "$EVLOG")" -gt 50 ] && { tail -n 50 "$EVLOG" > "$EVLOG.tmp.$MY_PID" &&
+		mv "$EVLOG.tmp.$MY_PID" "$EVLOG"; }
 	return 0
 }
 
@@ -295,13 +677,14 @@ tg_notify_send() { # $1 text
 	tg_notify_hook "$1"
 }
 
-# $1 the stage (0 to 2, also for a restore), blind, cooled or reset; the
-# syslog priority follows from it. $2 text.
+# $1 the stage (0 to 2, also for a restore), blind, blocked, cooled, reset, resetfail (a
+# reset that could not undo everything) or recover; the syslog priority follows
+# from it. $2 text.
 tg_notify() {
 	local text prio=crit
 	case "$1" in
 		blind) prio=warning ;;
-		cooled|reset) prio=notice ;;
+		cooled|reset|recover) prio=notice ;;
 	esac
 	# A dry run touches neither syslog nor the event log nor the outbox. It
 	# says what it would send, with the priority a remote alert would see.
@@ -317,7 +700,7 @@ tg_notify() {
 	# From stage 1 on we may be about to switch off the only uplink. Queue the
 	# message instead of losing it, the daemon retries while a route exists.
 	case "$1" in
-		0|blind|reset|cooled) ;;
+		0|blind|blocked|reset|resetfail|cooled|recover) ;;
 		*) tg_alt_uplink || {
 			printf '%s %s\n' "$(date '+%F %T')" "$2" >> "$OUTBOX"
 			tg_log "no alternative uplink, message queued"
@@ -351,25 +734,200 @@ tg_flush_outbox() {
 # Returns what the action returned. A stage that could not do what it promised
 # has to be visible: on a box with a dead fan, "modem off" quietly failing is
 # the difference between a warm modem and a dead one.
-tg_run_action() { # $1 action name, $2 hook name for the "command" action
+tg_run_action() { # $1 action name, $2 hook name for the "command" action, $3 interface
 	case "$1" in
 		modem_radio_off) tg_action_modem_radio_off ;;
 		wifi_off) tg_action_wifi_off ;;
-		interface_down) tg_action_interface_down ;;
+		interface_down) tg_action_interface_down "${3:-}" ;;
 		command) tg_run_hook "$2" ;;
 		none|'') return 0 ;;
 		*) tg_log "unknown action '$1', doing nothing" warning; return 1 ;;
 	esac
 }
 
-# The reverse of a stage action, on reset. A hook has no reverse; the operator
-# who wrote it knows what to undo.
-tg_undo_action() { # $1 action name
+# Applies a stage action again from what the state recorded: the recorded action
+# and interface, the configured action only for a state that recorded none. A
+# recorded interface_down without an interface took nothing down, so there is
+# nothing to repeat and it counts as failed.
+tg_run_recorded() { # $1 recorded action, $2 recorded interface, $3 configured action, $4 hook
+	if [ "$1" = interface_down ] && [ -z "$2" ]; then
+		tg_log "interface_down recorded no interface, cannot apply it again" warning
+		return 1
+	fi
+	tg_run_action "${1:-$3}" "$4" "$2"
+}
+
+# Says whether the effect of the reverse was confirmed. The automatic recovery
+# must not clear a stage it could not undo. $2 is the interface the action took
+# down; empty means nothing was taken down, so there is nothing to bring back.
+tg_undo_checked() { # $1 action name, $2 interface
 	case "$1" in
-		modem_radio_off) tg_action_modem_radio_on || tg_log "could not switch the modem back on" crit ;;
+		modem_radio_off) tg_action_modem_radio_on ;;
 		wifi_off) tg_action_wifi_on ;;
-		interface_down) tg_action_interface_up || tg_log "could not bring the interface back up" crit ;;
+		interface_down) [ -z "${2:-}" ] || tg_action_interface_up "$2" ;;
+		none|'') return 0 ;;
+		*) return 1 ;;
 	esac
+}
+
+# The reverse of a stage action, on reset. A hook has no reverse; the operator
+# who wrote it knows what to undo, so it never counts as a failure.
+tg_undo_recorded() { # $1 action name, $2 interface
+	case "$1" in
+		command|none|'') return 0 ;;
+	esac
+	tg_undo_checked "$1" "${2:-}" && return 0
+	case "$1" in
+		modem_radio_off) tg_log "could not switch the modem back on" crit ;;
+		wifi_off) tg_log "could not switch Wi-Fi back on" crit ;;
+		interface_down) tg_log "could not bring the interface back up" crit ;;
+	esac
+	return 1
+}
+
+# $1 comma separated list, $2 item: the list with the item once.
+tg_list_add() {
+	case ",$1," in
+		*",$2,"*) echo "$1" ;;
+		*) echo "${1:+$1,}$2" ;;
+	esac
+}
+
+# $1 comma separated list, $2 item: the list without it. Lowercase names and
+# commas only, so word splitting is safe.
+tg_list_drop() {
+	local out="" t
+	for t in $(echo "$1" | tr ',' ' '); do
+		[ "$t" = "$2" ] || out=$(tg_list_add "$out" "$t")
+	done
+	echo "$out"
+}
+
+# The longest the undo of $1 can take: each external call at its time limit
+# plus KILL_AFTER, every attempt and settle time of its readback. An AT call is
+# bounded by its outer limit, AT_WAIT. The fan release only writes sysfs and
+# has no bound of its own, nor has an undo with nothing to do.
+tg_undo_budget() { # $1 action name, $2 interface
+	case "$1" in
+		wifi_off)
+			echo $((WIFI_TRIES * (CMD_TIMEOUT + KILL_AFTER + WIFI_SETTLE + UBUS_TIMEOUT +
+				KILL_AFTER))) ;;
+		modem_radio_off)
+			echo $((CFUN_TRIES * 2 * (AT_WAIT + KILL_AFTER) + (CFUN_TRIES - 1) * CFUN_SETTLE)) ;;
+		interface_down)
+			if [ -n "$2" ]; then
+				echo $((CMD_TIMEOUT + KILL_AFTER + IFACE_TRIES * (UBUS_TIMEOUT + KILL_AFTER) +
+					(IFACE_TRIES - 1) * CFUN_SETTLE))
+			else
+				echo 0
+			fi ;;
+		*) echo 0 ;;
+	esac
+}
+
+# Whether the undo of $1 still ends within RESET_BUDGET seconds of $3. What
+# would not is skipped and stays listed as not undone, so a reset never runs
+# into a hardware step it cannot finish in time.
+tg_undo_fits() { # $1 action name or fan, $2 interface, $3 uptime the reset began
+	case "$1" in command|none|'') return 0 ;; esac
+	[ "$(tg_undo_budget "$1" "$2")" -le $((RESET_BUDGET - ($(tg_uptime) - $3))) ] && return 0
+	tg_log "skipping the undo of $1, it might not end within the reset budget of $RESET_BUDGET s" \
+		crit
+	return 1
+}
+
+# Reset: undo what the stage entries recorded, stage 2 first, then hand the fan
+# back. UNDO_FAILED names what could not be confirmed or was skipped (the action
+# names, and fan). A state from before the actions were recorded gets the
+# configured ones.
+tg_undo_all() { # $1 uptime the reset began, now by default
+	local a1="$ACTION1" i1="$IFACE1" a2="$ACTION2" i2="$IFACE2" old=0 t0="${1:-}"
+	[ -n "$t0" ] || t0=$(tg_uptime)
+	UNDO_FAILED=""
+	if [ "$STAGE" -ge 1 ] && [ -z "$a1" ]; then
+		a1=$(tg_action_name "$STAGE1_ACTION"); i1=$(tg_action_iface "$a1"); old=1
+	fi
+	if [ "$STAGE" -ge 2 ] && [ -z "$a2" ]; then
+		a2=$(tg_action_name "$STAGE2_ACTION"); i2=$(tg_action_iface "$a2"); old=1
+	fi
+	[ "$old" = 0 ] || tg_log "state from an older version, undoing the configured actions" warning
+	if [ "$STAGE" -ge 2 ]; then
+		{ tg_undo_fits "$a2" "$i2" "$t0" && tg_undo_recorded "$a2" "$i2"; } ||
+			UNDO_FAILED=$(tg_list_add "$UNDO_FAILED" "$a2")
+	fi
+	if [ "$STAGE" -ge 1 ]; then
+		{ tg_undo_fits "$a1" "$i1" "$t0" && tg_undo_recorded "$a1" "$i1"; } ||
+			UNDO_FAILED=$(tg_list_add "$UNDO_FAILED" "$a1")
+	fi
+	# Unconditional, not "if we think we took the fan". Reset means hand it
+	# back, and the one case where the stage says idle but the fan is still
+	# forced is exactly the one an operator cannot fix any other way.
+	{ tg_undo_fits fan "" "$t0" && tg_fan_release; } ||
+		UNDO_FAILED=$(tg_list_add "$UNDO_FAILED" fan)
+	return 0
+}
+
+# The mode of the fan a force goes to, for messages: the taken fan's, else the
+# configured one. Sets FAN_NOW, no subshell under the lock.
+FAN_NOW=""
+tg_fan_mode_now() {
+	if tg_fan_recorded; then FAN_NOW=$FAN_TAKEN; else FAN_NOW=$FAN_MODE; fi
+}
+
+# Daemon stage 1, caused by the modem alone and cool for recover_minutes:
+# undo the action, hand the fan back, clear the stage. GEN stays, it marks
+# operator resets; the window and its count stay, they cap the next ones.
+tg_recover() { # $1 cpu, $2 modem, $3 now
+	local n=$((RECOVER_N + 1)) mins=$((($3 - COOL_SINCE) / 60)) win=$RECOVER_WIN gen=$GEN msg
+	msg="auto recovery $n of $RECOVER_MAX: modem ${2:-?} C for $mins min,"
+	msg="$msg stage 1 action '$ACTION1' undone."
+	[ "$DRY" = 1 ] && { tg_notify recover "$msg"; return 0; }
+	if ! tg_undo_checked "$ACTION1" "$IFACE1"; then
+		# Counts like a recovery: a modem that never confirms hits the cap
+		# instead of a crit message every recover_minutes for good.
+		COOL_SINCE=0; RECOVER_N=$n
+		tg_recover_ledger_save
+		msg="auto recovery $n of $RECOVER_MAX failed:"
+		tg_notify 1 "$msg stage 1 action '$ACTION1' could not be undone, stage 1 stays."
+		return 1
+	fi
+	if ! tg_fan_release; then
+		# The undo is confirmed but the fan is still forced: the stage stays,
+		# and the next try finds the saved governor in the state. The action
+		# goes back on, because a rising modem never re-runs stage 1. So does
+		# the fan: a partial release may have handed back the duty cycle. Both
+		# went to the recorded fan, whatever fan_mode says by now.
+		COOL_SINCE=0; RECOVER_N=$n
+		tg_recover_ledger_save
+		tg_fan_hands_off || tg_fan_full || {
+			tg_fan_mode_now
+			tg_log "could not force the fan again after the failed release (mode $FAN_NOW)" crit
+		}
+		msg="auto recovery $n of $RECOVER_MAX failed: the fan could not be handed back,"
+		if tg_run_recorded "$ACTION1" "$IFACE1" "$STAGE1_ACTION" stage1; then
+			tg_notify 1 "$msg stage 1 action '$ACTION1' applied again, stage 1 stays."
+		else
+			msg="$msg and stage 1 action '$ACTION1' could not be applied again,"
+			tg_notify 1 "$msg the box may be without that protection."
+		fi
+		return 1
+	fi
+	tg_state_clear
+	GEN=$gen; RECOVER_WIN=$win; RECOVER_N=$n
+	LAST_CPU=$1; LAST_MODEM=$2; LAST_TS=$3; LAST_MODEM_SRC=$MODEM_SRC
+	[ -n "$2" ] || LAST_MODEM_SRC=""
+	# The count first: with the stage file gone it is all a reboot has left.
+	tg_recover_ledger_save
+	# Cleared means cleared across the next reboot, as after a reset.
+	rm -f "$PERSIST" 2>/dev/null
+	tg_sync || tg_log \
+		"could not flush the removal of $PERSIST, stage 1 may come back after a reboot" warning
+	tg_notify recover "$msg"
+}
+
+# When the planned recovery happens, empty when none is planned.
+tg_recover_at() { # $1 now
+	[ "$(tg_recover_state "$1")" = planned ] && echo $((COOL_SINCE + RECOVER_MINUTES * 60))
 	return 0
 }
 
@@ -382,19 +940,24 @@ tg_run_hook() { # $1 hook name
 		tg_log "action is set to 'command' but $hook is missing or not executable" warning
 		return 1
 	fi
-	timeout -k 5 "$HOOK_TIMEOUT" "$hook" >/dev/null 2>&1
+	# Without fd 7: something the hook leaves running would keep the state lock
+	# held after this process is gone.
+	tg_timeout "$HOOK_TIMEOUT" "$hook" >/dev/null 2>&1 7>&-
 }
 
 tg_act() { # $1 stage, $2 cpu, $3 modem
 	case "$1" in
 		0)
-			if [ "$FAN_MODE" = none ]; then
+			if tg_fan_hands_off; then
 				tg_notify 0 "stage 0: cpu ${2:-?} C, modem ${3:-?} C, fan left to its own controller. Check the fan."
 				return 0
 			fi
 			tg_notify 0 "stage 0: cpu ${2:-?} C, modem ${3:-?} C, forcing fan to full speed. Check the fan."
 			[ "$DRY" = 1 ] && return 0
-			tg_fan_full || tg_log "could not force the fan (mode $FAN_MODE)" crit
+			tg_fan_full || {
+				tg_fan_mode_now
+				tg_notify 0 "stage 0: could not force the fan (mode $FAN_NOW). Check the fan."
+			}
 			;;
 		1)
 			tg_notify 1 "stage 1: cpu ${2:-?} C, modem ${3:-?} C, running $STAGE1_ACTION."
@@ -433,7 +996,7 @@ tg_state_unchanged() { # $1 GEN snapshot, empty skips the check
 }
 
 tg_cycle() { # $1 cpu, $2 modem, $3 now, $4 GEN when the state was loaded
-	local d s gen="${4:-}"
+	local d s gen="${4:-}" seen=$CPU_SEEN
 	tg_decide "$1" "$2" "$3"
 	LAST_CPU=$1; LAST_MODEM=$2; LAST_TS=$3
 	LAST_MODEM_SRC=$MODEM_SRC
@@ -455,7 +1018,15 @@ tg_cycle() { # $1 cpu, $2 modem, $3 now, $4 GEN when the state was loaded
 			done
 			;;
 		cooled)
-			tg_notify cooled "cooled down: cpu ${1:-?} C, modem ${2:-?} C. Stage $STAGE stays active, clear it with 'thermal-guard reset'."
+			if tg_recover_applies && ! tg_recover_capped "$3"; then
+				tg_notify cooled "cooled down: cpu ${1:-?} C, modem ${2:-?} C. Stage $STAGE clears on its own after $RECOVER_MINUTES min of cool readings, at most $RECOVER_MAX times in 24 h."
+			else
+				tg_notify cooled "cooled down: cpu ${1:-?} C, modem ${2:-?} C. Stage $STAGE stays active, clear it with 'thermal-guard reset'."
+			fi
+			;;
+		recover) tg_recover "$1" "$2" "$3" ;;
+		recover_capped)
+			tg_notify 1 "stage 1 stays: $RECOVER_N automatic recovery attempts in 24 h. Clear it with 'thermal-guard reset' once the cause is fixed."
 			;;
 	esac
 
@@ -468,23 +1039,70 @@ tg_cycle() { # $1 cpu, $2 modem, $3 now, $4 GEN when the state was loaded
 	[ "$DRY" = 1 ] && return 0
 
 	tg_state_save
-	# Only stage changes reach the overlay, see tg_state_persist.
-	case "$DECISION" in stage:*) tg_state_persist ;; esac
+	# Only stage changes reach the overlay, see tg_state_persist. A blocked
+	# recovery too, once per stage: the cap it latches has to hold after a reboot.
+	# A processor turning warm in a stage that is already on too: a reboot must
+	# not hand the recovery back.
+	case "$DECISION" in
+		stage:*) tg_state_persist ;;
+		recover_capped) tg_state_persist; tg_recover_ledger_save ;;
+		*) [ "$CPU_SEEN" = "$seen" ] || tg_state_persist ;;
+	esac
 	tg_status_write
 }
 
 # ---- persistence -----------------------------------------------------------
 tg_state_save() {
 	mkdir -p "$STATE_DIR"
+	# Said once the drop lands in the file: a status call reads and stays quiet.
+	if [ "$FAN_DISCARDED" = 1 ]; then
+		FAN_DISCARDED=0
+		tg_log "fan takeover record from an earlier boot discarded, its forcing ended with that boot" \
+			notice
+	fi
 	tg_state_write "$STATE"
+}
+
+# $1 state file, printed without the fan takeover record.
+tg_fan_keys_strip() {
+	sed -e '/^FAN_SAVED_[A-Z]*=/d' -e '/^FAN_T_[A-Z]*=/d' -e '/^FAN_TAKEN=/d' \
+		-e '/^FAN_BOOT=/d' -e '/^FAN_UNRESOLVED=/d' "$1"
+}
+
+# The save of a takeover: the file as it was loaded with the fan record put in.
+# The stage stays the loaded one, its actions have not run yet; published in
+# full at the end of the cycle, so a daemon killed before then decides it again.
+# A restore loaded its stage from the overlay, so that copy gets the record.
+tg_fan_record_save() {
+	local f=$STATE t
+	[ "$RESTORING" = 1 ] && f=$PERSIST
+	tg_my_pid
+	t="$f.tmp.$MY_PID"
+	mkdir -p "${f%/*}" 2>/dev/null
+	{
+		tg_fan_keys_strip "$f" 2>/dev/null
+		printf 'FAN_SAVED_ENABLE=%s\nFAN_SAVED_PWM=%s\nFAN_SAVED_POLICY=%s\n' \
+			"$FAN_SAVED_ENABLE" "$FAN_SAVED_PWM" "$FAN_SAVED_POLICY"
+		printf 'FAN_TAKEN=%s\nFAN_BOOT=%s\nFAN_T_NAME=%s\nFAN_T_DEV=%s\n' \
+			"$FAN_TAKEN" "$FAN_BOOT" "$FAN_T_NAME" "$FAN_T_DEV"
+		printf 'FAN_T_ATTR=%s\nFAN_T_ZONE=%s\nFAN_T_FULL=%s\nFAN_UNRESOLVED=%s\n' \
+			"$FAN_T_ATTR" "$FAN_T_ZONE" "$FAN_T_FULL" "$FAN_UNRESOLVED"
+	} > "$t" 2>/dev/null || { rm -f "$t"; return 1; }
+	if ! mv "$t" "$f"; then
+		rm -f "$t"
+		return 1
+	fi
+	[ "$RESTORING" = 1 ] || return 0
+	tg_sync
 }
 
 # Mirror to the overlay. Called on stage changes only, so the flash sees a
 # handful of writes per incident instead of one every interval.
 tg_state_persist() {
-	if mkdir -p "$PERSIST_DIR" 2>/dev/null && tg_state_write "$PERSIST" 2>/dev/null; then
-		# A stage that only sits in the page cache is lost to a power cut.
-		sync
+	# A stage that only sits in the page cache is lost to a power cut, so only a
+	# flush that completed counts. A written file without one is no persist.
+	if mkdir -p "$PERSIST_DIR" 2>/dev/null && tg_state_write "$PERSIST" 2>/dev/null &&
+		tg_sync; then
 		PERSIST_TOLD=0
 		return 0
 	fi
@@ -496,8 +1114,12 @@ tg_state_persist() {
 }
 
 # Returns the status of the rename, so a caller knows whether the file landed.
+# The temp name is this writer's own, so two writers never mix their lines.
 tg_state_write() { # $1 target file
-	cat > "$1.tmp" <<-EOF || return 1
+	local t
+	tg_my_pid
+	t="$1.tmp.$MY_PID"
+	cat > "$t" <<-EOF || { rm -f "$t"; return 1; }
 		STAGE=$STAGE
 		T0=$T0
 		T1=$T1
@@ -509,6 +1131,17 @@ tg_state_write() { # $1 target file
 		PENDING=$PENDING
 		PENDING_N=$PENDING_N
 		COOLED=$COOLED
+		CAUSE1=$CAUSE1
+		ACTION1=$ACTION1
+		IFACE1=$IFACE1
+		ACTION2=$ACTION2
+		IFACE2=$IFACE2
+		RESET_FAILED=$RESET_FAILED
+		COOL_SINCE=$COOL_SINCE
+		RECOVER_WIN=$RECOVER_WIN
+		RECOVER_N=$RECOVER_N
+		RECOVER_TOLD=$RECOVER_TOLD
+		CPU_SEEN=$CPU_SEEN
 		LAST_CPU=$LAST_CPU
 		LAST_MODEM=$LAST_MODEM
 		LAST_MODEM_SRC=$LAST_MODEM_SRC
@@ -516,9 +1149,19 @@ tg_state_write() { # $1 target file
 		FAN_SAVED_ENABLE=$FAN_SAVED_ENABLE
 		FAN_SAVED_PWM=$FAN_SAVED_PWM
 		FAN_SAVED_POLICY=$FAN_SAVED_POLICY
+		FAN_TAKEN=$FAN_TAKEN
+		FAN_BOOT=$FAN_BOOT
+		FAN_T_NAME=$FAN_T_NAME
+		FAN_T_DEV=$FAN_T_DEV
+		FAN_T_ATTR=$FAN_T_ATTR
+		FAN_T_ZONE=$FAN_T_ZONE
+		FAN_T_FULL=$FAN_T_FULL
+		FAN_UNRESOLVED=$FAN_UNRESOLVED
 		GEN=$GEN
 	EOF
-	mv "$1.tmp" "$1"
+	mv "$t" "$1" && return 0
+	rm -f "$t"
+	return 1
 }
 
 # Only known keys with integer or empty values, the file is also written by "reset".
@@ -528,24 +1171,164 @@ tg_state_load() {
 }
 
 tg_state_read() { # $1 source file
+	local if1=0 if2=0 seen=0 fan_bad=0
+	FAN_DISCARDED=0
 	[ -r "$1" ] || return 0
 	while IFS='=' read -r k v; do
 		case "$k" in
-			STAGE|T0|T1|T2|REF_CPU0|REF_MODEM0|REF_CPU1|REF_MODEM1|PENDING|PENDING_N|COOLED|LAST_TS|GEN)
-				[ -n "$(tg_int "$v")" ] && eval "$k=\$v" ;;
+			STAGE|T0|T1|T2|REF_CPU0|REF_MODEM0|REF_CPU1|REF_MODEM1|PENDING|PENDING_N|COOLED|LAST_TS|GEN|\
+			COOL_SINCE|RECOVER_WIN|RECOVER_N|RECOVER_TOLD)
+				v=$(tg_int "$v")
+				[ -n "$v" ] && eval "$k=\$v" ;;
+			CAUSE1)
+				case "$v" in modem|cpu) CAUSE1=$v ;; *) CAUSE1="" ;; esac ;;
+			ACTION1|ACTION2)
+				eval "$k=\$(tg_action_name \"\$v\")" ;;
+			IFACE1|IFACE2)
+				case "$k" in IFACE1) if1=1 ;; *) if2=1 ;; esac
+				if tg_iface_name_ok "$v"; then eval "$k=\$v"; else eval "$k="; fi ;;
+			RESET_FAILED)
+				case "$v" in ''|*[!a-z_,]*) RESET_FAILED="" ;; *) RESET_FAILED=$v ;; esac ;;
+			# Anything but 0 counts as seen: no automatic undo is the safe side.
+			CPU_SEEN)
+				seen=1
+				case "$v" in 0) CPU_SEEN=0 ;; *) CPU_SEEN=1 ;; esac ;;
 			LAST_CPU|LAST_MODEM|FAN_SAVED_ENABLE|FAN_SAVED_PWM)
 				eval "$k=\$(tg_int \"\$v\")" ;;
 			LAST_MODEM_SRC)
 				case "$v" in file|command|at|test) LAST_MODEM_SRC=$v ;; *) LAST_MODEM_SRC="" ;; esac ;;
-			# Governor names, not free text: this value is written back to sysfs.
-			FAN_SAVED_POLICY)
-				case "$v" in
-					step_wise|fair_share|bang_bang|user_space|power_allocator)
-						FAN_SAVED_POLICY=$v ;;
-					*) FAN_SAVED_POLICY="" ;;
-				esac ;;
+			FAN_SAVED_POLICY) FAN_SAVED_POLICY=$(tg_fan_policy_name "$v") ;;
+			# The fan takeover record. A part that fails its check is not taken
+			# and makes the record unresolved; anything but 0 marks it so too.
+			FAN_TAKEN)
+				case "$v" in pwm|cooling_device|'') FAN_TAKEN=$v ;; *) fan_bad=1 ;; esac ;;
+			FAN_BOOT)
+				if [ -z "$v" ] || tg_boot_ok "$v"; then FAN_BOOT=$v; else fan_bad=1; fi ;;
+			FAN_T_NAME|FAN_T_ZONE)
+				if [ -z "$v" ] || tg_name_ok "$v"; then eval "$k=\$v"; else fan_bad=1; fi ;;
+			FAN_T_DEV)
+				if tg_fan_dev_ok "$v"; then FAN_T_DEV=$v; else fan_bad=1; fi ;;
+			FAN_T_ATTR)
+				if [ -z "$v" ] || tg_fan_attr_ok "$v"; then FAN_T_ATTR=$v; else fan_bad=1; fi ;;
+			FAN_T_FULL)
+				[ -z "$v" ] || v=$(tg_int "$v")
+				if [ -z "$v" ] || tg_fan_full_ok "$v"; then FAN_T_FULL=$v; else fan_bad=1; fi ;;
+			FAN_UNRESOLVED)
+				case "$v" in 0|'') ;; *) FAN_UNRESOLVED=1 ;; esac ;;
 		esac
 	done < "$1"
+	tg_fan_record_settle "$fan_bad"
+	# 2.1.0.0 wrote no IFACE keys, its interface_down took the configured interface
+	# down. A key that is there but empty means nothing went down.
+	[ "$ACTION1" = interface_down ] && [ "$if1" = 0 ] && IFACE1=$(tg_action_iface interface_down)
+	[ "$ACTION2" = interface_down ] && [ "$if2" = 0 ] && IFACE2=$(tg_action_iface interface_down)
+	# Nor CPU_SEEN: with no record of the processor, a stage gets no automatic undo.
+	[ "$STAGE" -ge 0 ] && [ "$seen" = 0 ] && CPU_SEEN=1
+	return 0
+}
+
+# A fan record of another boot describes forcing that ended with it, and goes.
+# Only a valid boot id proves that: a missing working state does not. A record
+# that cannot name its fan (a part failed its check, no boot id, or saved values
+# from an older version without any identity) is unresolved, kept and never
+# written from. Nothing saved at all is no record, as in 2.0.0.
+tg_fan_record_settle() { # $1 1 when a part failed its check
+	local boot
+	[ "$1" = 1 ] && FAN_UNRESOLVED=1
+	[ -n "$FAN_TAKEN$FAN_BOOT$FAN_T_NAME$FAN_T_DEV$FAN_T_ATTR$FAN_T_ZONE$FAN_T_FULL" ] ||
+		[ -n "$FAN_SAVED_ENABLE$FAN_SAVED_PWM$FAN_SAVED_POLICY" ] ||
+		[ "$FAN_UNRESOLVED" = 1 ] || return 0
+	boot=$(tg_boot_id)
+	if [ -n "$FAN_BOOT" ] && [ -n "$boot" ] && [ "$FAN_BOOT" != "$boot" ]; then
+		tg_fan_record_drop
+		FAN_DISCARDED=1
+		return 0
+	fi
+	tg_fan_recorded || FAN_UNRESOLVED=1
+	return 0
+}
+
+# The automatic recovery count outlives a reboot on its own: a recovery removes the
+# stage file, and a count that restarts at zero would hand the cap back. Written
+# on an attempt or the cap only, never on a timer, and only when it changed.
+tg_recover_ledger_save() {
+	local f="$PERSIST_DIR/recover" body t
+	body=$(printf 'RECOVER_WIN=%s\nRECOVER_N=%s\nRECOVER_TOLD=%s' \
+		"$RECOVER_WIN" "$RECOVER_N" "$RECOVER_TOLD")
+	# A file whose flush failed holds the right values but is not saved yet.
+	[ "$LEDGER_UNFLUSHED" = 0 ] && [ "$(cat "$f" 2>/dev/null)" = "$body" ] && return 0
+	# Only the daemon writes it (reset removes it). The own PID keeps the temp
+	# name unique anyway, as for the other writers.
+	tg_my_pid; t="$f.$MY_PID"
+	# Saved only once the flush completed, as for the stage file.
+	if mkdir -p "$PERSIST_DIR" 2>/dev/null && printf '%s\n' "$body" > "$t" 2>/dev/null &&
+		mv "$t" "$f" 2>/dev/null; then
+		LEDGER_UNFLUSHED=1
+		if tg_sync; then
+			LEDGER_UNFLUSHED=0; LEDGER_TOLD=0
+			return 0
+		fi
+	fi
+	rm -f "$t" 2>/dev/null
+	if [ "$LEDGER_TOLD" = 0 ]; then
+		tg_log "could not save the recovery count to $f, it will not survive a reboot" crit
+		[ "$DAEMON" = 1 ] && LEDGER_TOLD=1
+	fi
+	return 1
+}
+
+# Only what the ledger holds overrides the stage file. A missing, partial or
+# damaged one keeps the stage file's count rather than handing recoveries back.
+tg_recover_ledger_load() {
+	local k v
+	[ -r "$PERSIST_DIR/recover" ] || return 0
+	while IFS='=' read -r k v; do
+		case "$k" in
+			RECOVER_WIN|RECOVER_N|RECOVER_TOLD)
+				v=$(tg_int "$v")
+				[ -n "$v" ] && eval "$k=\$v" ;;
+		esac
+	done < "$PERSIST_DIR/recover"
+}
+
+# The model the daemon found, for the one shot commands: status and test have
+# to judge with the same limits and must not talk to the modem themselves.
+tg_model_save() {
+	mkdir -p "$STATE_DIR"
+	printf '%s\n' "$MODEM_MODEL" > "$STATE_DIR/modem-model.tmp" || return 0
+	chmod 644 "$STATE_DIR/modem-model.tmp" 2>/dev/null
+	mv "$STATE_DIR/modem-model.tmp" "$STATE_DIR/modem-model"
+}
+
+tg_model_load() {
+	[ -n "$MODEM_MODEL" ] && return 0
+	MODEM_MODEL=$(tg_name "$(head -n1 "$STATE_DIR/modem-model" 2>/dev/null)")
+	return 0
+}
+
+# What writers killed between write and rename left behind: unique names are
+# never written again, so they would pile up, on the overlay too. recover.* are
+# the recovery count's, the count itself is recover. A trim of the event log
+# that loses its temp file here just happens again with the next line. The
+# reset request record cleans up after itself once admission is let go. A curl
+# config holds the notification secret: a killed poster's goes, a live one may
+# be a detached reset posting right now.
+tg_tmp_cleanup() {
+	rm -f "$STATE".tmp.* "$PERSIST".tmp.* "$STATUS_FILE".tmp "$STATUS_FILE".tmp.* \
+		"$PERSIST_DIR"/recover.* "$EVLOG".tmp "$EVLOG".tmp.* 2>/dev/null
+	tg_rm_gone "$STATE_DIR"/notify.conf.*
+}
+
+# Removes each file in $@ whose writer, the pid after the last dot, is gone.
+tg_rm_gone() {
+	local f p
+	for f in "$@"; do
+		[ -e "$f" ] || continue
+		p=${f##*.}
+		case "$p" in ''|*[!0-9]*) continue ;; esac
+		[ -d "/proc/$p" ] || rm -f "$f" 2>/dev/null
+	done
+	return 0
 }
 
 # After a reboot /var/run is empty while the overlay may still hold a stage. The
@@ -554,29 +1337,35 @@ tg_state_read() { # $1 source file
 # would consider itself fully escalated and stop reacting, while nothing is
 # actually in force.
 tg_state_restore() {
-	local s what failed="" msg
+	local s what failed="" msg next
 	[ -r "$STATE" ] && return 0
 	[ -r "$PERSIST" ] || return 0
 
 	tg_state_clear
 	tg_state_read "$PERSIST"
 	[ "$STAGE" -ge 0 ] || return 0
+	# Before the message: the ledger may know a cap the stage file does not.
+	tg_recover_ledger_load
 
 	# Reapplying can take over a minute (Wi-Fi retries). Should the daemon die
 	# in between, the event log and the history of reset show it had begun.
 	tg_log "restoring stage $STAGE after a reboot" notice
+	# A takeover in here saves to the overlay: a working state written now would
+	# mark the restore done before its stage actions are back.
+	RESTORING=1
 	s=0
 	while [ "$s" -le "$STAGE" ]; do
 		if ! tg_reapply "$s"; then
 			case "$s" in
 				0) what="forcing the fan" ;;
-				1) what="stage 1 action '$STAGE1_ACTION'" ;;
-				*) what="stage 2 action '$STAGE2_ACTION'" ;;
+				1) what="stage 1 action '${ACTION1:-$STAGE1_ACTION}'" ;;
+				*) what="stage 2 action '${ACTION2:-$STAGE2_ACTION}'" ;;
 			esac
 			failed="$failed${failed:+, }$what"
 		fi
 		s=$((s + 1))
 	done
+	RESTORING=0
 	# One message, after the actions, so it can say which of them failed.
 	if [ -n "$failed" ]; then
 		msg="restored stage $STAGE after a reboot, but reapplying failed for: $failed."
@@ -584,8 +1373,28 @@ tg_state_restore() {
 	else
 		msg="restored stage $STAGE after a reboot and reapplied its actions."
 	fi
-	tg_notify "$STAGE" "$msg Clear it with 'thermal-guard reset' once the cause is fixed."
+	next="Clear it with 'thermal-guard reset' once the cause is fixed."
+	if tg_recover_applies && ! tg_recover_capped "$(date +%s)"; then
+		next="Stage 1 clears on its own after $RECOVER_MINUTES min of cool readings,"
+		next="$next at most $RECOVER_MAX times in 24 h."
+	fi
+	tg_notify "$STAGE" "$msg $next"
 	tg_state_save
+}
+
+# The daemon's first look at the state, under the lock.
+tg_state_start() {
+	# Every caller holds the lock, so no other writer is in the middle of one.
+	tg_tmp_cleanup
+	tg_state_restore
+	tg_state_load
+	# The ledger is written on every attempt, the stage file only on a stage change,
+	# so where both exist the ledger is at least as fresh and wins. Without one
+	# (before this file existed) the count in the stage file stays.
+	if [ -r "$PERSIST_DIR/recover" ]; then
+		tg_recover_ledger_load
+		tg_state_save
+	fi
 }
 
 # The effects of a stage without its announcement, for the reboot path where one
@@ -595,17 +1404,18 @@ tg_state_restore() {
 tg_reapply() {
 	case "$1" in
 		0)
-			[ "$FAN_MODE" = none ] && return 0
+			tg_fan_hands_off && return 0
 			tg_fan_full && return 0
-			tg_log "could not force the fan (mode $FAN_MODE)" crit
+			tg_fan_mode_now
+			tg_log "could not force the fan (mode $FAN_NOW)" crit
 			;;
 		1)
-			tg_run_action "$STAGE1_ACTION" stage1 && return 0
-			tg_log "stage 1 action '$STAGE1_ACTION' failed after the reboot" crit
+			tg_run_recorded "$ACTION1" "$IFACE1" "$STAGE1_ACTION" stage1 && return 0
+			tg_log "stage 1 action '${ACTION1:-$STAGE1_ACTION}' failed after the reboot" crit
 			;;
 		2)
-			tg_run_action "$STAGE2_ACTION" stage2 && return 0
-			tg_log "stage 2 action '$STAGE2_ACTION' failed after the reboot" crit
+			tg_run_recorded "$ACTION2" "$IFACE2" "$STAGE2_ACTION" stage2 && return 0
+			tg_log "stage 2 action '${ACTION2:-$STAGE2_ACTION}' failed after the reboot" crit
 			;;
 		*) return 0 ;;
 	esac
@@ -614,10 +1424,16 @@ tg_reapply() {
 
 # Machine readable snapshot for the LuCI page, so the UI never talks to the modem.
 tg_status_write() {
-	cat > "$STATUS_FILE.tmp" <<-EOF
+	local now t
+	tg_my_pid
+	t="$STATUS_FILE.tmp.$MY_PID"
+	now=$(date +%s)
+	tg_reset_view
+	tg_fan_view_now
+	cat > "$t" <<-EOF
 		version=$THERMAL_GUARD_VERSION
 		ts=$LAST_TS
-		now=$(date +%s)
+		now=$now
 		interval=$INTERVAL
 		enabled=$ENABLED
 		stage=$STAGE
@@ -632,12 +1448,18 @@ tg_status_write() {
 		cpu_emergency=$CPU_EMERGENCY
 		modem_warn=$MODEM_WARN
 		modem_crit=$MODEM_CRIT
+		modem_model=$MODEM_MODEL
+		modem_profile=$PROFILE_MATCH
+		modem_profile_warn=$PROFILE_WARN
+		modem_profile_crit=$PROFILE_CRIT
+		modem_warn_src=$MODEM_WARN_SRC
+		modem_crit_src=$MODEM_CRIT_SRC
 		fan_mode=$FAN_MODE
-		fan_view=$FAN_VIEW
-		fan_state=$(tg_fan_state)
-		fan_max=$(tg_fan_max)
-		fan_percent=$(tg_fan_percent)
+		$(tg_fan_status)
+		fan_taken=$FAN_TAKEN
+		fan_unresolved=$FAN_UNRESOLVED
 		fan_foreign=$FAN_FOREIGN
+		fan_restore_pending=$(tg_fan_restore_pending && echo 1 || echo 0)
 		fan_rpm=$(tg_fan_rpm)
 		stage1_action=$STAGE1_ACTION
 		stage2_action=$STAGE2_ACTION
@@ -655,13 +1477,39 @@ tg_status_write() {
 		t0=$T0
 		t1=$T1
 		t2=$T2
+		cause1=$CAUSE1
+		cpu_seen=$CPU_SEEN
+		auto_recover=$AUTO_RECOVER
+		recover_minutes=$RECOVER_MINUTES
+		recover_max=$RECOVER_MAX
+		recover_n=$RECOVER_N
+		recover_at=$(tg_recover_at "$now")
+		recover_state=$(tg_recover_state "$now")
+		reset_failed=$RESET_FAILED
+		reset_state=$RESET_STATE
+		reset_req_failed=$RESET_REC_FAILED
+		reset_ts=$RESET_TS
+		reset_boot=$RESET_BOOT
+		boot_id=$(tg_boot_id)
+		reset_id=$RESET_ID
+		reset_gen=$RESET_GEN
+		reset_kind=$RESET_KIND
+		reset_prev_id=$RESET_PREV_ID
+		reset_prev_gen=$RESET_PREV_GEN
+		reset_prev_state=$RESET_PREV_STATE
+		reset_prev_failed=$RESET_PREV_FAILED
+		reset_prev_ts=$RESET_PREV_TS
 	EOF
-	# One line per extra sensor, prefixed so the UI can pick them out.
-	tg_read_extra_sensors | while IFS='=' read -r n v; do
-		printf 'sensor.%s=%s\n' "$n" "$v"
-	done >> "$STATUS_FILE.tmp"
-	chmod 644 "$STATUS_FILE.tmp" 2>/dev/null
-	mv "$STATUS_FILE.tmp" "$STATUS_FILE"
+	# One line per extra sensor, prefixed so the UI can pick them out. Both sides
+	# of the pipe wait for the reads, so neither may keep the state lock.
+	(
+		exec 7>&-
+		tg_read_extra_sensors | while IFS='=' read -r n v; do
+			printf 'sensor.%s=%s\n' "$n" "$v"
+		done
+	) >> "$t"
+	chmod 644 "$t" 2>/dev/null
+	mv "$t" "$STATUS_FILE" || rm -f "$t"
 }
 
 # ---- configuration ---------------------------------------------------------
@@ -669,9 +1517,15 @@ tg_status_write() {
 # tg_cfg_defaults set just before. config_get needs its fourth argument, the
 # original expands it for a missing option and set -u would end the daemon.
 tg_cfg_int() {
-	local v=""
+	local v="" mag=""
 	config_get v main "$1" ""
-	[ -n "$(tg_int "$v")" ] && eval "$2=\$v"
+	v=$(tg_int "$v")
+	[ -n "$v" ] || return 0
+	# Over six digits is out of range for every option. Capped, the range checks
+	# reject it; raw, test(1) would error out and let it through.
+	mag=${v#-}
+	[ "${#mag}" -le 6 ] || v=${v%"$mag"}999999
+	eval "$2=\$v"
 	return 0
 }
 
@@ -715,6 +1569,7 @@ tg_cfg_validate_paths() {
 # either way, so a run without uci behaves like one with an empty config.
 tg_cfg() {
 	tg_cfg_from_uci
+	tg_cfg_thresholds
 	tg_cfg_validate_paths
 	tg_cpu_detect
 	tg_cfg_check_wifi
@@ -731,12 +1586,151 @@ tg_cfg_check_wifi() {
 		*) WIFI_CHECKED=0; return 0 ;;
 	esac
 	[ "$WIFI_CHECKED" = 1 ] && return 0
-	state=$(tg_wifi_radios)
+	state=$(exec 7>&-; tg_wifi_radios)
 	[ -n "$state" ] || return 0
 	WIFI_CHECKED=1
 	[ "${state%% *}" -eq 0 ] &&
 		tg_log "wifi_off is configured but netifd manages no Wi-Fi radio on this device" warning
 	return 0
+}
+
+# One line of the modem table: 0 valid, 1 comment or empty, 2 invalid. The
+# pattern only allows * and ? as glob characters, so the unquoted match in
+# tg_profile_lookup cannot be turned into anything else.
+tg_profile_line() { # $1 pattern, $2 warn, $3 crit, $4 source
+	case "$1" in
+		''|\#*) return 1 ;;
+		*[!A-Za-z0-9._*?-]*) return 2 ;;
+	esac
+	[ -n "$(tg_int "$2")" ] && [ -n "$(tg_int "$3")" ] && [ -n "$4" ] || return 2
+	[ "$2" -ge 40 ] && [ "$3" -le 120 ] && [ "$2" -lt "$3" ] || return 2
+	return 0
+}
+
+# "pattern warn crit" of the first valid line matching the model, nothing
+# without a match. Case does not matter, modems are not consistent about it.
+tg_profile_lookup() { # $1 model
+	local model pat warn crit src pat_up
+	[ -n "$1" ] && [ -r "$MODEM_TABLE" ] || return 0
+	# BusyBox tr has no [:lower:] classes, so the alphabet is spelled out.
+	model=$(printf '%s' "$1" | tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+	while read -r pat warn crit src; do
+		# Plain decimals out, the limits go into arithmetic.
+		warn=$(tg_int "$warn"); crit=$(tg_int "$crit")
+		tg_profile_line "$pat" "$warn" "$crit" "$src" || continue
+		pat_up=$(printf '%s' "$pat" | tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+		# shellcheck disable=SC2254  # globs on purpose, tg_profile_line allows * and ? only
+		case "$model" in
+			$pat_up) echo "$pat $warn $crit"; return 0 ;;
+		esac
+	done < "$MODEM_TABLE"
+	return 0
+}
+
+# Numbers of the lines tg_profile_lookup skips as invalid, one per line.
+tg_profile_check() {
+	local n=0 pat warn crit src rc
+	[ -r "$MODEM_TABLE" ] || return 0
+	while read -r pat warn crit src; do
+		n=$((n + 1))
+		rc=0
+		tg_profile_line "$pat" "$warn" "$crit" "$src" || rc=$?
+		[ "$rc" = 2 ] && echo "$n"
+	done < "$MODEM_TABLE"
+	return 0
+}
+
+# The profile of MODEM_MODEL, looked up once per model. Read through a here
+# document, not set --, because the pattern would glob against the current
+# directory there.
+tg_profile_resolve() {
+	local r
+	[ "$PROFILE_MODEL" = "$MODEM_MODEL" ] && return 0
+	PROFILE_MODEL=$MODEM_MODEL; PROFILE_MATCH=""; PROFILE_WARN=""; PROFILE_CRIT=""
+	r=$(tg_profile_lookup "$MODEM_MODEL")
+	[ -n "$r" ] || return 0
+	read -r PROFILE_MATCH PROFILE_WARN PROFILE_CRIT <<-EOF
+		$r
+	EOF
+}
+
+# Modem limits from three places, later ones winning option by option: the
+# built in pair, the profile of the detected modem, UCI. Thresholds out of
+# order would silently disable the guard: a modem pair falls back to the
+# profile, or to the built in pair without one, and the CPU triple is judged
+# on its own, so a typo in one cannot reset the other.
+tg_cfg_thresholds() {
+	local cw=$CPU_WARN cc=$CPU_CRIT ce=$CPU_EMERGENCY mw mc bad src
+	tg_model_load
+	tg_profile_resolve
+	MODEM_WARN_SRC=default; MODEM_CRIT_SRC=default
+	if [ -n "$PROFILE_MATCH" ]; then
+		MODEM_WARN=$PROFILE_WARN; MODEM_CRIT=$PROFILE_CRIT
+		MODEM_WARN_SRC=profile; MODEM_CRIT_SRC=profile
+	fi
+	[ -n "$UCI_MODEM_WARN" ] && { MODEM_WARN=$UCI_MODEM_WARN; MODEM_WARN_SRC=uci; }
+	[ -n "$UCI_MODEM_CRIT" ] && { MODEM_CRIT=$UCI_MODEM_CRIT; MODEM_CRIT_SRC=uci; }
+
+	bad=""
+	if [ "$MODEM_WARN" -ge "$MODEM_CRIT" ]; then
+		bad="$MODEM_WARN/$MODEM_CRIT"
+		if [ -n "$PROFILE_MATCH" ]; then
+			MODEM_WARN=$PROFILE_WARN; MODEM_CRIT=$PROFILE_CRIT; src=profile
+		else
+			tg_cfg_default_thresholds
+			CPU_WARN=$cw; CPU_CRIT=$cc; CPU_EMERGENCY=$ce; src=default
+		fi
+		MODEM_WARN_SRC=$src; MODEM_CRIT_SRC=$src
+		[ "$MODEM_THR_TOLD" = "$bad" ] || tg_cfg_log \
+			"implausible modem thresholds ($bad), using the $src values $MODEM_WARN/$MODEM_CRIT"
+	fi
+	[ "$DAEMON" = 1 ] && MODEM_THR_TOLD=$bad
+
+	bad=""
+	if [ "$CPU_WARN" -ge "$CPU_CRIT" ] || [ "$CPU_CRIT" -ge "$CPU_EMERGENCY" ]; then
+		bad="$CPU_WARN/$CPU_CRIT/$CPU_EMERGENCY"
+		mw=$MODEM_WARN; mc=$MODEM_CRIT
+		tg_cfg_default_thresholds
+		MODEM_WARN=$mw; MODEM_CRIT=$mc
+		[ "$CPU_THR_TOLD" = "$bad" ] || tg_cfg_log \
+			"implausible cpu thresholds ($bad), using the built in values $CPU_WARN/$CPU_CRIT/$CPU_EMERGENCY"
+	fi
+	[ "$DAEMON" = 1 ] && CPU_THR_TOLD=$bad
+	return 0
+}
+
+# Daemon only, in cycles with a modem reading: without one there is no modem
+# to ask. Three misses and it stops asking until the next start.
+tg_model_detect() {
+	local m
+	[ -z "$MODEM_MODEL" ] && [ "$MODEL_TRIES" -lt 3 ] || return 0
+	m=$(tg_modem_model)
+	if [ -z "$m" ]; then
+		MODEL_TRIES=$((MODEL_TRIES + 1))
+		[ "$MODEL_TRIES" -lt 3 ] || tg_log \
+			"modem model not detected after 3 attempts, using the configured or built in limits" warning
+		return 0
+	fi
+	MODEM_MODEL=$m
+	tg_model_save
+	tg_cfg_thresholds
+	if [ -n "$PROFILE_MATCH" ]; then
+		tg_log "modem $MODEM_MODEL, profile $PROFILE_MATCH (warn $PROFILE_WARN, crit $PROFILE_CRIT)"
+	else
+		tg_log "modem $MODEM_MODEL, no profile in $MODEM_TABLE, using the configured or built in limits"
+	fi
+}
+
+# Once at start: a missing table or a broken line explains a missing profile.
+tg_profile_report() {
+	local n
+	if [ ! -r "$MODEM_TABLE" ]; then
+		tg_log "no modem table at $MODEM_TABLE, using the configured or built in limits" warning
+		return 0
+	fi
+	for n in $(tg_profile_check); do
+		tg_log "modem table line $n is invalid and skipped" warning
+	done
 }
 
 tg_cfg_from_uci() {
@@ -763,10 +1757,13 @@ tg_cfg_from_uci() {
 	tg_cfg_int cpu_warn CPU_WARN
 	tg_cfg_int cpu_crit CPU_CRIT
 	tg_cfg_int cpu_emergency CPU_EMERGENCY
-	tg_cfg_int modem_warn MODEM_WARN
-	tg_cfg_int modem_crit MODEM_CRIT
+	tg_cfg_int modem_warn UCI_MODEM_WARN
+	tg_cfg_int modem_crit UCI_MODEM_CRIT
 	tg_cfg_int hold_minutes HOLD_MINUTES
 	tg_cfg_int hysteresis HYSTERESIS
+	tg_cfg_int auto_recover AUTO_RECOVER
+	tg_cfg_int recover_minutes RECOVER_MINUTES
+	tg_cfg_int recover_max RECOVER_MAX
 	tg_cfg_int pwm_full PWM_FULL
 	tg_cfg_int pwm_idle PWM_IDLE
 	tg_cfg_str cpu_temp_path CPU_TEMP_PATH
@@ -791,18 +1788,12 @@ tg_cfg_from_uci() {
 	tg_cfg_str trip_boost TRIP_BOOST
 	tg_cfg_str trip_active TRIP_ACTIVE
 	tg_cfg_str trip_boost_offset TRIP_BOOST_OFFSET
+	tg_cfg_validate_enums
 	tg_cfg_validate_trips
 	tg_cfg_validate_governor
-
-	# Thresholds out of order would silently disable the guard, so fall back to defaults.
-	if [ "$CPU_WARN" -ge "$CPU_CRIT" ] || [ "$CPU_CRIT" -ge "$CPU_EMERGENCY" ] ||
-		[ "$MODEM_WARN" -ge "$MODEM_CRIT" ]; then
-		tg_cfg_log "implausible thresholds (cpu $CPU_WARN/$CPU_CRIT/$CPU_EMERGENCY, modem $MODEM_WARN/$MODEM_CRIT), using defaults"
-		tg_cfg_default_thresholds
-	fi
-	[ "$INTERVAL" -ge 5 ] || INTERVAL=5
 	tg_cfg_validate_actions
 	tg_cfg_validate_notify
+	tg_cfg_validate_recover
 }
 
 # Checked when the configuration loads, not when a message goes out: a rejected
@@ -878,18 +1869,86 @@ tg_cfg_validate_governor() {
 	return 0
 }
 
+# One rejection, said once per option and value until it clears. $1 option,
+# $2 rejected value, $3 what is used instead.
+tg_cfg_enum_reject() {
+	ENUM_NOW="$ENUM_NOW$1=$2 "
+	case " $ENUM_TOLD " in
+		*" $1=$2 "*) return 0 ;;
+	esac
+	tg_cfg_log "rejecting $1 '$2', using $3"
+}
+
+# A word or a number off its list or range falls back to the default, so a
+# typo cannot switch off the fan mode check or the time based escalation.
+tg_cfg_validate_enums() {
+	ENUM_NOW=""
+	case "$FAN_MODE" in
+		none|cooling_device|pwm|auto) ;;
+		*) tg_cfg_enum_reject fan_mode "$FAN_MODE" none; FAN_MODE=none ;;
+	esac
+	case "$MODEM_SOURCE" in
+		auto|quectel|fibocom|file|command|none) ;;
+		*) tg_cfg_enum_reject modem_source "$MODEM_SOURCE" auto; MODEM_SOURCE=auto ;;
+	esac
+	case "$STAGE1_ACTION" in
+		modem_radio_off|wifi_off|interface_down|command|none) ;;
+		*)
+			tg_cfg_enum_reject stage1_action "$STAGE1_ACTION" modem_radio_off
+			STAGE1_ACTION=modem_radio_off
+			;;
+	esac
+	case "$STAGE2_ACTION" in
+		modem_radio_off|wifi_off|interface_down|command|none) ;;
+		*)
+			tg_cfg_enum_reject stage2_action "$STAGE2_ACTION" wifi_off
+			STAGE2_ACTION=wifi_off
+			;;
+	esac
+	if [ "$HOLD_MINUTES" -lt 1 ] || [ "$HOLD_MINUTES" -gt 60 ]; then
+		tg_cfg_enum_reject hold_minutes "$HOLD_MINUTES" 3
+		HOLD_MINUTES=3
+	fi
+	if [ "$HYSTERESIS" -lt 0 ] || [ "$HYSTERESIS" -gt 40 ]; then
+		tg_cfg_enum_reject hysteresis "$HYSTERESIS" 10
+		HYSTERESIS=10
+	fi
+	# A huge interval would leave the box unwatched for all practical purposes.
+	if [ "$INTERVAL" -lt 5 ]; then
+		tg_cfg_enum_reject interval "$INTERVAL" 5
+		INTERVAL=5
+	elif [ "$INTERVAL" -gt 300 ]; then
+		tg_cfg_enum_reject interval "$INTERVAL" 300
+		INTERVAL=300
+	fi
+	[ "$DAEMON" = 1 ] && ENUM_TOLD=$ENUM_NOW
+	return 0
+}
+
 tg_cfg_validate_trips() {
+	local off="" v="" list=""
 	case "${TRIP_BOOST:-off}" in
 		off|modem) TRIP_BOOST=${TRIP_BOOST:-off} ;;
 		*) tg_cfg_log "rejecting trip_boost '$TRIP_BOOST', using off"; TRIP_BOOST=off ;;
 	esac
+	# Two digits at most: a longer number is out of range and would trip test(1).
+	off=$(tg_int "$TRIP_BOOST_OFFSET")
 	if [ -z "$TRIP_BOOST_OFFSET" ]; then
 		TRIP_BOOST_OFFSET=15
-	elif [ -z "$(tg_int "$TRIP_BOOST_OFFSET")" ] || [ "$TRIP_BOOST_OFFSET" -lt 0 ] ||
-		[ "$TRIP_BOOST_OFFSET" -gt 40 ]; then
+	elif [ -z "$off" ] || [ "${#off}" -gt 2 ] || [ "$off" -lt 0 ] || [ "$off" -gt 40 ]; then
 		tg_cfg_log "rejecting trip_boost_offset '$TRIP_BOOST_OFFSET', using 15"
 		TRIP_BOOST_OFFSET=15
+	else
+		TRIP_BOOST_OFFSET=$off
 	fi
+	# Plain decimals for the trip arithmetic. A list with anything else stays as
+	# written: tg_trip_valid rejects it and the log shows what was set.
+	for v in $TRIP_ACTIVE; do
+		v=$(tg_int "$v")
+		[ -n "$v" ] || return 0
+		list="$list${list:+ }$v"
+	done
+	TRIP_ACTIVE=$list
 }
 
 tg_cfg_validate_actions() {
@@ -908,6 +1967,25 @@ tg_cfg_validate_actions() {
 		tg_cfg_log "rejecting action_interface '$ACTION_INTERFACE'"
 		ACTION_INTERFACE=""
 	fi
+}
+
+# Out of range means the default, said once per rejected set of values.
+tg_cfg_validate_recover() {
+	local bad=""
+	case "$AUTO_RECOVER" in
+		0|1) ;;
+		*) bad="auto_recover '$AUTO_RECOVER'"; AUTO_RECOVER=0 ;;
+	esac
+	if [ "$RECOVER_MINUTES" -lt 5 ] || [ "$RECOVER_MINUTES" -gt 120 ]; then
+		bad="$bad${bad:+, }recover_minutes '$RECOVER_MINUTES'"; RECOVER_MINUTES=10
+	fi
+	if [ "$RECOVER_MAX" -lt 1 ] || [ "$RECOVER_MAX" -gt 10 ]; then
+		bad="$bad${bad:+, }recover_max '$RECOVER_MAX'"; RECOVER_MAX=3
+	fi
+	[ "$RECOVER_CFG_TOLD" = "$bad" ] || [ -z "$bad" ] ||
+		tg_cfg_log "rejecting $bad, using the default"
+	[ "$DAEMON" = 1 ] && RECOVER_CFG_TOLD=$bad
+	return 0
 }
 
 # The default path fits mediatek and most ARM targets but not ramips or x86,
@@ -937,18 +2015,281 @@ tg_cpu_detect() {
 	fi
 }
 
+# ---- reset requests --------------------------------------------------------
+# The record ($STATE_DIR/reset) holds the current request and the one before
+# it in this boot, so a page polling every few seconds still finds a result one
+# later request replaced. A request is <generation>-<pid of who reserved it>;
+# the generation counts requests per boot in reset.gen. Only admission writes
+# both files, the status writers read them without it: a whole file per rename.
+
+# A positive decimal that shell arithmetic still holds, empty for anything else.
+tg_reset_num() { # $1 value
+	local v
+	v=$(tg_int "$1")
+	case "$v" in ''|-*|0|???????????????????*) echo "" ;; *) echo "$v" ;; esac
+}
+
+tg_reset_id_ok() { # $1 request id
+	local n=${1%%-*} p=${1#*-}
+	[ "$n" != "$1" ] && [ -n "$n" ] && [ -n "$p" ] &&
+		[ "$(tg_reset_num "$n")" = "$n" ] && [ "$(tg_reset_num "$p")" = "$p" ]
+}
+
+tg_reset_read() {
+	local k v
+	RESET_BOOT=""; RESET_ID=""; RESET_GEN=""; RESET_STATE=""; RESET_TS=""; RESET_KIND=""
+	RESET_REC_FAILED=""; RESET_RPID=""; RESET_RSTART=""; RESET_WPID=""; RESET_WSTART=""
+	RESET_PREV_ID=""; RESET_PREV_GEN=""; RESET_PREV_STATE=""; RESET_PREV_FAILED=""
+	RESET_PREV_TS=""
+	[ -r "$STATE_DIR/reset" ] || return 0
+	while IFS='=' read -r k v; do
+		case "$k" in
+			reset_boot) tg_boot_ok "$v" && RESET_BOOT=$v ;;
+			reset_id) tg_reset_id_ok "$v" && RESET_ID=$v ;;
+			reset_prev_id) tg_reset_id_ok "$v" && RESET_PREV_ID=$v ;;
+			reset_state) RESET_STATE=$(tg_reset_state_ok "$v") ;;
+			reset_prev_state) RESET_PREV_STATE=$(tg_reset_state_ok "$v") ;;
+			reset_failed) RESET_REC_FAILED=$(tg_reset_list_ok "$v") ;;
+			reset_prev_failed) RESET_PREV_FAILED=$(tg_reset_list_ok "$v") ;;
+			reset_kind) case "$v" in cli|page) RESET_KIND=$v ;; esac ;;
+			reset_gen) RESET_GEN=$(tg_reset_num "$v") ;;
+			reset_prev_gen) RESET_PREV_GEN=$(tg_reset_num "$v") ;;
+			reset_ts) RESET_TS=$(tg_int "$v") ;;
+			reset_prev_ts) RESET_PREV_TS=$(tg_int "$v") ;;
+			reset_rpid) RESET_RPID=$(tg_reset_num "$v") ;;
+			reset_rstart) RESET_RSTART=$(tg_int "$v") ;;
+			reset_wpid) RESET_WPID=$(tg_reset_num "$v") ;;
+			reset_wstart) RESET_WSTART=$(tg_int "$v") ;;
+		esac
+	done < "$STATE_DIR/reset"
+}
+
+tg_reset_state_ok() { # $1 state
+	case "$1" in starting|running|done|failed|busy|aborted) echo "$1" ;; *) echo "" ;; esac
+}
+
+# Lowercase names and commas, as in RESET_FAILED.
+tg_reset_list_ok() { # $1 list
+	case "$1" in *[!a-z_,]*) echo "" ;; *) echo "$1" ;; esac
+}
+
+# A starting or running request lives while its worker does or, before one is
+# recorded, while the process that reserved it does.
+tg_reset_alive() {
+	case "$RESET_STATE" in starting|running) ;; *) return 1 ;; esac
+	if [ -n "$RESET_WPID" ]; then
+		tg_proc_is "$RESET_WPID" "$RESET_WSTART"
+	else
+		tg_proc_is "$RESET_RPID" "$RESET_RSTART"
+	fi
+}
+
+# Outside admission, on the record just read: 0 when its request is starting or
+# running and its process is gone without a result. A worker renames its result
+# into place before it exits, so a dead process counts only if the record read
+# after the liveness test still shows that same request unfinished. RESET_*
+# holds the last read.
+tg_reset_ended() {
+	local i=0 seen
+	while [ "$i" -lt 3 ]; do
+		case "$RESET_STATE" in starting|running) ;; *) return 1 ;; esac
+		tg_reset_alive && return 1
+		seen="$RESET_BOOT/$RESET_ID/$RESET_STATE/$RESET_RPID/$RESET_WPID/$RESET_WSTART"
+		tg_reset_read
+		[ "$RESET_BOOT/$RESET_ID/$RESET_STATE/$RESET_RPID/$RESET_WPID/$RESET_WSTART" = \
+			"$seen" ] && return 0
+		i=$((i + 1))
+	done
+	return 1
+}
+
+# The record as published: a request whose process is gone ended without a
+# result, whether or not a later start has said so in the record yet.
+tg_reset_view() {
+	tg_reset_read
+	tg_reset_ended && RESET_STATE=aborted
+	return 0
+}
+
+# Under admission the rename is the one command that runs. It keeps fd 6: a
+# rename that outlives its caller still holds admission, so no later request
+# gets in before it has landed. A temp file it could not move stays until
+# tg_reset_tidy finds its writer gone.
+tg_reset_put() { # $1 file, $2 content
+	local t
+	tg_my_pid; t="$1.tmp.$MY_PID"
+	{ ( umask 022; printf '%s\n' "$2" > "$t" ); } 2>/dev/null || return 1
+	mv "$t" "$1" 2>/dev/null 7>&-
+}
+
+# After admission is let go, so whoever holds it now may be writing: only temp
+# files of a writer that is gone are removed.
+tg_reset_tidy() {
+	tg_rm_gone "$STATE_DIR"/reset.tmp.* "$STATE_DIR"/reset.gen.tmp.*
+}
+
+# Under admission. $1 the state of the current request, the rest from RESET_*.
+tg_reset_save() {
+	RESET_STATE=$1
+	tg_reset_put "$STATE_DIR/reset" "$(printf '%s\n' "reset_boot=$RESET_BOOT" \
+		"reset_id=$RESET_ID" "reset_gen=$RESET_GEN" "reset_state=$RESET_STATE" \
+		"reset_ts=$RESET_TS" "reset_kind=$RESET_KIND" "reset_failed=$RESET_REC_FAILED" \
+		"reset_rpid=$RESET_RPID" "reset_rstart=$RESET_RSTART" "reset_wpid=$RESET_WPID" \
+		"reset_wstart=$RESET_WSTART" "reset_prev_id=$RESET_PREV_ID" \
+		"reset_prev_gen=$RESET_PREV_GEN" "reset_prev_state=$RESET_PREV_STATE" \
+		"reset_prev_failed=$RESET_PREV_FAILED" "reset_prev_ts=$RESET_PREV_TS")"
+}
+
+# Under admission, with the record just read: a new request of this boot with
+# the next generation. The current one becomes the previous one, as aborted
+# where it never ended; a record of another boot is dropped. A command line
+# request is its own worker and runs at once, the page's starts with no worker
+# until reset-start has forked one. $1 cli or page, $2 boot, $3 time, $4 the
+# start time of this process.
+tg_reset_reserve() {
+	local b="" g="" n=""
+	{ read -r b g < "$STATE_DIR/reset.gen"; } 2>/dev/null
+	[ "$b" = "$2" ] && n=$(tg_reset_num "$g")
+	n=${n:-0}
+	if [ "$RESET_BOOT" = "$2" ] && [ -n "$RESET_ID" ] && [ -n "$RESET_STATE" ]; then
+		[ "${RESET_GEN:-0}" -gt "$n" ] && n=$RESET_GEN
+		case "$RESET_STATE" in starting|running) RESET_STATE=aborted; REQ_ABORTED=$RESET_ID ;; esac
+		RESET_PREV_ID=$RESET_ID; RESET_PREV_GEN=$RESET_GEN; RESET_PREV_STATE=$RESET_STATE
+		RESET_PREV_FAILED=$RESET_REC_FAILED; RESET_PREV_TS=$RESET_TS
+	else
+		RESET_PREV_ID=""; RESET_PREV_GEN=""; RESET_PREV_STATE=""; RESET_PREV_FAILED=""
+		RESET_PREV_TS=""
+	fi
+	n=$((n + 1))
+	tg_reset_put "$STATE_DIR/reset.gen" "$2 $n" || return 1
+	tg_my_pid
+	RESET_BOOT=$2; RESET_GEN=$n; RESET_ID="$n-$MY_PID"; RESET_TS=$3; RESET_KIND=$1
+	RESET_REC_FAILED=""; RESET_RPID=$MY_PID; RESET_RSTART=$4
+	RESET_WPID=""; RESET_WSTART=""
+	REQ_BOOT=$RESET_BOOT; REQ_GEN=$RESET_GEN; REQ_ID=$RESET_ID; REQ_TS=$RESET_TS
+	if [ "$1" = cli ]; then
+		RESET_WPID=$MY_PID; RESET_WSTART=$4
+		tg_reset_save running
+	else
+		tg_reset_save starting
+	fi
+}
+
+# Joins the live request of this boot or reserves a new one. 0 with admission
+# held and REQ_* set, REQ_JOINED=1 for a join; 1 after saying why. $1 cli or page.
+tg_reset_admit() {
+	local boot now self rc=0
+	boot=$(tg_boot_id)
+	if [ -z "$boot" ]; then
+		echo "cannot read the boot id from $BOOT_ID_FILE, nothing was changed" >&2
+		return 1
+	fi
+	# Without it this process could not be told from a dead one, and the next
+	# start would run a second reset next to it.
+	tg_my_pid; tg_proc_start "$MY_PID"; self=$PROC_START
+	if [ -z "$self" ]; then
+		echo "cannot read the start time of this process from /proc, nothing was changed" >&2
+		return 1
+	fi
+	now=$(date +%s)
+	tg_admit_take || rc=$?
+	case "$rc" in
+		0) ;;
+		1)
+			echo "another reset is being admitted and does not let go, nothing was changed" >&2
+			return 1 ;;
+		*)
+			echo "cannot open $STATE_DIR/reset.admit, nothing was changed" >&2
+			return 1 ;;
+	esac
+	REQ_ABORTED=""; REQ_JOINED=0
+	tg_reset_read
+	if [ "$RESET_BOOT" = "$boot" ] && [ -n "$RESET_ID" ] && tg_reset_alive; then
+		REQ_BOOT=$RESET_BOOT; REQ_GEN=$RESET_GEN; REQ_ID=$RESET_ID; REQ_TS=$RESET_TS
+		REQ_JOINED=1
+		return 0
+	fi
+	tg_reset_reserve "$1" "$boot" "$now" "$self" && return 0
+	tg_admit_drop
+	echo "cannot write $STATE_DIR/reset, nothing was changed" >&2
+	return 1
+}
+
+# Only once admission is let go: logging runs commands that may wait.
+tg_reset_aborted_log() {
+	[ -n "$REQ_ABORTED" ] || return 0
+	tg_log "reset request $REQ_ABORTED ended without a result, its process is gone" warning
+}
+
+# Still under admission, right after the fork: who the worker is, so a later
+# start can tell a live worker from a dead one also before its first step.
+tg_reset_publish() { # $1 worker pid
+	tg_proc_start "$1"
+	RESET_WPID=$1; RESET_WSTART=$PROC_START
+	tg_reset_save starting
+}
+
+# The worker's first step after closing what it inherited. Only the request it
+# was forked for, still starting and naming this very process as its worker,
+# may run. Anything else (aborted, replaced, ended, another worker) means a
+# later start took over: leave without taking the state lock or writing.
+tg_reset_fence() { # $1 boot, $2 generation, $3 request id
+	local me=""
+	tg_my_pid; tg_proc_start "$MY_PID"
+	me="$MY_PID/$PROC_START"
+	[ -n "$PROC_START" ] || return 1
+	tg_admit_take || return 1
+	tg_reset_read
+	if [ "$RESET_BOOT/$RESET_GEN/$RESET_ID/$RESET_STATE/$RESET_WPID/$RESET_WSTART" != \
+		"$1/$2/$3/starting/$me" ] || ! tg_reset_save running; then
+		tg_admit_drop
+		return 1
+	fi
+	tg_admit_drop
+	REQ_BOOT=$1; REQ_GEN=$2; REQ_ID=$3
+}
+
+# The result goes into the record only while it still holds this request,
+# running. Otherwise a later request owns the record, and the log has it.
+tg_reset_finish() { # $1 done, failed or busy, $2 what is still in force
+	tg_admit_take || return 1
+	tg_reset_read
+	if [ "$RESET_BOOT/$RESET_GEN/$RESET_ID/$RESET_STATE" = \
+		"$REQ_BOOT/$REQ_GEN/$REQ_ID/running" ]; then
+		RESET_REC_FAILED=$2
+		tg_reset_save "$1"
+	fi
+	tg_admit_drop
+}
+
 # ---- commands --------------------------------------------------------------
 tg_daemon() {
-	local cpu modem now blind_cpu=0 blind_modem=0 prev_src=""
+	local cpu modem now blind_cpu=0 blind_modem=0 prev_src="" start=1
+	# A daemon that cannot serialise with reset must not write at all. Syslog
+	# only: procd restarts it every few seconds, and the event log would lose
+	# the incident it holds.
+	if ! tg_lock_open; then
+		"$TG_LOGGER" -t "$TAG" -p daemon.crit "$LOCK_ERR, not starting" 2>/dev/null
+		echo "$LOCK_ERR, not starting" >&2
+		exit 1
+	fi
 	# From here the configuration diagnostics are worth logging: this process
 	# stays, so each of them is said once rather than once per invocation.
 	DAEMON=1
 	mkdir -p "$STATE_DIR"
+	# A new start detects again rather than trusting what an earlier run found.
+	rm -f "$STATE_DIR/modem-model"
 	tg_cfg
+	tg_profile_report
 	tg_fan_detect
-	# Before the first load, so a reboot does not silently drop the stages.
-	tg_state_restore
-	tg_state_load
+	# Before the first load, so a reboot does not silently drop the stages. While
+	# a reset holds the lock, the first cycle that gets it does this instead.
+	if tg_daemon_lock; then
+		tg_state_start; start=0
+		tg_lock_drop
+	else
+		tg_state_load
+	fi
 	tg_log "started, version $THERMAL_GUARD_VERSION, stage $STAGE, fan mode $FAN_MODE, modem source $MODEM_SOURCE"
 
 	while :; do
@@ -962,8 +2303,12 @@ tg_daemon() {
 		# checkbox. Keep refreshing the status file so the web interface can
 		# say so instead of showing a snapshot that stopped ageing.
 		if [ "$ENABLED" = 0 ]; then
-			tg_state_load
-			tg_status_write
+			if tg_daemon_lock; then
+				[ "$start" = 0 ] || { tg_state_start; start=0; }
+				tg_state_load
+				tg_status_write
+				tg_lock_drop
+			fi
 			sleep "$INTERVAL"
 			continue
 		fi
@@ -971,6 +2316,7 @@ tg_daemon() {
 		cpu=$(tg_read_cpu)
 		tg_read_modem
 		modem=$MODEM_VAL
+		[ -n "$modem" ] && tg_model_detect
 		tg_modem_publish
 		now=$(date +%s)
 
@@ -996,19 +2342,29 @@ tg_daemon() {
 		fi
 
 		# The state file is the single source of truth, "reset" writes it from
-		# outside. Load it after the modem read so a reset in between survives.
-		tg_state_load
-		# Needs the loaded stage to know whether the fan should be forced.
-		tg_fan_check_owner
-		tg_trip_cycle "$cpu" "$modem"
-		FROM_STAGE=$((STAGE + 1))
-		tg_cycle "$cpu" "$modem" "$now" "$GEN"
+		# outside. Load it after the modem read so a reset in between survives,
+		# and hold the lock from the load to the status write, so a reset can
+		# neither land in the middle nor be overwritten by this cycle.
+		if tg_daemon_lock; then
+			[ "$start" = 0 ] || { tg_state_start; start=0; }
+			tg_state_load
+			# Needs the loaded stage to know whether the fan should be forced.
+			tg_fan_check_owner
+			tg_trip_cycle "$cpu" "$modem"
+			FROM_STAGE=$((STAGE + 1))
+			tg_cycle "$cpu" "$modem" "$now" "$GEN"
+			tg_lock_drop
+		else
+			# The holder may still write, so this cycle only alerts.
+			tg_blocked "$cpu" "$modem" "$(tg_uptime)"
+		fi
 		tg_flush_outbox
 		sleep "$INTERVAL"
 	done
 }
 
 tg_status() {
+	local now
 	tg_cfg
 	tg_fan_detect
 	tg_state_load
@@ -1020,55 +2376,234 @@ tg_status() {
 	echo "cpu_temp_path=$CPU_TEMP_PATH"
 	echo "last_modem=$LAST_MODEM"
 	echo "last_modem_src=$LAST_MODEM_SRC"
+	echo "modem_model=$MODEM_MODEL"
+	echo "modem_profile=$PROFILE_MATCH"
+	echo "modem_profile_warn=$PROFILE_WARN"; echo "modem_profile_crit=$PROFILE_CRIT"
+	echo "modem_warn=$MODEM_WARN"; echo "modem_crit=$MODEM_CRIT"
+	echo "modem_warn_src=$MODEM_WARN_SRC"; echo "modem_crit_src=$MODEM_CRIT_SRC"
 	echo "last_ts=$LAST_TS"
 	echo "t0=$T0"; echo "t1=$T1"; echo "t2=$T2"
 	echo "pending=$PENDING"; echo "pending_n=$PENDING_N"
+	echo "cause1=$CAUSE1"; echo "cpu_seen=$CPU_SEEN"; echo "auto_recover=$AUTO_RECOVER"
+	echo "recover_minutes=$RECOVER_MINUTES"; echo "recover_max=$RECOVER_MAX"
+	echo "cool_since=$COOL_SINCE"; echo "recover_n=$RECOVER_N"
+	now=$(date +%s)
+	echo "recover_at=$(tg_recover_at "$now")"
+	echo "recover_state=$(tg_recover_state "$now")"
+	echo "reset_failed=$RESET_FAILED"
+	tg_reset_view
+	echo "reset_state=$RESET_STATE"; echo "reset_req_failed=$RESET_REC_FAILED"
+	echo "reset_ts=$RESET_TS"
+	echo "reset_boot=$RESET_BOOT"; echo "reset_id=$RESET_ID"; echo "reset_gen=$RESET_GEN"
+	echo "reset_kind=$RESET_KIND"
+	echo "reset_prev_id=$RESET_PREV_ID"; echo "reset_prev_gen=$RESET_PREV_GEN"
+	echo "reset_prev_state=$RESET_PREV_STATE"; echo "reset_prev_failed=$RESET_PREV_FAILED"
+	echo "reset_prev_ts=$RESET_PREV_TS"
 	echo "fan_mode=$FAN_MODE"
-	echo "fan_state=$(tg_fan_state)"
-	echo "fan_max=$(tg_fan_max)"
+	tg_fan_view_now; tg_fan_status
+	echo "fan_restore_pending=$(tg_fan_restore_pending && echo 1 || echo 0)"
+	echo "fan_taken=$FAN_TAKEN"; echo "fan_unresolved=$FAN_UNRESOLVED"
 	echo "outbox_lines=$([ -f "$OUTBOX" ] && wc -l < "$OUTBOX" || echo 0)"
 	echo "alt_uplink=$(tg_alt_uplink && echo 1 || echo 0)"
 }
 
+# The command line reset. A reset that already runs, detached or by hand, is
+# joined rather than queued behind: same intent, and its result is the answer.
 tg_reset() {
-	local hist gen
 	tg_cfg
 	tg_fan_detect
-	tg_state_load
-	tg_log "reset requested (stage $STAGE)" notice
+	# Without a lock there is no telling who else writes, so nothing is touched.
+	if ! tg_lock_open; then
+		echo "$LOCK_ERR, nothing was changed" >&2
+		return 1
+	fi
+	tg_reset_admit cli || return 1
+	tg_admit_drop
+	tg_reset_tidy
+	tg_reset_aborted_log
+	if [ "$REQ_JOINED" = 1 ]; then
+		tg_reset_join
+		return
+	fi
+	tg_reset_run
+}
 
-	[ "$STAGE" -ge 1 ] && tg_undo_action "$STAGE1_ACTION"
-	[ "$STAGE" -ge 2 ] && tg_undo_action "$STAGE2_ACTION"
-	# Unconditional, not "if we think we took the fan". Reset means hand it
-	# back, and the one case where the stage says idle but the fan is still
-	# forced is exactly the one an operator cannot fix any other way.
-	tg_fan_release
+# Waits for the result of the joined request and exits by it. Admission is not
+# held meanwhile: the worker needs it for that very result.
+tg_reset_join() {
+	local i=0 limit=$((RESET_WAIT + RESET_BUDGET + 60)) st="" failed="" dead=0
+	echo "a reset is already running (request $REQ_ID), waiting for its result"
+	while :; do
+		tg_reset_read
+		dead=0; tg_reset_ended && dead=1
+		if [ "$RESET_BOOT/$RESET_ID" = "$REQ_BOOT/$REQ_ID" ]; then
+			case "$RESET_STATE" in
+				starting|running) [ "$dead" = 0 ] || st=aborted ;;
+				*) st=$RESET_STATE; failed=$RESET_REC_FAILED ;;
+			esac
+		elif [ "$RESET_BOOT/$RESET_PREV_ID" = "$REQ_BOOT/$REQ_ID" ]; then
+			st=$RESET_PREV_STATE; failed=$RESET_PREV_FAILED
+		else
+			st=unknown
+		fi
+		[ -z "$st" ] || break
+		if [ "$i" -ge "$limit" ]; then
+			st=unknown
+			break
+		fi
+		sleep 1
+		i=$((i + 1))
+	done
+	case "$st" in
+		done)
+			[ -z "$failed" ] || echo "still in force: $failed" >&2
+			return 0 ;;
+		failed) echo "the reset could not undo everything, still in force: ${failed:-?}" >&2 ;;
+		busy) echo "the daemon is busy with a stage action, try again" >&2 ;;
+		aborted) echo "the reset ended without a result, its process is gone" >&2 ;;
+		*) echo "the result of the reset is not known, see thermal-guard status" >&2 ;;
+	esac
+	return 1
+}
+
+# The reset itself, as the request in REQ_*, which is running. Its result goes
+# into the record before the final status write, under both locks.
+tg_reset_run() {
+	local hist gen failed carried listed t t0 rc=0
+	# A cycle in flight finishes first: once it acts or saves after the reset,
+	# the reset is undone without anyone noticing.
+	tg_lock_wait "$RESET_WAIT" || rc=$?
+	if [ "$rc" != 0 ]; then
+		# Busy: the holder publishes it with its next status write. No lock at all
+		# is no reason to try again, failed with the log saying why. The status
+		# file lags there until the next writer, the record and status are right.
+		if [ "$rc" = 2 ]; then
+			tg_reset_finish failed ""
+			tg_log "reset request $REQ_ID: $LOCK_ERR, nothing was changed" crit
+			echo "$LOCK_ERR, nothing was changed" >&2
+		else
+			tg_reset_finish busy ""
+			echo "the daemon is busy with a stage action, try again" >&2
+		fi
+		return 1
+	fi
+	t0=$(tg_uptime)
+	tg_state_load
+	# A daemon killed in a restore, after the takeover save, left the fan record
+	# in the persisted copy only. A record of an earlier boot is dropped on read.
+	[ -r "$STATE" ] || tg_state_read "$PERSIST"
+	tg_log "reset requested (stage $STAGE)" notice
+	# The daemon publishes nothing while it waits for this reset, so the page
+	# learns from this snapshot that clearing runs: the record says running.
+	tg_status_write
+
+	tg_undo_all "$t0"
+	# Entries an earlier reset could not undo, the fan aside, are not tried again
+	# and are still in force, so they stay in view. A stage entry empties the list.
+	# Only what this reset tried and could not undo counts as its failure.
+	# Lowercase names and commas only, so word splitting is safe.
+	carried=$(tg_list_drop "$RESET_FAILED" fan)
+	failed=$UNDO_FAILED; listed=$carried
+	for t in $(echo "$failed" | tr ',' ' '); do
+		listed=$(tg_list_add "$listed" "$t")
+	done
 
 	hist=$(tail -n 10 "$EVLOG" 2>/dev/null)
 	gen=$((GEN + 1))
-	tg_state_clear
+	# A fan that was not handed back keeps its takeover record, so the next
+	# reset retries that same fan with what was saved, and never another one.
+	case ",$failed," in
+		*,fan,*) tg_state_clear_but_fan ;;
+		*) tg_state_clear ;;
+	esac
 	GEN=$gen
+	# The stage is cleared even where an undo failed: reset must stay possible
+	# with the hardware gone. What is still in force stays in view instead.
+	RESET_FAILED=$listed
 	# Clearing means clearing, including across the next reboot.
-	rm -f "$PERSIST" 2>/dev/null
-	sync
+	rm -f "$PERSIST" "$PERSIST_DIR/recover" 2>/dev/null
+	tg_sync || tg_log \
+		"could not flush the removal of $PERSIST, the stage may come back after a reboot" warning
 	tg_state_save
+	# Before the status write, which publishes it, and before the messages,
+	# which may take a while: the page waits for this.
+	if [ -n "$failed" ]; then
+		tg_reset_finish failed "$listed"
+	else
+		tg_reset_finish "done" "$listed"
+	fi
 	tg_status_write
+	# The messages go out without it: a slow post must not hold up a cycle.
+	tg_lock_drop
+	if [ -n "$failed" ]; then
+		tg_notify resetfail "reset done, but could not undo: $failed. Check the device."
+		echo "could not undo: $failed" >&2
+		return 1
+	fi
+	# Nothing this reset tried failed. What is left was there before it.
+	if [ -n "$carried" ]; then
+		tg_notify reset "still in force from an earlier reset: $carried"
+		echo "still in force from an earlier reset: $carried" >&2
+	fi
 	tg_log "reset done" notice
 
 	tg_notify_configured || return 0
-	if tg_notify_send "$(printf '[%s] %s: reset done. Recent events:\n%s' \
-		"$(cat /proc/sys/kernel/hostname 2>/dev/null)" "$TAG" "$hist")"; then
-		: > "$OUTBOX" 2>/dev/null
-	else
-		mkdir -p "$STATE_DIR"
-		printf '%s reset done (history: logread -e %s)\n' "$(date '+%F %T')" "$TAG" >> "$OUTBOX"
-	fi
+	# The outbox stays as it is either way: a daemon blocked by this reset may
+	# have queued an alert after the history was taken, and it delivers it.
+	tg_notify_send "$(printf '[%s] %s: reset done. Recent events:\n%s' \
+		"$(cat /proc/sys/kernel/hostname 2>/dev/null)" "$TAG" "$hist")" && return 0
+	mkdir -p "$STATE_DIR"
+	printf '%s reset done (history: logread -e %s)\n' "$(date '+%F %T')" "$TAG" >> "$OUTBOX"
 	return 0
+}
+
+# The page's Clear. rpcd kills a command that outlasts its timeout, perhaps in
+# the middle of an undo, and the page gives up even sooner. So the reset runs
+# detached, and the page reads how it went from the status file. A Clear while
+# a reset runs joins it and prints that request.
+tg_reset_start() {
+	# A reset that could never take the lock is not started at all.
+	if ! tg_lock_open; then
+		echo "$LOCK_ERR, nothing was changed" >&2
+		return 1
+	fi
+	tg_reset_admit page || return 1
+	if [ "$REQ_JOINED" = 0 ]; then
+		# Forked under admission, so the worker is recorded before anyone can
+		# look. None of rpcd's streams stays open: rpcd waits for them to close.
+		( tg_reset_worker "$REQ_BOOT" "$REQ_GEN" "$REQ_ID" ) < /dev/null > /dev/null 2>&1 &
+		if ! tg_reset_publish "$!"; then
+			tg_admit_drop
+			echo "cannot write $STATE_DIR/reset, nothing was changed" >&2
+			return 1
+		fi
+	fi
+	tg_admit_drop
+	tg_reset_tidy
+	tg_reset_aborted_log
+	printf 'reset_boot=%s\nreset_id=%s\nreset_gen=%s\nreset_ts=%s\n' \
+		"$REQ_BOOT" "$REQ_ID" "$REQ_GEN" "$REQ_TS"
+	[ "$REQ_JOINED" = 0 ] || echo "reset_joined=1"
+	return 0
+}
+
+# The detached reset. Forked while reset-start held admission, it shares that
+# locked descriptor and the state lock's one: both are closed first, or this
+# process would hold what reset-start holds. Its own come from fresh opens.
+tg_reset_worker() { # $1 boot, $2 generation, $3 request id
+	exec 6>&- 7>&-
+	LOCK_OK=""
+	tg_reset_fence "$1" "$2" "$3" || return 0
+	tg_cfg
+	tg_fan_detect
+	tg_reset_run
 }
 
 # The operator has seen the new device tree trips and decided, either to use
 # them as trip_active or to keep their own. Both make the set of this boot
-# the one trip_active was made for.
+# the one trip_active was made for. No state lock: this writes trip_base only,
+# never the state or the hardware, and the daemon writes trip_base only where
+# it is missing, then with the same set of this boot.
 tg_trips_keep() {
 	local dt
 	dt=$(cat "$STATE_DIR/trip_dt" 2>/dev/null)
@@ -1084,6 +2619,67 @@ tg_trips_keep() {
 	tg_log "trip_base set to $(tg_trip_deg "$dt") C (trips-keep)" notice
 }
 
+# The operator has checked the fan by hand and drops what the daemon keeps to
+# hand it back. No hardware is written, the fan stays as it is. Refused while a
+# stage is active, in the working state or in the persisted copy the next start
+# restores: that stage still needs its fan. Both copies lose the record under
+# one hold of the lock, so a restart cannot bring it back.
+tg_fan_forget() {
+	local ps t
+	tg_cfg
+	tg_fan_detect
+	if ! tg_lock_open; then
+		echo "$LOCK_ERR, nothing was changed" >&2
+		return 1
+	fi
+	if ! tg_lock_wait "$RESET_WAIT"; then
+		echo "the daemon is busy with a stage action, try again" >&2
+		return 1
+	fi
+	tg_state_load
+	ps=$(tg_int "$(sed -n 's/^STAGE=//p' "$PERSIST" 2>/dev/null | head -n1)")
+	if [ "$STAGE" -ge 0 ] || [ "${ps:--1}" -ge 0 ]; then
+		tg_lock_drop
+		echo "a stage is active, clear it first" >&2
+		return 1
+	fi
+	case ",$RESET_FAILED," in
+		*,fan,*) ;;
+		*)
+			if ! tg_fan_restore_pending; then
+				tg_lock_drop
+				echo "no fan restoration record, nothing was changed"
+				return 0
+			fi ;;
+	esac
+	if [ -e "$PERSIST" ]; then
+		tg_my_pid; t="$PERSIST.tmp.$MY_PID"
+		if ! { tg_fan_keys_strip "$PERSIST" > "$t" && mv "$t" "$PERSIST"; } 2>/dev/null; then
+			rm -f "$t"; tg_lock_drop
+			echo "could not rewrite $PERSIST, nothing was changed" >&2
+			return 1
+		fi
+		# Not discarded until it is on flash, or a reboot brings it back.
+		if ! tg_sync; then
+			tg_lock_drop
+			echo "could not flush $PERSIST, the record is still in $STATE, try again" >&2
+			return 1
+		fi
+	fi
+	tg_fan_record_drop
+	RESET_FAILED=$(tg_list_drop "$RESET_FAILED" fan)
+	if ! tg_state_save; then
+		tg_lock_drop
+		echo "could not write $STATE, the record is still there, try again" >&2
+		return 1
+	fi
+	tg_log "fan restoration record discarded by the operator, the fan was not released" notice
+	tg_status_write
+	tg_lock_drop
+	echo "fan restoration record discarded, the fan was not released"
+	return 0
+}
+
 # Two cycles with the same readings, prints what they would trigger.
 tg_test() {
 	local cpu modem now
@@ -1097,7 +2693,7 @@ tg_test() {
 	# stops at DRY already; clearing the ways out is the second line of defence
 	# should a later path ever send around it.
 	DRY=1; NOTIFY_URL=""; HOOK_DIR=/nonexistent; MODEM_SRC="test"
-	cpu=$1; modem=$(tg_int "${2:-}"); now=$(date +%s)
+	cpu=$(tg_int "$1"); modem=$(tg_int "${2:-}"); now=$(date +%s)
 	# Every transition needs two readings in a row, so one cycle never shows a
 	# stage. Both at the same time: the hold time does not pass here.
 	FROM_STAGE=$((STAGE + 1)); tg_cycle "$cpu" "$modem" "$now"
@@ -1117,7 +2713,16 @@ tg_selftest() {
 	STATE_DIR="$dir/run"; STATE="$STATE_DIR/state"; OUTBOX="$STATE_DIR/outbox"
 	EVLOG="$STATE_DIR/log"; PERSIST_DIR="$dir/persist"; PERSIST="$PERSIST_DIR/state"
 	STATUS_FILE="$dir/status"; HOOK_DIR="$dir/hooks"
-	mkdir -p "$STATE_DIR"
+	# And no sysfs: every root is planted for the whole run. A block that needs a
+	# real path sets it and puts the planted one back.
+	THERMAL_ROOT="$dir/thermal"; HWMON_ROOT="$dir/hwmon"; NET_ROOT="$dir/net"
+	DT_ROOT="$dir/devicetree"; CPU_TEMP_PATH="$THERMAL_ROOT/thermal_zone0/temp"
+	AT_LOCK="$dir/modem-at.lock"
+	# The boot id too, so a boot change can be planted, and where fan device
+	# links resolve to.
+	BOOT_ID_FILE="$dir/boot_id"; DEVICES_ROOT="$dir/sysdev"
+	SELFTEST_BOOT=4f0c9d1e-6a2b-4c3d-8e5f-0a1b2c3d4e5f
+	mkdir -p "$STATE_DIR"; echo "$SELFTEST_BOOT" > "$BOOT_ID_FILE"
 	# Never the real syslog; the priorities are checked from this file.
 	logger() { echo "$*" >> "$dir/syslog"; }
 	TG_LOGGER="logger"
@@ -1131,6 +2736,19 @@ tg_selftest() {
 			echo "FAIL $1: expected [$3], got [$2]"
 			fail=1
 		fi
+	}
+	# Helpers that delete or plant files take only paths in the scratch directory.
+	# One aimed elsewhere ends the run before it touches anything: this runs as root.
+	tg_selftest_scratch() { # $@ paths
+		local p
+		for p in "$@"; do
+			tg_path_under "$p" "$dir/" && continue
+			echo "FAIL a selftest helper was given '$p', outside the scratch directory"
+			echo "selftest: FAILED"
+			# Only the main shell owns the scratch directory, a subshell leaves it.
+			tg_my_pid; [ "$MY_PID" = "$$" ] && rm -rf "$dir"
+			exit 1
+		done
 	}
 	CPU_WARN=70; CPU_CRIT=80; CPU_EMERGENCY=90; MODEM_WARN=80; MODEM_CRIT=88
 	HOLD_MINUTES=3; HYSTERESIS=10
@@ -1157,6 +2775,23 @@ tg_selftest() {
 	tg_decide 85 72 1280; tg_decide 85 72 1300
 	chk "a rise over it after the hold time reaches stage 2" "$DECISION/$STAGE" "stage:2/2"
 
+	# Missing readings per transition. Stage 1 to 2 on time needs a reading above
+	# its reference, so a box that went blind stays in stage 1.
+	tg_state_clear; tg_decide 85 70 1000; tg_decide 85 70 1020
+	tg_decide '' '' 1240; tg_decide '' '' 1260
+	chk "stage 1, hold elapsed, no readings at all: stays stage 1" \
+		"$DECISION/$STAGE/$PENDING_N" "none/1/0"
+	tg_decide '' 80 1280; tg_decide '' 80 1300
+	chk "a modem reading above its reference is what escalates" "$DECISION/$STAGE" "stage:2/2"
+	# Stage 0 to 1 on time counts a missing reading as no drop, so it is not delayed.
+	tg_state_clear; tg_decide 75 66 6000; tg_decide 75 66 6020
+	tg_decide '' '' 6200; tg_decide '' '' 6220
+	chk "stage 0, hold elapsed, no readings: a missing reading is no drop" \
+		"$DECISION/$STAGE" "stage:1/1"
+	# A threshold needs a reading.
+	tg_state_clear; tg_decide '' '' 6400; tg_decide '' '' 6420
+	chk "no readings at all do not start a stage" "$DECISION/$STAGE" "none/-1"
+
 	tg_state_clear; tg_decide 65 66 2000; tg_decide 60 65 2020; tg_decide 62 66 2040
 	tg_decide 61 82 2060; tg_decide 61 82 2080; chk "modem alone reaches stage 0" "$DECISION/$STAGE" "stage:0/0"
 	tg_decide 61 90 2100; tg_decide 61 90 2120; chk "modem crit skips the hold" "$DECISION/$STAGE" "stage:1/1"
@@ -1180,6 +2815,9 @@ tg_selftest() {
 			chk "$1 '$2'" reject "$3"
 		fi
 	}
+	# Against the shipped roots: the guards only compare strings, nothing is read.
+	saved_root=$THERMAL_ROOT; saved_hwmon=$HWMON_ROOT
+	THERMAL_ROOT=/sys/class/thermal; HWMON_ROOT=/sys/class/hwmon
 	chk_path tg_path_thermal /sys/class/thermal/thermal_zone0/temp accept
 	chk_path tg_path_thermal /etc/passwd reject
 	chk_path tg_path_thermal /sys/class/thermal/../../../etc/passwd reject
@@ -1197,6 +2835,7 @@ tg_selftest() {
 	chk_path tg_path_lock /tmpfoo/evil reject
 	chk_path tg_path_dev /dev/ttyUSB2 accept
 	chk_path tg_path_dev /tmp/x reject
+	THERMAL_ROOT=$saved_root; HWMON_ROOT=$saved_hwmon
 
 	# Reset race. A reset landing mid cycle has to win: the daemon drops its
 	# decision instead of writing the stage it was still holding back.
@@ -1211,19 +2850,19 @@ tg_selftest() {
 	# Fan percentage has to read the same on a board whose scale descends.
 	FAN_MODE=pwm; FAN_VIEW=pwm
 	PWM_IDLE=0; PWM_FULL=200
-	chk "rising scale, half speed" "$(tg_fan_percent 100)" "50"
+	chk "rising scale, half speed" "$(tg_fan_view_now; tg_fan_percent 100)" "50"
 	PWM_IDLE=200; PWM_FULL=0
-	chk "inverted scale, half speed" "$(tg_fan_percent 100)" "50"
+	chk "inverted scale, half speed" "$(tg_fan_view_now; tg_fan_percent 100)" "50"
 
 	# The Banana Pi R3 Mini runs this way round: 1 is full speed, 255 stops it.
 	PWM_IDLE=255; PWM_FULL=1
-	chk "inverted board at full speed" "$(tg_fan_percent 1)" "100"
-	chk "inverted board stopped" "$(tg_fan_percent 255)" "0"
-	chk "inverted board, measured value" "$(tg_fan_percent 89)" "65"
+	chk "inverted board at full speed" "$(tg_fan_view_now; tg_fan_percent 1)" "100"
+	chk "inverted board stopped" "$(tg_fan_view_now; tg_fan_percent 255)" "0"
+	chk "inverted board, measured value" "$(tg_fan_view_now; tg_fan_percent 89)" "65"
 
 	# A value outside the configured span must not leave 0..100.
-	chk "out of range clamps" "$(tg_fan_percent 300)" "0"
-	chk "a garbled reading yields nothing" "$(tg_fan_percent '9;reboot')" ""
+	chk "out of range clamps" "$(tg_fan_view_now; tg_fan_percent 300)" "0"
+	chk "a garbled reading yields nothing" "$(tg_fan_view_now; tg_fan_percent '9;reboot')" ""
 
 	# Polarity is never assumed. pwm without both values must not touch the fan,
 	# and auto must not pick pwm at all, since it cannot know the polarity.
@@ -1247,16 +2886,13 @@ tg_selftest() {
 	PWM_FULL=1; PWM_IDLE=255; FAN_MODE=none; tg_fan_detect
 	chk "none still writes nothing" "$FAN_MODE" "none"
 	chk "none reads the pwm output when the polarity is known" "$FAN_VIEW" "pwm"
-	chk "and shows it as a percentage" "$(tg_fan_percent 1)" "100"
+	chk "and shows it as a percentage" "$(tg_fan_view_now; tg_fan_percent 1)" "100"
 	PWM_FULL=""; PWM_IDLE=""; FAN_MODE=none; tg_fan_detect
 	chk "without a polarity the raw output is still read" "$FAN_VIEW" "pwm"
-	chk "but not turned into a percentage" "$(tg_fan_percent 1)" ""
-	# Only where the board has no fan chip: on one that does, it is found by
-	# its hwmon name and read, which is the point.
-	if [ -z "$(tg_fan_find_hwmon)" ]; then
-		PWM_PATH=""; PWM_ENABLE_PATH=""; FAN_MODE=none; tg_fan_detect
-		chk "nothing to read, nothing shown" "$FAN_VIEW" "none"
-	fi
+	chk "but not turned into a percentage" "$(tg_fan_view_now; tg_fan_percent 1)" ""
+	# The planted hwmon tree has no fan chip yet, so there is nothing to find.
+	PWM_PATH=""; PWM_ENABLE_PATH=""; FAN_MODE=none; tg_fan_detect
+	chk "nothing to read, nothing shown" "$FAN_VIEW" "none"
 	PWM_PATH="$STATE_DIR/pwm1"; PWM_ENABLE_PATH="$STATE_DIR/pwm1_enable"
 	PWM_FULL=1; PWM_IDLE=255; FAN_MODE=pwm; tg_fan_detect
 	chk "a driven fan is read the way it is written" "$FAN_VIEW" "pwm"
@@ -1330,7 +2966,7 @@ tg_selftest() {
 	# "command" without a hook must not silently look like success.
 	tg_run_action command nosuchhook >/dev/null 2>&1 && r=ok || r=failed
 	chk "an action with no hook reports failure" "$r" "failed"
-	HOOK_DIR=/nonexistent
+	HOOK_DIR="$dir/no-hooks"
 
 	# Notification address. Anything that ends a quoted value in a curl config
 	# file, or starts a new line in one, must never reach it: curl config knows
@@ -1379,13 +3015,30 @@ tg_selftest() {
 	tg_state_clear; tg_state_load
 	chk "a junk governor is dropped" "$FAN_SAVED_POLICY" ""
 
-	# Persisting to flash. sync is counted instead of run, the function is new
-	# here, so unset -f afterwards leaves nothing behind.
-	sync() { echo x >> "$dir/sync.calls"; }
+	# Persisting to flash. sync is a stand-in on PATH that counts its calls, it
+	# runs under timeout, which a shell function would not reach. It fails while
+	# sync.fail exists and hangs while sync.hang does.
+	mkdir -p "$dir/bin-sync"
+	printf '#!/bin/sh\necho x >> "%s"\n[ -e "%s" ] && exec sleep 10\n[ ! -e "%s" ]\n' \
+		"$dir/sync.calls" "$dir/sync.hang" "$dir/sync.fail" > "$dir/bin-sync/sync"
+	chmod 0755 "$dir/bin-sync/sync"
+	saved_path=$PATH; PATH="$dir/bin-sync:$PATH"
 	sync_calls() { [ -f "$dir/sync.calls" ] && wc -l < "$dir/sync.calls" | tr -d ' ' || echo 0; }
 	rm -f "$dir/sync.calls"; tg_state_clear; STAGE=1
 	tg_state_persist && r=ok || r=failed
 	chk "persisting a stage flushes it to flash" "$r/$(sync_calls)/$(sed -n 's/^STAGE=//p' "$PERSIST")" "ok/1/1"
+	# A flush that fails or does not end in time confirms nothing: the stage is
+	# written, but not reported as persisted.
+	rm -f "$dir/sync.calls" "$PERSIST"; : > "$EVLOG"; touch "$dir/sync.fail"
+	tg_state_persist && r=ok || r=failed
+	saved_ct=$CMD_TIMEOUT; CMD_TIMEOUT=1; rm -f "$dir/sync.fail"; touch "$dir/sync.hang"
+	t=$(tg_uptime)
+	tg_state_persist && r="$r/ok" || r="$r/failed"
+	r="$r/$([ $(($(tg_uptime) - t)) -le 3 ] && echo bounded)"
+	CMD_TIMEOUT=$saved_ct; rm -f "$dir/sync.hang"
+	chk "a failed or hung flush is not taken as persisted" \
+		"$r/$(sed -n 's/^STAGE=//p' "$PERSIST")/$(grep -c 'could not persist stage 1' "$EVLOG")" \
+		"failed/failed/bounded/1/2"
 	rm -f "$dir/sync.calls"; tg_state_clear
 	tg_cycle 50 40 6000 >/dev/null 2>&1
 	chk "a cycle without a stage change saves the state but does not flush" \
@@ -1397,7 +3050,8 @@ tg_selftest() {
 	chk "a stage that cannot be persisted is reported and not flushed" \
 		"$r/$(grep -c 'could not persist stage 1' "$EVLOG")/$(sync_calls)" "failed/1/0"
 	PERSIST_DIR=$saved_pdir; PERSIST=$saved_persist
-	unset -f sync sync_calls
+	PATH=$saved_path
+	unset -f sync_calls
 	tg_state_clear
 
 	# A restore applies first and sends one message that names what failed.
@@ -1421,6 +3075,7 @@ tg_selftest() {
 	# boards, and the real trips belong to the daemon next to it.
 	tg_selftest_tree() { # $1 root, $2 form: bpi, nofan or ro
 		local z="$1/thermal_zone0" c="$1/cooling_device0" i t
+		tg_selftest_scratch "$1"
 		rm -rf "$1"; mkdir -p "$z" "$c"
 		echo pwm-fan > "$c/type"; echo 3 > "$c/max_state"; echo 0 > "$c/cur_state"
 		echo step_wise > "$z/policy"; echo 45000 > "$z/temp"
@@ -1438,9 +3093,24 @@ tg_selftest() {
 		[ "$2" = ro ] && chmod 0444 "$z/trip_point_3_temp"
 		return 0
 	}
+	# Takeover records of the planted fans, the way a stage entry writes them:
+	# the cooling device of a tree under $1 with its zone, the pwmfan chip.
+	tg_selftest_cdev_rec() { # $1 thermal root
+		tg_selftest_scratch "$1"
+		echo cpu-thermal > "$1/thermal_zone0/type"
+		tg_fan_record_drop
+		FAN_TAKEN=cooling_device; FAN_BOOT=$SELFTEST_BOOT; FAN_T_NAME='pwm-fan'
+		FAN_T_ZONE='cpu-thermal'
+	}
+	tg_selftest_pwm_rec() {
+		tg_fan_record_drop
+		FAN_TAKEN=pwm; FAN_BOOT=$SELFTEST_BOOT; FAN_T_NAME=pwmfan; FAN_T_ATTR=pwm1
+		FAN_T_FULL=$(tg_int "$PWM_FULL")
+	}
 	tg_selftest_trips() { cat "$THERMAL_ROOT"/thermal_zone0/trip_point_*_temp | tr '\n' ' '; }
 	tg_selftest_trip_reset() {
 		tg_selftest_tree "$THERMAL_ROOT" "${1:-bpi}"
+		tg_selftest_scratch "$STATE_DIR" "$PERSIST_DIR"
 		rm -f "$STATE_DIR/trip_dt"
 		TRIP_DT=""; TRIP_WIN=""; TRIP_DELTA=0; TRIP_WAS_ACTIVE=0
 		TRIP_TOLD_FIND=""; TRIP_TOLD_VALID=""; TRIP_TOLD_DT=""; TRIP_TOLD_WRITE=""
@@ -1448,8 +3118,18 @@ tg_selftest() {
 		FAN_ZONE=""; FAN_CDEV_TYPE=pwm-fan; STAGE=-1
 		mkdir -p "$PERSIST_DIR"; echo "50 60 70" > "$PERSIST_DIR/trip_base"
 	}
-	saved_root=$THERMAL_ROOT; saved_hwmon=$HWMON_ROOT
-	THERMAL_ROOT="$dir/thermal"; HWMON_ROOT="$dir/hwmon"
+	# The tree helper deletes and plants, so a root outside the scratch directory
+	# ends the run before anything is touched. Siblings of it stand in for /sys.
+	for r in "a sibling:$dir.outside" "a way out over ..:$dir/../${dir##*/}.dotdot"; do
+		c=$( (tg_selftest_tree "${r#*:}" bpi; echo "went on") 2>&1 )
+		case "$c" in
+			"FAIL "*" outside the scratch directory"*"selftest: FAILED") t=refused ;;
+			*) t="not refused" ;;
+		esac
+		[ -e "${r#*:}" ] && t="$t/planted" || t="$t/none"
+		chk "the tree helper refuses ${r%%:*} and ends the run" "$t" "refused/none"
+		rm -rf "${r#*:}"
+	done
 	case "$THERMAL_ROOT" in "$dir"/*) r=planted ;; *) r=live ;; esac
 	chk "trip tests run against a planted tree" "$r" "planted"
 	# The hwmon guard follows the moved root and still keeps everything else out.
@@ -1466,14 +3146,19 @@ tg_selftest() {
 	printf '\000\000\000\214\000\000\000\144\000\000\000\062\000\000\000\000' > "$DT_ROOT/pwm-fan/cooling-levels"
 	if command -v hexdump >/dev/null 2>&1; then
 		chk "cooling-levels are read from the device tree" "$(tg_fan_levels)" "140 100 50 0"
+		# Every status write asks, so a node without compatible must not print errors.
+		mkdir -p "$DT_ROOT/gpio-fan"; printf '\000\000\000\001' > "$DT_ROOT/gpio-fan/cooling-levels"
+		chk "a node without compatible is skipped without a word" "$(tg_fan_levels 2>&1)" \
+			"140 100 50 0"
 	else
 		echo "skip cooling-levels (no hexdump on this host; BusyBox on the target has it)"
 	fi
 	DT_ROOT=$saved_dt
 
 	# mt_wifi temperatures through iwpriv, against a planted net tree and a
-	# stand-in iwpriv, so the real radios are never asked
-	saved_net=$NET_ROOT; saved_path=$PATH; NET_ROOT="$dir/net"
+	# stand-in iwpriv, so the real radios are never asked. A tree of its own: the
+	# radios it plants up would be asked of the host's iwpriv later.
+	saved_net=$NET_ROOT; saved_path=$PATH; NET_ROOT="$dir/net-mtwifi"
 	mkdir -p "$NET_ROOT/ra0" "$NET_ROOT/rax0" "$dir/bin"
 	# shellcheck disable=SC2016  # $1 belongs to the stand-in script, not to us
 	printf '#!/bin/sh\ncase "$1" in\n\tra0) echo "CurrentTemperature              = 53" ;;\n\trax0) echo "CurrentTemperature              = 48;reboot" ;;\nesac\n' > "$dir/bin/iwpriv"
@@ -1508,6 +3193,12 @@ tg_selftest() {
 	chmod 0755 "$HOOK_DIR/modem-temp"
 	MODEM_VAL=""; tg_read_modem
 	chk "a modem-temp hook that finishes gives a reading" "$MODEM_VAL/$MODEM_SRC" "55/command"
+	printf '#!/bin/sh\necho 0085\n' > "$HOOK_DIR/modem-temp"
+	MODEM_VAL=""; tg_read_modem
+	chk "a hook printing 0085 gives 85" "$MODEM_VAL" "85"
+	printf '#!/bin/sh\necho 12345678\n' > "$HOOK_DIR/modem-temp"
+	MODEM_VAL=""; tg_read_modem
+	chk "a hook printing eight digits gives none" "$MODEM_VAL" ""
 	printf '#!/bin/sh\necho 55\nexec sleep 30\n' > "$HOOK_DIR/modem-temp"
 	MODEM_VAL=""; tg_read_modem
 	chk "one stopped at its time limit gives none" "$MODEM_VAL" ""
@@ -1538,10 +3229,17 @@ tg_selftest() {
 	TRIP_BOOST=bogus; TRIP_BOOST_OFFSET=-1; tg_cfg_validate_trips
 	chk "unknown trip_boost falls back to off" "$TRIP_BOOST" "off"
 	chk "negative offset falls back to 15" "$TRIP_BOOST_OFFSET" "15"
-	for v in 41 x; do
+	for v in 41 x 041 99999999999999999999; do
 		TRIP_BOOST_OFFSET=$v; tg_cfg_validate_trips
 		chk "offset '$v' falls back to 15" "$TRIP_BOOST_OFFSET" "15"
 	done
+	TRIP_BOOST_OFFSET=012; tg_cfg_validate_trips
+	chk "a padded offset 012 is kept as 12" "$TRIP_BOOST_OFFSET" "12"
+	TRIP_ACTIVE="045 055 065"; tg_cfg_validate_trips
+	chk "a padded trip_active is kept as plain decimals" "$TRIP_ACTIVE" "45 55 65"
+	TRIP_ACTIVE="050 60 x"; tg_cfg_validate_trips
+	chk "a trip_active with a non number stays as written" "$TRIP_ACTIVE" "050 60 x"
+	TRIP_ACTIVE=""; TRIP_BOOST_OFFSET=15
 
 	for v in step_wise fair_share bang_bang power_allocator; do
 		FAN_GOVERNOR=$v; tg_cfg_validate_governor
@@ -1594,6 +3292,15 @@ tg_selftest() {
 	chk "trip_active is the baseline" "$(tg_selftest_trips)" "125000 120000 45000 55000 65000 "
 	TRIP_ACTIVE="65 55 45"; tg_trip_cycle 50 60
 	chk "a bad trip_active falls back to the device tree" "$(tg_selftest_trips)" "125000 120000 50000 60000 70000 "
+	# Padded values the way UCI hands them over: the trip arithmetic sees decimals.
+	tg_selftest_trip_reset
+	TRIP_ACTIVE="045 055 065"; tg_cfg_validate_trips; tg_trip_cycle 50 60
+	chk "a padded trip_active writes its own millidegrees" \
+		"$(tg_selftest_trips)" "125000 120000 45000 55000 65000 "
+	tg_selftest_trip_reset
+	TRIP_BOOST_OFFSET=015; tg_cfg_validate_trips; tg_trip_cycle 50 80
+	chk "a padded trip_boost_offset of 015 lowers by 15" \
+		"$(tg_selftest_trips)" "125000 120000 35000 45000 55000 "
 
 	tg_selftest_trip_reset
 	echo "50 60 75" > "$PERSIST_DIR/trip_base"
@@ -1749,6 +3456,291 @@ tg_selftest() {
 	fi
 	FAN_MODE=none; PWM_PATH=""; PWM_ENABLE_PATH=""; FAN_SAVED_ENABLE=""; FAN_SAVED_PWM=""
 
+	# Forcing the fan is confirmed by reading it back. A write that is accepted but
+	# does not stick (a symlink to /dev/null stands in for it), a refused write and a
+	# missing output are all failures, whoever runs the test. Each case is a
+	# takeover of its own, so the record of the one before goes first.
+	fresh_full() { tg_fan_record_drop; tg_fan_full; }
+	tg_selftest_tree "$THERMAL_ROOT" bpi
+	z="$THERMAL_ROOT/thermal_zone0"; fc="$THERMAL_ROOT/cooling_device0"
+	FAN_MODE=cooling_device; FAN_CDEV=$fc; FAN_ZONE=$z; FAN_SAVED_POLICY=""
+	fresh_full && r=ok || r=failed
+	chk "a confirmed cooling device force succeeds" \
+		"$r/$(cat "$z/policy")/$(cat "$fc/cur_state")/$FAN_SAVED_POLICY" "ok/user_space/3/step_wise"
+	tg_selftest_tree "$THERMAL_ROOT" bpi; FAN_SAVED_POLICY=""
+	rm "$fc/cur_state"; ln -s /dev/null "$fc/cur_state"
+	fresh_full && r=ok || r=failed
+	chk "a state that is accepted but not read back fails" "$r" "failed"
+	tg_selftest_tree "$THERMAL_ROOT" bpi; FAN_SAVED_POLICY=""
+	rm "$z/policy"; ln -s /dev/null "$z/policy"
+	fresh_full && r=ok || r=failed
+	chk "a zone policy that is not read back fails" "$r/$(cat "$fc/cur_state")" "failed/3"
+	tg_selftest_tree "$THERMAL_ROOT" bpi; FAN_SAVED_POLICY=""
+	rm "$fc/cur_state"; mkdir "$fc/cur_state"
+	fresh_full && r=ok || r=failed
+	chk "a state that cannot be written fails" "$r" "failed"
+	if [ "$(id -u)" = 0 ]; then
+		echo "skip a read only cur_state (root writes read only files)"
+	else
+		tg_selftest_tree "$THERMAL_ROOT" bpi; FAN_SAVED_POLICY=""; chmod 0444 "$fc/cur_state"
+		fresh_full && r=ok || r=failed
+		chk "a read only cur_state fails and leaves the zone on its governor" \
+			"$r/$(cat "$fc/cur_state")/$(cat "$z/policy")" "failed/0/step_wise"
+		chmod 0644 "$fc/cur_state"
+	fi
+	tg_selftest_tree "$THERMAL_ROOT" bpi; FAN_SAVED_POLICY=""
+	FAN_CDEV="$THERMAL_ROOT/cooling_device9"
+	fresh_full && r=ok || r=failed
+	chk "a missing cooling device fails and leaves the zone alone" \
+		"$r/$(cat "$z/policy")/$([ -e "$FAN_CDEV" ] && echo made || echo none)" "failed/step_wise/none"
+	tg_selftest_tree "$THERMAL_ROOT" bpi; FAN_SAVED_POLICY=""; FAN_CDEV=$fc; FAN_ZONE=""
+	fresh_full && r=ok || r=failed
+	chk "a cooling device without a zone is forced directly" "$r/$(cat "$fc/cur_state")" "ok/3"
+	echo 0 > "$fc/max_state"; echo 0 > "$fc/cur_state"
+	fresh_full && r=ok || r=failed
+	chk "a cooling device that cannot cool by anything is a failure" "$r" "failed"
+	FAN_MODE=none; FAN_CDEV=""; FAN_ZONE=""; FAN_SAVED_POLICY=""
+
+	# The same for pwm. Both polarity values and the output are needed, the mode file
+	# is optional.
+	saved_pf=$PWM_FULL; saved_pi=$PWM_IDLE
+	PWM_FULL=0; PWM_IDLE=255
+	FAN_MODE=pwm; PWM_PATH="$h/pwm1"; PWM_ENABLE_PATH="$h/pwm1_enable"
+	FAN_SAVED_ENABLE=""; FAN_SAVED_PWM=""
+	echo 2 > "$h/pwm1_enable"; echo 255 > "$h/pwm1"
+	fresh_full && r=ok || r=failed
+	chk "a confirmed pwm force succeeds" \
+		"$r/$(cat "$h/pwm1_enable")/$(cat "$h/pwm1")/$FAN_SAVED_ENABLE/$FAN_SAVED_PWM" "ok/1/0/2/255"
+	PWM_ENABLE_PATH=""; rm -f "$h/pwm1_enable"; echo 255 > "$h/pwm1"
+	fresh_full && r=ok || r=failed
+	chk "pwm without a mode file is forced on the duty cycle alone" "$r/$(cat "$h/pwm1")" "ok/0"
+	# The output's own mode file is taken where pwm_enable_path is empty, as a
+	# resolved record takes it.
+	echo 2 > "$h/pwm1_enable"; echo 255 > "$h/pwm1"
+	fresh_full && r=ok || r=failed
+	chk "an empty pwm_enable_path takes the output's own mode file" \
+		"$r/$(cat "$h/pwm1_enable")/$(cat "$h/pwm1")/$FAN_SAVED_ENABLE" "ok/1/0/2"
+	PWM_ENABLE_PATH="$h/pwm1_enable"
+	rm -f "$h/pwm1"; ln -s /dev/null "$h/pwm1"
+	fresh_full && r=ok || r=failed
+	chk "a duty cycle that is not read back fails" "$r" "failed"
+	rm -f "$h/pwm1"; echo 255 > "$h/pwm1"
+	rm -f "$h/pwm1_enable"; ln -s /dev/null "$h/pwm1_enable"
+	fresh_full && r=ok || r=failed
+	chk "a manual mode that is not read back fails" "$r/$(cat "$h/pwm1")" "failed/0"
+	rm -f "$h/pwm1_enable"; echo 2 > "$h/pwm1_enable"
+	if [ "$(id -u)" = 0 ]; then
+		echo "skip a read only duty cycle (root writes read only files)"
+	else
+		echo 255 > "$h/pwm1"; chmod 0444 "$h/pwm1"
+		fresh_full && r=ok || r=failed
+		chk "a read only duty cycle fails" "$r/$(cat "$h/pwm1")" "failed/255"
+		chmod 0644 "$h/pwm1"
+	fi
+	PWM_PATH=""; PWM_ENABLE_PATH=""
+	fresh_full && r=ok || r=failed
+	chk "pwm with empty paths fails" "$r" "failed"
+	PWM_PATH="$HWMON_ROOT/hwmon9/pwm1"; PWM_ENABLE_PATH="$h/pwm1_enable"
+	fresh_full && r=ok || r=failed
+	chk "pwm with a missing output fails" "$r/$([ -e "$PWM_PATH" ] && echo made || echo none)" "failed/none"
+	PWM_PATH="$h/pwm1"; PWM_IDLE=""
+	echo 255 > "$h/pwm1"
+	fresh_full && r=ok || r=failed
+	chk "pwm without a known polarity fails and writes nothing" "$r/$(cat "$h/pwm1")" "failed/255"
+	PWM_FULL=$saved_pf; PWM_IDLE=$saved_pi; unset -f fresh_full
+	FAN_MODE=none; PWM_PATH=""; PWM_ENABLE_PATH=""; tg_fan_record_drop
+
+	# A fan that cannot be forced is notified: at stage entry, and when a reassert
+	# fails, once until a reassert works or the stage clears. The mode file does
+	# not read back, another controller writes 255 before every check.
+	saved_pf=$PWM_FULL; saved_pi=$PWM_IDLE; PWM_FULL=0; PWM_IDLE=255
+	FAN_MODE=pwm; PWM_PATH="$h/pwm1"; PWM_ENABLE_PATH="$h/pwm1_enable"; FAN_FOREIGN=0
+	FAN_SAVED_ENABLE=2; FAN_SAVED_PWM=255
+	rm -f "$h/pwm1_enable"; ln -s /dev/null "$h/pwm1_enable"
+	tg_state_clear; STAGE=0; : > "$EVLOG"; : > "$dir/syslog"
+	tg_act 0 60 60
+	chk "a fan force that fails at stage 0 is notified at crit" "$(tg_selftest_prio \
+		'stage 0: could not force the fan (mode pwm). Check the fan.')" "daemon.crit"
+	reassert() { tg_selftest_scratch "$h"; echo 255 > "$h/pwm1"; tg_fan_check_owner; }
+	: > "$EVLOG"; : > "$dir/syslog"
+	reassert; reassert; reassert
+	chk "a failed reassert is notified once, not logged every cycle" \
+		"$(grep -c 'could not reassert the fan' "$EVLOG")/$(tg_selftest_prio \
+		'stage 0: could not reassert the fan (mode pwm). Check the fan.')" "1/daemon.crit"
+	rm -f "$h/pwm1_enable"; echo 2 > "$h/pwm1_enable"; reassert
+	rm -f "$h/pwm1_enable"; ln -s /dev/null "$h/pwm1_enable"; reassert
+	chk "after a reassert that worked the next failure is told" \
+		"$(grep -c 'could not reassert the fan' "$EVLOG")" "2"
+	STAGE=-1; tg_fan_check_owner; STAGE=0; reassert
+	chk "and after the stage cleared" "$(grep -c 'could not reassert the fan' "$EVLOG")" "3"
+	# A fan taken over is named by its own mode and is not left alone by setting
+	# none; the hint to do so is for a fan nobody took.
+	FAN_MODE=none; FAN_FOREIGN=0; : > "$EVLOG"
+	tg_fan_mode_now; r=$FAN_NOW/$(tg_fan_recorded && echo rec); reassert
+	chk "the taken fan's mode and a reassert hint that matches it under none" \
+		"$r/$(grep -c 'It is reasserted until it is handed back' "$EVLOG")/$(grep -c \
+		'Set fan_mode=none' "$EVLOG")" "pwm/rec/1/0"
+	tg_fan_record_drop; FAN_MODE=pwm; FAN_FOREIGN=0; : > "$EVLOG"
+	tg_fan_mode_now; r=$FAN_NOW; reassert
+	chk "without a record the configured mode and the hint to set none" \
+		"$r/$(grep -c 'It is reasserted until' "$EVLOG")/$(grep -c 'Set fan_mode=none' "$EVLOG")" \
+		"pwm/0/1"
+	unset -f reassert
+	rm -f "$h/pwm1_enable"; echo 2 > "$h/pwm1_enable"; tg_state_clear
+	PWM_FULL=$saved_pf; PWM_IDLE=$saved_pi; FAN_FOREIGN=0
+	FAN_MODE=none; PWM_PATH=""; PWM_ENABLE_PATH=""; FAN_SAVED_ENABLE=""; FAN_SAVED_PWM=""
+
+	# The release is confirmed the same way: a value that does not come back keeps
+	# the saved state and fails, so a later reset can try again.
+	tg_selftest_tree "$THERMAL_ROOT" bpi; : > "$dir/syslog"
+	FAN_MODE=cooling_device; FAN_CDEV=$fc; FAN_ZONE=$z; FAN_SAVED_POLICY=bang_bang
+	echo user_space > "$z/policy"
+	tg_fan_release && r=ok || r=failed
+	chk "a confirmed release succeeds and clears the saved policy" \
+		"$r/$(cat "$z/policy")/${FAN_SAVED_POLICY:-empty}" "ok/bang_bang/empty"
+	echo user_space > "$z/policy"; FAN_SAVED_POLICY=bang_bang
+	rm "$z/policy"; ln -s /dev/null "$z/policy"
+	tg_fan_release && r=ok || r=failed
+	chk "a release that is not read back keeps the saved policy and fails" \
+		"$r/$FAN_SAVED_POLICY" "failed/bang_bang"
+	FAN_ZONE=""
+	tg_fan_release && r=ok || r=failed
+	chk "a cooling device without a zone has nothing to release and keeps nothing" \
+		"$r/$FAN_SAVED_POLICY" "ok/"
+	FAN_MODE=none; tg_fan_release && r=ok || r=failed
+	chk "mode none has nothing to release" "$r" "ok"
+	FAN_ZONE=""; FAN_SAVED_POLICY=""
+	FAN_MODE=pwm; PWM_PATH="$h/pwm1"; PWM_ENABLE_PATH="$h/pwm1_enable"
+	rm -f "$h/pwm1_enable"; ln -s /dev/null "$h/pwm1_enable"; echo 5 > "$h/pwm1"
+	FAN_SAVED_ENABLE=1; FAN_SAVED_PWM=120
+	tg_fan_release && r=ok || r=failed
+	chk "a pwm release that is not read back keeps the saved values and fails" \
+		"$r/$FAN_SAVED_ENABLE/$FAN_SAVED_PWM" "failed/1/120"
+	rm -f "$h/pwm1_enable"; echo 0 > "$h/pwm1_enable"
+	tg_fan_release && r=ok || r=failed
+	chk "and the retry with the same values succeeds and clears them" \
+		"$r/$(cat "$h/pwm1_enable")/$(cat "$h/pwm1")/${FAN_SAVED_ENABLE:-empty}/${FAN_SAVED_PWM:-empty}" \
+		"ok/1/120/empty/empty"
+	FAN_MODE=none; PWM_PATH=""; PWM_ENABLE_PATH=""; FAN_SAVED_ENABLE=""; FAN_SAVED_PWM=""
+	FAN_CDEV=""; FAN_ZONE=""
+
+	# The takeover record. Each part passes its check where it is recorded and
+	# where it is read, and one that fails makes the record unresolved.
+	chk_path tg_fan_dev_ok "" accept
+	chk_path tg_fan_dev_ok "$DEVICES_ROOT/platform/pwm-fan" accept
+	chk_path tg_fan_dev_ok "$DEVICES_ROOT/platform/soc/11d00000.pwm:fan@0+1" accept
+	chk_path tg_fan_dev_ok "$DEVICES_ROOT/platform/../platform/pwm-fan" reject
+	chk_path tg_fan_dev_ok "$DEVICES_ROOT/platform/pwm-fan,1" reject
+	chk_path tg_fan_dev_ok "$dir/elsewhere/pwm-fan" reject
+	chk_path tg_fan_dev_ok "$DEVICES_ROOT/$(printf '%0200d' 0)" reject
+	chk_path tg_boot_ok "$SELFTEST_BOOT" accept
+	chk_path tg_boot_ok "${SELFTEST_BOOT%?}" reject
+	chk_path tg_boot_ok 4F0C9D1E-6A2B-4C3D-8E5F-0A1B2C3D4E5F reject
+	chk_path tg_boot_ok '4f0c9d1e-6a2b-4c3d-8e5f-0a1b2c3d4e5;' reject
+	chk_path tg_fan_attr_ok pwm1 accept
+	chk_path tg_fan_attr_ok pwm12 accept
+	chk_path tg_fan_attr_ok pwm123 reject
+	chk_path tg_fan_attr_ok pwm1_enable reject
+	rec_load() { # state lines
+		tg_selftest_scratch "$STATE"
+		printf '%s\n' "$@" > "$STATE"; tg_state_load
+	}
+	rec="FAN_TAKEN=pwm FAN_BOOT=$SELFTEST_BOOT FAN_T_NAME=pwmfan FAN_T_ATTR=pwm1 FAN_T_FULL=255"
+	# shellcheck disable=SC2086 # rec holds five state lines
+	rec_load STAGE=-1 $rec "FAN_T_DEV=$DEVICES_ROOT/platform/pwm-fan"
+	chk "a complete pwm record loads as one to resolve" \
+		"$FAN_TAKEN/$FAN_T_FULL/$FAN_T_DEV/$FAN_UNRESOLVED" \
+		"pwm/255/$DEVICES_ROOT/platform/pwm-fan/0"
+	for t in FAN_TAKEN=fan 'FAN_T_NAME=pwm;fan' FAN_T_NAME=pwmfan=1 FAN_T_ATTR=pwm1_enable \
+		'FAN_T_ZONE=a b' FAN_T_ZONE=cpu-thermal FAN_BOOT=4f0c FAN_T_DEV=/etc/passwd \
+		FAN_UNRESOLVED=yes FAN_T_FULL=256 FAN_T_FULL=x; do
+		# shellcheck disable=SC2086 # rec holds five state lines
+		rec_load STAGE=-1 $rec "$t"
+		chk "a record with $t loads unresolved" "$FAN_UNRESOLVED" "1"
+	done
+	rec_load STAGE=-1 FAN_TAKEN=pwm FAN_T_NAME=pwmfan FAN_T_ATTR=pwm1 FAN_T_FULL=255
+	chk "so does one without a boot id" "$FAN_UNRESOLVED" "1"
+	rec_load STAGE=-1 FAN_TAKEN=pwm "FAN_BOOT=$SELFTEST_BOOT" FAN_T_NAME=pwmfan FAN_T_ATTR=pwm1
+	chk "so does a pwm record without the full speed value it forced" "$FAN_UNRESOLVED" "1"
+	rec_load STAGE=-1 FAN_TAKEN=cooling_device "FAN_BOOT=$SELFTEST_BOOT" FAN_T_NAME=pwm-fan \
+		FAN_T_FULL=255
+	chk "and a cooling device record with one" "$FAN_UNRESOLVED" "1"
+	rec_load STAGE=-1 FAN_TAKEN=pwm 'FAN_T_NAME=a;reboot'; tg_state_save
+	chk "a part that failed its check is not written back" \
+		"$(sed -n 's/^FAN_T_NAME=//p' "$STATE")/$(sed -n 's/^FAN_UNRESOLVED=//p' "$STATE")" "/1"
+	# Boot: only a valid id of another boot drops a record, said when it is saved.
+	other=00000000-1111-2222-3333-444444444444
+	rec_load STAGE=0 FAN_TAKEN=pwm "FAN_BOOT=$other" FAN_T_NAME=pwmfan FAN_T_ATTR=pwm1 \
+		FAN_SAVED_PWM=33 FAN_UNRESOLVED=1
+	chk "a record from another boot goes at load, unresolved or not" \
+		"$FAN_TAKEN/$FAN_SAVED_PWM/$FAN_UNRESOLVED" "//0"
+	: > "$EVLOG"; ( tg_status >/dev/null 2>&1 )
+	chk "a status call saves nothing and says nothing" \
+		"$(grep -c 'earlier boot' "$EVLOG")/$(sed -n 's/^FAN_SAVED_PWM=//p' "$STATE")" "0/33"
+	: > "$dir/syslog"; tg_state_load; tg_state_save; tg_state_save
+	chk "the drop is said once, at notice, when it is saved" \
+		"$(grep -c 'earlier boot' "$EVLOG")/$(tg_selftest_prio \
+		'fan takeover record from an earlier boot discarded, its forcing ended with that boot')" \
+		"1/daemon.notice"
+	tg_selftest_scratch "$BOOT_ID_FILE"; rm -f "$BOOT_ID_FILE"
+	rec_load STAGE=0 FAN_TAKEN=pwm "FAN_BOOT=$other" FAN_T_NAME=pwmfan FAN_T_ATTR=pwm1 \
+		FAN_T_FULL=255
+	chk "without this boot's id nothing proves a reboot, the record stays" \
+		"$FAN_TAKEN/$FAN_UNRESOLVED" "pwm/0"
+	echo "$SELFTEST_BOOT" > "$BOOT_ID_FILE"
+	rec_load STAGE=0 FAN_SAVED_PWM=33
+	chk "saved values without a record are an older state's: unresolved" \
+		"$FAN_UNRESOLVED/$FAN_SAVED_PWM" "1/33"
+	rec_load STAGE=0
+	chk "nothing saved is no record at all" "$FAN_UNRESOLVED/$FAN_TAKEN" "0/"
+	unset -f rec_load
+	# Resolution scans and never uses a stored path. Without a device link the
+	# name has to be unique, and the recorded output has to be there.
+	saved_hwmon=$HWMON_ROOT; HWMON_ROOT="$dir/hwmon-rec"
+	rec_chip() { # $1 index, $2 name
+		tg_selftest_scratch "$HWMON_ROOT/hwmon$1"
+		mkdir -p "$HWMON_ROOT/hwmon$1"; echo "$2" > "$HWMON_ROOT/hwmon$1/name"
+		echo 0 > "$HWMON_ROOT/hwmon$1/pwm1"
+	}
+	rec_chip 0 nct6775; rec_chip 1 pwmfan; tg_selftest_pwm_rec
+	tg_fan_resolve && r=$FAN_TGT_PWM || r=none
+	chk "a record without a device link finds the one chip of its name" \
+		"$r" "$HWMON_ROOT/hwmon1/pwm1"
+	rec_chip 2 pwmfan
+	tg_fan_resolve && r=$FAN_TGT_PWM || r=none
+	chk "two chips of that name are no match" "$r" "none"
+	tg_selftest_scratch "$HWMON_ROOT/hwmon2"; rm -rf "$HWMON_ROOT/hwmon2"; FAN_T_ATTR=pwm2
+	tg_fan_resolve && r=$FAN_TGT_PWM || r=none
+	chk "nor is a chip without the recorded output" "$r" "none"
+	HWMON_ROOT=$saved_hwmon; unset -f rec_chip
+	tg_selftest_tree "$THERMAL_ROOT" bpi; tg_selftest_cdev_rec "$THERMAL_ROOT"
+	tg_fan_resolve && r="$FAN_TGT_CDEV|$FAN_TGT_ZONE" || r=none
+	chk "a cooling device record finds the device and the zone that drives it" \
+		"$r" "$THERMAL_ROOT/cooling_device0|$THERMAL_ROOT/thermal_zone0"
+	z9="$THERMAL_ROOT/thermal_zone9"; tg_selftest_scratch "$z9"; mkdir -p "$z9"
+	echo cpu-thermal > "$z9/type"; ln -s ../cooling_device0 "$z9/cdev0"
+	tg_fan_resolve && r="$FAN_TGT_CDEV|$FAN_TGT_ZONE" || r=none
+	chk "two zones of the recorded type that drive it are no match" "$r" "none"
+	rm -rf "$z9"; FAN_T_ZONE='board-thermal'
+	tg_fan_resolve && r="$FAN_TGT_CDEV|$FAN_TGT_ZONE" || r=none
+	chk "nor is a zone of another type" "$r" "none"
+	# A fan the record cannot name is still forced, more cooling is the safe
+	# side. Its record is unresolved and takes no new values on a later force.
+	tg_selftest_tree "$THERMAL_ROOT" bpi; tg_fan_record_drop
+	z="$THERMAL_ROOT/thermal_zone0"; fc="$THERMAL_ROOT/cooling_device0"
+	FAN_MODE=cooling_device; FAN_CDEV=$fc; FAN_ZONE=$z
+	tg_fan_full && r=ok || r=failed
+	chk "a fan without a usable identity is forced, its record saved and unresolved" \
+		"$r/$(cat "$z/policy")/$FAN_TAKEN/$FAN_UNRESOLVED/$FAN_SAVED_POLICY/$(sed -n \
+		's/^FAN_UNRESOLVED=//p' "$STATE")" "ok/user_space/cooling_device/1/step_wise/1"
+	echo fair_share > "$z/policy"
+	tg_fan_full && r=ok || r=failed
+	chk "a later force takes no new values" "$r/$(cat "$z/policy")/$FAN_SAVED_POLICY" \
+		"ok/user_space/step_wise"
+	tg_fan_release && r=ok || r=failed
+	chk "and its release writes nothing" "$r/$(cat "$z/policy")" "failed/user_space"
+	FAN_MODE=none; FAN_CDEV=""; FAN_ZONE=""; tg_state_clear; rm -f "$STATE"
+
 	# Sensor lines in the status file: one name and one number each. A missing
 	# line end runs two sensors together, a doubled one leaves an empty line.
 	for t in 1:wmac:45000 2:nvme:38000; do
@@ -1756,10 +3748,7 @@ tg_selftest() {
 		r=${t#*:}; echo "${r%%:*}" > "$THERMAL_ROOT/thermal_zone${t%%:*}/type"
 		echo "${r#*:}" > "$THERMAL_ROOT/thermal_zone${t%%:*}/temp"
 	done
-	# No real radios: tg_read_mtwifi would ask iwpriv on this board.
-	saved_net=$NET_ROOT; NET_ROOT="$dir/no-net"
 	tg_status_write
-	NET_ROOT=$saved_net
 	r=ok
 	while IFS='=' read -r k v; do
 		case "$k" in sensor.*) ;; *) continue ;; esac
@@ -1773,7 +3762,7 @@ tg_selftest() {
 
 	# The processor is no extra sensor: not by path, and not as the hwmon
 	# mirror of its zone, whatever that zone is called.
-	saved_cpu=$CPU_TEMP_PATH; saved_net=$NET_ROOT; NET_ROOT="$dir/no-net"
+	saved_cpu=$CPU_TEMP_PATH
 	z0="$THERMAL_ROOT/thermal_zone0"; h1="$HWMON_ROOT/hwmon1"; mkdir -p "$h1"
 	# The mirror is named as the kernel does it: "-" in the type becomes "_",
 	# as on the Banana Pi R3 Mini (zone cpu-thermal, hwmon cpu_thermal).
@@ -1808,9 +3797,9 @@ tg_selftest() {
 		"$(printf '%s\n' "$r" | grep -c -e '^board-cpu=' -e '^board_cpu=')/$(printf '%s\n' "$r" | grep -c '^wmac=45$')" "0/1"
 	rm -f "$THERMAL_ROOT/thermal_zone5" "$HWMON_ROOT/hwmon7"; rm -rf "$dir/devices"
 	rm -rf "$h1" "$h3"; rm -f "$z0/type"
-	CPU_TEMP_PATH=$saved_cpu; NET_ROOT=$saved_net
+	CPU_TEMP_PATH=$saved_cpu
 
-	THERMAL_ROOT=$saved_root; HWMON_ROOT=$saved_hwmon; STAGE=-1; TRIP_BOOST=off
+	STAGE=-1; TRIP_BOOST=off
 
 	# Stage actions are checked by reading the result back, not by trusting the
 	# command. Everything that would reach the modem or netifd is replaced by a
@@ -1874,12 +3863,17 @@ tg_selftest() {
 	chk "and makes no logger call" "$(wc -l < "$dir/syslog" | tr -d ' ')" "0"
 	chk "and leaves the event log alone" "$(wc -l < "$EVLOG" | tr -d ' ')" "0"
 
-	CFUN_SETTLE=0; SELFTEST_CFUN=1; SELFTEST_CFUN_STICKS=1
+	CFUN_SETTLE=0; SELFTEST_CFUN=1; SELFTEST_CFUN_STICKS=1; SELFTEST_CFUN_REFUSE=""
 	tg_modem_port() { echo /dev/selftest; }
 	tg_at() {
 		case "$2" in
 			'AT+CFUN?') echo "+CFUN: $SELFTEST_CFUN"; echo OK ;;
-			AT+CFUN=*) [ "$SELFTEST_CFUN_STICKS" = 1 ] && SELFTEST_CFUN=${2#AT+CFUN=}; echo OK ;;
+			AT+CFUN=*)
+				# One level can be made to bounce, the others stick.
+				if [ "$SELFTEST_CFUN_STICKS" = 1 ] && [ "${2#AT+CFUN=}" != "$SELFTEST_CFUN_REFUSE" ]; then
+					SELFTEST_CFUN=${2#AT+CFUN=}
+				fi
+				echo OK ;;
 		esac
 	}
 	: > "$EVLOG"
@@ -1901,7 +3895,7 @@ tg_selftest() {
 	# so it is crit like any failed action.
 	: > "$dir/syslog"; : > "$EVLOG"
 	SELFTEST_CFUN_STICKS=0; SELFTEST_CFUN=4
-	tg_undo_action modem_radio_off
+	tg_undo_recorded modem_radio_off
 	SELFTEST_CFUN_STICKS=1
 	chk "a failed undo is daemon.crit" \
 		"$(tg_selftest_prio 'could not switch the modem back on')" "daemon.crit"
@@ -1986,7 +3980,7 @@ tg_selftest() {
 		echo "skip interface and Wi-Fi actions (host only: timeout here would not run the" \
 			"stand-ins, typically the BusyBox applet; the target runs coreutils-timeout)"
 	elif ! command -v jsonfilter >/dev/null 2>&1; then
-		echo "skip interface and Wi-Fi actions (no jsonfilter here, see CLAUDE.md)"
+		echo "skip interface and Wi-Fi actions (no jsonfilter here)"
 	else
 		echo true > "$dir/iface.up"; echo 1 > "$dir/iface.sticks"
 		UPLINK_INTERFACE=wwan; ACTION_INTERFACE=""
@@ -2160,6 +4154,1275 @@ tg_selftest() {
 	unset -f tg_fetcher
 	PATH=$saved_path; NOTIFY_URL=""
 
+	# Model names reach the log, the status file and a glob match, so only a
+	# plain name passes.
+	chk "a plain model passes tg_name" "$(tg_name RM520N-GL)" "RM520N-GL"
+	chk "dots and underscores pass" "$(tg_name FM350-GL_01.2)" "FM350-GL_01.2"
+	chk "a semicolon is dropped" "$(tg_name 'RM520N;reboot')" ""
+	chk "a space is dropped" "$(tg_name 'RM520N GL')" ""
+	chk "a glob is dropped" "$(tg_name 'RM*')" ""
+	chk "an empty model is dropped" "$(tg_name '')" ""
+	chk "32 characters pass" "$(tg_name abcdefghijklmnopqrstuvwxyz012345)" \
+		"abcdefghijklmnopqrstuvwxyz012345"
+	chk "33 characters are dropped" "$(tg_name abcdefghijklmnopqrstuvwxyz0123456)" ""
+
+	# AT+CGMM through the same helper as the temperature. The stand-in answers
+	# the way sms_tool prints it: echo, reply, empty line, OK. It keeps the CFUN
+	# behaviour of the stand-in above and counts the model queries.
+	SELFTEST_CGMM='RM520N-GL'
+	tg_at() {
+		case "$2" in
+			AT+CGMM)
+				echo x >> "$dir/cgmm.calls"
+				printf 'AT+CGMM\r\n%s\r\n\r\nOK\r\n' "$SELFTEST_CGMM" ;;
+			'AT+CFUN?') echo "+CFUN: $SELFTEST_CFUN"; echo OK ;;
+			AT+CFUN=*)
+				if [ "$SELFTEST_CFUN_STICKS" = 1 ] && [ "${2#AT+CFUN=}" != "$SELFTEST_CFUN_REFUSE" ]; then
+					SELFTEST_CFUN=${2#AT+CFUN=}
+				fi
+				echo OK ;;
+		esac
+	}
+	saved_src=$MODEM_SOURCE; MODEM_SOURCE=quectel
+	chk "the model is read with AT+CGMM" "$(tg_modem_model)" "RM520N-GL"
+	SELFTEST_CGMM='+CGMM: FM350-GL'
+	chk "a +CGMM: prefix is dropped" "$(tg_modem_model)" "FM350-GL"
+	SELFTEST_CGMM='+CGMM: "FM350-GL"'
+	chk "quotes around the model are dropped" "$(tg_modem_model)" "FM350-GL"
+	# An unsolicited result code can arrive before the reply.
+	SELFTEST_CGMM=$(printf '+QIND: "csq",20,99\r\nRM520N-GL')
+	chk "a result code before the model is skipped" "$(tg_modem_model)" "RM520N-GL"
+	SELFTEST_CGMM='RM520N;reboot'
+	chk "a garbled model gives none" "$(tg_modem_model)" ""
+	MODEM_SOURCE=none; SELFTEST_CGMM='RM520N-GL'
+	chk "no modem, no model" "$(tg_modem_model)" ""
+
+	# The modem-model hook, for boxes where ModemManager owns the port.
+	saved_hooks=$HOOK_DIR; saved_at=$AT_TIMEOUT
+	HOOK_DIR="$dir/hooks-model"; MODEM_SOURCE="command"; AT_TIMEOUT=1
+	mkdir -p "$HOOK_DIR"
+	printf '#!/bin/sh\necho " FM350-GL "\necho second line\n' > "$HOOK_DIR/modem-model"
+	chmod 0755 "$HOOK_DIR/modem-model"
+	chk "the modem-model hook gives its first line, trimmed" "$(tg_modem_model)" "FM350-GL"
+	printf '#!/bin/sh\necho FM350-GL\nexec sleep 30\n' > "$HOOK_DIR/modem-model"
+	t0=$(date +%s); r=$(tg_modem_model); t1=$(date +%s)
+	[ $((t1 - t0)) -le 7 ] && r="$r/in time" || r="$r/took $((t1 - t0)) s"
+	chk "a modem-model hook stopped at its time limit gives none" "$r" "/in time"
+	rm -f "$HOOK_DIR/modem-model"
+	chk "no hook, no model" "$(tg_modem_model)" ""
+	HOOK_DIR=$saved_hooks; MODEM_SOURCE=$saved_src; AT_TIMEOUT=$saved_at
+
+	# Modem table. Planted, never the shipped one, so these cases do not move
+	# when a line is added there.
+	saved_table=$MODEM_TABLE; MODEM_TABLE="$dir/modems"
+	{
+		echo '# a comment'
+		echo ''
+		printf 'RM520N-GL*\t85\t95\tmeasured on a planted board\n'
+		echo 'RM520N-GL*  60  70  shadowed by the line above'
+		echo 'BAD[1]*     80  88  a bracket is not allowed'
+		echo 'LOW*        30  88  warn below 40'
+		echo 'HIGH*       80  130 crit above 120'
+		echo 'EQUAL*      85  85  warn not below crit'
+		echo 'NOSRC*      80  88'
+		echo 'RM5*        82  92  generic after the specific one'
+		echo 'PAD*        085 095 zero padded'
+	} > "$MODEM_TABLE"
+	chk "a model matches its line, case does not matter" \
+		"$(tg_profile_lookup rm520n-gl)" "RM520N-GL* 85 95"
+	chk "the first matching line wins" "$(tg_profile_lookup RM520N-GL)" "RM520N-GL* 85 95"
+	chk "a generic line catches the rest of the family" \
+		"$(tg_profile_lookup RM500Q-GL)" "RM5* 82 92"
+	chk "an unknown model has no profile" "$(tg_profile_lookup FM160-EAU)" ""
+	for m in BAD1x LOWx HIGHx EQUALx NOSRCx; do
+		chk "an invalid line never matches ($m)" "$(tg_profile_lookup "$m")" ""
+	done
+	chk "the invalid lines are found by number" "$(tg_profile_check | tr '\n' ' ')" "5 6 7 8 9 "
+	MODEM_TABLE="$dir/no-such-table"
+	chk "a missing table gives no profile" "$(tg_profile_lookup RM520N-GL)" ""
+	chk "and no invalid lines" "$(tg_profile_check)" ""
+	# The shipped table, so a broken line is caught before a release.
+	MODEM_TABLE="$LIB_DIR/modems"
+	chk "the shipped modem table is there" "$([ -r "$MODEM_TABLE" ] && echo yes || echo no)" "yes"
+	chk "and has no invalid line" "$(tg_profile_check)" ""
+	MODEM_TABLE="$dir/modems"
+	PROFILE_MODEL=""; MODEM_MODEL=RM520N-GL; tg_profile_resolve
+	chk "a resolved profile is kept" "$PROFILE_MATCH/$PROFILE_WARN/$PROFILE_CRIT" "RM520N-GL*/85/95"
+	MODEM_MODEL=FM160-EAU; tg_profile_resolve
+	chk "a new model resolves again" "$PROFILE_MATCH/$PROFILE_WARN/$PROFILE_CRIT" "//"
+	MODEM_MODEL=PADx; tg_profile_resolve
+	chk "a padded line gives plain warn and crit" \
+		"$PROFILE_MATCH/$PROFILE_WARN/$PROFILE_CRIT" "PAD*/85/95"
+	MODEM_MODEL=""; tg_profile_resolve
+	chk "no model, no profile" "$PROFILE_MATCH" ""
+	MODEM_TABLE=$saved_table
+
+	# Threshold resolution: built in pair, then the profile, then UCI option by
+	# option. An implausible pair falls back to the profile, without one to the
+	# built in pair, and the CPU triple is judged on its own.
+	saved_table=$MODEM_TABLE; MODEM_TABLE="$dir/modems"
+	chk_thr() { # $1 label, $2 UCI warn, $3 UCI crit, $4 expected warn/crit/src/src
+		CPU_WARN=70; CPU_CRIT=80; CPU_EMERGENCY=90; MODEM_WARN=80; MODEM_CRIT=88
+		UCI_MODEM_WARN=$2; UCI_MODEM_CRIT=$3
+		tg_cfg_thresholds
+		chk "$1" "$MODEM_WARN/$MODEM_CRIT/$MODEM_WARN_SRC/$MODEM_CRIT_SRC" "$4"
+	}
+	MODEM_MODEL=RM520N-GL; PROFILE_MODEL=""
+	chk_thr "the profile applies while UCI sets nothing" "" "" "85/95/profile/profile"
+	chk_thr "a UCI warn overrides warn only" 90 "" "90/95/uci/profile"
+	chk_thr "an implausible pair falls back to the profile" 96 "" "85/95/profile/profile"
+	chk_thr "both values from UCI" 85 95 "85/95/uci/uci"
+	MODEM_MODEL=FM160-EAU
+	chk_thr "no profile, the built in pair" "" "" "80/88/default/default"
+	chk_thr "no profile, an implausible pair falls back to built in" 90 85 "80/88/default/default"
+	MODEM_MODEL=RM520N-GL
+	CPU_WARN=85; CPU_CRIT=80; CPU_EMERGENCY=90; UCI_MODEM_WARN=""; UCI_MODEM_CRIT=""
+	tg_cfg_thresholds
+	chk "implausible cpu values fall back without touching the modem pair" \
+		"$CPU_WARN/$CPU_CRIT/$CPU_EMERGENCY/$MODEM_WARN/$MODEM_CRIT" "70/80/90/85/95"
+
+	# The detected model for the one shot commands, read back through tg_name.
+	MODEM_MODEL=FM350-GL; tg_model_save; MODEM_MODEL=""; tg_model_load
+	chk "the detected model is there for the one shot commands" "$MODEM_MODEL" "FM350-GL"
+	printf 'FM350;reboot\n' > "$STATE_DIR/modem-model"; MODEM_MODEL=""; tg_model_load
+	chk "a junk model file loads nothing" "$MODEM_MODEL" ""
+
+	# Detection: three unanswered queries, then silence until the next start.
+	saved_src=$MODEM_SOURCE; MODEM_SOURCE=quectel; DAEMON=1; : > "$EVLOG"
+	MODEM_MODEL=""; MODEL_TRIES=0; SELFTEST_CGMM=""; rm -f "$dir/cgmm.calls"
+	for c in 1 2 3 4 5; do tg_model_detect; done
+	chk "an unanswered AT+CGMM is asked three times, then not again" \
+		"$(wc -l < "$dir/cgmm.calls" | tr -d ' ')" "3"
+	chk "and reported once" "$(grep -c 'modem model not detected after 3 attempts' "$EVLOG")" "1"
+	MODEL_TRIES=0; SELFTEST_CGMM=RM520N-GL; : > "$EVLOG"; tg_model_detect
+	chk "a detected model is logged with its profile" \
+		"$(grep -c 'modem RM520N-GL, profile RM520N-GL\* (warn 85, crit 95)' "$EVLOG")" "1"
+	chk "and written for the one shot commands" "$(cat "$STATE_DIR/modem-model")" "RM520N-GL"
+	chk "and its limits apply at once" "$MODEM_WARN/$MODEM_CRIT/$MODEM_WARN_SRC" "85/95/profile"
+	DAEMON=0; MODEM_SOURCE=$saved_src; MODEM_TABLE=$saved_table
+	MODEM_MODEL=""; PROFILE_MODEL=""; PROFILE_MATCH=""; PROFILE_WARN=""; PROFILE_CRIT=""
+	UCI_MODEM_WARN=""; UCI_MODEM_CRIT=""; rm -f "$STATE_DIR/modem-model"
+	CPU_WARN=70; CPU_CRIT=80; CPU_EMERGENCY=90; MODEM_WARN=80; MODEM_CRIT=88
+
+	# Automatic recovery. The cause first, then the pure decisions, then the
+	# action against the CFUN stand-in. tgd feeds one reading the way tg_cycle
+	# does (LAST_TS follows the decision), feed runs readings every 20 seconds.
+	CPU_WARN=70; CPU_CRIT=80; CPU_EMERGENCY=90; MODEM_WARN=80; MODEM_CRIT=88
+	HOLD_MINUTES=3; HYSTERESIS=10; INTERVAL=20
+	AUTO_RECOVER=1; RECOVER_MINUTES=10; RECOVER_MAX=3; STAGE1_ACTION=modem_radio_off
+	tgd() { tg_decide "$1" "$2" "$3"; LAST_TS=$3; }
+	feed() { # $1 cpu, $2 modem, $3 first time, $4 last time
+		local t=$3
+		while [ "$t" -le "$4" ]; do tgd "$1" "$2" "$t"; t=$((t + 20)); done
+	}
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	chk "a hot modem alone is the cause of stage 1" "$STAGE/$CAUSE1" "1/modem"
+	tg_state_clear; tgd 85 60 1000; tgd 85 60 1020
+	chk "a hot processor is the cause of stage 1" "$STAGE/$CAUSE1" "1/cpu"
+	tg_state_clear; tgd 85 90 1000; tgd 85 90 1020
+	chk "both hot counts as the processor" "$STAGE/$CAUSE1" "1/cpu"
+	tg_state_clear; tgd 85 '' 1000; tgd 85 '' 1020
+	chk "no modem reading counts as the processor" "$STAGE/$CAUSE1" "1/cpu"
+	tg_state_clear; tgd '' 90 1000; tgd '' 90 1020
+	chk "a hot modem without a processor reading is the modem" "$STAGE/$CAUSE1" "1/modem"
+
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	tgd 60 70 1040
+	chk "the first cool reading starts the streak and reports cooled" \
+		"$DECISION/$COOL_SINCE" "cooled/1040"
+	feed 60 70 1060 1600
+	chk "before recover_minutes nothing happens" "$DECISION/$STAGE" "none/1"
+	feed 60 70 1620 1640
+	chk "after recover_minutes stage 1 is to recover" "$DECISION/$RECOVER_WIN/$RECOVER_N" \
+		"recover/1640/0"
+
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	tgd 60 70 1040; tgd 60 '' 1060; tgd 60 70 1080
+	chk "a missing modem reading restarts the streak" "$COOL_SINCE" "1080"
+	tgd 60 75 1100
+	chk "a warm reading ends it" "$COOL_SINCE" "0"
+	tgd 60 70 1120; tgd 95 70 1140
+	chk "a first hot hit toward stage 2 ends it as well" "$COOL_SINCE/$PENDING" "0/2"
+
+	# On a board with a sensor a missing processor reading is not cool either.
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	tgd 60 70 1040; tgd '' 70 1060
+	chk "a missing processor reading ends the streak" "$COOL_SINCE" "0"
+	tgd 60 70 1080
+	chk "and the next reading starts a new one" "$COOL_SINCE" "1080"
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	tgd '' 70 1040; feed '' 70 1060 1700
+	chk "without processor readings stage 1 stays" "$DECISION/$STAGE" "none/1"
+	# A board without any sensor has only the modem to go by.
+	NO_SENSOR=1
+	tg_state_clear; tgd '' 90 1000; tgd '' 90 1020
+	tgd '' 70 1040; feed '' 70 1060 1640
+	chk "a board without any sensor recovers on the modem alone" "$DECISION/$STAGE" "recover/1"
+	NO_SENSOR=0
+
+	# Readings that stop and come back are not a cool streak.
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	tgd 60 70 1040; tgd 60 70 4640
+	chk "a gap in the readings restarts the streak" "$DECISION/$COOL_SINCE" "none/4640"
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	tgd 60 70 1040; tgd 60 70 $((1040 + INTERVAL * 3 + 60))
+	chk "a gap at the limit keeps it" "$COOL_SINCE" "1040"
+	tgd 60 70 $((1040 + INTERVAL * 3 + 60 + INTERVAL * 3 + 61))
+	chk "one second past the limit restarts it" "$COOL_SINCE" "$((1040 + INTERVAL * 6 + 121))"
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	feed 60 70 1040 1100; tgd 60 70 1080
+	chk "a clock stepped back restarts it" "$DECISION/$COOL_SINCE" "none/1080"
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	feed 60 70 1040 1600; LAST_TS=0; tgd 60 70 1640
+	chk "a state without a previous reading restarts it" "$DECISION/$COOL_SINCE" "none/1640"
+
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	RECOVER_WIN=900; RECOVER_N=3
+	tgd 60 70 1040; feed 60 70 1060 1640
+	chk "the cap stops a recovery and says so" "$DECISION/$STAGE/$RECOVER_TOLD" \
+		"recover_capped/1/1"
+	tgd 60 70 1660
+	chk "and says it once" "$DECISION/$STAGE" "none/1"
+	# Continuous readings across a day: the streak is old, the previous reading 20 s ago.
+	LAST_TS=87380; tgd 60 70 87400
+	chk "a capped and told stage does not recover after 24 hours" \
+		"$DECISION/$STAGE/$RECOVER_N" "none/1/3"
+	# A stage that never hit the cap, entered after the window ended, opens a new one.
+	tg_state_clear; RECOVER_WIN=900; RECOVER_N=3; RECOVER_TOLD=0
+	tgd 60 90 87000; tgd 60 90 87020; tgd 60 70 87040; feed 60 70 87060 87640
+	chk "a new stage after the window ended recovers and counts again" \
+		"$DECISION/$RECOVER_N/$RECOVER_WIN" "recover/0/87640"
+
+	# The cap as the messages and the page see it.
+	chk_capped() { # $1 label, $2 now, $3 capped or open
+		if tg_recover_capped "$2"; then chk "$1" capped "$3"; else chk "$1" open "$3"; fi
+	}
+	tg_state_clear; RECOVER_TOLD=1
+	chk_capped "a told cap is capped" 1000 capped
+	RECOVER_TOLD=0; RECOVER_N=3; RECOVER_WIN=900
+	chk_capped "the count at the max within the window is capped" 87299 capped
+	chk_capped "the count at the max after the window is open" 87300 open
+	RECOVER_N=2
+	chk_capped "a count below the max is open" 1000 open
+
+	# The undo follows the action that ran at entry, not the one configured now.
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	chk "stage 1 records its action" "$ACTION1" "modem_radio_off"
+	STAGE1_ACTION=wifi_off; tgd 60 70 1040; feed 60 70 1060 1700
+	chk "an action changed during the stage blocks the recovery" \
+		"$DECISION/$STAGE/$COOL_SINCE" "none/1/0"
+	STAGE1_ACTION=modem_radio_off
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020; ACTION1=""
+	tgd 60 70 1040; feed 60 70 1060 1700
+	chk "a stage without a recorded action waits for a reset" "$DECISION/$STAGE" "none/1"
+	STAGE1_ACTION=$(printf 'none\nGEN=99')
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	chk "an unknown action is recorded as none at all" "${ACTION1:-empty}" "empty"
+	STAGE1_ACTION=modem_radio_off
+
+	# What the page is told about the recovery, one word computed here.
+	chk_rs() { # $1 label, $2 expected
+		chk "recover_state: $1" "$(tg_recover_state 2000)" "$2"
+	}
+	tg_state_clear; STAGE=1; CAUSE1=modem; ACTION1=modem_radio_off
+	AUTO_RECOVER=0; chk_rs "empty with auto_recover 0" ""
+	AUTO_RECOVER=1; STAGE=2; chk_rs "empty in stage 2" ""
+	STAGE=0; chk_rs "empty in stage 0" ""
+	STAGE=1; CAUSE1=cpu; chk_rs "a cool processor and no modem reading at entry" nomodem
+	CPU_SEEN=1; chk_rs "the processor was warm" cpu
+	CPU_SEEN=0; CAUSE1=""; chk_rs "no recorded cause" nocause
+	CAUSE1=modem; ACTION1="command"; STAGE1_ACTION="command"; chk_rs "a hook ran" action
+	STAGE1_ACTION=modem_radio_off; ACTION1=""; chk_rs "no recorded action" action
+	ACTION1=wifi_off; chk_rs "the action changed" action
+	ACTION1=modem_radio_off; RECOVER_TOLD=1; chk_rs "the cap holds" capped
+	RECOVER_TOLD=0; chk_rs "no cool streak yet" cooling
+	COOL_SINCE=1900; chk_rs "a cool streak runs" planned
+	chk "and it has a planned time" "$(tg_recover_at 2000)" "2500"
+	RECOVER_TOLD=1
+	chk "no planned time while the cap holds" "$(tg_recover_at 2000)" ""
+	# A recovery hands the fan back. With an unresolved record that fails every
+	# time, and the modem would go on and off up to recover_max times a day.
+	RECOVER_TOLD=0; FAN_UNRESOLVED=1; chk_rs "an unresolved fan record" fan
+	chk "and no recovery applies while it is unresolved" \
+		"$(tg_recover_applies && echo yes || echo no)/$(tg_recover_at 2000)" "no/"
+	FAN_UNRESOLVED=0; tg_status_write
+	chk "the status file carries recover_state" \
+		"$(sed -n 's/^recover_state=//p' "$STATUS_FILE")" "planned"
+	# Stage 0 by the modem, then the modem goes silent and stage 1 follows on time.
+	tg_state_clear; tgd 60 85 1000; tgd 60 85 1020; feed 60 '' 1040 1240
+	chk "a stage 1 the modem had no reading for is told as such" \
+		"$STAGE/$CAUSE1/$CPU_SEEN/$(tg_recover_state 1300)" "1/cpu/0/nomodem"
+
+	# What the ledger on the overlay says, win/n/told.
+	ledger() {
+		printf '%s/%s/%s' "$(sed -n 's/^RECOVER_WIN=//p' "$PERSIST_DIR/recover" 2>/dev/null)" \
+			"$(sed -n 's/^RECOVER_N=//p' "$PERSIST_DIR/recover" 2>/dev/null)" \
+			"$(sed -n 's/^RECOVER_TOLD=//p' "$PERSIST_DIR/recover" 2>/dev/null)"
+	}
+
+	# The cooled message promises a recovery only where one can happen.
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020; : > "$EVLOG"
+	tg_cycle 60 70 1040 >/dev/null 2>&1
+	chk "cooled promises the recovery where it applies" \
+		"$(grep -c 'Stage 1 clears on its own' "$EVLOG")" "1"
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020; RECOVER_WIN=900; RECOVER_N=3; : > "$EVLOG"
+	tg_cycle 60 70 1040 >/dev/null 2>&1
+	chk "but not while the cap holds" "$(grep -c 'Stage 1 stays active' "$EVLOG")" "1"
+	# A blocked recovery is a change of state, so the latch survives a reboot.
+	feed 60 70 1060 1620; rm -f "$PERSIST" "$PERSIST_DIR/recover"
+	DRY=1; tg_cycle 60 70 1640 >/dev/null 2>&1; DRY=0; RECOVER_TOLD=0
+	chk "a dry run of the blocked recovery writes no ledger" \
+		"$DECISION/$([ -e "$PERSIST_DIR/recover" ] && echo written || echo none)" "recover_capped/none"
+	tg_cycle 60 70 1640 >/dev/null 2>&1
+	chk "a blocked recovery reaches the overlay" \
+		"$DECISION/$(sed -n 's/^RECOVER_TOLD=//p' "$PERSIST" 2>/dev/null)" "recover_capped/1"
+	chk "and the ledger carries the latch" "$(ledger)" "900/3/1"
+	chk "and is reported with the attempts it counted" \
+		"$(grep -c 'stage 1 stays: 3 automatic recovery attempts in 24 h' "$EVLOG")" "1"
+	rm -f "$PERSIST" "$STATE" "$PERSIST_DIR/recover"
+
+	# The restore message says what happens next with the stage.
+	saved_fan=$FAN_MODE; FAN_MODE=none; STAGE1_ACTION=none
+	restore_says() { # prints "<clears on its own>/<asks for a reset>" as counts
+		tg_selftest_scratch "$STATE" "$EVLOG"; rm -f "$STATE"; : > "$EVLOG"; tg_state_restore
+		printf '%s/%s' "$(grep -c 'Stage 1 clears on its own' "$EVLOG")" \
+			"$(grep -c "Clear it with 'thermal-guard reset'" "$EVLOG")"
+	}
+	tg_state_clear; STAGE=1; CAUSE1=modem; ACTION1=none; tg_state_persist
+	chk "a restored stage that clears on its own says so" "$(restore_says)" "1/0"
+	tg_state_clear; STAGE=1; CAUSE1=modem; ACTION1=none; RECOVER_TOLD=1; tg_state_persist
+	chk "a capped one still asks for a reset" "$(restore_says)" "0/1"
+	# The stage file is older than the ledger, which alone knows the cap.
+	tg_state_clear; STAGE=1; CAUSE1=modem; ACTION1=none; tg_state_persist
+	printf 'RECOVER_WIN=0\nRECOVER_N=0\nRECOVER_TOLD=1\n' > "$PERSIST_DIR/recover"
+	chk "so does one only the ledger caps" "$(restore_says)" "0/1"
+	rm -f "$PERSIST_DIR/recover"
+	FAN_MODE=$saved_fan; STAGE1_ACTION=modem_radio_off; rm -f "$PERSIST" "$STATE"
+
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020; tgd 60 70 1040
+	STAGE1_ACTION="command"; feed 60 70 1060 1640
+	chk "a hook action never recovers on its own" "$DECISION/$STAGE/$COOL_SINCE" "none/1/0"
+	STAGE1_ACTION=modem_radio_off; AUTO_RECOVER=0
+	feed 60 70 1660 2300
+	chk "auto_recover 0 never recovers" "$DECISION/$STAGE" "none/1"
+	AUTO_RECOVER=1
+	tg_state_clear; STAGE=2; CAUSE1=modem; T0=1000; T1=1000; T2=1000
+	tgd 60 70 1040; feed 60 70 1060 1700
+	chk "stage 2 never recovers on its own" "$DECISION/$STAGE" "none/2"
+	tg_state_clear; tgd 85 60 1000; tgd 85 60 1020
+	tgd 55 60 1040; feed 55 60 1060 1700
+	chk "a stage the processor caused waits for a reset" "$DECISION/$STAGE" "none/1"
+
+	# The action: confirmed by the CFUN stand-in, GEN stays, the count grows.
+	saved_fan=$FAN_MODE; FAN_MODE=none
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020; GEN=7
+	tgd 60 70 1040; feed 60 70 1060 1640
+	SELFTEST_CFUN=4; SELFTEST_CFUN_STICKS=1; : > "$EVLOG"; : > "$dir/syslog"
+	mkdir -p "$PERSIST_DIR"; echo STAGE=1 > "$PERSIST"; rm -f "$PERSIST_DIR/recover"
+	tg_recover 60 70 1640 && r=ok || r=failed
+	chk "a confirmed recovery clears stage 1" "$r/$STAGE/$SELFTEST_CFUN" "ok/-1/1"
+	chk "and leaves its count in the ledger, the stage file is gone" \
+		"$(ledger)/$([ -e "$PERSIST" ] && echo kept || echo gone)" "1640/1/0/gone"
+	chk "and keeps GEN and counts itself" "$GEN/$RECOVER_N/$RECOVER_WIN" "7/1/1640"
+	chk "and drops the persisted stage" "$([ -e "$PERSIST" ] && echo kept || echo gone)" "gone"
+	chk "and is reported at notice" "$(tg_selftest_prio \
+		'auto recovery 1 of 3: modem 70 C for 10 min, stage 1 action .modem_radio_off. undone.')" \
+		"daemon.notice"
+	tgd 60 90 1700; tgd 60 90 1720
+	chk "after a recovery a hot modem escalates again" "$DECISION/$STAGE/$RECOVER_N" "stage:1/1/1"
+
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	tgd 60 70 1040; feed 60 70 1060 1640
+	STAGE1_ACTION=none; SELFTEST_CFUN=4; : > "$EVLOG"
+	tg_recover 60 70 1640 && r=ok || r=failed
+	chk "the recovery undoes the action that ran at entry" "$r/$SELFTEST_CFUN" "ok/1"
+	chk "and names it" "$(grep -c "stage 1 action 'modem_radio_off' undone" "$EVLOG")" "1"
+	STAGE1_ACTION=modem_radio_off
+
+	# An operator reset that lands between the decision and the action wins: the
+	# file says GEN 8 and idle while the cycle still holds stage 1 of GEN 7.
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020; GEN=7
+	tgd 60 70 1040; feed 60 70 1060 1620
+	printf 'STAGE=-1\nGEN=8\n' > "$STATE"; SELFTEST_CFUN=4; : > "$EVLOG"
+	tg_cycle 60 70 1640 7 >/dev/null 2>&1
+	chk "a reset during a recovery cycle wins" \
+		"$DECISION/$STAGE/$GEN/$SELFTEST_CFUN" "recover/-1/8/4"
+	chk "and no recovery is logged" "$(grep -c 'auto recovery' "$EVLOG")" "0"
+	rm -f "$STATE"
+
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	tgd 60 70 1040; feed 60 70 1060 1640
+	SELFTEST_CFUN=4; SELFTEST_CFUN_STICKS=0; : > "$dir/syslog"; rm -f "$PERSIST_DIR/recover"
+	tg_recover 60 70 1640 && r=ok || r=failed
+	chk "an unconfirmed undo keeps stage 1 and restarts the streak" \
+		"$r/$STAGE/$COOL_SINCE" "failed/1/0"
+	chk "and is crit" "$(tg_selftest_prio \
+		'auto recovery 1 of 3 failed: stage 1 action .modem_radio_off. could not be undone, stage 1 stays.')" \
+		"daemon.crit"
+	chk "and counts toward the cap" "$RECOVER_N/$RECOVER_WIN" "1/1640"
+	chk "and the ledger has the failed attempt" "$(ledger)" "1640/1/0"
+	# A modem that never confirms is capped, not tried every recover_minutes.
+	saved_settle=$CFUN_SETTLE; CFUN_SETTLE=0
+	for t in 1660 2280; do
+		feed 60 70 "$t" $((t + 600)); tg_recover 60 70 $((t + 600)) || :
+	done
+	chk "two more failed undos reach the cap" "$RECOVER_N/$RECOVER_WIN" "3/1640"
+	chk "and the ledger follows" "$(ledger)" "1640/3/0"
+	feed 60 70 2900 3500
+	chk "and the next cool streak is capped instead of tried" "$DECISION/$STAGE" "recover_capped/1"
+	CFUN_SETTLE=$saved_settle
+	SELFTEST_CFUN_STICKS=1; FAN_MODE=$saved_fan
+
+	# The undo is confirmed but the fan does not come back: the stage stays, the
+	# attempt counts and the saved governor is still there for the next try.
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	tgd 60 70 1040; feed 60 70 1060 1640
+	saved_root=$THERMAL_ROOT; THERMAL_ROOT="$dir/thermal-recover"
+	tg_selftest_tree "$THERMAL_ROOT" bpi
+	z="$THERMAL_ROOT/thermal_zone0"; rm "$z/policy"; ln -s /dev/null "$z/policy"
+	saved_fan=$FAN_MODE; FAN_MODE=cooling_device; FAN_ZONE=$z
+	tg_selftest_cdev_rec "$THERMAL_ROOT"; FAN_SAVED_POLICY=step_wise
+	saved_off=$MODEM_RADIO_OFF_AT; MODEM_RADIO_OFF_AT='AT+CFUN=4'
+	SELFTEST_CFUN=4; SELFTEST_CFUN_STICKS=1; : > "$dir/syslog"; : > "$EVLOG"
+	rm -f "$PERSIST_DIR/recover"
+	tg_recover 60 70 1640 && r=ok || r=failed
+	chk "a fan that cannot be handed back keeps stage 1 and restarts the streak" \
+		"$r/$STAGE/$COOL_SINCE/$RECOVER_N/$FAN_SAVED_POLICY" "failed/1/0/1/step_wise"
+	chk "and the ledger has that attempt" "$(ledger)" "1640/1/0"
+	chk "and the radio is off again, so the stage keeps its effect" "$SELFTEST_CFUN" "4"
+	chk "and is crit" "$(tg_selftest_prio \
+		'auto recovery 1 of 3 failed: the fan could not be handed back, stage 1 action .modem_radio_off. applied again, stage 1 stays.')" \
+		"daemon.crit"
+	# The radio refuses to go off again: the box may be without that protection.
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	tgd 60 70 1040; feed 60 70 1060 1640
+	tg_selftest_cdev_rec "$THERMAL_ROOT"; FAN_SAVED_POLICY=step_wise
+	SELFTEST_CFUN=4; SELFTEST_CFUN_REFUSE=4
+	: > "$dir/syslog"; : > "$EVLOG"
+	tg_recover 60 70 1640 && r=ok || r=failed
+	chk "a radio that stays on after the failed release is reported" \
+		"$r/$STAGE/$SELFTEST_CFUN" "failed/1/1"
+	chk "and is crit" "$(tg_selftest_prio \
+		'auto recovery 1 of 3 failed: the fan could not be handed back, and stage 1 action .modem_radio_off. could not be applied again, the box may be without that protection.')" \
+		"daemon.crit"
+	SELFTEST_CFUN_REFUSE=""
+	FAN_ZONE=""; FAN_SAVED_POLICY=""; THERMAL_ROOT=$saved_root
+	# A partial pwm release: the mode does not read back, the duty cycle went back
+	# to its old value all the same. The fan is forced again with the action. Both
+	# go to the recorded fan, though fan_mode is none by now.
+	saved_hwmon=$HWMON_ROOT; HWMON_ROOT="$dir/hwmon-recover"; h="$HWMON_ROOT/hwmon0"
+	mkdir -p "$h"; echo pwmfan > "$h/name"; echo 0 > "$h/pwm1"; ln -s /dev/null "$h/pwm1_enable"
+	saved_pf=$PWM_FULL; saved_pi=$PWM_IDLE; PWM_FULL=0; PWM_IDLE=255
+	FAN_MODE=none; PWM_PATH=""; PWM_ENABLE_PATH=""
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	tgd 60 70 1040; feed 60 70 1060 1640
+	tg_selftest_pwm_rec; FAN_SAVED_ENABLE=1; FAN_SAVED_PWM=120
+	SELFTEST_CFUN=4; SELFTEST_CFUN_STICKS=1
+	tg_recover 60 70 1640 && r=ok || r=failed
+	chk "a partial release of the recorded pwm fan forces it again and keeps the saved values" \
+		"$r/$STAGE/$(cat "$h/pwm1")/$FAN_SAVED_ENABLE/$FAN_SAVED_PWM/$SELFTEST_CFUN" "failed/1/0/1/120/4"
+	HWMON_ROOT=$saved_hwmon; PWM_FULL=$saved_pf; PWM_IDLE=$saved_pi; MODEM_RADIO_OFF_AT=$saved_off
+	PWM_PATH=""; PWM_ENABLE_PATH=""; tg_fan_record_drop
+	FAN_MODE=$saved_fan; FAN_ZONE=""
+
+	# Round trip through the state file, and junk in it.
+	tg_state_clear; CAUSE1=modem; COOL_SINCE=1040; RECOVER_WIN=900; RECOVER_N=2; RECOVER_TOLD=1
+	ACTION1=wifi_off
+	tg_state_save; tg_state_clear; tg_state_load
+	chk "recovery state survives save and load" \
+		"$CAUSE1/$ACTION1/$COOL_SINCE/$RECOVER_WIN/$RECOVER_N/$RECOVER_TOLD" \
+		"modem/wifi_off/1040/900/2/1"
+	tg_state_clear; ACTION1="command"; tg_state_save; tg_state_clear; tg_state_load
+	chk "a hook as the recorded action survives too" "$ACTION1" "command"
+	printf 'CAUSE1=modem;reboot\nRECOVER_N=x\nACTION1=wifi_off;reboot\n' > "$STATE"; tg_state_load
+	chk "junk recovery state loads as cleared" "$CAUSE1/$RECOVER_N/$ACTION1" "/0/"
+	tg_state_clear
+	chk "a clear empties the recorded action" "${ACTION1:-empty}" "empty"
+
+	# Options out of range fall back to their defaults.
+	AUTO_RECOVER=2; RECOVER_MINUTES=4; RECOVER_MAX=11; tg_cfg_validate_recover
+	chk "out of range recovery options fall back" \
+		"$AUTO_RECOVER/$RECOVER_MINUTES/$RECOVER_MAX" "0/10/3"
+	AUTO_RECOVER=1; RECOVER_MINUTES=120; RECOVER_MAX=1; tg_cfg_validate_recover
+	chk "the ends of the ranges are accepted" "$AUTO_RECOVER/$RECOVER_MINUTES/$RECOVER_MAX" "1/120/1"
+	AUTO_RECOVER=0; RECOVER_MINUTES=10; RECOVER_MAX=3; STAGE1_ACTION=modem_radio_off
+	tg_state_clear; rm -f "$PERSIST" "$STATE"
+
+	# Every integer from outside comes back as a plain decimal: ash arithmetic
+	# reads 010 as 8 and 09 as an error.
+	for c in 09000:9000 010000:10000 0:0 000:0 -05:-5 -0:0 12a: -: 1-2:; do
+		chk "tg_int '${c%%:*}' is '${c#*:}'" "$(tg_int "${c%%:*}")" "${c#*:}"
+	done
+
+	# Integers from UCI with leading zeros. A stand-in config_get answers with
+	# SELFTEST_UCI.
+	config_get() { eval "$1=\$SELFTEST_UCI"; }
+	for c in 09:9 010:10 0:0 -05:-5 00:0 -0:0 120:120 999999:999999 1234567:999999 \
+		-999999:-999999 -1234567:-999999 0000000000000000000012:12 \
+		99999999999999999999:999999 x:kept; do
+		# shellcheck disable=SC2034  # read by the stand-in through eval
+		SELFTEST_UCI=${c%%:*}; RECOVER_MINUTES=kept
+		tg_cfg_int recover_minutes RECOVER_MINUTES
+		chk "the UCI integer '${c%%:*}' is stored as ${c#*:}" "$RECOVER_MINUTES" "${c#*:}"
+	done
+	unset -f config_get
+	RECOVER_MINUTES=10
+
+	# modem_source file reads a regular file, bounded. A fifo without a writer
+	# or a directory must come back at once, not block the cycle.
+	saved_src=$MODEM_SOURCE; saved_file=$MODEM_TEMP_FILE; saved_at=$AT_TIMEOUT
+	MODEM_SOURCE="file"; MODEM_TEMP_FILE="$dir/modem.temp"; AT_TIMEOUT=1
+	echo 47000 > "$MODEM_TEMP_FILE"; MODEM_VAL=""; tg_read_modem
+	chk "a regular modem_temp_file is read" "$MODEM_VAL/$MODEM_SRC" "47/file"
+	echo hot > "$MODEM_TEMP_FILE"; MODEM_VAL=""; tg_read_modem
+	chk "garbage in the file is no reading" "$MODEM_VAL" ""
+	printf '1234567890123456789012345678901234567890' > "$MODEM_TEMP_FILE"
+	MODEM_VAL=""; tg_read_modem
+	chk "an oversized number is no reading" "$MODEM_VAL" ""
+	# In this shell, not a subshell: an arithmetic error would end the run here.
+	echo 09000 > "$MODEM_TEMP_FILE"; MODEM_VAL=""; tg_read_modem
+	chk "a padded 09000 in the file reads as 9" "$MODEM_VAL" "9"
+	echo 010000 > "$MODEM_TEMP_FILE"; MODEM_VAL=""; tg_read_modem
+	chk "a padded 010000 reads as 10, not octal" "$MODEM_VAL" "10"
+	echo 0085 > "$MODEM_TEMP_FILE"; MODEM_VAL=""; tg_read_modem
+	chk "a padded 0085 reads as 85" "$MODEM_VAL" "85"
+	echo 85 > "$MODEM_TEMP_FILE"; MODEM_VAL=""; tg_read_modem
+	chk "a plain 85 reads as 85" "$MODEM_VAL" "85"
+	printf '123456789012345678901234567890123' > "$MODEM_TEMP_FILE"
+	MODEM_VAL=""; tg_read_modem
+	chk "a 33 digit number is no reading" "$MODEM_VAL" ""
+	echo 12a > "$MODEM_TEMP_FILE"; MODEM_VAL=""; tg_read_modem
+	chk "12a in the file is no reading" "$MODEM_VAL" ""
+	rm -f "$MODEM_TEMP_FILE"; mkfifo "$MODEM_TEMP_FILE"
+	MODEM_VAL=""; tg_read_modem
+	chk "a fifo without a writer is no reading" "$MODEM_VAL" ""
+	rm -f "$MODEM_TEMP_FILE"; mkdir "$MODEM_TEMP_FILE"
+	MODEM_VAL=""; tg_read_modem
+	chk "a directory is no reading" "$MODEM_VAL" ""
+	rmdir "$MODEM_TEMP_FILE"
+	tg_have() {
+		case "$1" in timeout) return 1 ;; esac
+		command -v "$1" >/dev/null 2>&1
+	}
+	echo 52 > "$MODEM_TEMP_FILE"; MODEM_VAL=""; tg_read_modem
+	chk "without timeout the file is still read" "$MODEM_VAL" "52"
+	tg_have() {
+		command -v "$1" >/dev/null 2>&1
+	}
+	chk "tg_have is back as shipped after the file cases" "$(type tg_have)" "$saved_have"
+	rm -f "$MODEM_TEMP_FILE"
+	MODEM_SOURCE=$saved_src; MODEM_TEMP_FILE=$saved_file; AT_TIMEOUT=$saved_at; MODEM_VAL=""
+
+	# The curl config holds the address and the header. If it cannot be made
+	# private nothing is written and nothing is sent.
+	saved_path=$PATH
+	mkdir -p "$dir/bin"
+	printf '#!/bin/sh\necho ran >> "%s"\ncat >/dev/null\n' "$dir/curl.ran" > "$dir/bin/curl"
+	chmod 0755 "$dir/bin/curl"
+	PATH="$dir/bin:$PATH"
+	tg_fetcher() { echo curl; }
+	NOTIFY_URL="https://ntfy.example/alerts"; NOTIFY_HEADER="Authorization: Bearer x"
+	rm -f "$dir/curl.ran"
+	tg_notify_http "test message" >/dev/null 2>&1 && r=sent || r=failed
+	chk "a curl notification goes out" "$r/$({ wc -l < "$dir/curl.ran"; } 2>/dev/null | tr -d ' ')" "sent/1"
+	# The config is the writer's own: a detached reset and the daemon may post at once.
+	# shellcheck disable=SC2016  # $5 belongs to the stand-in script, not to us
+	printf '#!/bin/sh\n[ -f "$5" ] && echo "$5" > "%s"\ncat >/dev/null\n' "$dir/curl.cfg" \
+		> "$dir/bin/curl"
+	rm -f "$dir/curl.cfg"
+	r=$(tg_notify_http "sub" >/dev/null 2>&1; echo "$MY_PID")
+	chk "the curl config is named after the writer's own pid" \
+		"$(cat "$dir/curl.cfg" 2>/dev/null)/$([ "$r" != "$$" ] && echo own)" \
+		"$STATE_DIR/notify.conf.$r/own"
+	chk "and removed after use" "$(find "$STATE_DIR" -name 'notify.conf*' | wc -l | tr -d ' ')" "0"
+	printf '#!/bin/sh\necho ran >> "%s"\ncat >/dev/null\n' "$dir/curl.ran" > "$dir/bin/curl"
+	chmod() { return 1; }
+	rm -f "$dir/curl.ran"; : > "$EVLOG"
+	tg_notify_http "one" >/dev/null 2>&1 && r=sent || r=failed
+	tg_notify_http "two" >/dev/null 2>&1
+	unset -f chmod
+	chk "no private curl config means no send" "$r/$([ -e "$dir/curl.ran" ] && echo ran || echo none)" \
+		"failed/none"
+	chk "and no config file is left behind" \
+		"$(find "$STATE_DIR" -name 'notify.conf*' | wc -l | tr -d ' ')" "0"
+	chk "the failure is said once" "$(grep -c 'could not protect the notify config' "$EVLOG")" "1"
+	chk "at warning" "$(tg_selftest_prio 'could not protect the notify config, not sending over HTTP')" \
+		"daemon.warning"
+	unset -f tg_fetcher
+	PATH=$saved_path; NOTIFY_URL=""; NOTIFY_HEADER=""; NOTIFY_CHMOD_TOLD=0
+
+	# Enumerations: anything off the list falls back, said once per value.
+	chk_enum() { # $1 variable, $2 junk value, $3 valid value, $4 fallback
+		eval "$1=\$2"; tg_cfg_validate_enums
+		eval "r=\$$1"
+		chk "$1 '$2' falls back to $4" "$r" "$4"
+		eval "$1=\$3"; tg_cfg_validate_enums
+		eval "r=\$$1"
+		chk "$1 '$3' is kept" "$r" "$3"
+	}
+	for v in bogus 'pwm;reboot' ''; do
+		chk_enum FAN_MODE "$v" cooling_device none
+		chk_enum MODEM_SOURCE "$v" quectel auto
+		chk_enum STAGE1_ACTION "$v" interface_down modem_radio_off
+		chk_enum STAGE2_ACTION "$v" command wifi_off
+	done
+	for v in none cooling_device pwm auto; do
+		FAN_MODE=$v; tg_cfg_validate_enums; chk "fan_mode '$v' is kept" "$FAN_MODE" "$v"
+	done
+	for v in auto quectel fibocom file command none; do
+		MODEM_SOURCE=$v; tg_cfg_validate_enums; chk "modem_source '$v' is kept" "$MODEM_SOURCE" "$v"
+	done
+	for v in modem_radio_off wifi_off interface_down command none; do
+		STAGE1_ACTION=$v; STAGE2_ACTION=$v; tg_cfg_validate_enums
+		chk "stage actions '$v' are kept" "$STAGE1_ACTION/$STAGE2_ACTION" "$v/$v"
+	done
+	FAN_MODE=none; MODEM_SOURCE=auto; STAGE1_ACTION=modem_radio_off; STAGE2_ACTION=wifi_off
+
+	# Ranges: both ends are valid, one step outside on each side is not.
+	for c in 0:3 1:1 60:60 61:3 -5:3; do
+		HOLD_MINUTES=${c%:*}; tg_cfg_validate_enums
+		chk "hold_minutes ${c%:*} becomes ${c#*:}" "$HOLD_MINUTES" "${c#*:}"
+	done
+	for c in -1:10 0:0 40:40 41:10 99:10; do
+		HYSTERESIS=${c%:*}; tg_cfg_validate_enums
+		chk "hysteresis ${c%:*} becomes ${c#*:}" "$HYSTERESIS" "${c#*:}"
+	done
+	for c in 4:5 5:5 300:300 301:300 -1:5 0:5 999999:300; do
+		INTERVAL=${c%:*}; tg_cfg_validate_enums
+		chk "interval ${c%:*} becomes ${c#*:}" "$INTERVAL" "${c#*:}"
+	done
+	HOLD_MINUTES=3; HYSTERESIS=10; INTERVAL=20
+
+	# A 20 digit number from UCI is capped when it is read, so the range check
+	# sees it, rejects it and says so (a raw one makes test fail every cycle).
+	config_get() { eval "$1=\$SELFTEST_UCI"; }
+	DAEMON=1; : > "$EVLOG"; ENUM_TOLD=""
+	for c in hold_minutes:HOLD_MINUTES hysteresis:HYSTERESIS interval:INTERVAL; do
+		# shellcheck disable=SC2034  # read by the stand-in through eval
+		SELFTEST_UCI=12345678901234567890
+		tg_cfg_int "${c%%:*}" "${c#*:}"; tg_cfg_validate_enums
+		tg_cfg_int "${c%%:*}" "${c#*:}"; tg_cfg_validate_enums
+		chk "a 20 digit ${c%%:*} is rejected once" \
+			"$(grep -c "rejecting ${c%%:*} '999999'" "$EVLOG")" "1"
+	done
+	chk "and they fall back to the defaults" "$HOLD_MINUTES/$HYSTERESIS/$INTERVAL" "3/10/300"
+	# shellcheck disable=SC2034  # read by the stand-in through eval
+	SELFTEST_UCI=-12345678901234567890; tg_cfg_int interval INTERVAL; tg_cfg_validate_enums
+	chk "a negative 20 digit interval becomes 5" "$INTERVAL" "5"
+	unset -f config_get
+	DAEMON=0; ENUM_TOLD=""; HOLD_MINUTES=3; HYSTERESIS=10; INTERVAL=20
+
+	# Validation runs every cycle, a rejection is said once per rejected value.
+	DAEMON=1; : > "$EVLOG"; ENUM_TOLD=""
+	FAN_MODE=bogus; HOLD_MINUTES=99; tg_cfg_validate_enums
+	FAN_MODE=bogus; HOLD_MINUTES=99; tg_cfg_validate_enums
+	chk "a rejected fan_mode is said once" "$(grep -c "rejecting fan_mode 'bogus'" "$EVLOG")" "1"
+	chk "a rejected hold_minutes is said once" "$(grep -c "rejecting hold_minutes '99'" "$EVLOG")" "1"
+	FAN_MODE=bogus2; tg_cfg_validate_enums
+	chk "another rejected value is said" "$(grep -c "rejecting fan_mode 'bogus2'" "$EVLOG")" "1"
+	chk "and the first one is not repeated" "$(grep -c "rejecting fan_mode 'bogus'" "$EVLOG")" "1"
+	FAN_MODE=none; tg_cfg_validate_enums
+	FAN_MODE=bogus; tg_cfg_validate_enums
+	chk "the same value after a valid one is said again" \
+		"$(grep -c "rejecting fan_mode 'bogus'" "$EVLOG")" "2"
+	DAEMON=0; ENUM_TOLD=""; : > "$EVLOG"; FAN_MODE=bogus; tg_cfg_validate_enums
+	chk "a one shot command says nothing" "$(wc -l < "$EVLOG" | tr -d ' ')" "0"
+	FAN_MODE=none; HOLD_MINUTES=3
+
+	# A warm processor at any point of the incident blocks the automatic recovery.
+	CPU_WARN=70; CPU_CRIT=80; CPU_EMERGENCY=90; MODEM_WARN=80; MODEM_CRIT=88
+	HYSTERESIS=10; INTERVAL=20; AUTO_RECOVER=1; RECOVER_MINUTES=10; RECOVER_MAX=3
+	STAGE1_ACTION=modem_radio_off; DRY=0
+	tg_state_clear; tgd 75 60 1000; tgd 75 60 1020; tgd 50 90 1040; tgd 50 90 1060
+	chk "a stage 0 the processor drove, then a hot modem: stage 1 by the modem" \
+		"$STAGE/$CAUSE1/$CPU_SEEN" "1/modem/1"
+	tgd 50 70 1080; feed 50 70 1100 1800
+	chk "and a long cool streak does not recover" "$DECISION/$STAGE/$COOL_SINCE" "none/1/0"
+	chk "and the page is told the processor was involved" "$(tg_recover_state 1800)" "cpu"
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020
+	chk "a modem alone leaves the processor unseen" "$STAGE/$CAUSE1/$CPU_SEEN" "1/modem/0"
+	tgd 60 70 1040; feed 60 70 1060 1640
+	chk "and recovers after the cool streak" "$DECISION/$STAGE" "recover/1"
+	chk "and the page waits for it" "$(tg_recover_state 1640)" "planned"
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020; tgd 72 70 1040
+	chk "a warm processor during stage 1 is seen" "$STAGE/$CAUSE1/$CPU_SEEN" "1/modem/1"
+	tgd 60 70 1060; feed 60 70 1080 1800
+	chk "and blocks the recovery for good" "$DECISION/$STAGE/$(tg_recover_state 1800)" "none/1/cpu"
+	tg_state_clear; tgd 72 60 1000
+	chk "a warm processor without a stage is not seen yet" "$STAGE/$CPU_SEEN" "-1/0"
+	tgd 72 60 1020
+	chk "the stage entry with a warm processor sees it" "$STAGE/$CPU_SEEN" "0/1"
+	tg_state_clear; tgd 60 85 1000; tgd 60 85 1020; tgd '' 70 1040
+	chk "a missing processor reading does not set it" "$STAGE/$CPU_SEEN" "0/0"
+	tg_state_clear; tgd 70 60 1000; tgd 70 60 1020
+	chk "a processor exactly at cpu_warn counts" "$STAGE/$CPU_SEEN" "0/1"
+	tg_state_clear; tgd 69 60 1000; tgd 69 60 1020
+	chk "one degree below cpu_warn does not stage at all" "$STAGE/$CPU_SEEN" "-1/0"
+
+	# A recovered stage starts a new incident.
+	tg_state_clear; tgd 60 90 1000; tgd 60 90 1020; tgd 60 70 1040; feed 60 70 1060 1640
+	saved_fan=$FAN_MODE; FAN_MODE=none; SELFTEST_CFUN=4; SELFTEST_CFUN_STICKS=1
+	tg_recover 60 70 1640 && r=ok || r=failed
+	chk "a recovered stage clears it" "$r/$STAGE/$CPU_SEEN" "ok/-1/0"
+	FAN_MODE=$saved_fan
+
+	# Round trip and junk, also through the overlay copy. Anything but 0 reads as
+	# seen: the safe side is no automatic undo.
+	tg_state_clear; STAGE=1; CAUSE1=modem; CPU_SEEN=1
+	tg_state_save; tg_state_clear; tg_state_load
+	chk "cpu_seen survives save and load" "$STAGE/$CPU_SEEN" "1/1"
+	rm -f "$PERSIST"; tg_state_persist; tg_state_clear; tg_state_read "$PERSIST"
+	chk "and the copy on the overlay" "$STAGE/$CPU_SEEN" "1/1"
+	printf 'STAGE=1\nCPU_SEEN=0\n' > "$STATE"; tg_state_load
+	chk "an unseen processor loads as unseen" "$CPU_SEEN" "0"
+	printf 'STAGE=1\nCPU_SEEN=7\n' > "$STATE"; tg_state_load
+	chk "a junk number in cpu_seen loads as seen" "$CPU_SEEN" "1"
+	printf 'STAGE=1\nCPU_SEEN=0;reboot\n' > "$STATE"; tg_state_load
+	chk "junk text in cpu_seen loads as seen" "$CPU_SEEN" "1"
+	tg_state_clear
+	chk "a clear empties it" "$CPU_SEEN" "0"
+	# Padded numbers are decimals in the next decision. T0=0100 read as octal 64
+	# would let the hold time pass 36 s early.
+	printf 'STAGE=0\nT0=0100\nREF_CPU0=72\nGEN=007\nCPU_SEEN=1\n' > "$STATE"; tg_state_load
+	chk "a padded GEN and T0 load as decimals" "$GEN/$T0" "7/100"
+	chk "and GEN matches the file on the next check" \
+		"$(tg_state_unchanged "$GEN" && echo same)" "same"
+	tg_decide 73 '' 250; tg_decide 73 '' 270
+	chk "and the hold time counts from T0 100" "$DECISION/$STAGE" "none/0"
+	tg_state_clear
+	rm -f "$PERSIST" "$STATE"
+
+	# A processor that turns warm after the stage is on reaches the overlay at once,
+	# or a reboot would hand the recovery back.
+	tg_state_clear; : > "$EVLOG"
+	tg_cycle 60 90 1000 >/dev/null 2>&1; tg_cycle 60 90 1020 >/dev/null 2>&1
+	chk "stage 1 by the modem is persisted unseen" \
+		"$(sed -n 's/^CPU_SEEN=//p' "$PERSIST" 2>/dev/null)" "0"
+	tg_cycle 72 70 1040 >/dev/null 2>&1
+	chk "a warm processor afterwards is persisted too" \
+		"$(sed -n 's/^CPU_SEEN=//p' "$PERSIST" 2>/dev/null)" "1"
+	tg_status_write
+	chk "the status file carries cpu_seen" "$(sed -n 's/^cpu_seen=//p' "$STATUS_FILE")" "1"
+	chk "and so does status" "$(tg_status 2>/dev/null | sed -n 's/^cpu_seen=//p')" "1"
+	AUTO_RECOVER=0; rm -f "$PERSIST" "$STATE"
+
+	# The recovery ledger on its own: round trip, one flush per change, junk.
+	saved_path=$PATH; PATH="$dir/bin-sync:$PATH"
+	sync_calls() { [ -f "$dir/sync.calls" ] && wc -l < "$dir/sync.calls" | tr -d ' ' || echo 0; }
+	rm -f "$PERSIST_DIR/recover" "$dir/sync.calls"; tg_state_clear
+	RECOVER_WIN=1640; RECOVER_N=2; RECOVER_TOLD=1
+	tg_recover_ledger_save && r=ok || r=failed
+	chk "the ledger is written and flushed once" "$r/$(sync_calls)/$(ledger)" "ok/1/1640/2/1"
+	tg_state_clear; tg_recover_ledger_load
+	chk "and loads back" "$RECOVER_WIN/$RECOVER_N/$RECOVER_TOLD" "1640/2/1"
+	rm -f "$dir/sync.calls"; tg_recover_ledger_save
+	chk "unchanged values are not written again" "$(sync_calls)" "0"
+	RECOVER_N=3; tg_recover_ledger_save
+	chk "a changed count is" "$(sync_calls)/$(ledger)" "1/1640/3/1"
+	chk "and no temp file is left behind" \
+		"$(find "$PERSIST_DIR" -name 'recover*' | wc -l | tr -d ' ')" "1"
+	# A subshell shares $$ with its parent: the temp name is the writer's own.
+	mkdir "$PERSIST_DIR/recover.$$"; RECOVER_N=4
+	( tg_recover_ledger_save ) 2>/dev/null; r=$?
+	chk "the ledger is written under the subshell's own temp name" "$r/$(ledger)" "0/1640/4/1"
+	rmdir "$PERSIST_DIR/recover.$$"
+	printf 'RECOVER_WIN=x\nRECOVER_N=2;reboot\nRECOVER_TOLD=\nOTHER=5\n' > "$PERSIST_DIR/recover"
+	RECOVER_WIN=7; RECOVER_N=7; RECOVER_TOLD=1; tg_recover_ledger_load
+	chk "a junk ledger keeps the counts from the stage file" \
+		"$RECOVER_WIN/$RECOVER_N/$RECOVER_TOLD" "7/7/1"
+	rm -f "$PERSIST_DIR/recover"
+	RECOVER_WIN=7; RECOVER_N=7; RECOVER_TOLD=1; tg_recover_ledger_load
+	chk "so does a missing one" "$RECOVER_WIN/$RECOVER_N/$RECOVER_TOLD" "7/7/1"
+	printf 'RECOVER_N=2\n' > "$PERSIST_DIR/recover"
+	RECOVER_WIN=7; RECOVER_N=7; RECOVER_TOLD=1; tg_recover_ledger_load
+	chk "a partial ledger overwrites only the keys it has" \
+		"$RECOVER_WIN/$RECOVER_N/$RECOVER_TOLD" "7/2/1"
+	# Read as octal, 0100000 would be 32768 and the window long over at 150000.
+	printf 'RECOVER_WIN=0100000\nRECOVER_N=03\nRECOVER_TOLD=00\n' > "$PERSIST_DIR/recover"
+	RECOVER_MAX=3; tg_recover_ledger_load
+	chk "a padded ledger loads as decimals" "$RECOVER_WIN/$RECOVER_N/$RECOVER_TOLD" "100000/3/0"
+	chk "and its window still holds the cap" "$(tg_recover_capped 150000 && echo capped)" "capped"
+	# Quiet cycles never touch the flash.
+	rm -f "$PERSIST_DIR/recover" "$dir/sync.calls"; tg_state_clear
+	tg_cycle 50 40 6000 >/dev/null 2>&1; tg_cycle 50 40 6020 >/dev/null 2>&1
+	chk "cycles without an attempt write no ledger" \
+		"$([ -e "$PERSIST_DIR/recover" ] && echo written || echo none)/$(sync_calls)" "none/0"
+	saved_pdir=$PERSIST_DIR; : > "$dir/not-a-dir"; PERSIST_DIR="$dir/not-a-dir"
+	RECOVER_N=1; : > "$EVLOG"
+	tg_recover_ledger_save && r=ok || r=failed
+	chk "a ledger that cannot be written is reported and not flushed" \
+		"$r/$(grep -c 'could not save the recovery count' "$EVLOG")/$(sync_calls)" "failed/1/0"
+	PERSIST_DIR=$saved_pdir
+	# A ledger that landed but whose flush failed is no saved ledger: the next
+	# save with the same values flushes again instead of taking the file for done.
+	rm -f "$PERSIST_DIR/recover" "$dir/sync.calls"; : > "$EVLOG"; touch "$dir/sync.fail"
+	RECOVER_WIN=1700; RECOVER_N=1; RECOVER_TOLD=0
+	tg_recover_ledger_save && r=ok || r=failed
+	rm -f "$dir/sync.fail"
+	tg_recover_ledger_save && r="$r/ok" || r="$r/failed"
+	chk "a ledger whose flush failed is flushed again by the next save" \
+		"$r/$(sync_calls)/$(grep -c 'could not save the recovery count' "$EVLOG")" "failed/ok/2/1"
+	rm -f "$dir/sync.calls"; tg_recover_ledger_save
+	chk "and once flushed it is left alone again" "$(sync_calls)" "0"
+	rm -f "$PERSIST_DIR/recover"; tg_state_clear
+	PATH=$saved_path
+	unset -f sync_calls ledger
+	tg_state_clear
+
+	# A temp file another writer left, or is still writing, is neither in the way
+	# nor taken for ours.
+	tg_state_clear; GEN=9; rm -f "$STATE"; mkdir -p "$STATE.tmp"
+	tg_state_save 2>/dev/null && r=ok || r=failed
+	chk "a temp file of another writer does not stop the save" \
+		"$r/$(sed -n 's/^GEN=//p' "$STATE" 2>/dev/null)" "ok/9"
+	chk "and the save leaves no temp file of its own" \
+		"$(find "$STATE_DIR" -name 'state.tmp.*' | wc -l | tr -d ' ')" "0"
+	rmdir "$STATE.tmp"; rm -f "$STATE"; tg_state_clear
+
+	# The state lock. Without flock, or with a lock file that cannot be opened,
+	# there is no lock, and no lock gives no permission: take and wait refuse at
+	# once and keep the reason for the caller.
+	LOCK_OK=""; LOCK_ERR=""
+	tg_have() { [ "$1" != flock ] && command -v "$1" >/dev/null 2>&1; }
+	t=$(tg_uptime)
+	tg_lock_take && r=taken || r=refused
+	tg_lock_wait 3 && r="$r/taken" || r="$r/refused"
+	chk "without flock the state lock is refused, the wait at once" \
+		"$r/$([ $(($(tg_uptime) - t)) -le 1 ] && echo quick)" "refused/refused/quick"
+	chk "and the reason is kept for the caller" "$LOCK_ERR" \
+		"no flock command, the state lock cannot be taken"
+	tg_lock_fd_open 8 "$dir/second.lock" && r=open || r=refused
+	chk "a second lock on its own descriptor is refused the same way" "$r" "refused"
+	tg_have() {
+		command -v "$1" >/dev/null 2>&1
+	}
+	LOCK_OK=""
+	if tg_have flock; then
+		# A directory where the lock file belongs cannot be opened for writing,
+		# not even by root.
+		saved_sdir=$STATE_DIR; STATE_DIR="$dir/lockdir"; mkdir -p "$STATE_DIR/lock"
+		tg_lock_take && r=taken || r=refused
+		chk "a lock file that cannot be opened refuses the state lock" "$r/$LOCK_ERR" \
+			"refused/cannot open $dir/lockdir/lock, the state lock cannot be taken"
+		tg_lock_fd_open 8 "$STATE_DIR/lock" && r=open || r=refused
+		chk "and a second lock on such a file" "$r" "refused"
+		STATE_DIR=$saved_sdir; LOCK_OK=""; rm -rf "$dir/lockdir"
+		# The same helpers serve a second lock on its own descriptor.
+		other_free() { ( flock -n -x 9 ) 9>"$1" && echo free || echo held; }
+		tg_lock_fd_open 8 "$dir/second.lock" && tg_lock_fd_take 8 && r=taken || r=refused
+		chk "a second lock is taken on its own descriptor" \
+			"$r/$(other_free "$dir/second.lock")" "taken/held"
+		flock -u 8; exec 8>&-
+		chk "and handed back" "$(other_free "$dir/second.lock")" "free"
+		# Whether a second open of the lock file could take it now.
+		lock_other() {
+			tg_selftest_scratch "$STATE_DIR"
+			( flock -n -x 8 ) 8>"$STATE_DIR/lock" && echo free || echo held
+		}
+		rm -f "$dir/held"
+		sh -c 'exec 8>"$1"; flock -x 8; : > "$2"; exec sleep 30' _ "$STATE_DIR/lock" "$dir/held" &
+		r=$!
+		for t in 1 2 3 4 5; do [ -e "$dir/held" ] || sleep 1; done
+		tg_lock_take && t=taken || t=held
+		chk "a lock another process holds is not taken" "$t" "held"
+		tg_lock_wait 1 && t=taken || t=gave-up
+		chk "and the wait gives up after its time" "$t" "gave-up"
+		# However long the lock is held, the daemon does not take over.
+		tg_daemon_lock && t=go || t=skip
+		tg_daemon_lock && t="$t/go" || t="$t/skip"
+		chk "the daemon skips a held lock every time" "$t" "skip/skip"
+		kill "$r" 2>/dev/null; wait "$r" 2>/dev/null
+		tg_lock_wait 3 && t=taken || t=gave-up
+		chk "once free the wait takes it" "$t/$(lock_other)" "taken/held"
+		chk "and records itself as the owner" "$(cat "$STATE_DIR/lock.owner" 2>/dev/null)" "$$"
+		tg_lock_drop
+		chk "and the drop hands it back" "$(lock_other)" "free"
+		tg_daemon_lock && t=go || t=skip
+		chk "a free lock lets the daemon decide" "$t" "go"
+		tg_lock_drop
+		# A hook never gets the lock's fd, or what it leaves running holds the lock.
+		saved_hooks=$HOOK_DIR; HOOK_DIR="$dir/hooks-fd"; mkdir -p "$HOOK_DIR"
+		for t in fdcheck notify modem-temp modem-model; do
+			o="$dir/$t.fd"; h="$HOOK_DIR/$t"
+			printf '#!/bin/sh\n{ true >&7; } 2>/dev/null && echo open > "%s" ||\n' "$o" > "$h"
+			printf '\techo closed > "%s"\necho 55\n' "$o" >> "$h"
+			chmod 0755 "$h"
+		done
+		saved_src=$MODEM_SOURCE; MODEM_SOURCE="command"
+		tg_run_hook fdcheck; tg_notify_hook "selftest"; tg_read_modem; tg_modem_model >/dev/null
+		r="$(cat "$dir/fdcheck.fd")/$(cat "$dir/notify.fd")"
+		r="$r/$(cat "$dir/modem-temp.fd")/$(cat "$dir/modem-model.fd")/$MODEM_VAL"
+		chk "hooks run without the lock's fd" "$r" "closed/closed/closed/closed/55"
+		MODEM_SOURCE=$saved_src; MODEM_VAL=""; MODEM_SRC=""
+		rm -rf "$HOOK_DIR"; HOOK_DIR=$saved_hooks
+		unset -f lock_other other_free
+	else
+		echo "skip the state lock cases, no flock command here"
+	fi
+
+	# Blocked by another holder the daemon only measures and alerts: over the
+	# reset budget, at a crit threshold, at the CPU emergency, each once per
+	# holder (the pid in lock.owner) and level.
+	saved_budget=$RESET_BUDGET; RESET_BUDGET=4; BLOCK_HOLDER=""; BLOCK_SINCE=""; BLOCK_TOLD=""
+	: > "$EVLOG"; : > "$dir/syslog"
+	blocked_n() { grep -c -- "$1" "$EVLOG"; }
+	echo 100 > "$STATE_DIR/lock.owner"
+	tg_blocked 40 48 1000; tg_blocked 40 48 1004
+	r=$(blocked_n 'blocked by a reset')
+	tg_blocked 40 48 1005; tg_blocked 40 48 1006
+	r="$r/$(blocked_n 'blocked by a reset for 5 s, no action taken (cpu 40 C, modem 48 C)$')"
+	chk "the over budget alert comes once, past the budget" "$r/$(blocked_n 'reset for')" "0/1/1"
+	tg_blocked 40 90 1007; tg_blocked 85 90 1008
+	chk "a crit reading is alerted once" "$(blocked_n \
+		'reset while modem is at 90 C, above its crit threshold, no action taken$')/$(blocked_n \
+		'above its crit')" "1/1"
+	tg_blocked 95 90 1009; tg_blocked 96 90 1010
+	chk "a CPU emergency after it is alerted once" "$(blocked_n \
+		'reset while the CPU is at 95 C, its emergency threshold, no action taken$')/$(blocked_n \
+		'its emergency')" "1/1"
+	chk "at crit" "$(tg_selftest_prio \
+		'blocked by a reset while the CPU is at 95 C, its emergency threshold, no action taken')" \
+		"daemon.crit"
+	echo 200 > "$STATE_DIR/lock.owner"
+	tg_blocked 95 90 1011
+	chk "a new holder alerts again, the emergency standing for crit" \
+		"$(blocked_n 'its emergency')/$(blocked_n 'above its crit')/$(blocked_n 'reset for')" "2/1/1"
+	tg_blocked "" "" 1020
+	chk "without readings only the budget is alerted" \
+		"$(blocked_n 'blocked by a reset for 9 s, no action taken (cpu ? C, modem ? C)$')" "1"
+	RESET_BUDGET=$saved_budget; BLOCK_HOLDER=""; BLOCK_SINCE=""; BLOCK_TOLD=""
+	rm -f "$STATE_DIR/lock.owner"; : > "$EVLOG"
+	unset -f blocked_n
+
+	# The longest an undo can take: every external call at its time limit plus
+	# the 5 s before KILL, every retry and settle time.
+	saved_t=$CMD_TIMEOUT; saved_u=$UBUS_TIMEOUT; saved_a=$AT_WAIT; saved_w=$WIFI_SETTLE
+	saved_c=$CFUN_SETTLE; CFUN_SETTLE=2
+	CMD_TIMEOUT=15; UBUS_TIMEOUT=5; AT_WAIT=10; WIFI_SETTLE=5
+	r="$(tg_undo_budget wifi_off)/$(tg_undo_budget modem_radio_off)"
+	r="$r/$(tg_undo_budget interface_down wan)/$(tg_undo_budget interface_down '')"
+	r="$r/$(tg_undo_budget none)/$(tg_undo_budget command)"
+	chk "undo budgets for Wi-Fi, modem, interface, no interface, none and command" \
+		"$r" "175/94/54/0/0/0"
+	CMD_TIMEOUT=$saved_t; UBUS_TIMEOUT=$saved_u; AT_WAIT=$saved_a; WIFI_SETTLE=$saved_w
+	CFUN_SETTLE=$saved_c
+	printf '12345.67 99.10\n' > "$dir/uptime"
+	chk "the uptime is read in whole seconds" "$(tg_uptime "$dir/uptime")" "12345"
+	printf 'junk\n' > "$dir/uptime"
+	r=$(tg_uptime "$dir/uptime"); rm -f "$dir/uptime"
+	chk "an unreadable uptime falls back to the clock" \
+		"$([ -n "$(tg_int "$r")" ] && echo int)" "int"
+	# The owner is the process itself, also in the subshell the page's reset runs in.
+	tg_my_pid
+	chk "the own pid is \$\$ in the main shell" "$MY_PID" "$$"
+	r=$(tg_my_pid; echo "$MY_PID")
+	chk "and its own in a subshell" \
+		"$([ -n "$(tg_int "$r")" ] && [ "$r" != "$$" ] && echo own)" "own"
+
+	# A process is its pid and start time, field 22 of its stat counted after
+	# the last parenthesis: the name before it may hold both.
+	tg_stat_start '42 (a) b) S 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 777 19'
+	r=$PROC_START
+	tg_stat_start '42 (z) Z 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 777 19'
+	r="$r/${PROC_START:-empty}"
+	tg_stat_start '42 (short) S 1 2'
+	chk "the start time comes after the last parenthesis, none for a zombie or a short line" \
+		"$r/${PROC_START:-empty}" "777/empty/empty"
+	tg_my_pid; tg_proc_start "$MY_PID"; own_start=$PROC_START
+	tg_proc_is "$$" "$own_start" && r=same || r=other
+	tg_proc_is "$$" "$((own_start + 1))" && r="$r/same" || r="$r/other"
+	chk "the own identity matches, another start time under the same pid does not" \
+		"$([ -n "$(tg_int "$own_start")" ] && echo int)/$r" "int/same/other"
+
+	# The reset request record, for the page. Junk in it reads as empty.
+	RESET_BOOT=$SELFTEST_BOOT; RESET_ID=3-1234; RESET_GEN=3; RESET_TS=1240; RESET_KIND=page
+	RESET_REC_FAILED=fan; RESET_RPID=1234; RESET_RSTART=99; RESET_WPID=1235; RESET_WSTART=100
+	RESET_PREV_ID=2-1200; RESET_PREV_GEN=2; RESET_PREV_STATE=failed
+	RESET_PREV_FAILED=wifi_off; RESET_PREV_TS=1200
+	tg_reset_save busy; RESET_ID=""; RESET_PREV_FAILED=""; tg_reset_read
+	r="$RESET_BOOT/$RESET_ID/$RESET_GEN/$RESET_STATE/$RESET_TS/$RESET_KIND/$RESET_REC_FAILED"
+	r="$r/$RESET_RPID/$RESET_RSTART/$RESET_WPID/$RESET_WSTART"
+	r="$r/$RESET_PREV_ID/$RESET_PREV_GEN/$RESET_PREV_STATE/$RESET_PREV_FAILED/$RESET_PREV_TS"
+	chk "the reset record survives a read" "$r" \
+		"$SELFTEST_BOOT/3-1234/3/busy/1240/page/fan/1234/99/1235/100/2-1200/2/failed/wifi_off/1200"
+	tg_state_clear; rm -f "$STATUS_FILE"; mkdir -p "$STATUS_FILE.tmp"
+	tg_status_write 2>/dev/null
+	r=""
+	for t in reset_state reset_ts reset_boot reset_id reset_gen reset_kind reset_prev_id \
+		reset_prev_gen reset_prev_state reset_prev_failed reset_prev_ts; do
+		r="$r/$(sed -n "s/^$t=//p" "$STATUS_FILE" 2>/dev/null)"
+	done
+	chk "the status file carries the record, a stray temp name in the way or not" "$r" \
+		"/busy/1240/$SELFTEST_BOOT/3-1234/3/page/2-1200/2/failed/wifi_off/1200"
+	# A page that waited across a reboot sees the new boot here even before the
+	# new boot has a request record.
+	r=$(sed -n 's/^boot_id=//p' "$STATUS_FILE" 2>/dev/null)
+	echo "${SELFTEST_BOOT%?}x" > "$BOOT_ID_FILE"; tg_status_write 2>/dev/null
+	r="$r/$(sed -n 's/^boot_id=//p' "$STATUS_FILE" 2>/dev/null)"
+	tg_selftest_scratch "$BOOT_ID_FILE"; rm -f "$BOOT_ID_FILE"; tg_status_write 2>/dev/null
+	r="$r/$(sed -n 's/^boot_id=//p' "$STATUS_FILE" 2>/dev/null)/$(
+		grep -c '^boot_id=$' "$STATUS_FILE" 2>/dev/null)"
+	echo "$SELFTEST_BOOT" > "$BOOT_ID_FILE"
+	chk "the status file names this boot, empty where the kernel id is unusable" "$r" \
+		"$SELFTEST_BOOT///1"
+	r=$(tg_status 2>/dev/null)
+	chk "and so does status" "$(printf '%s\n' "$r" | sed -n 's/^reset_state=//p')/$(
+		printf '%s\n' "$r" | sed -n 's/^reset_id=//p')/$(
+		printf '%s\n' "$r" | sed -n 's/^reset_prev_failed=//p')" "busy/3-1234/wifi_off"
+	rm -rf "$STATUS_FILE.tmp"
+	chk "and the status write leaves no temp file of its own" \
+		"$(find "$dir" -maxdepth 1 -name 'status.tmp*' | wc -l | tr -d ' ')" "0"
+	{
+		printf 'reset_boot=%s\nreset_id=3-12;reboot\nreset_gen=0x3\n' "${SELFTEST_BOOT%?}"
+		printf 'reset_state=rm -rf /\nreset_ts=12;reboot\nreset_kind=root\nreset_failed=a b\n'
+		printf 'reset_wpid=-1\nreset_prev_id=-2-3\nreset_prev_state=ok\nreset_prev_failed=;\n'
+	} > "$STATE_DIR/reset"
+	tg_reset_read
+	r="$RESET_BOOT/$RESET_ID/$RESET_GEN/$RESET_STATE/$RESET_TS/$RESET_KIND/$RESET_REC_FAILED"
+	r="$r/$RESET_WPID/$RESET_PREV_ID/$RESET_PREV_STATE/$RESET_PREV_FAILED"
+	chk "junk in the reset record reads as empty" "$r" "//////////"
+	# A starting or running request whose process is gone is shown as aborted.
+	RESET_BOOT=$SELFTEST_BOOT; RESET_ID=1-1; RESET_GEN=1; RESET_TS=1; RESET_KIND=page
+	RESET_RPID=""; RESET_RSTART=""; RESET_WPID=$MY_PID; RESET_WSTART=$((own_start + 1))
+	tg_reset_save running; tg_reset_view
+	r=$RESET_STATE
+	RESET_WSTART=$own_start; tg_reset_save running; tg_reset_view
+	chk "a running request shows as aborted once its worker is gone, not before" \
+		"$r/$RESET_STATE" "aborted/running"
+	rm -f "$STATE_DIR/reset"
+
+	# In a subshell $$ is the parent's PID: the temp names are the process's own, or
+	# two detached resets of one parent would write into one file.
+	mkdir -p "$STATE_DIR"
+	mkdir -p "$STATE.tmp.$$" "$STATE_DIR/reset.tmp.$$" "$STATUS_FILE.tmp.$$"
+	( tg_state_write "$STATE" ) 2>/dev/null; r=$?
+	chk "the state file is written under the subshell's own temp name" "$r" "0"
+	( tg_reset_save "done" ) 2>/dev/null; r=$?
+	chk "and so is the reset record" "$r" "0"
+	rm -f "$STATUS_FILE"
+	( tg_status_write ) 2>/dev/null; r=$?
+	chk "and the status file" "$r/$([ -f "$STATUS_FILE" ] && echo written)" "0/written"
+	rmdir "$STATE.tmp.$$" "$STATE_DIR/reset.tmp.$$" "$STATUS_FILE.tmp.$$"
+	rm -f "$STATE_DIR/reset"
+	# Without admission the cleanup removes only what a writer that is gone left.
+	sh -c ':' & r=$!; wait "$r"
+	tg_selftest_scratch "$STATE_DIR"
+	: > "$STATE_DIR/reset.tmp.$r"; : > "$STATE_DIR/reset.gen.tmp.$r"
+	: > "$STATE_DIR/reset.tmp.$$"
+	tg_reset_tidy
+	chk "the record cleanup removes a gone writer's temp files, not a live one's" \
+		"$([ -e "$STATE_DIR/reset.tmp.$r" ] && echo kept)/$([ -e "$STATE_DIR/reset.gen.tmp.$r" ] &&
+		echo kept)/$([ -e "$STATE_DIR/reset.tmp.$$" ] && echo kept)" "//kept"
+	rm -f "$STATE_DIR/reset.tmp.$$"
+
+	# The admission lock is taken and handed back, and a holder elsewhere keeps
+	# it for ADMIT_WAIT seconds at most.
+	if tg_have flock; then
+		admit_other() {
+			( flock -n -x 9 ) 9>"$STATE_DIR/reset.admit" && echo free || echo held
+		}
+		tg_admit_take && r=taken || r=refused
+		r="$r/$(admit_other)"; tg_admit_drop
+		chk "admission is taken and handed back" "$r/$(admit_other)" "taken/held/free"
+		rm -f "$dir/held"
+		sh -c 'exec 8>"$1"; flock -x 8; : > "$2"; exec sleep 30' _ "$STATE_DIR/reset.admit" \
+			"$dir/held" &
+		r=$!
+		for t in 1 2 3 4 5; do [ -e "$dir/held" ] || sleep 1; done
+		saved_wait=$ADMIT_WAIT; ADMIT_WAIT=1; t=0; tg_admit_take || t=$?
+		ADMIT_WAIT=$saved_wait
+		kill "$r" 2>/dev/null; wait "$r" 2>/dev/null
+		chk "admission held elsewhere is given up after ADMIT_WAIT" "$t" "1"
+		unset -f admit_other
+	fi
+
+	# A writer killed between write and rename leaves its temp file behind.
+	mkdir -p "$PERSIST_DIR"
+	for r in "$STATE.tmp.4711" "$PERSIST.tmp.4712" "$STATUS_FILE.tmp.4713" "$STATUS_FILE.tmp" \
+		"$PERSIST_DIR/recover.4714" "$EVLOG.tmp.4715" "$STATE_DIR/other.tmp.1" \
+		"$PERSIST_DIR/recover"; do
+		: > "$r"
+	done
+	tg_tmp_cleanup
+	t=""
+	for r in "$STATE.tmp.4711" "$PERSIST.tmp.4712" "$STATUS_FILE.tmp.4713" "$STATUS_FILE.tmp" \
+		"$PERSIST_DIR/recover.4714" "$EVLOG.tmp.4715" "$STATE_DIR/other.tmp.1" \
+		"$PERSIST_DIR/recover"; do
+		[ -e "$r" ] && t="${t}1" || t="${t}0"
+	done
+	chk "leftover temp files are removed, the recovery count and other files stay" "$t" "00000011"
+	rm -f "$STATE_DIR/other.tmp.1" "$PERSIST_DIR/recover"
+	# A curl config holds the notification secret: a poster killed mid post
+	# leaves it, a live one (perhaps a detached reset) is still using it.
+	sh -c ':' & r=$!; wait "$r"
+	: > "$STATE_DIR/notify.conf.$r"; : > "$STATE_DIR/notify.conf.$$"
+	tg_tmp_cleanup
+	chk "a curl config of a poster that is gone is removed, a live poster's stays" \
+		"$([ -e "$STATE_DIR/notify.conf.$r" ] && echo kept)/$([ -e "$STATE_DIR/notify.conf.$$" ] &&
+		echo kept)" "/kept"
+	rm -f "$STATE_DIR/notify.conf.$$"
+
+	# The event log is trimmed under a temp name of the writer's own: a reset
+	# request logs without the state lock, next to the daemon.
+	tg_selftest_scratch "$EVLOG"
+	r=0; : > "$EVLOG"
+	while [ "$r" -lt 60 ]; do echo "line $r" >> "$EVLOG"; r=$((r + 1)); done
+	mkdir -p "$EVLOG.tmp" "$EVLOG.tmp.$$"
+	( tg_log "trimmed" ) 2>/dev/null
+	chk "the event log trim takes a temp name of its own process" \
+		"$(wc -l < "$EVLOG" | tr -d ' ')/$(tail -n1 "$EVLOG" | sed 's/^.* //')" "50/trimmed"
+	rmdir "$EVLOG.tmp" "$EVLOG.tmp.$$"; : > "$EVLOG"
+
+	# A state from 2.1.0.0 has no IFACE keys: its interface_down acted on the
+	# configured interface. A key that is there but empty means nothing went down.
+	saved_ai=$ACTION_INTERFACE; ACTION_INTERFACE=lan
+	printf 'STAGE=2\nACTION1=interface_down\nACTION2=interface_down\n' > "$STATE"; tg_state_load
+	chk "an interface_down without its IFACE key takes the configured interface" \
+		"$IFACE1/$IFACE2" "lan/lan"
+	printf 'STAGE=2\nACTION1=interface_down\nIFACE1=\nACTION2=interface_down\nIFACE2=\n' > "$STATE"
+	tg_state_load
+	chk "one whose IFACE key is empty took nothing down" "${IFACE1:-empty}/${IFACE2:-empty}" \
+		"empty/empty"
+	printf 'STAGE=1\nACTION1=wifi_off\n' > "$STATE"; tg_state_load
+	chk "another action without the key gets no interface" "${IFACE1:-empty}" "empty"
+	# Nor CPU_SEEN: nothing says the processor stayed cool, so no automatic undo.
+	chk "a stage without CPU_SEEN loads as seen" "$CPU_SEEN" "1"
+	printf 'STAGE=-1\n' > "$STATE"; tg_state_load
+	chk "an idle state without it loads as unseen" "$CPU_SEEN" "0"
+	ACTION_INTERFACE=$saved_ai; rm -f "$STATE"; tg_state_clear
+
+	# A release that did not read back keeps its values for the next reset. The zone
+	# then still sits on this daemon's own user_space: no foreign writer, and the
+	# page is told that a restore is pending.
+	saved_root=$THERMAL_ROOT; THERMAL_ROOT="$dir/thermal-pending"
+	tg_selftest_tree "$THERMAL_ROOT" bpi; z="$THERMAL_ROOT/thermal_zone0"
+	echo user_space > "$z/policy"; FAN_MODE=cooling_device; FAN_ZONE=$z; DAEMON=1
+	pending() {
+		tg_selftest_scratch "$STATUS_FILE"
+		tg_status_write; sed -n 's/^fan_restore_pending=//p' "$STATUS_FILE"
+	}
+	tg_state_clear; tg_selftest_cdev_rec "$THERMAL_ROOT"; FAN_SAVED_POLICY=step_wise
+	: > "$EVLOG"; tg_fan_check_owner; r=$(pending)
+	chk "a kept record is no foreign writer and is published" \
+		"$FAN_FOREIGN/$r/$(grep -c 'another program drives this fan' "$EVLOG")" "0/1/0"
+	tg_state_save
+	chk "and status shows it" "$(tg_status 2>/dev/null | sed -n 's/^fan_restore_pending=//p')" "1"
+	tg_state_clear; FAN_UNRESOLVED=1; r=$(pending)
+	chk "an unresolved record counts too" "$r" "1"
+	tg_state_clear; STAGE=0; tg_selftest_cdev_rec "$THERMAL_ROOT"; r=$(pending)
+	chk "while a stage is on nothing is pending" "$r" "0"
+	tg_state_clear; tg_fan_check_owner; r=$(pending)
+	chk "without one, user_space while idle is another program" "$FAN_FOREIGN/$r" "1/0"
+	unset -f pending
+	THERMAL_ROOT=$saved_root; FAN_MODE=none; FAN_ZONE=""; DAEMON=0; FAN_FOREIGN=0
+	rm -f "$STATE"; tg_state_clear
+
+	# A block that set a real root and did not put the planted one back would send
+	# every block after it to the live tree.
+	r=""
+	for t in "$THERMAL_ROOT" "$HWMON_ROOT" "$NET_ROOT" "$DT_ROOT" "$CPU_TEMP_PATH" "$AT_LOCK" \
+		"$STATE_DIR" "$PERSIST_DIR" "$STATUS_FILE" "$HOOK_DIR" "$BOOT_ID_FILE" "$DEVICES_ROOT"; do
+		tg_path_under "$t" "$dir/" || r="$r '$t'"
+	done
+	chk "every root still points into the scratch directory" "${r:-yes}" "yes"
+
+	# Reset undoes what ran at entry, with the interface recorded then. The three
+	# reverses and the fan release are stand-ins here, they have their own cases.
+	# They stay overridden for the rest of the run: this block must stay last.
+	undo_stub() { echo "$1/${2:-}" >> "$dir/undo.calls"; [ "$1" != "$SELFTEST_UNDO_FAIL" ]; }
+	tg_action_modem_radio_on() { undo_stub modem_radio_off; }
+	tg_action_wifi_on() { undo_stub wifi_off; }
+	tg_action_interface_up() { undo_stub interface_down "$1"; }
+	tg_fan_release() { return "$SELFTEST_FAN_RC"; }
+	SELFTEST_UNDO_FAIL=""; SELFTEST_FAN_RC=0
+	# The calls file is there from the start: a case with nothing to undo has to
+	# read an empty list, not a missing file.
+	undo_run() { # prints the undo calls, then what failed
+		tg_selftest_scratch "$EVLOG"
+		: > "$dir/undo.calls"; : > "$EVLOG"; tg_undo_all
+		echo "$(tr '\n' ' ' < "$dir/undo.calls")|$UNDO_FAILED"
+	}
+	STAGE1_ACTION=modem_radio_off; STAGE2_ACTION=modem_radio_off; ACTION_INTERFACE=lan
+	tg_state_clear; STAGE=2; ACTION1=wifi_off; ACTION2=interface_down; IFACE2=wwan
+	chk "reset undoes stage 2 first, with its recorded interface" \
+		"$(undo_run)" "interface_down/wwan wifi_off/ |"
+	tg_state_clear; STAGE=1; ACTION1=interface_down; IFACE1=wwan; ACTION2=wifi_off
+	chk "a stage 1 state leaves the stage 2 action alone" "$(undo_run)" "interface_down/wwan |"
+	tg_state_clear
+	chk "an idle state undoes nothing" "$(undo_run)" "|"
+	tg_state_clear; STAGE=1; STAGE1_ACTION=wifi_off
+	chk "a state without a recorded action undoes the configured one" \
+		"$(undo_run)" "wifi_off/ |"
+	chk "and says so" "$(grep -c 'state from an older version, undoing the configured actions' \
+		"$EVLOG")" "1"
+	# interface_down that recorded no interface took nothing down.
+	tg_state_clear; STAGE=1; ACTION1=interface_down
+	chk "a recorded interface_down without an interface has nothing to undo" \
+		"$(undo_run)" "|"
+	tg_state_clear; STAGE=1; STAGE1_ACTION=interface_down
+	chk "an older state takes the configured interface" "$(undo_run)" "interface_down/lan |"
+	saved_up=$UPLINK_INTERFACE; ACTION_INTERFACE=""; UPLINK_INTERFACE=""
+	chk "and nothing where none is configured either" "$(undo_run)" "|"
+	ACTION_INTERFACE=lan; UPLINK_INTERFACE=$saved_up
+	STAGE1_ACTION=modem_radio_off
+	tg_state_clear; STAGE=2; ACTION1=none; ACTION2="command"
+	chk "none and command have nothing to undo and cannot fail" "$(undo_run)" "|"
+	SELFTEST_UNDO_FAIL=modem_radio_off
+	tg_state_clear; STAGE=2; ACTION1=modem_radio_off; ACTION2=modem_radio_off
+	chk "a failed undo is collected once" "$(undo_run)" \
+		"modem_radio_off/ modem_radio_off/ |modem_radio_off"
+	SELFTEST_FAN_RC=1
+	tg_state_clear; STAGE=1; ACTION1=wifi_off
+	chk "a failed fan release is collected as fan" "$(undo_run)" "wifi_off/ |fan"
+	tg_state_clear; STAGE=1; ACTION1=modem_radio_off
+	chk "and in order with the failed undo" "$(undo_run)" "modem_radio_off/ |modem_radio_off,fan"
+	SELFTEST_UNDO_FAIL=""; SELFTEST_FAN_RC=0
+	# A reset already past its budget skips what is left, the fan as well, and
+	# lists it. An action with nothing to undo is not listed.
+	tg_state_clear; STAGE=2; ACTION1=none; ACTION2=wifi_off
+	r=$(tg_selftest_scratch "$EVLOG"; : > "$dir/undo.calls"; : > "$EVLOG"
+		tg_undo_all $(($(tg_uptime) - RESET_BUDGET - 1))
+		echo "$(tr '\n' ' ' < "$dir/undo.calls")|$UNDO_FAILED|$(grep -c 'skipping the undo' "$EVLOG")")
+	chk "a reset past its budget skips the rest into the failure list" "$r" "|wifi_off,fan|2"
+
+	# Stage entry records the actions and the interface they acted on, and ends an
+	# old reset failure.
+	STAGE1_ACTION=interface_down; STAGE2_ACTION=wifi_off; ACTION_INTERFACE=wwan
+	tg_state_clear; RESET_FAILED=wifi_off; tgd 60 90 1000; tgd 60 90 1020
+	chk "stage 1 records its interface" "$ACTION1/$IFACE1/$ACTION2" "interface_down/wwan/"
+	chk "and a stage entry ends the old reset failure" "${RESET_FAILED:-empty}" "empty"
+	ACTION_INTERFACE=lan; tgd 99 99 1040; tgd 99 99 1060
+	chk "stage 2 records its action, no interface for wifi_off" \
+		"$STAGE/$ACTION1/$IFACE1/$ACTION2/${IFACE2:-empty}" "2/interface_down/wwan/wifi_off/empty"
+	STAGE2_ACTION=interface_down; ACTION_INTERFACE=""; UPLINK_INTERFACE=wan
+	tg_state_clear; tgd 99 99 1000; tgd 99 99 1020
+	chk "the uplink interface is the fallback for the recorded interface" \
+		"$ACTION2/$IFACE2" "interface_down/wan"
+	UPLINK_INTERFACE=""
+	tg_state_clear; tgd 99 99 1000; tgd 99 99 1020
+	chk "an interface action without any interface records none" \
+		"$ACTION2/${IFACE2:-empty}" "interface_down/empty"
+	STAGE1_ACTION=modem_radio_off; STAGE2_ACTION=wifi_off; ACTION_INTERFACE=""
+
+	# The new keys survive the state file, and junk in them does not.
+	tg_state_clear; STAGE=2; ACTION1=wifi_off; ACTION2=interface_down
+	IFACE1=lan; IFACE2=wwan; RESET_FAILED=wifi_off,fan; tg_state_save
+	tg_state_clear; tg_state_load
+	chk "actions, interfaces and the reset failure survive a reload" \
+		"$ACTION1/$ACTION2/$IFACE1/$IFACE2/$RESET_FAILED" \
+		"wifi_off/interface_down/lan/wwan/wifi_off,fan"
+	printf 'STAGE=2\nACTION2=rm\nIFACE1=-a\nIFACE2=a;b\nRESET_FAILED=a;b\n' > "$STATE"
+	tg_state_clear; tg_state_load
+	chk "junk in the new keys loads as empty" \
+		"${ACTION2:-empty}/${IFACE1:-empty}/${IFACE2:-empty}/${RESET_FAILED:-empty}" \
+		"empty/empty/empty/empty"
+	tg_state_clear; RESET_FAILED=fan; tg_state_save; tg_status_write
+	chk "the status file carries reset_failed" \
+		"$(sed -n 's/^reset_failed=//p' "$STATUS_FILE")" "fan"
+	chk "and so does status" "$(tg_status 2>/dev/null | sed -n 's/^reset_failed=//p')" "fan"
+	tg_state_clear; rm -f "$STATE"
+	unset -f undo_run
+
 	rm -rf "$dir"
 	[ "$fail" = 0 ] && echo "selftest: all cases passed" || echo "selftest: FAILED"
 	return $fail
@@ -2171,9 +5434,12 @@ case "${1:-}" in
 	daemon) tg_daemon ;;
 	status) tg_status ;;
 	reset) tg_reset ;;
+	reset-start) tg_reset_start ;;
 	trips-keep) tg_trips_keep ;;
+	fan-forget) tg_fan_forget ;;
 	test) tg_test "${2:-}" "${3:-}" ;;
 	*)
-		echo "usage: thermal-guard daemon|status|reset|trips-keep|test <cpu> <modem>|selftest|-V" >&2
+		printf 'usage: thermal-guard %s\n' \
+			"daemon|status|reset|reset-start|trips-keep|fan-forget|test <cpu> <modem>|selftest|-V" >&2
 		exit 2 ;;
 esac

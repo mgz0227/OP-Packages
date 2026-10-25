@@ -1,20 +1,31 @@
 
 config thermal-guard 'main'
 	option enabled '1'
-	# seconds between readings, minimum 5
+	# seconds between readings, 5 to 300, values outside are set to the nearest limit
 	option interval '20'
 
 	# stage thresholds in degrees celsius, must be ordered warn < crit < emergency
 	option cpu_warn '70'
 	option cpu_crit '80'
 	option cpu_emergency '90'
-	option modem_warn '80'
-	option modem_crit '88'
+	# Unset takes the profile of the detected modem from
+	# /usr/share/thermal-guard/modems, otherwise 80 and 88. Set either to
+	# override it, warn below crit
+	#option modem_warn '80'
+	#option modem_crit '88'
 
 	# minutes a stage has to persist before the next one can trigger on time alone
 	option hold_minutes '3'
 	# degrees below the warn thresholds that count as cooled down
 	option hysteresis '10'
+	# Clear daemon stage 1 (stage 2 of 3 on the status page) on its own once
+	# the modem, which alone caused it, has read cool for recover_minutes
+	# (5 to 120), at most recover_max times in 24 hours (1 to 10). Stage 2, an
+	# incident where the processor was warm at any point and the 'command'
+	# action wait for a reset. Unset or 0 is off
+	#option auto_recover '1'
+	#option recover_minutes '10'
+	#option recover_max '3'
 
 	option cpu_temp_path '/sys/class/thermal/thermal_zone0/temp'
 	# also report the other temperature sensors of the board, Wi-Fi chips and so on
@@ -23,6 +34,10 @@ config thermal-guard 'main'
 	# none, cooling_device (kernel thermal zone), pwm (sysfs) or auto.
 	# none leaves the fan to whatever regulates it already. auto takes the cooling
 	# device if there is one and otherwise stays off the fan; it never picks pwm.
+	# The fan options below are read when a stage takes the fan over. Changed
+	# during a stage, they apply from the next takeover: the fan taken at stage
+	# entry stays in use (forced, checked, handed back) until it is released,
+	# also under none.
 	option fan_mode 'none'
 	# type of the fan's cooling device, for cooling_device, auto and trip
 	# management; empty means pwm-fan
@@ -72,7 +87,9 @@ config thermal-guard 'main'
 
 	# the message is posted here. Works with ntfy, Gotify, Matrix, Slack and
 	# anything else that takes a plain POST body. For a delivery HTTP cannot
-	# express, put an executable at /etc/thermal-guard/hooks/notify instead
+	# express, put an executable at /etc/thermal-guard/hooks/notify instead.
+	# Without curl the address is visible in the process list: it must not carry
+	# a secret in its path, and one with a query string or user info is refused
 	#option notify_url 'https://ntfy.sh/my-topic'
 	# only sent when curl is installed, uclient-fetch cannot set headers
 	#option notify_header 'Authorization: Bearer secret'

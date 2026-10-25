@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=minigate
-PKG_VERSION:=2026.10.17
-PKG_RELEASE:=1
+PKG_VERSION:=2026.10.25
+PKG_RELEASE:=2
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=MiniGate
 
@@ -51,6 +51,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_BIN) ./root/usr/lib/minigate/update.sh $(1)/usr/lib/minigate/
 	$(INSTALL_BIN) ./root/usr/lib/minigate/uninstall.sh $(1)/usr/lib/minigate/
 	$(INSTALL_BIN) ./root/usr/lib/minigate/after_commit.sh $(1)/usr/lib/minigate/
+	$(CP) ./root/usr/lib/minigate/geo $(1)/usr/lib/minigate/
 
 	# Config
 	$(INSTALL_DIR) $(1)/etc/config

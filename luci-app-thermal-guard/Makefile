@@ -7,8 +7,8 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_VERSION:=2.0.0
-PKG_RELEASE:=1
+PKG_VERSION:=2.1.1.0
+PKG_RELEASE:=2
 
 PKG_LICENSE:=GPL-2.0-only
 PKG_MAINTAINER:=SyntaxError NullPointer <287466119+SyntaxError-NullPointer@users.noreply.github.com>

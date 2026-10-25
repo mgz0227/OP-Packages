@@ -2,9 +2,9 @@
 
 一个类似 Lucky 的轻量级 OpenWrt 应用，提供四大核心功能：DDNS、SSL 证书、反向代理、登录防护。
 
-当前版本：**v2026.10.17**。项目名称、仓库名及 OpenWrt 内部包名均为 **`minigate`**。
+当前版本：**v2026.10.25**。项目名称、仓库名及 OpenWrt 内部包名均为 **`minigate`**。
 
-> OpenWrt 用户请从 [Releases](https://github.com/tpxcer/minigate/releases/latest) 下载 `minigate_2026.10.17_all.ipk`。不要把 GitHub 自动生成的 `Source code (zip)` / `Source code (tar.gz)` 当安装包上传到 LuCI。
+> OpenWrt 用户请从 [Releases](https://github.com/tpxcer/minigate/releases/latest) 下载 `minigate_2026.10.25_all.ipk`。不要把 GitHub 自动生成的 `Source code (zip)` / `Source code (tar.gz)` 当安装包上传到 LuCI。
 
 ## 项目定位
 
@@ -59,6 +59,7 @@ minigate 面向需要自托管轻量网关能力的 OpenWrt / ImmortalWrt 用户
 - **直接 IP 访问拒绝**：只允许域名访问，扫描器直接断开
 - **未知 Host 拒绝**：同一监听端口下，未配置的域名/前缀不会落到第一个反代站点
 - **局域网直连解析**（可选）：内网设备把代理域名直接解析到本机 LAN 地址，公网 IP 变化、上游 DNS 缓存过期或主路由不支持回流时，内网访问不受影响，流量也不进入代理
+- **公网访问范围**（可选）：选择允许访问的省级地区，IPv4/IPv6 在首次转发前检查，未命中白名单直接断开；局域网私有地址继续可用
 
 ### 🛡 登录防护 (Login Guard)
 - 监控 **SSH（dropbear）** 和 **LuCI 网页** 登录失败
@@ -92,20 +93,20 @@ minigate 面向需要自托管轻量网关能力的 OpenWrt / ImmortalWrt 用户
 
 从 [Releases](https://github.com/tpxcer/minigate/releases/latest) 下载：
 
-`minigate_2026.10.17_all.ipk`
+`minigate_2026.10.25_all.ipk`
 
 **通过 LuCI 界面安装：**
 1. 打开 LuCI → **系统** → **软件包**
 2. 点击 **上传软件包**
-3. 选择 `minigate_2026.10.17_all.ipk`，点击安装
+3. 选择 `minigate_2026.10.25_all.ipk`，点击安装
 
 **通过命令行安装：**
 
 ```bash
 cd /tmp
-wget -O minigate_2026.10.17_all.ipk https://github.com/tpxcer/minigate/releases/download/v2026.10.17/minigate_2026.10.17_all.ipk
+wget -O minigate_2026.10.25_all.ipk https://github.com/tpxcer/minigate/releases/download/v2026.10.25/minigate_2026.10.25_all.ipk
 opkg update
-opkg install /tmp/minigate_2026.10.17_all.ipk
+opkg install /tmp/minigate_2026.10.25_all.ipk
 rm -f /tmp/luci-indexcache /tmp/luci-modulecache 2>/dev/null
 /etc/init.d/uhttpd restart
 /etc/init.d/minigate restart
@@ -124,7 +125,7 @@ Release 用的 `.ipk` 请用仓库脚本生成，避免生成 Debian 风格 ar �
 脚本会输出：
 
 ```text
-dist/minigate_2026.10.17_all.ipk
+dist/minigate_2026.10.25_all.ipk
 ```
 
 该文件外层是 OpenWrt/ImmortalWrt 24.10 兼容的 `tar.gz`，内部成员顺序为 `debian-binary`、`control.tar.gz`、`data.tar.gz`。
@@ -152,7 +153,7 @@ wget -qO- https://raw.githubusercontent.com/tpxcer/minigate/main/scripts/install
 需要指定并核对具体版本时，执行：
 
 ```bash
-d="$(mktemp -d /tmp/minigate.XXXXXX)" && cd "$d" && wget -q https://github.com/tpxcer/minigate/releases/download/v2026.10.17/minigate-v2026.10.17-src.tar.gz && wget -q https://github.com/tpxcer/minigate/releases/download/v2026.10.17/SHA256SUMS && grep 'minigate-v2026.10.17-src.tar.gz$' SHA256SUMS | sha256sum -c - && tar xzf minigate-v2026.10.17-src.tar.gz && sh install.sh && /etc/init.d/uhttpd restart && /etc/init.d/minigate restart
+d="$(mktemp -d /tmp/minigate.XXXXXX)" && cd "$d" && wget -q https://github.com/tpxcer/minigate/releases/download/v2026.10.25/minigate-v2026.10.25-src.tar.gz && wget -q https://github.com/tpxcer/minigate/releases/download/v2026.10.25/SHA256SUMS && grep 'minigate-v2026.10.25-src.tar.gz$' SHA256SUMS | sha256sum -c - && tar xzf minigate-v2026.10.25-src.tar.gz && sh install.sh && /etc/init.d/uhttpd restart && /etc/init.d/minigate restart
 ```
 
 其中 `minigate.XXXXXX` 是临时目录模板，系统会自动把六个 `X` 替换为随机字符，避免与已有目录重名。该命令会校验源码包的 SHA-256、保留现有 minigate 配置并重启 LuCI 与 minigate 服务。
@@ -167,14 +168,14 @@ ssh root@192.168.1.1
 
 # 2. 在路由器上直接下载 Release 源码包
 cd /tmp
-wget -O minigate-src.tar.gz https://github.com/tpxcer/minigate/releases/download/v2026.10.17/minigate-v2026.10.17-src.tar.gz
-wget -O minigate-SHA256SUMS https://github.com/tpxcer/minigate/releases/download/v2026.10.17/SHA256SUMS
-awk '$2 == "minigate-v2026.10.17-src.tar.gz" {print $1 "  minigate-src.tar.gz"}' minigate-SHA256SUMS | sha256sum -c - || exit 1
+wget -O minigate-src.tar.gz https://github.com/tpxcer/minigate/releases/download/v2026.10.25/minigate-v2026.10.25-src.tar.gz
+wget -O minigate-SHA256SUMS https://github.com/tpxcer/minigate/releases/download/v2026.10.25/SHA256SUMS
+awk '$2 == "minigate-v2026.10.25-src.tar.gz" {print $1 "  minigate-src.tar.gz"}' minigate-SHA256SUMS | sha256sum -c - || exit 1
 
 # 3. 解压到独立目录并安装
-mkdir -p /tmp/minigate-v2026.10.17
-tar xzf minigate-src.tar.gz -C /tmp/minigate-v2026.10.17
-cd /tmp/minigate-v2026.10.17
+mkdir -p /tmp/minigate-v2026.10.25
+tar xzf minigate-src.tar.gz -C /tmp/minigate-v2026.10.25
+cd /tmp/minigate-v2026.10.25
 sh install.sh
 
 # 4. 启动服务
@@ -224,7 +225,7 @@ SSH 登录后执行上方「方法 2」的一条命令，保留原有配置并�
 ### IPK 升级
 
 ```bash
-opkg install --force-reinstall /tmp/minigate_2026.10.17_all.ipk
+opkg install --force-reinstall /tmp/minigate_2026.10.25_all.ipk
 rm -f /tmp/luci-indexcache /tmp/luci-modulecache 2>/dev/null
 /etc/init.d/minigate restart
 ```
@@ -324,6 +325,24 @@ opkg remove minigate 2>/dev/null || apk del minigate 2>/dev/null
 - 内网访问使用与公网相同的端口，因此要求公网端口映射没有改端口号（例如外网 443 映射到内网 2000 时不适用）
 - 关闭开关或停止 minigate 时会移除该文件；也可以手动执行 `/usr/lib/minigate/proxy.sh lan-dns` 重新同步
 
+### 设置公网访问范围
+在 **反向代理 → 公网访问范围** 中启用「限制公网访问地区」，再添加允许的省级地区（支持多个）。例如仅保留「四川省」，保存应用后，只允许地址库判定为四川的公网 IP 访问。默认关闭，升级不会自动收紧现有访问范围。
+
+- 所有普通域名、子域名、HTTP 跳转及 WebSocket 均在转发前检查；其他地区、境外及归属地未知来源返回 Nginx `444`（直接断开，无响应正文）
+- IPv4、IPv6 使用同一策略；RFC1918 私有 IPv4、回环、IPv6 ULA 和链路本地地址继续放行；LAN 接口已分配的全球 IPv6 子网也自动豁免。使用「局域网直连解析」可通过 LAN IPv4 访问
+- 不修改防火墙，不限制 SSH、RustDesk 等其他服务；启用此功能时不再运行旧版地区日志扫描封禁逻辑，已有登录防护独立生效
+- 使用实际连接来源（同端口分流时为本机 stream 提供的 PROXY protocol），不信任访客提交的 `X-Forwarded-For` / `X-Real-IP`；若前面还有 CDN 或隐藏来源的代理，看到的是该代理的出口 IP
+- 数据来自 [ip2region](https://github.com/lionsoul2014/ip2region)，随安装包附带 34 个省级地区的离线 CIDR，不需要在线归属地接口或额外 Nginx 模块。版本、源文件 SHA-256 和网段数见 `root/usr/lib/minigate/geo/metadata.json`，原许可证随包保留
+- 地址归属可能误判或随运营商调整变化；外出、漫游或使用外省代理出口时可能被拦截。数据缺失或配置为空时仍拒绝公网，不自动退回全部放行。可从局域网关闭开关恢复访问
+
+维护数据时，从 `scripts/build-geo-data.py` 中的固定 `REVISION` 下载对应 `data/ipv4_source.txt`、`data/ipv6_source.txt`，然后运行：
+
+```bash
+python3 scripts/build-geo-data.py /path/to/ip2region/data
+```
+
+脚本核验源文件 SHA-256 后生成省级 CIDR。更新快照时需同时审查来源提交、更新固定摘要和许可证，并随项目新版本发布；运行时不自动下载或替换白名单。
+
 ### Cloudflare API Token 创建方法
 1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
 2. 头像 → **My Profile** → **API Tokens** → **Create Token**
@@ -388,6 +407,13 @@ minigate/
 - `nftables` - 登录防护用（OpenWrt 22.03+ / ImmortalWrt 默认已装）
 
 ## 更新日志
+
+### v2026.10.25
+- 新增可配置的「公网访问范围」：选择一个或多个省级地区，仅允许匹配的公网 IP 访问所有反代站点，其他及未知来源在首次转发前直接断开
+- 同时检查 IPv4、IPv6，覆盖 HTTP 跳转与 WebSocket；保留局域网访问，不修改防火墙或限制 SSH、RustDesk
+- 随包附带离线省级地址库及来源、摘要和许可证，不依赖在线查询；限制默认关闭，启用时预选四川
+- 新增真实 Nginx 请求和 LuCI 参数校验测试，地区数据缺失不自动退回全部放行
+
 
 ### v2026.10.17
 - 新增「局域网直连解析」（默认关闭）：把已配置的代理域名直接解析到本机 LAN 地址，宽带重新拨号后主路由或运营商 DNS 继续返回旧 IP 时，内网访问不再时好时坏，流量也不进入代理

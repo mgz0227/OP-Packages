@@ -233,7 +233,7 @@ tg_trip_base_save() { # $1 whole degrees, space separated
 	mkdir -p "$PERSIST_DIR" 2>/dev/null &&
 		echo "$1" > "$f.tmp" 2>/dev/null && chmod 644 "$f.tmp" &&
 		mv "$f.tmp" "$f" 2>/dev/null || return 1
-	sync
+	tg_sync
 }
 
 tg_trip_base_read() {
@@ -336,7 +336,8 @@ tg_fan_levels() {
 	local f
 	for f in "$DT_ROOT"/*/cooling-levels "$DT_ROOT"/*/*/cooling-levels; do
 		[ -r "$f" ] || continue
-		tr '\0' '\n' < "${f%/*}/compatible" 2>/dev/null | grep -qx pwm-fan || continue
+		# The braces take the open error too, a node may have no compatible.
+		{ tr '\0' '\n' < "${f%/*}/compatible"; } 2>/dev/null | grep -qx pwm-fan || continue
 		hexdump -v -e '4/1 "%u " "\n"' "$f" 2>/dev/null |
 			awk 'NF == 4 { printf "%s%d", s, $1 * 16777216 + $2 * 65536 + $3 * 256 + $4; s = " " }'
 		return 0

@@ -28,8 +28,8 @@ msgstr "Pfad muss mit %s beginnen"
 msgid "Thermal Guard"
 msgstr "Thermal Guard"
 
-msgid "Monitors the temperature of the main processor and the modem. If the device gets too hot, it intervenes in up to three protection stages. Stages stay active until you clear them on the status page."
-msgstr "Überwacht die Temperatur des Hauptprozessors und des Modems. Wird das Gerät zu heiß, greift der Dienst in bis zu drei Schutzstufen ein. Die Stufen bleiben aktiv, bis Sie sie auf der Statusseite zurücksetzen."
+msgid "Monitors the temperature of the main processor and the modem. If the device gets too hot, it intervenes in up to three protection stages. Stages stay active until you clear them on the status page, unless automatic undo is switched on (Actions tab)."
+msgstr "Überwacht die Temperatur des Hauptprozessors und des Modems. Wird das Gerät zu heiß, greift der Dienst in bis zu drei Schutzstufen ein. Die Stufen bleiben aktiv, bis Sie sie auf der Statusseite zurücksetzen, außer die automatische Rücknahme ist eingeschaltet (Reiter Aktionen)."
 
 msgid "General"
 msgstr "Allgemein"
@@ -61,8 +61,8 @@ msgstr "Durch Deaktivieren werden die Temperaturmessungen angehalten. Bereits ak
 msgid "Interval"
 msgstr "Intervall"
 
-msgid "Seconds between two temperature readings. Values below five seconds are treated as five."
-msgstr "Sekunden zwischen zwei Temperaturmessungen. Werte unter fünf Sekunden werden als fünf behandelt."
+msgid "Seconds between two temperature readings. From 5 to 300; values outside that range are set to the nearest limit."
+msgstr "Sekunden zwischen zwei Temperaturmessungen. Von 5 bis 300; Werte außerhalb dieses Bereichs werden auf die nächste Grenze gesetzt."
 
 msgid "Processor temperature source"
 msgstr "Quelle der Prozessortemperatur"
@@ -397,8 +397,35 @@ msgstr "Version %s"
 msgid "Clearing failed: %s"
 msgstr "Zurücksetzen fehlgeschlagen: %s"
 
+msgid "Clearing started, the result follows in a moment."
+msgstr "Zurücksetzen gestartet, das Ergebnis folgt gleich."
+
 msgid "Protection stages cleared."
 msgstr "Schutzstufen zurückgesetzt."
+
+msgid "Protection stages cleared. Still in force from an earlier clear: %s"
+msgstr "Schutzstufen zurückgesetzt. Von einem früheren Zurücksetzen noch wirksam: %s"
+
+msgid "Clearing could not undo everything. Still in force: %s"
+msgstr "Zurücksetzen konnte nicht alles rückgängig machen. Noch wirksam: %s"
+
+msgid "The daemon is busy with a stage action, try again in a minute."
+msgstr "Der Dienst ist mit einer Schutzmaßnahme beschäftigt, bitte in einer Minute erneut versuchen."
+
+msgid "Clearing was aborted."
+msgstr "Das Zurücksetzen wurde abgebrochen."
+
+msgid "The router restarted while clearing, the result is unknown."
+msgstr "Der Router hat während des Zurücksetzens neu gestartet, das Ergebnis ist unbekannt."
+
+msgid "The result of this clear is no longer available. See the status and the log."
+msgstr "Das Ergebnis dieses Zurücksetzens ist nicht mehr verfügbar. Siehe Status und Log."
+
+msgid "No result for this clear arrived in time, the outcome is unknown."
+msgstr "Für dieses Zurücksetzen kam rechtzeitig kein Ergebnis, der Ausgang ist unbekannt."
+
+msgid "Clearing is running, readings resume afterwards."
+msgstr "Das Zurücksetzen läuft, die Messwerte folgen danach."
 
 msgid "Temperatures"
 msgstr "Temperaturen"
@@ -507,3 +534,72 @@ msgstr "Rohwert je Lüfterstufe aus dem Device Tree, mit dem Tastverhältnis des
 
 msgid "step %d: %d (%d %%)"
 msgstr "Stufe %d: %d (%d %%)"
+
+msgid "Empty uses the profile of the detected modem %s (%s): %d °C."
+msgstr "Leer übernimmt das Profil des erkannten Modems %s (%s): %d °C."
+
+msgid "Empty uses %d °C. No profile applies: the modem model is unknown or not in the modem table."
+msgstr "Leer bedeutet %d °C. Es gilt kein Profil: Das Modemmodell ist unbekannt oder steht nicht in der Modemtabelle."
+
+msgid "Undo stage 2 of 3 automatically"
+msgstr "Stufe 2 von 3 automatisch zurücknehmen"
+
+msgid "Clears stage 2 of 3 on its own once the modem, which alone caused it, has read cool for the set time: at least the hysteresis below its warning level. Stage 3 of 3, stages in which the processor was warm and a custom script always wait for you to clear them."
+msgstr "Nimmt Stufe 2 von 3 selbst zurück, sobald das Modem, das sie allein ausgelöst hat, die eingestellte Zeit lang kühl gemessen hat: mindestens um die Hysterese unter seiner Warnschwelle. Stufe 3 von 3, Stufen, in denen der Prozessor warm war, und ein eigenes Skript warten immer darauf, dass Sie sie zurücksetzen."
+
+msgid "Cool time before undoing"
+msgstr "Abkühlzeit vor der Rücknahme"
+
+msgid "Minutes the modem has to read cool without a gap. A missing reading starts the count again."
+msgstr "Minuten, die das Modem ohne Unterbrechung kühl messen muss. Ein fehlender Messwert beginnt die Zählung neu."
+
+msgid "Automatic undos per day"
+msgstr "Automatische Rücknahmen pro Tag"
+
+msgid "At most this many automatic undos in 24 hours. After that the stage stays until you clear it."
+msgstr "Höchstens so viele automatische Rücknahmen in 24 Stunden. Danach bleibt die Stufe, bis Sie sie zurücksetzen."
+
+msgid "Stage 2 of 3 active since %s: %s"
+msgstr "Stufe 2 von 3 aktiv seit %s: %s"
+
+msgid "The processor was warm during this incident, so it is not undone automatically. Clear it once the cause is fixed."
+msgstr "Der Prozessor war während dieses Vorfalls warm, daher keine automatische Rücknahme. Setzen Sie sie zurück, sobald die Ursache behoben ist."
+
+msgid "The modem had no reading when this stage began, so it is not undone automatically."
+msgstr "Das Modem hatte beim Beginn dieser Stufe keinen Messwert, daher keine automatische Rücknahme."
+
+msgid "A custom script ran, so it is not undone automatically."
+msgstr "Ein eigenes Skript wurde ausgeführt, daher keine automatische Rücknahme."
+
+msgid "No recorded cause, so it is not undone automatically. Clear it once the cause is fixed."
+msgstr "Keine gespeicherte Ursache, daher keine automatische Rücknahme. Setzen Sie sie zurück, sobald die Ursache behoben ist."
+
+msgid "The fan taken over has no usable record, so it is not undone automatically. Check the fan, clear the stage, then run thermal-guard fan-forget on the router."
+msgstr "Für den übernommenen Lüfter gibt es keinen verwertbaren Eintrag, daher keine automatische Rücknahme. Prüfen Sie den Lüfter, setzen Sie die Stufe zurück und führen Sie dann auf dem Router thermal-guard fan-forget aus."
+
+msgid "The action of stage 2 of 3 changed or cannot be undone, so it is not undone automatically."
+msgstr "Die Aktion von Stufe 2 von 3 wurde geändert oder lässt sich nicht zurücknehmen, daher keine automatische Rücknahme."
+
+msgid "Automatic undo limit reached (%d in 24 hours), so it stays until you clear it. Clear it once the cause is fixed."
+msgstr "Grenze für automatische Rücknahmen erreicht (%d in 24 Stunden), daher bleibt sie aktiv, bis Sie sie zurücksetzen. Setzen Sie sie zurück, sobald die Ursache behoben ist."
+
+msgid "Undone automatically in about %d min if the modem stays cool."
+msgstr "Automatische Rücknahme in etwa %d min, wenn das Modem kühl bleibt."
+
+msgid "Undone automatically once the modem has read cool for %d min."
+msgstr "Automatische Rücknahme, sobald das Modem %d min lang kühl gemessen hat."
+
+msgid "Still in force after a clear: %s. Check the device."
+msgstr "Nach dem Zurücksetzen weiterhin in Kraft: %s. Bitte das Gerät prüfen."
+
+msgid "Only the fan release can be tried again with Clear. Anything else stays listed here until the next protection stage or a reboot."
+msgstr "Erneut versuchen lässt sich beim Zurücksetzen nur die Rückgabe des Lüfters. Alles andere bleibt hier aufgeführt, bis die nächste Schutzstufe beginnt oder das Gerät neu startet."
+
+msgid "Modem model"
+msgstr "Modemmodell"
+
+msgid "%s, profile %s"
+msgstr "%s, Profil %s"
+
+msgid "%s, no profile"
+msgstr "%s, kein Profil"

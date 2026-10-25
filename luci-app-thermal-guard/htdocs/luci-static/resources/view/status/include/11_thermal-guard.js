@@ -77,6 +77,11 @@ return baseclass.extend({
 		if (st.modem_src || st.modem_c)
 			rows.push([ _('Modem'), temp(num(st.modem_c), num(st.modem_warn), num(st.modem_crit)) ]);
 
+		if (st.modem_model)
+			rows.push([ _('Modem model'), st.modem_profile
+				? _('%s, profile %s').format(st.modem_model, st.modem_profile)
+				: _('%s, no profile').format(st.modem_model) ]);
+
 		extraSensors(st).forEach(function(s) {
 			rows.push([ s[0], temp(s[1], null, null) ]);
 		});

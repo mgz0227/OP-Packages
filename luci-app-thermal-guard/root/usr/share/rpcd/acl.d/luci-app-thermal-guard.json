@@ -14,6 +14,7 @@
 		"write": {
 			"file": {
 				"/usr/sbin/thermal-guard reset": [ "exec" ],
+				"/usr/sbin/thermal-guard reset-start": [ "exec" ],
 				"/usr/sbin/thermal-guard trips-keep": [ "exec" ]
 			},
 			"ubus": {
