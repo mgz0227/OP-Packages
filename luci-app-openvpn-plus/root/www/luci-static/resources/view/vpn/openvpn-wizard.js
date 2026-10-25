@@ -51,7 +51,9 @@ const TXT = {
 		MISSING: _('MISSING'),
 		WORKING: _('WORKING'),
 		mask: _('Mask'),
-		openvpn_profile_valid: _('OpenVPN Profile Valid:'),
+		openvpn_profile_valid: _('OpenVPN Profile Valid'),
+		client_profile_detected: _('OpenVPN Client Profile detected'),
+		server_profile_detected: _('OpenVPN Server Profile detected'),
 		outside_port: _('Outside Port'),
 		port_forwarding: _('Port Forwarding'),
 		protocol: _('Protocol'),
@@ -261,6 +263,7 @@ const WIZARD_DATA_TEMPLATE = Object.freeze({
 	importOvpnClientProfileCallback: null,		// Function to parse text, key bundles, and routing layouts from uploaded files
 	instanceNumber: 1,							// Stores the current or next available numeric instance identification index
 	forcedScenario: null,						// Bypasses the initial role selection step if the scenario context is locked
+	forcedScenarioTitle: null					// Custrom title for Forced Cenario
 });
 
 /**
@@ -283,7 +286,8 @@ const WIZARD_PARAMS_TEMPLATE = Object.freeze({
 	isStaticIp: false,							// Semiautomatic safety override bypassing the active IP migration checks
 	ddnsProvider: '',							// Selected dynamic DNS provider configuration key profile token identification
 	ddnsUrl: '',								// Generated secure HTTP GET request string dispatched for provider synchronization
-	importedRawOvpn: ''							// Temporary payload staging buffer holding raw client file profile contents
+	importedRawOvpn: '',						// Temporary payload staging buffer holding raw client file profile contents
+	isServerBackup: false,
 });
 
 
@@ -1166,7 +1170,7 @@ const importClientInstance = async function (elements, wizardData, nextBtn, prev
 		// Path B: Full setup for a brand new profile installation
 		const wizardParams = Object.assign({}, WIZARD_PARAMS_TEMPLATE, {
 			clients: [],
-			role: OPENVPN.ROLE.CLIENT,
+			role: extractedParams.isServerBackup ? OPENVPN.ROLE.SERVER : OPENVPN.ROLE.CLIENT,
 			port: extractedParams.port,
 			proto: extractedParams.proto,
 			displayName: extractedParams.cname || cleanCustomName || TXT.INFO.imported_clients,
@@ -1175,7 +1179,8 @@ const importClientInstance = async function (elements, wizardData, nextBtn, prev
 			remoteServerLan: extractedParams.remoteServerLan,
 			isApMode: false,
 			ddnsOrPublicIp: '',
-			importedRawOvpn: activeSubParams.importedRawOvpn || ''
+			importedRawOvpn: activeSubParams.importedRawOvpn || '',
+			isServerBackup: extractedParams.isServerBackup
 		});
 
 		if (typeof wizardData.addNewInstanceCallback === 'function') {
@@ -1633,13 +1638,16 @@ const renderOptionSiteClient = function (buttons, messageBox) {
 			const remoteServerMatch = text.match(/^remote\s+(\S+)\s+(\d+)/m);
 			const protoMatch = text.match(/^proto\s+(\S+)/m);
 			const hasCaTag = (text.indexOf('<ca>') !== -1);
+			const isServerBackupFile = /^server\s+/m.test(text) || /^server-ipv6\s+/m.test(text);
 
 			if (remoteServerMatch) {
-				// PATH A: Valid full configuration profile (.ovpn)
+				// PATH A: Valid full client configuration profile (.ovpn)
 				uploadedFileContentStr = text;
 
 				const successContent = E('div', {}, [
 					E('strong', {}, ICON.SUCCESS + ' ' + TXT.INFO.openvpn_profile_valid),
+					E('br'),
+					E('span', {}, ICON.ARROW + ' ' + TXT.INFO.client_profile_detected),
 					E('br'),
 					E('span', {}, [
 						ICON.ARROW + ' ' + TXT.INFO.server_address + ': ',
@@ -1655,8 +1663,24 @@ const renderOptionSiteClient = function (buttons, messageBox) {
 					buttons.next.disabled = false;
 				}
 			}
+			else if (isServerBackupFile === true) {
+				// PATH B: Valid full server configuration profile (.ovpn)
+				uploadedFileContentStr = text;
+
+				const successContent = E('div', {}, [
+					E('strong', {}, ICON.SUCCESS + ' ' + TXT.INFO.openvpn_profile_valid),
+					E('br'),
+					E('span', {}, ICON.ARROW + ' ' + TXT.INFO.server_profile_detected),
+				]);
+
+				showMessage(successContent, MESSAGE_TYPE.OK, messageBox);
+
+				if (buttons && buttons.next) {
+					buttons.next.disabled = false;
+				}
+			}
 			else if (isCrtExtension === true || (hasCaTag === true && !remoteServerMatch)) {
-				// PATH B: Valid cryptographic multi-key bundle (.crt)
+				// PATH C: Valid cryptographic multi-key bundle (.crt)
 				uploadedFileContentStr = text;
 
 				const warningContent = E('div', {}, [
@@ -1677,7 +1701,7 @@ const renderOptionSiteClient = function (buttons, messageBox) {
 				}
 			}
 			else {
-				// PATH C: File is corrupted or missing vital fields
+				// PATH D: File is corrupted or missing vital fields
 				fileInput.classList.add('cbi-input-invalid');
 				customUploadBtn.classList.add('cbi-input-invalid');
 				fileInput.value = '';
@@ -2215,7 +2239,11 @@ const updateStepVisibility = function (elements, state, buttons, wizardData) {
 			scenarioTitle += '\u2003\u2003' + ICON.TAG + elements.inputs.displayName.value;
 		}
 
-		state.nodes.descr.textContent = scenarioTitle;
+		if (wizardData.forcedScenarioTitle) {
+			state.nodes.descr.textContent = '';
+		} else {
+			state.nodes.descr.textContent = scenarioTitle;
+		}
 	}
 };
 
@@ -2815,7 +2843,6 @@ const setupAddressValidator = function (elements, buttons, portForwardingAlert, 
 	});
 };
 
-
 /**
  * MAIN WIZARD
  */
@@ -2870,8 +2897,15 @@ const openWizardModal = function (wizardData, optionalHideClient) {
 		document.head.appendChild(styleNode);
 	}
 
+	let title;
+	if (wizardData.forcedScenarioTitle) {
+		title = wizardData.forcedScenarioTitle
+	} else {
+		title = ICON.ROCKET + TXT.INFO.setup_wizard;
+	}
+
 	// Show the modal window on the screen with a simple layout structure
-	L.ui.showModal(ICON.ROCKET + TXT.INFO.setup_wizard, [
+	L.ui.showModal(title, [
 		E('div', {
 			'class': 'cbi-map ovpn-plus-setup-wizard',
 			'style': 'width: 100%; margin: 0 auto;'
@@ -2898,12 +2932,12 @@ const openWizardModal = function (wizardData, optionalHideClient) {
 /**
  * Export the open wizard modal function to LuCI
  */
-return L.Class.extend(
-	{
-		WIZARD_DATA_TEMPLATE: WIZARD_DATA_TEMPLATE,
-		WIZARD_PARAMS_TEMPLATE: WIZARD_PARAMS_TEMPLATE,
-		renderSubnetInputs: renderSubnetInputs,
-		renderPortForwardingAlert: renderPortForwardingAlert,
-		getValidCommonName: getValidCommonName,
-		openWizardModal: openWizardModal
-	});
+return L.Class.extend({
+	WIZARD_DATA_TEMPLATE: WIZARD_DATA_TEMPLATE,
+	WIZARD_PARAMS_TEMPLATE: WIZARD_PARAMS_TEMPLATE,
+	renderSubnetInputs: renderSubnetInputs,
+	renderPortForwardingAlert: renderPortForwardingAlert,
+	getValidCommonName: getValidCommonName,
+	openWizardModal: openWizardModal
+});
+

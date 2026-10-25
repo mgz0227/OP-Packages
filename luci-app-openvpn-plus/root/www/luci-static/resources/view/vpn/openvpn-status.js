@@ -142,6 +142,7 @@ const CLIENT_TEMPLATE = Object.freeze({
 	timeMs: 0,
 });
 
+
 /*
  * --- HELPER ---
  */
@@ -153,6 +154,9 @@ const CLIENT_TEMPLATE = Object.freeze({
 const configAssetCache = {};
 const statusFileCache = {};
 
+/**
+ * Normalizes all Windows and Mac line breaks into clean UNIX line breaks for textareas.
+ */
 const sanitizeInputText = function (value) {
 	const rawText = value ? String(value).trim() : '';
 	return rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -270,6 +274,9 @@ const isAnyInstanceEnabled = function (ovpnUciSections) {
 	return false;
 };
 
+/**
+ * Caches openVpnInfo
+ */
 const openVpnInfo = {
 	macAddress: 0x0000,
 	version: null,
@@ -326,7 +333,6 @@ const getOpenVpnInfo = async function () {
 		openVpnInfo.dco = dcoMatch[1];
 	}
 };
-
 
 /**
  * Reads system uptime from the proc filesystem asynchronously
@@ -1003,13 +1009,16 @@ const parseClientRefresh = function (content, instNum) {
 };
 
 /**
- * Check if site-to-site configuration is explicitly turned on
+ * Check if site-to-site configuration
  */
 const parseSiteToSite = function (content) {
 	const sitetosite_regex = /^[ \t]*setenv\s+sitetosite\s+on/mi;
 	return sitetosite_regex.test(content);
 }
 
+/**
+ * Check if flood guard is turned on
+ */
 const parseFloodGuard = function (content) {
 	const sitetosite_regex = /^[ \t]*setenv\s+floodguard\s+on/mi;
 	return sitetosite_regex.test(content);
@@ -1281,7 +1290,6 @@ const getProcessStartTime = async function (id, pidVal, currentUptime) {
 	}
 	return 0;
 };
-
 
 /**
  * Read the connected client status file if necessary or use the statusFileCache

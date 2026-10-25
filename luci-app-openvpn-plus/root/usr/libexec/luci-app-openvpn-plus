@@ -471,16 +471,18 @@ openssldgst() {
 # Manage temporary download links for mobile profiles [create|delete]
 symlink() {
 	shift # Remove "symlink" from the arguments list
-	local ovpn_num="$1"
+	local ovpn_instance="$1"
 	local action="$2"
 	local raw_display_name="$3"
-	local export_static_path="/etc/openvpn/luci/instance${ovpn_num}.ovpn"
+	local export_static_path="/etc/openvpn/luci/${ovpn_instance}.ovpn"
 	local lan_ip=""
 	local link_filename=""
+	local ram_link_dir="/tmp/luci-ovpn-plus"
+	local www_link_dir="/www/ovpn-downloads"
 
-	# Check if instance number is a valid digit.
-	if [ -z "$ovpn_num" ] || ! echo "$ovpn_num" | grep -q '^[0-9]\+$'; then
-		echo "ERROR: Invalid instance number."
+	# Check if instance name is provided and safe (alphanumeric only).
+	if [ -z "$ovpn_instance" ] || ! echo "$ovpn_instance" | grep -q '^[A-Za-z0-9]\+$'; then
+		echo "ERROR: Invalid instance name."
 		return 1
 	fi
 
@@ -491,53 +493,66 @@ symlink() {
 
 	# Fallback if the cleaned name is empty.
 	if [ -z "$link_filename" ]; then
-		link_filename="instance${ovpn_num}"
+		link_filename="${ovpn_instance}"
 	fi
 
 	case "$action" in
 		create)
-			# Check if the source profile exists on disk.
 			if [ ! -f "$export_static_path" ]; then
 				echo "ERROR: Profile file missing at $export_static_path"
 				return 1
 			fi
 
-			# Create a random crypt-token (9 random bytes as hex).
+			# Create a 9-byte random secret token as hex
 			local secret_token
 			secret_token=$(dd if=/dev/urandom bs=9 count=1 2>/dev/null | hexdump -e '"%02x"')
 
-			# Path to the temporary session folder.
-			local session_dir="/www/ovpn-tmp-${secret_token}-${link_filename}"
-			local token_protected_file="${session_dir}/${link_filename}_client.ovpn"
-
-			# Create the directory safely.
+			local session_dir="${ram_link_dir}/ovpn-tmp-${secret_token}-${link_filename}"
 			mkdir -p "$session_dir"
 
-			# SECURITY FIX: create token-protected copy for the webserver
+			# Define file path and copy profile with safe webserver permissions
+			local token_protected_file="${session_dir}/${link_filename}.ovpn"
 			cp -f "$export_static_path" "$token_protected_file" 2>/dev/null
 			chmod 644 "$token_protected_file"
 
-			# Verify that the file copy exists and is valid.
+			# Create webserver shortcut to the RAM folder
+			if [ ! -L "$www_link_dir" ] && [ ! -d "$www_link_dir" ]; then
+				ln -s "$ram_link_dir" "$www_link_dir"
+			fi
+
 			if [ -f "$token_protected_file" ]; then
 				lan_ip=$(lanip)
 				if [ -z "$lan_ip" ] || [ "$lan_ip" = "0.0.0.0" ]; then
 					lan_ip="localhost"
+				# If the IP contains a colon (:), it is an IPv6 address and needs brackets []
+				elif echo "$lan_ip" | grep -q ':'; then
+					lan_ip="[${lan_ip}]"
 				fi
-				# Return SUCCESS and the clean download link with sub-folder
-				echo "SUCCESS: http://${lan_ip}/ovpn-tmp-${secret_token}-${link_filename}/${link_filename}_client.ovpn"
+				echo "SUCCESS: http://${lan_ip}/ovpn-downloads/ovpn-tmp-${secret_token}-${link_filename}/${link_filename}.ovpn"
 			else
 				echo "ERROR: Failed to create web export file."
 				return 1
 			fi
 			;;
 		delete)
-			# Safe clean up using wildcard on the directory name.
-			# This removes the folder, the temporary copy, and deletes the static file.
-			rm -rf /www/ovpn-tmp-*-"${link_filename}"
-			echo "SUCCESS: Link directory and static profile deleted."
+			# Safe deletion inside RAM directory only
+			if [ -n "$link_filename" ] && [ -d "$ram_link_dir" ]; then
+				rm -rf "${ram_link_dir}"/ovpn-tmp-*-"${link_filename}"
+
+				# Remove RAM base directory and the web symlink if it was the last file
+				rmdir "$ram_link_dir" 2>/dev/null
+				if [ ! -d "$ram_link_dir" ] && [ -L "$www_link_dir" ]; then
+					rm -f "$www_link_dir"
+				fi
+
+				echo "SUCCESS: Link directory and static profile deleted from RAM."
+			else
+				echo "ERROR: Invalid deletion request."
+				return 1
+			fi
 			;;
 		*)
-			echo "Usage: /usr/libexec/luci-app-openvpn-plus symlink [num] [create|delete] [display_name]"
+			echo "Usage: /usr/libexec/luci-app-openvpn-plus symlink [instance_id] [create|delete] [display_name]"
 			return 1
 			;;
 	esac
@@ -1357,6 +1372,8 @@ cleanup() {
 	local instname
 	local conf_dir="/etc/openvpn/luci"
 	local key_dir="/etc/openvpn/keys"
+	local ram_link_dir="/tmp/luci-ovpn-plus"
+	local www_link_dir="/www/ovpn-downloads"
 
 	# Step 1: Stop here if there are no instance config files on the router
 	ls /etc/openvpn/luci/instance*.conf >/dev/null 2>&1 || return 0
@@ -1364,7 +1381,6 @@ cleanup() {
 	# Step 2: Loop through all existing instance configuration files
 	for conf_file in "$conf_dir"/instance*.conf; do
 		if [ -f "$conf_file" ]; then
-			# Extract the pure instance name from the file path
 			instname="${conf_file##*/}"
 			instname="${instname%.conf}"
 
@@ -1382,16 +1398,30 @@ cleanup() {
 				rm -f "$key_dir/client_${instname}.key"
 				rm -f "$key_dir/server_${instname}.tls2.key"
 				rm -f "$key_dir/client_${instname}.tls2.key"
+
+				# Delete the static .ovpn file for this specific deleted instance
+				rm -f "$conf_dir/${instname}.ovpn"
+
+				# Clean up the specific RAM files for this deleted instance
+				if [ -d "$ram_link_dir" ]; then
+					rm -rf "${ram_link_dir}"/ovpn-tmp-*-*"${instname}"
+				fi
 			fi
 		fi
 	done
 
-	# Step 4: Delete all remaining temporary symlink files from the system
-	rm -rf /www/ovpn-tmp-*
-	rm -f "$conf_dir"/instance*.ovpn
+	# Step 4: Safely clean up the empty base directories and the web symlink
+	if [ -d "$ram_link_dir" ]; then
+		# Removes the RAM base folder ONLY if it is completely empty
+		rmdir "$ram_link_dir" 2>/dev/null
+	fi
+	# Clean up the web shortcut if the RAM directory does not exist anymore
+	if [ ! -d "$ram_link_dir" ] && [ -L "$www_link_dir" ]; then
+		rm -f "$www_link_dir"
+	fi
+
 	return 0
 }
-
 
 # Validate and extract cryptographic metadata for LuCI
 keymeta() {
@@ -1475,7 +1505,7 @@ keymeta() {
 				fi
 			fi
 		else
-			echo "TYPE: Custom Raw Data Structure"
+			echo "INVALID: Custom Raw Data Structure"
 		fi
 	else
 		echo "ERROR: File is empty or missing."

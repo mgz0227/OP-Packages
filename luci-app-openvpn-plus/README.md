@@ -60,31 +60,6 @@ config openvpn 'instance1'
 	option config '/etc/openvpn/luci/instance1.conf'
 ```
 
-## Screenshots
-
-<table>
-  <tr>
-	<td><img width="2442" height="1844" alt="01" src="https://github.com/user-attachments/assets/5f215704-c18e-42ba-9228-c100635d3836" /></td>
-    <td><img width="2398" height="1700" alt="03" src="https://github.com/user-attachments/assets/10ee2c26-6ca8-42c5-9f1e-04f73fb9c91c" /></td>
-	<td><img width="2384" height="1706" alt="04" src="https://github.com/user-attachments/assets/86f7c341-37e2-4be9-8b7a-458cff1cc722" /></td>
-  </tr>
-  <tr>
-	<td><img width="1796" height="556" alt="09" src="https://github.com/user-attachments/assets/c2d2b23d-b3b8-40f3-a1bf-b9d57f1ca4e3" /></td>
-    <td><img width="1798" height="496" alt="10" src="https://github.com/user-attachments/assets/30ff6070-def5-4dd8-a5a9-4de11fa14706" /></td>
-	<td><img width="1798" height="754" alt="13" src="https://github.com/user-attachments/assets/9d4d897c-18b1-44dc-93de-035984acf5db" /></td>
-  </tr>	
-  <tr>
-	<td><img width="1800" height="1352" alt="11" src="https://github.com/user-attachments/assets/ae0c5c01-10f3-496a-b687-7b6a734ad322" /></td>
-    <td><img width="1798" height="1728" alt="12" src="https://github.com/user-attachments/assets/f5023929-99b5-438a-94e2-6042c3d352a9" /></td>
-	<td><img width="2412" height="1692" alt="08" src="https://github.com/user-attachments/assets/937b8f11-4743-4aca-bf63-8b5003ce7cda" /></td>
-  </tr>
-</td>
-    <td><img width="2406" height="1834" alt="14" src="https://github.com/user-attachments/assets/f9d64535-4177-4b86-bd6a-f1611dc41da8" /></td>
-	<td><img width="2394" height="1808" alt="06" src="https://github.com/user-attachments/assets/008c6f5b-0636-43e2-afe6-1de835eab4af" /></td>
-	<td><img width="2382" height="1792" alt="05" src="https://github.com/user-attachments/assets/5694833e-2b03-43a2-b1ff-8f3afe11c8e0" /></td>
-  </tr>		
-</table>
-
 ## Directory Structure
 
 ```text

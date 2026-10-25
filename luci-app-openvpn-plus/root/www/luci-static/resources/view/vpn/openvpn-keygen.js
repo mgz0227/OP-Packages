@@ -33,6 +33,7 @@ const TXT = {
 		client: _('Client')
 	},
 	BTN: {
+		backup: _('Backup'),
 		close: _('Close'),
 		cancel: _('Cancel'),
 		download: _('Download'),
@@ -57,6 +58,7 @@ const TXT = {
 		generate_unique_keys: _('Yes (Generate Unique Keys)'),
 		generate_unique_keys_new_instance: _('To be secure, a new instance needs its own key files. Do you want to create them now? (Recommended - usually takes just a few moments)'),
 		generating_client_keys: _('Generating private client key...'),
+		generating_tls_client_keys: _('Generating TLS crypt v2 client key...'),
 		key_strength: _('Key Strength'),
 		loading_contents: _('Loading key contents...'),
 		master_ca: _('Master CA'),
@@ -89,8 +91,9 @@ const TXT = {
 		tls_key_server: _('Master Server Secret Key'),
 		tls_key_client: _('Client Key'),
 		title_main: _('OpenVPN Instance Key Generator'),
-		key_allocation: ('Key Allocation'),
+		add_server_instance: ('Add OpenVPN Server Instance'),
 		unknown_asset: _('Unknown Asset'),
+		unknown_structure: _('Unknown Structure'),
 		use_unique_name_for_each_office: _('Important: Use a unique name for each office to configure the network routing correctly.'),
 		validity_days: _('Validity (Days)'),
 		vpn_key_type: _('VPN Key Type:')
@@ -105,6 +108,7 @@ const TXT = {
 	ERROR: {
 		format_corruption: _('The saved key data contains structural format corruption!'),
 		polling_threshold: _('ERROR: Safety polling threshold exceeded boundaries. Process deadlocked.'),
+		tls_keygen_failed: _('TLS crypt v2 client key generation failed.')
 	}
 }
 
@@ -210,7 +214,7 @@ const getKeyMeta = async function (keyfile, luci_app_openvpn_plus_callback) {
 	const result = {
 		valid: false,
 		type: CRYPTO_TYPE.INVALID_KEY,
-		metadata: { type: _('Unknown Structure'), subject: '', expires: '', algo: '', curve: '' },
+		metadata: { type: TXT.KEY.unknown_structure, subject: '', expires: '', algo: '', curve: '' },
 		raw: ''
 	};
 
@@ -221,10 +225,14 @@ const getKeyMeta = async function (keyfile, luci_app_openvpn_plus_callback) {
 	}
 
 	// 2. Safely trigger the verified callback mechanism
-	const res = await luci_app_openvpn_plus_callback([CFG.LIBEXEC.keymeta, keyfile]);
+	let res = await luci_app_openvpn_plus_callback([CFG.LIBEXEC.keymeta, keyfile]);
 
 	// Early escape if the backend fails or outputs errors
-	if (!res || res.length === 0 || res.startsWith('ERROR') || res.toUpperCase().indexOf('ERROR') !== -1) {
+	if (!res || res.length === 0) {
+		return result;
+	}
+	res = res.toUpperCase();
+	if (res.startsWith('ERROR') || res.indexOf('ERROR') !== -1 || res.startsWith('INVALID')) {
 		return result;
 	}
 
@@ -769,10 +777,11 @@ const openAutomatedPostKeyGenModal = async function (newInstanceItem, appData, w
 
 	const yesBtn = E('button', { 'class': 'btn cbi-button cbi-button-action important', 'style': 'margin-right:10px;' }, TXT.KEY.generate_unique_keys);
 	const noBtn = E('button', { 'class': 'btn cbi-button cbi-button-neutral', 'style': 'margin-right:10px;' }, TXT.KEY.clone_default_keys);
+	const backupBtn = E('button', { 'class': 'btn cbi-button cbi-button-positive important', 'style': 'margin-right:10px;' }, TXT.BTN.backup);
 	const cancelBtn = E('button', { 'class': 'btn cbi-button cbi-button-neutral', 'style': 'margin-right:10px;' + styleHide }, TXT.BTN.cancel);
 	const closeBtn = E('button', { 'class': 'cbi-button cbi-button-action important', 'style': 'display:none;' }, TXT.BTN.close);
 
-	const buttonContainer = E('div', { 'style': 'text-align:right; margin-top:15px;' }, [yesBtn, noBtn, cancelBtn, closeBtn]);
+	const buttonContainer = E('div', { 'style': 'text-align:right; margin-top:15px;' }, [yesBtn, noBtn, backupBtn, cancelBtn, closeBtn]);
 
 	const dashedDivider = E('hr', {
 		'style': 'margin:20px 0; border:0; border-top:1px dashed var(--border-color-medium, #cbd5e1);' + styleHide
@@ -803,7 +812,6 @@ const openAutomatedPostKeyGenModal = async function (newInstanceItem, appData, w
 		E('span', {}, TXT.INFO.wizard + ' ...')
 	]);
 
-
 	const wizardButtonWrapperRow = E('div', {
 		'style': 'display:flex; justify-content:flex-end; width:100%; margin-top:5px;' + styleHide
 	}, [openWizardBtn]);
@@ -818,6 +826,12 @@ const openAutomatedPostKeyGenModal = async function (newInstanceItem, appData, w
 		ev.preventDefault();
 		L.ui.hideModal();
 		callbacks.openWizardBtnClick(appData, null, true);
+	});
+
+	backupBtn.addEventListener('click', async function (ev) {
+		ev.preventDefault();
+		L.ui.hideModal();
+		callbacks.importBackupInstance(appData);
 	});
 
 	// Declared anonymous handler as ASYNC to authorize internal await callbacks.createInstance
@@ -889,7 +903,7 @@ const openAutomatedPostKeyGenModal = async function (newInstanceItem, appData, w
 		callbacks.uciSaveApplyRestart(instance_id);
 	});
 
-	L.ui.showModal(TXT.KEY.title_main + ' - ' + TXT.KEY.key_allocation + ' (' + instance_id + ')', [
+	L.ui.showModal(TXT.KEY.add_server_instance + ' (' + instance_id + ')', [
 		E('div', { 'class': 'cbi-map' }, [
 			E('div', { 'class': 'cbi-section' }, [
 				promptMessageNode,
@@ -1148,7 +1162,7 @@ const setupKeyGenEvents = function (ui, instance_id, state, appData, uciSaveAppl
 				// Scenario A: If a Site-to-Site client bundle is requested, chain the asymmetric client token derivation instantly
 				if (state.mode === KEYTYPE.client_pki) {
 					const log_separator_line = '\n\n--------------------------------------------------\n\n';
-					ui.nodes.output.value += log_separator_line + ICON.ARROW + _('Generating TLS crypt v2 client key...') + '\n';
+					ui.nodes.output.value += log_separator_line + ICON.ARROW + TXT.KEY.generating_tls_client_keys + '\n';
 					ui.nodes.output.scrollTop = ui.nodes.output.scrollHeight;
 
 					// STEP 2: Asynchronously generate the client-tls2 credentials into the volatile RAM buffer
@@ -1157,7 +1171,7 @@ const setupKeyGenEvents = function (ui, instance_id, state, appData, uciSaveAppl
 						modeSelect.disabled = false;
 
 						if (!tlsSuccess || !tlsData) {
-							ui.nodes.output.value += '\n' + ICON.ERROR + ' TLS crypt v2 client key generation failed.';
+							ui.nodes.output.value += '\n' + ICON.ERROR + TXT.ERROR.tls_keygen_failed;
 							return;
 						}
 
@@ -1338,14 +1352,13 @@ const openKeyGenModal = function (instance_id, displayId, role, appData, uciSave
 /**
  * Export the open wizard modal function to LuCI
  */
-return L.Class.extend(
-	{
-		KEYTYPE: KEYTYPE,
-		CRYPTO_TYPE: CRYPTO_TYPE,
-		getKeyMeta: getKeyMeta,
-		executeAsynchronousKeyGen: executeAsynchronousKeyGen,
-		openKeyEditorModal: openKeyEditorModal,
-		openAutomatedPostKeyGenModal: openAutomatedPostKeyGenModal,
-		openKeyGenModal: openKeyGenModal
-	});
+return L.Class.extend({
+	KEYTYPE: KEYTYPE,
+	CRYPTO_TYPE: CRYPTO_TYPE,
+	getKeyMeta: getKeyMeta,
+	executeAsynchronousKeyGen: executeAsynchronousKeyGen,
+	openKeyEditorModal: openKeyEditorModal,
+	openAutomatedPostKeyGenModal: openAutomatedPostKeyGenModal,
+	openKeyGenModal: openKeyGenModal
+});
 
