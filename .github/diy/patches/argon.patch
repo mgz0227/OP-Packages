@@ -10,10 +10,10 @@
  <head>
  	{% if (!is_login): %}
 
-diff --git a/ucode/template/themes/argon/footer.ut b/ucode/template/themes/argon/footer.ut
+diff --git a/luci-theme-argon/ucode/template/themes/argon/footer.ut b/luci-theme-argon/ucode/template/themes/argon/footer.ut
 index 58a5bdc2..2c68b0e4 100644
---- a/ucode/template/themes/argon/footer.ut
-+++ b/ucode/template/themes/argon/footer.ut
+--- a/luci-theme-argon/ucode/template/themes/argon/footer.ut
++++ b/luci-theme-argon/ucode/template/themes/argon/footer.ut
 @@ -19,13 +19,6 @@
  		</div>
  		<footer class="mobile-hide" style="text-wrap: auto">
