@@ -10,8 +10,8 @@ include $(TOPDIR)/rules.mk
 PKG_ARCH_kai:=$(ARCH)
 
 PKG_NAME:=kai
-PKG_VERSION:=0.0.27
-PKG_RELEASE:=13
+PKG_VERSION:=0.0.28
+PKG_RELEASE:=14
 PKG_SOURCE:=$(PKG_NAME)-binary-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/istoreos/istoreos-app-hub/releases/download/kai-runtime-v$(PKG_VERSION)/
 PKG_HASH:=skip
@@ -28,7 +28,7 @@ define Package/$(PKG_NAME)
 	SUBMENU:=
 	TITLE:=KAI
 	DEPENDS:=+kai_session +kai-agent +luci-lib-linkeaseauth +linkease-app-entry
-	EXTRA_DEPENDS:=kai-agent (>=0.0.27~0)
+	EXTRA_DEPENDS:=kai-agent (>=0.0.28~0), kai_session (>=0.0.28~0)
 	URL:=https://github.com/linkease/istore-ai-helper
 endef
 
