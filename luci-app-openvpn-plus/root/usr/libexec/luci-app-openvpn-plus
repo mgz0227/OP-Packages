@@ -9,15 +9,50 @@
 # luci-app-openvpn-plus : helper tools and background workers
 # /usr/libexec/luci-app-openvpn-plus
 
-# Get mac address of lan interface
+# Get the live hardware device name behind the logical 'lan' interface
+getl3dev() {
+	local dump device
+
+	# Step 1: Fetch network interface status from ubus
+	dump=$(ubus call network.interface.lan status 2>/dev/null)
+	if [ -z "$dump" ]; then
+		# Fallback if ubus fails
+		echo "br-lan"
+		return 1
+	fi
+
+	# Step 2: Try to get l3_device, then fallback to standard device
+	device=$(echo "$dump" | jsonfilter -e '@.l3_device' 2>/dev/null)
+	[ -z "$device" ] && device=$(echo "$dump" | jsonfilter -e '@.device' 2>/dev/null)
+
+	# Step 3: Return the found device or the default fallback
+	if [ -n "$device" ]; then
+		echo "$device"
+		return 0
+	else
+		echo "br-lan"
+		return 1
+	fi
+}
+
+# Get mac address of lan interface using the dynamic device name
 getmac() {
-	# no arguments (no shift)
-	if [ -f "/sys/class/net/br-lan/address" ]; then
-		cat /sys/class/net/br-lan/address
+	local device mac
+
+	# Step 1: Get the dynamic device name (e.g. br-lan, eth0, lan0)
+	device=$(getl3dev)
+
+	# Step 2: Fetch the live MAC address of that specific device
+	mac=$(ubus call network.device status "{\"name\":\"${device}\"}" 2>/dev/null | jsonfilter -e '@.macaddr' 2>/dev/null)
+
+	# Step 3: Return the MAC or the default fallback address
+	if [ -n "$mac" ]; then
+		echo "$mac"
+		return 0
 	else
 		echo "00:00:00:00:00:00"
+		return 1
 	fi
-	return 0
 }
 
 # Get the active LAN IP with mask
@@ -2052,6 +2087,7 @@ usage() {
 
 # Main entry point
 case "$1" in
+	getl3dev)		getl3dev ;;
 	getmac)			getmac ;;
 	lanip)			lanip "$@" ;;
 	getnetstat)		getnetstat "$@" ;;
