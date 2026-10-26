@@ -10,8 +10,8 @@ include $(TOPDIR)/rules.mk
 PKG_ARCH_kai_session:=$(ARCH)
 
 PKG_NAME:=kai_session
-PKG_VERSION:=0.0.25
-PKG_RELEASE:=10
+PKG_VERSION:=0.0.27
+PKG_RELEASE:=11
 PKG_SOURCE:=$(PKG_NAME)-binary-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/istoreos/istoreos-app-hub/releases/download/kai-runtime-v$(PKG_VERSION)/
 PKG_HASH:=skip
@@ -31,11 +31,11 @@ define Package/$(PKG_NAME)
 	SUBMENU:=
 	TITLE:=KAI_SESSION
 	DEPENDS:=+libstdcpp
-	URL:=https://github.com/Carseason/openwrt-packages
+	URL:=https://github.com/linkease/istore-ai-helper
 endef
 
 define Package/$(PKG_NAME)/description
-  KAI
+  The OpenCode engine and offline ripgrep runtime for KAI.
 endef
 
 define Package/$(PKG_NAME)/conffiles
