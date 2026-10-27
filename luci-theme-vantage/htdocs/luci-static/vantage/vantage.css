@@ -857,11 +857,13 @@ legend { font-size: var(--fs-md); font-weight: 600; padding: 0; margin-bottom: v
 .cbi-value-helpicon img { width: 14px; height: 14px; opacity: .6; }
 
 /* folding help (menu-vantage.js): one line until (i) unfolds it; the
-   button shares the label cell, so both are placed explicitly */
+   button shares the label cell, so both are placed explicitly. The cap is
+   one line as laid out (lh): a minimum font size (Firefox) raises the
+   line height but not the em, and 1.5em cut the line's foot */
 .cbi-value[data-v-help="closed"] > .cbi-value-field > .vt-help-text {
 	display: -webkit-box; -webkit-box-orient: vertical;
 	-webkit-line-clamp: 1; line-clamp: 1;
-	max-height: 1.5em;
+	max-height: 1lh;
 	overflow: hidden;
 }
 .cbi-value[data-v-help] > .cbi-value-title { grid-row: 1; grid-column: 1; }
@@ -888,8 +890,7 @@ legend { font-size: var(--fs-md); font-weight: 600; padding: 0; margin-bottom: v
 	-webkit-line-clamp: 1; line-clamp: 1;
 	overflow: hidden;
 }
-.cbi-map-descr[data-v-help="closed"]:has(> .vt-help) { max-height: 1.55em; }       /* its line-height */
-.cbi-section-descr[data-v-help="closed"]:has(> .vt-help) { max-height: 1.5em; }
+:is(.cbi-map-descr, .cbi-section-descr)[data-v-help="closed"]:has(> .vt-help) { max-height: 1lh; }
 :is(.cbi-map-descr, .cbi-section-descr)[data-v-help="closed"]:has(> .vt-help:not([hidden])) { cursor: pointer; }
 :is(.cbi-map-descr, .cbi-section-descr) > .vt-help {
 	display: inline-grid; place-items: center;
@@ -1670,11 +1671,15 @@ div.right > .btn, div.right > .cbi-button, div.right > button { margin-left: 0; 
    instead of from clipping */
 .ifacebox:has(.cbi-tooltip-container) { overflow: visible; }
 /* Status -> Port status: LuCI spreads the boxes over equal columns as wide
-   as the card (inline grid, boxes capped at 100 px); pack them instead */
+   as the card (inline grid, boxes capped at 100 px); pack them instead.
+   ImmortalWrt fixes the boxes at 100 px and centres them in the row, so a
+   box whose counter wraps stood taller than the rest: fill the column and
+   share the row's height */
 div:has(> .ifacebox > .ifacebox-head.cbi-tooltip-container) {
 	grid-template-columns: repeat(auto-fill, minmax(108px, 124px)) !important; gap: 12px; justify-content: start;
+	align-items: stretch !important; justify-items: stretch !important;
 }
-div:has(> .ifacebox > .ifacebox-head.cbi-tooltip-container) > .ifacebox { width: 100%; max-width: none !important; margin: 0 !important; }
+div:has(> .ifacebox > .ifacebox-head.cbi-tooltip-container) > .ifacebox { width: 100% !important; max-width: none !important; margin: 0 !important; }
 .ifacebox:has(.cbi-tooltip-container) > :first-child { border-radius: calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px) 0 0; }
 .ifacebox:has(.cbi-tooltip-container) > :last-child { border-radius: 0 0 calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px); }
 .ifacebox-head.active { background: var(--accent-soft); color: var(--accent-text); }
@@ -2450,8 +2455,10 @@ html:not([data-darkmode="true"]) .vt-login-page::before {
 .v-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* wide tables scroll inside their card, never the page. Sticky headers need
-   a non-scrolling ancestor, so status tables only scroll when narrow. */
-.cbi-tblsection, .cbi-section:has(> .cbi-tblsection) { overflow-x: auto; }
+   a non-scrolling ancestor, so status tables only scroll when narrow. The
+   card is as tall as its content, so it has nothing to scroll down to; a
+   few pixels of overflow (Firefox on a scaled display) made it scroll */
+.cbi-tblsection, .cbi-section:has(> .cbi-tblsection) { overflow-x: auto; overflow-y: hidden; }
 /* overlay scrollbars show nothing until touched: a shade on the side with
    more table says it scrolls. The covers move with the content and hide
    the shade at either end, so a card that fits looks as before. */
