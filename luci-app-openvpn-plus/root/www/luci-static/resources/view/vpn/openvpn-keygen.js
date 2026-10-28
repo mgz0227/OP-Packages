@@ -853,6 +853,7 @@ const openAutomatedPostKeyGenModal = async function (newInstanceItem, appData, w
 		yesBtn.style.display = 'none';
 		noBtn.style.display = 'none';
 		cancelBtn.style.display = 'none';
+		backupBtn.style.display = 'none';
 		promptMessageNode.style.display = 'none';
 		wizardHelperLayoutBlock.style.display = 'none';
 		progressTextArea.style.display = 'block';
