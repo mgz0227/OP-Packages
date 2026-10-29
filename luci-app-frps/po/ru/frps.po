@@ -534,7 +534,8 @@ msgstr "Порт привязки SSH-туннеля"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:589
 msgid "SSH tunnel gateway bind port. Empty disables this feature."
-msgstr "Порт привязки шлюза SSH-туннеля. Пустое значение отключает эту функцию."
+msgstr ""
+"Порт привязки шлюза SSH-туннеля. Пустое значение отключает эту функцию."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:592
 msgid "SSH tunnel private key file"
@@ -635,7 +636,8 @@ msgstr "Аргументы команды источника токена"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:326
 msgid "Token source command is required when token source type is exec."
-msgstr "Команда источника токена обязательна, если тип источника токена — exec."
+msgstr ""
+"Команда источника токена обязательна, если тип источника токена — exec."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:342
 msgid "Token source environment"

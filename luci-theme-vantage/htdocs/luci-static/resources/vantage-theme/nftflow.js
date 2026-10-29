@@ -27,7 +27,6 @@
 const MODE_KEY = 'vantage.nft.mode';
 const MAX_DEPTH = 8;
 const MAX_STEPS = 200;     /* rules drawn per chain before "Show all" */
-const CTX = 'Status -> Firewall flow chart';
 
 function storageGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function storageSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
@@ -35,21 +34,21 @@ function reducedMotion() { return !!(window.matchMedia && window.matchMedia('(pr
 
 function hookName(h) {
 	switch (h) {
-	case 'prerouting': return _('Prerouting', CTX);
-	case 'input': return _('Input', CTX);
-	case 'forward': return _('Forward', CTX);
-	case 'output': return _('Output', CTX);
-	case 'postrouting': return _('Postrouting', CTX);
-	case 'ingress': return _('Ingress', CTX);
-	case 'egress': return _('Egress', CTX);
+	case 'prerouting': return _('Prerouting', 'vantage-theme');
+	case 'input': return _('Input', 'vantage-theme');
+	case 'forward': return _('Forward', 'vantage-theme');
+	case 'output': return _('Output', 'vantage-theme');
+	case 'postrouting': return _('Postrouting', 'vantage-theme');
+	case 'ingress': return _('Ingress');
+	case 'egress': return _('Egress');
 	default: return h;
 	}
 }
 
 function stageName(s) {
 	switch (s.hook) {
-	case 'bridgeIn': case 'bridgeOut': return _('Bridge', CTX);
-	case 'bridged': return _('Bridged between ports', CTX);
+	case 'bridgeIn': case 'bridgeOut': return _('Bridge');
+	case 'bridged': return _('Bridged between ports', 'vantage-theme');
 	default: return hookName(s.hook);
 	}
 }
@@ -153,14 +152,14 @@ function chip(kind, label, title) {
 
 function verdictLabel(v) {
 	switch (v.kind) {
-	case 'accept': return _('Accept', CTX);
-	case 'drop': return _('Drop', CTX);
-	case 'reject': return _('Reject', CTX);
-	case 'queue': return _('Queue to a program', CTX);
+	case 'accept': return _('Accept', 'vantage-theme');
+	case 'drop': return _('Drop', 'vantage-theme');
+	case 'reject': return _('Reject', 'vantage-theme');
+	case 'queue': return _('Queue to a program', 'vantage-theme');
 	case 'nat':
-		return v.nat === 'masquerade' ? _('Masquerade', CTX) : v.nat === 'snat' ? _('Rewrite source', CTX)
-			: v.nat === 'dnat' ? _('Rewrite destination', CTX) : _('Redirect', CTX);
-	default: return _('Next rule', CTX);
+		return v.nat === 'masquerade' ? _('Masquerade', 'vantage-theme') : v.nat === 'snat' ? _('Rewrite source', 'vantage-theme')
+			: v.nat === 'dnat' ? _('Rewrite destination', 'vantage-theme') : _('Redirect', 'vantage-theme');
+	default: return _('Next rule', 'vantage-theme');
 	}
 }
 
@@ -202,11 +201,11 @@ return baseclass.extend({
 		Object.keys(m.chains).forEach((k, i) => { this.ids[k] = 'v-nft-c' + i; });
 		this.cards = Object.create(null);
 
-		const tabs = E('ul', { 'class': 'cbi-tabmenu v-nft-tabs', 'role': 'group', 'aria-label': _('View', CTX) });
+		const tabs = E('ul', { 'class': 'cbi-tabmenu v-nft-tabs', 'role': 'group', 'aria-label': _('View', 'vantage-theme') });
 		const panel = E('div', { 'class': 'v-nft-panel' }, [
-			E('h3', {}, [ _('Packet path', CTX) ]),
+			E('h3', {}, [ _('Packet path', 'vantage-theme') ]),
 			this.chart(),
-			E('h3', {}, [ _('Chains', CTX) ]),
+			E('h3', {}, [ _('Chains', 'vantage-theme') ]),
 			E('div', { 'class': 'v-nft-chains' }, this.cardsOf(m.bases))
 		]);
 		m.others.forEach((t) => {
@@ -214,7 +213,7 @@ return baseclass.extend({
 			panel.appendChild(E('div', { 'class': 'v-nft-chains' }, this.cardsOf(t.chains)));
 		});
 		if (m.unused.length) {
-			panel.appendChild(E('h3', {}, [ m.namedMaps ? _('Chains no rule jumps to directly', CTX) : _('Chains no rule jumps to', CTX) ]));
+			panel.appendChild(E('h3', {}, [ m.namedMaps ? _('Chains no rule jumps to directly', 'vantage-theme') : _('Chains no rule jumps to', 'vantage-theme') ]));
 			panel.appendChild(E('div', { 'class': 'v-nft-chains' }, this.cardsOf(m.unused, true)));
 		}
 
@@ -229,7 +228,7 @@ return baseclass.extend({
 			if (mode === 'flow') this.fit();
 		};
 		/* LuCI's tab markup for the look; buttons for what they do */
-		[ [ 'flow', _('Flow', CTX) ], [ 'table', _('Rules table', CTX) ] ].forEach((t) => {
+		[ [ 'flow', _('Flow', 'vantage-theme') ], [ 'table', _('Rules table', 'vantage-theme') ] ].forEach((t) => {
 			const pick = (ev) => { ev.preventDefault(); storageSet(MODE_KEY, t[0]); set(t[0]); };
 			tabs.appendChild(E('li', { 'data-mode': t[0], 'role': 'presentation' }, [
 				E('a', { 'href': '#', 'role': 'button', 'click': pick,
@@ -247,7 +246,7 @@ return baseclass.extend({
 		const st = this.m.stages;
 		const arrow = () => E('span', { 'class': 'v-nft-arrow', 'aria-hidden': 'true' });
 		const pass = () => E('span', { 'class': 'v-nft-pass', 'aria-hidden': 'true' });
-		const end = (where) => E('span', { 'class': 'v-nft-endpoint', 'data-where': where }, [ where === 'device' ? _('This device', CTX) : _('Network', CTX) ]);
+		const end = (where) => E('span', { 'class': 'v-nft-endpoint', 'data-where': where }, [ where === 'device' ? _('This device', 'vantage-theme') : _('Network') ]);
 		const row = [ end('net') ];
 		[ st.ingress, st.bridgeIn, st.prerouting ].filter(Boolean).forEach((s) => { row.push(arrow(), this.stage(s)); });
 		row.push(arrow(), E('div', { 'class': 'v-nft-fork' }, [
@@ -263,9 +262,9 @@ return baseclass.extend({
 
 		const notes = [];
 		if (!st.bridged.chains.length)
-			notes.push(E('p', { 'class': 'v-nft-note' }, [ _('Frames bridged between ports of one bridge, such as Wi-Fi and LAN in br-lan on an access point, never reach the input, forward or output chains, and no bridge chain filters them here. (The kernel can hand them to the IP chains if br_netfilter is enabled; the ruleset doesn\'t show that.)', CTX) ]));
+			notes.push(E('p', { 'class': 'v-nft-note' }, [ _('Frames bridged between ports of one bridge, such as Wi-Fi and LAN in br-lan on an access point, never reach the input, forward or output chains, and no bridge chain filters them here. (The kernel can hand them to the IP chains if br_netfilter is enabled; the ruleset doesn\'t show that.)', 'vantage-theme') ]));
 		if (this.m.offload)
-			notes.push(E('p', { 'class': 'v-nft-note' }, [ _('Flow offloading is on: once a forwarded connection is established, its packets can skip prerouting, forward and postrouting, so these chains and their counters see only its first packets.', CTX) ]));
+			notes.push(E('p', { 'class': 'v-nft-note' }, [ _('Flow offloading is on: once a forwarded connection is established, its packets can skip prerouting, forward and postrouting, so these chains and their counters see only its first packets.', 'vantage-theme') ]));
 
 		this.el = E('div', { 'class': 'v-nft-chart' }, [
 			E('div', { 'class': 'v-nft-chart-row' }, row),
@@ -291,11 +290,11 @@ return baseclass.extend({
 		const none = s.hook === 'bridged' && !s.chains.length;
 		const name = [ stageName(s) ];
 		if (s.drops === 'all')
-			name.push(E('small', {}, [ s.only ? _('drops unmatched %s', CTX).format(familyName(s.only)) : _('drops unmatched', CTX) ]));
+			name.push(E('small', {}, [ s.only ? _('drops unmatched %s', 'vantage-theme').format(familyName(s.only)) : _('drops unmatched', 'vantage-theme') ]));
 		else if (s.drops === 'some')
-			name.push(E('small', {}, [ _('rules drop some', CTX) ]));
+			name.push(E('small', {}, [ _('rules drop some', 'vantage-theme') ]));
 		else if (none)
-			name.push(E('small', {}, [ _('no bridge chains', CTX) ]));
+			name.push(E('small', {}, [ _('no bridge chains', 'vantage-theme') ]));
 		/* a name twice at one hook (docker, mwan3): say whose */
 		const seen = Object.create(null);
 		s.chains.forEach((k) => { seen[m.chains[k].name] = (seen[m.chains[k].name] || 0) + 1; });
@@ -304,13 +303,13 @@ return baseclass.extend({
 			E('div', { 'class': 'v-nft-stage-chains' }, list.length ? list.map((k) => {
 				const c = m.chains[k];
 				const b = E('button', { 'type': 'button', 'class': 'v-nft-link', 'click': () => this.show(k),
-					'title': _('%s: table %s (%s), priority %d', CTX).format(c.name, c.table, familyName(c.family), c.prio) }, [ c.name ]);
+					'title': _('%s: table %s (%s), priority %d', 'vantage-theme').format(c.name, c.table, familyName(c.family), c.prio) }, [ c.name ]);
 				if (seen[c.name] > 1 || (nftmodel.HOOKS.indexOf(s.hook) < 0 && c.family !== 'netdev' && c.family !== 'bridge'))
 					b.appendChild(E('small', {}, [ c.table + ' · ' + familyName(c.family) ]));
 				else if (c.type === 'nat')
-					b.appendChild(E('small', {}, [ _('NAT', CTX) ]));
+					b.appendChild(E('small', {}, [ _('NAT') ]));
 				return b;
-			}) : none ? [] : [ E('span', { 'class': 'v-nft-none' }, [ _('no rules', CTX) ]) ])
+			}) : none ? [] : [ E('span', { 'class': 'v-nft-none' }, [ _('no rules', 'vantage-theme') ]) ])
 		]);
 	},
 
@@ -330,7 +329,7 @@ return baseclass.extend({
 		const out = keys.filter((k) => regular ? c(k).rules.length : live(c(k))).map((k) => this.card(k));
 		const empty = keys.filter((k) => regular ? !c(k).rules.length : !live(c(k)));
 		if (empty.length)
-			out.push(E('p', { 'class': 'v-nft-empty' }, [ _('No rules: %s', CTX).format(empty.map((k) => c(k).name).join(', ')) ]));
+			out.push(E('p', { 'class': 'v-nft-empty' }, [ _('No rules: %s', 'vantage-theme').format(empty.map((k) => c(k).name).join(', ')) ]));
 		return out;
 	},
 
@@ -338,19 +337,19 @@ return baseclass.extend({
 		const m = this.m, c = m.chains[k];
 		const meta = [];
 		if (c.base) {
-			meta.push(hookName(c.hook), _('priority %d', CTX).format(c.prio));
+			meta.push(hookName(c.hook), _('priority %d', 'vantage-theme').format(c.prio));
 			if (c.family !== 'inet') meta.push(familyName(c.family));
-			if (c.type === 'nat') meta.push(_('NAT', CTX));
-			if (c.dev.length) meta.push(_('on %s', CTX).format(c.dev.join(', ')));
+			if (c.type === 'nat') meta.push(_('NAT'));
+			if (c.dev.length) meta.push(_('on %s', 'vantage-theme').format(c.dev.join(', ')));
 		}
-		meta.push(N_(c.rules.length, '%d rule', '%d rules').format(c.rules.length));
+		meta.push(N_(c.rules.length, '%d rule', '%d rules', 'vantage-theme').format(c.rules.length));
 		/* other chains at the same hook (and family group) still see what
 		   this one accepts */
 		if (c.base) {
 			const group = (f) => f === 'bridge' ? 'bridge' : f === 'netdev' ? 'netdev' : 'ip';
 			const more = Object.keys(m.chains).filter((o) => o !== k && m.chains[o].base && m.chains[o].hook === c.hook
 				&& group(m.chains[o].family) === group(c.family) && live(m.chains[o])).length;
-			if (more) meta.push(N_(more, '%d more chain at this hook', '%d more chains at this hook').format(more));
+			if (more) meta.push(N_(more, '%d more chain at this hook', '%d more chains at this hook', 'vantage-theme').format(more));
 		}
 		const card = E('details', { 'class': 'v-nft-card', 'id': this.ids[k], 'data-chain': c.name, 'data-family': c.family }, [
 			E('summary', {}, [ E('strong', {}, [ c.name ]), E('span', { 'class': 'v-nft-meta' }, [ meta.join(' · ') ]) ].concat(c.base ? [ this.policyChip(c) ] : []))
@@ -366,9 +365,9 @@ return baseclass.extend({
 	},
 
 	policyChip(c) {
-		if (c.policy === 'drop') return chip('drop', _('Drops unmatched', CTX));
-		if (c.type === 'filter') return chip('accept', _('Passes unmatched', CTX));
-		return chip('none', _('Leaves unmatched unchanged', CTX));
+		if (c.policy === 'drop') return chip('drop', _('Drops unmatched', 'vantage-theme'));
+		if (c.type === 'filter') return chip('accept', _('Passes unmatched', 'vantage-theme'));
+		return chip('none', _('Leaves unmatched unchanged', 'vantage-theme'));
 	},
 
 	/* where a packet goes when it leaves the chain without a verdict:
@@ -376,12 +375,12 @@ return baseclass.extend({
 	   with none, the base chain's policy */
 	away(path, stack) {
 		const up = stack.length ? this.m.chains[stack[stack.length - 1]] : null;
-		if (up) return chip('return', _('Back to %s', CTX).format(up.name));
+		if (up) return chip('return', _('Back to %s', 'vantage-theme').format(up.name));
 		const b = this.m.chains[path[0]];
-		if (!b.base) return chip('return', _('Back to the calling chain', CTX));
-		if (b.policy === 'drop') return chip('drop', _('Drop: %s policy', CTX).format(b.name));
-		if (b.type === 'filter') return chip('accept', _('Pass: %s policy', CTX).format(b.name));
-		return chip('none', _('Unchanged', CTX));
+		if (!b.base) return chip('return', _('Back to the calling chain', 'vantage-theme'));
+		if (b.policy === 'drop') return chip('drop', _('Drop: %s policy', 'vantage-theme').format(b.name));
+		if (b.type === 'filter') return chip('accept', _('Pass: %s policy', 'vantage-theme').format(b.name));
+		return chip('none', _('Unchanged', 'vantage-theme'));
 	},
 
 	/* a chain's rules as steps. path: the chains opened above it (to stop
@@ -397,7 +396,7 @@ return baseclass.extend({
 			const also = row && r.verdict.kind !== 'vmap' && (nat || r.parts.acts > (r.parts.last >= 0 ? 1 : 0)) ? sideActions(row, r.parts, nat) : null;
 			/* a rule with conditions LuCI's rows can't supply never reads
 			   as "Any packet" */
-			const label = r.comment || (cond ? '' : r.parts.conds ? _('Conditions in the rules table', CTX) : _('Any packet', 'nft match any traffic'));
+			const label = r.comment || (cond ? '' : r.parts.conds ? _('Conditions in the rules table', 'vantage-theme') : _('Any packet', 'nft match any traffic'));
 			const what = [ E('div', { 'class': 'v-nft-what-name', 'data-muted': String(!r.comment && !cond && !!r.parts.conds) }, [ label ]) ];
 			if (!r.comment && cond) what[0] = cond;
 			else if (cond) what.push(cond);
@@ -405,7 +404,7 @@ return baseclass.extend({
 			const then = this.outcome(r.verdict, c, path, stack);
 			if (r.counter)
 				then.push(E('span', { 'class': 'v-nft-count', 'title': _('Traffic matched by rule: %.1000mPackets, %.1024mBytes', 'nft counter').format(r.counter.packets, r.counter.bytes) },
-					[ _('%s matched', CTX).format('%.1024mB'.format(r.counter.bytes)) ]));
+					[ _('%s matched', 'vantage-theme').format('%.1024mB'.format(r.counter.bytes)) ]));
 			return E('li', { 'class': 'v-nft-step' }, [
 				E('span', { 'class': 'v-nft-n' }, [ String(r.index + 1) ]),
 				E('div', { 'class': 'v-nft-what' }, what),
@@ -419,7 +418,7 @@ return baseclass.extend({
 				E('button', { 'type': 'button', 'class': 'v-nft-verdict v-nft-jump', 'click': () => {
 					c.rules.slice(MAX_STEPS).forEach((r) => list.insertBefore(step(r), more));
 					more.remove();
-				} }, [ N_(c.rules.length - MAX_STEPS, 'Show %d more rule', 'Show %d more rules').format(c.rules.length - MAX_STEPS) ])
+				} }, [ N_(c.rules.length - MAX_STEPS, 'Show %d more rule', 'Show %d more rules', 'vantage-theme').format(c.rules.length - MAX_STEPS) ])
 			]);
 			list.appendChild(more);
 		}
@@ -433,10 +432,10 @@ return baseclass.extend({
 			const tk = nftmodel.keyOf(c.family, c.table, target);
 			const label = (key != null ? key + ' → ' : '→ ') + target;
 			if (!this.m.chains[tk]) return chip(kind, label);
-			if (path.indexOf(tk) >= 0) return chip(kind, label + ' ' + _('(open above)', CTX));
-			if (path.length >= MAX_DEPTH) return chip(kind, label + ' ' + _('(too deep to open here)', CTX));
+			if (path.indexOf(tk) >= 0) return chip(kind, label + ' ' + _('(open above)', 'vantage-theme'));
+			if (path.length >= MAX_DEPTH) return chip(kind, label + ' ' + _('(too deep to open here)', 'vantage-theme'));
 			const b = E('button', { 'type': 'button', 'class': 'v-nft-verdict v-nft-jump', 'data-kind': kind, 'aria-expanded': 'false',
-				'title': kind === 'goto' ? _('Continues in %s and does not come back here', CTX).format(target) : _('Continues in %s, then comes back here', CTX).format(target) }, [ label ]);
+				'title': kind === 'goto' ? _('Continues in %s and does not come back here', 'vantage-theme').format(target) : _('Continues in %s, then comes back here', 'vantage-theme').format(target) }, [ label ]);
 			let sub = null;
 			b.addEventListener('click', () => {
 				if (!sub) {
@@ -452,7 +451,7 @@ return baseclass.extend({
 		};
 		if (v.kind === 'return') return [ this.away(path, stack) ];
 		if (v.kind === 'jump' || v.kind === 'goto') return [ jump(v.kind, v.target) ];
-		if (v.kind === 'vmap' && v.named) return [ chip('none', _('Verdict map %s', CTX).format(v.named)) ];
+		if (v.kind === 'vmap' && v.named) return [ chip('none', _('Verdict map %s', 'vantage-theme').format(v.named)) ];
 		if (v.kind === 'vmap') {
 			/* keys with the same verdict share a chip: "established, related → Accept" */
 			const out = [], same = Object.create(null);
@@ -473,7 +472,7 @@ return baseclass.extend({
 	end(path, stack) {
 		return E('li', { 'class': 'v-nft-step v-nft-step-end' }, [
 			E('span', { 'class': 'v-nft-n', 'aria-hidden': 'true' }),
-			E('div', { 'class': 'v-nft-what' }, [ _('No rule matched', CTX) ]),
+			E('div', { 'class': 'v-nft-what' }, [ _('No rule matched', 'vantage-theme') ]),
 			E('div', { 'class': 'v-nft-then' }, [ this.away(path, stack) ])
 		]);
 	}

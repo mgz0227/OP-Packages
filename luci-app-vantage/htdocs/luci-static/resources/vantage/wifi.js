@@ -9,9 +9,9 @@ function num(v) { v = +v; return isFinite(v) ? v : 0; }
 function own(o, k) { return o != null && Object.prototype.hasOwnProperty.call(o, k); }
 
 var BANDS = {
-	'2g': { label: _('2.4 GHz'), short: '2.4', lo: 2400, hi: 2495, base: 2407 },
-	'5g': { label: _('5 GHz'), short: '5', lo: 5150, hi: 5895, base: 5000 },
-	'6g': { label: _('6 GHz'), short: '6', lo: 5925, hi: 7125, base: 5950 },
+	'2g': { label: _('2.4 GHz', 'vantage'), short: '2.4', lo: 2400, hi: 2495, base: 2407 },
+	'5g': { label: _('5 GHz', 'vantage'), short: '5', lo: 5150, hi: 5895, base: 5000 },
+	'6g': { label: _('6 GHz', 'vantage'), short: '6', lo: 5925, hi: 7125, base: 5950 },
 	'60g': { label: _('60 GHz'), short: '60', lo: 57240, hi: 70200, base: 56160 }
 };
 
@@ -21,13 +21,13 @@ var GEN_RANK = { 'legacy': 0, 'Wi-Fi 4': 4, 'Wi-Fi 5': 5, 'Wi-Fi 6': 6, 'Wi-Fi 6
 /* UCI encryption -> friendly label. Suffixes like +ccmp are cipher
    choices, not a different protocol. */
 var SECURITY = [
-	[ /^none$/, _('Open'), _('Open network'), 'open' ],
-	[ /^owe$/, _('OWE'), _('Enhanced Open (OWE)'), 'owe' ],
+	[ /^none$/, _('Open', 'vantage'), _('Open network'), 'open' ],
+	[ /^owe$/, _('OWE', 'vantage'), _('Enhanced Open (OWE)'), 'owe' ],
 	[ /^sae-mixed$/, _('WPA2/3'), _('WPA2/WPA3-Personal'), 'ok' ],
-	[ /^sae(-ext)?$/, _('WPA3'), _('WPA3-Personal'), 'ok' ],
-	[ /^psk-mixed$/, _('WPA/WPA2'), _('WPA/WPA2-Personal (TKIP allowed)'), 'weak' ],
-	[ /^psk2$/, _('WPA2'), _('WPA2-Personal'), 'ok' ],
-	[ /^psk$/, _('WPA'), _('WPA-Personal (legacy)'), 'weak' ],
+	[ /^sae(-ext)?$/, _('WPA3', 'vantage'), _('WPA3-Personal'), 'ok' ],
+	[ /^psk-mixed$/, _('WPA/WPA2', 'vantage'), _('WPA/WPA2-Personal (TKIP allowed)'), 'weak' ],
+	[ /^psk2$/, _('WPA2', 'vantage'), _('WPA2-Personal'), 'ok' ],
+	[ /^psk$/, _('WPA', 'vantage'), _('WPA-Personal (legacy)'), 'weak' ],
 	[ /^wpa3-mixed$/, _('WPA2/3-Ent'), _('WPA2/WPA3-Enterprise'), 'ok' ],
 	[ /^wpa3(-192)?$/, _('WPA3-Ent'), _('WPA3-Enterprise'), 'ok' ],
 	[ /^wpa-mixed$/, _('WPA/WPA2-Ent'), _('WPA/WPA2-Enterprise'), 'weak' ],
@@ -114,9 +114,9 @@ return baseclass.extend({
 	signal: function(dbm) {
 		dbm = num(dbm);
 		if (!dbm || dbm >= 0) return { bars: 0, level: 'none', word: _('No signal') };
-		if (dbm >= -55) return { bars: 4, level: 'ok', word: _('Excellent') };
-		if (dbm >= -67) return { bars: 3, level: 'ok', word: _('Good') };
-		if (dbm >= -75) return { bars: 2, level: 'warn', word: _('Fair') };
+		if (dbm >= -55) return { bars: 4, level: 'ok', word: _('Excellent', 'vantage') };
+		if (dbm >= -67) return { bars: 3, level: 'ok', word: _('Good', 'vantage') };
+		if (dbm >= -75) return { bars: 2, level: 'warn', word: _('Fair', 'vantage') };
 		return { bars: 1, level: 'crit', word: _('Weak') };
 	},
 

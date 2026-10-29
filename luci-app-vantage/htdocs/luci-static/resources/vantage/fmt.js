@@ -27,7 +27,7 @@ return baseclass.extend({
 	bitsParts: function(bps) {
 		bps = num(bps);
 		if (bps == null || bps < 0) return { v: DASH, u: '' };
-		var u = [ _('bit/s'), _('kbit/s'), _('Mbit/s'), _('Gbit/s'), _('Tbit/s') ], i = 0;
+		var u = [ _('bit/s', 'vantage'), _('kbit/s', 'vantage'), _('Mbit/s'), _('Gbit/s', 'vantage'), _('Tbit/s') ], i = 0;
 		while (bps >= 1000 && i < u.length - 1) { bps /= 1000; i++; }
 		return { v: i === 0 ? bps.toFixed(0) : sig3(bps), u: u[i] };
 	},
@@ -50,7 +50,7 @@ return baseclass.extend({
 	bytes: function(b) {
 		b = num(b);
 		if (b == null || b < 0) return DASH;
-		var u = [ _('B'), _('KiB'), _('MiB'), _('GiB'), _('TiB'), _('PiB') ], i = 0;
+		var u = [ _('B', 'vantage'), _('KiB', 'vantage'), _('MiB', 'vantage'), _('GiB', 'vantage'), _('TiB', 'vantage'), _('PiB') ], i = 0;
 		while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
 		return (i === 0 ? b.toFixed(0) : b >= 100 ? b.toFixed(0) : b >= 10 ? b.toFixed(1) : b.toFixed(2)) + ' ' + u[i];
 	},
@@ -85,10 +85,10 @@ return baseclass.extend({
 		ms = num(ms);
 		if (ms == null || ms < 0) return DASH;
 		var s = Math.round(ms / 1000);
-		if (s < 3) return _('just now');
-		if (s < 60) return _('%d s ago').format(s);
-		if (s < 3600) return _('%d min ago').format(Math.floor(s / 60));
-		return _('%d h ago').format(Math.floor(s / 3600));
+		if (s < 3) return _('just now', 'vantage');
+		if (s < 60) return _('%d s ago', 'vantage').format(s);
+		if (s < 3600) return _('%d min ago', 'vantage').format(Math.floor(s / 60));
+		return _('%d h ago', 'vantage').format(Math.floor(s / 3600));
 	},
 
 	dbm: function(v) {

@@ -42,19 +42,19 @@ return baseclass.extend({
 		var out = [], dev = model.device || {}, up = model.uplink;
 
 		/* uplink: live traffic is the value, the negotiated link the context */
-		if (!up) out.push({ id: 'uplink', level: 'err', title: _('Uplink'), value: _('Down'), reason: _('No interface with a route'),
+		if (!up) out.push({ id: 'uplink', level: 'err', title: _('Uplink', 'vantage'), value: _('Down', 'vantage'), reason: _('No interface with a route'),
 			detail: _('No network interface with a route is up'), page: PAGES.network });
-		else if (up.carrier === false) out.push({ id: 'uplink', level: 'err', title: _('Uplink'), value: _('No link'), reason: _('%s: no carrier').format(up.dev),
+		else if (up.carrier === false) out.push({ id: 'uplink', level: 'err', title: _('Uplink', 'vantage'), value: _('No link'), reason: _('%s: no carrier').format(up.dev),
 			detail: _('%s has no carrier: cable unplugged or switch port down').format(up.dev), page: PAGES.network });
-		else if (up.speed && up.speed.duplex === 'half') out.push({ id: 'uplink', level: 'warn', title: _('Uplink'), value: _('Half duplex'), reason: _('%s · check cable').format(up.dev),
+		else if (up.speed && up.speed.duplex === 'half') out.push({ id: 'uplink', level: 'warn', title: _('Uplink', 'vantage'), value: _('Half duplex'), reason: _('%s · check cable').format(up.dev),
 			detail: _('%s negotiated half duplex; check the cable and switch port').format(up.dev), page: PAGES.network });
-		else if (up.speed && up.speed.mbps < 1000) out.push({ id: 'uplink', level: 'warn', title: _('Uplink'), value: _('%s Mbit/s').format(up.speed.mbps), reason: _('%s · slow link').format(up.dev),
+		else if (up.speed && up.speed.mbps < 1000) out.push({ id: 'uplink', level: 'warn', title: _('Uplink', 'vantage'), value: _('%s Mbit/s').format(up.speed.mbps), reason: _('%s · slow link').format(up.dev),
 			detail: _('%s negotiated only %d Mbit/s; a cable pair or port may be faulty').format(up.dev, up.speed.mbps), page: PAGES.network });
 		else {
 			var rate = live.uplinkRate && finite(live.uplinkRate.rx) && finite(live.uplinkRate.tx) ? live.uplinkRate : null;
 			/* no-break spaces keep '↑ 2.9 Mbit/s' and '2.5G link' whole when the chip wraps */
 			var link = up.speed ? _('%s link').format(speedShort(up.speed.mbps)).replace(/ /g, '\u00a0') : null;
-			out.push({ id: 'uplink', level: 'ok', title: _('Uplink'), value: rate ? '↓ ' + fmt.bits(rate.rx) : _('Up'),
+			out.push({ id: 'uplink', level: 'ok', title: _('Uplink', 'vantage'), value: rate ? '↓ ' + fmt.bits(rate.rx) : _('Up', 'vantage'),
 				reason: [ rate ? ('↑ ' + fmt.bits(rate.tx)).replace(/ /g, '\u00a0') : null, up.dev, link ].filter(Boolean).join(' · '),
 				detail: (up.speed ? _('%s up at %s').format(up.dev, speedLong(up.speed.mbps)) : _('%s up').format(up.dev)) +
 					(up.gateway ? ', ' + _('gateway %s').format(up.gateway) : '') +
@@ -65,8 +65,8 @@ return baseclass.extend({
 		/* CPU */
 		var cpu = live.cpu && finite(live.cpu.pct) ? live.cpu.pct : null, cores = (live.cpu && live.cpu.cores && live.cpu.cores.length) || 1;
 		var load = (dev.load || [])[0];
-		if (cpu == null) out.push({ id: 'cpu', level: 'info', title: _('CPU'), value: fmt.DASH, reason: _('Measuring…'), detail: _('Measuring over the next poll'), page: PAGES.processes });
-		else out.push({ id: 'cpu', level: cpu >= 90 ? 'err' : cpu >= 70 ? 'warn' : 'ok', title: _('CPU'), value: fmt.pct(cpu),
+		if (cpu == null) out.push({ id: 'cpu', level: 'info', title: _('CPU', 'vantage'), value: fmt.DASH, reason: _('Measuring…'), detail: _('Measuring over the next poll'), page: PAGES.processes });
+		else out.push({ id: 'cpu', level: cpu >= 90 ? 'err' : cpu >= 70 ? 'warn' : 'ok', title: _('CPU', 'vantage'), value: fmt.pct(cpu),
 			reason: cpu >= 70 ? _('Busy · load %s').format(fmt.load(load)) : _('Load %s · %d cores').format(fmt.load(load), cores),
 			detail: cpu >= 70 ? _('Busy; load %s on %d cores; see the busiest processes').format(fmt.load(load), cores) : _('Load %s on %d cores').format(fmt.load(load), cores),
 			page: PAGES.processes });
@@ -75,7 +75,7 @@ return baseclass.extend({
 		var mem = dev.memory;
 		if (mem) {
 			var avail = finite(mem.availPct) ? mem.availPct : 100 - num(mem.usedPct);
-			out.push({ id: 'memory', level: mem.usedPct >= 90 ? 'err' : mem.usedPct >= 80 ? 'warn' : 'ok', title: _('Memory'), value: _('%s available').format(fmt.pct(avail)),
+			out.push({ id: 'memory', level: mem.usedPct >= 90 ? 'err' : mem.usedPct >= 80 ? 'warn' : 'ok', title: _('Memory'), value: _('%s available', 'vantage').format(fmt.pct(avail)),
 				reason: _('%s of %s').format(fmt.bytes(mem.available), fmt.bytes(mem.total)),
 				detail: _('%s of %s available (%s in use)').format(fmt.bytes(mem.available), fmt.bytes(mem.total), fmt.pct(mem.usedPct)), page: PAGES.processes });
 		}
@@ -156,12 +156,12 @@ return baseclass.extend({
 		}
 
 		if (c.legacyOnRadio)
-			factors.push({ cost: 5, text: _('%s device on a newer radio; uses more airtime per byte').format(c.gen === 'legacy' ? _('Legacy') : c.gen),
+			factors.push({ cost: 5, text: _('%s device on a newer radio; uses more airtime per byte').format(c.gen === 'legacy' ? _('Legacy', 'vantage') : c.gen),
 				short: _('Older %s device').format(c.gen === 'legacy' ? _('legacy') : c.gen) });
 
 		var cost = factors.reduce(function(a, f) { return a + f.cost; }, 0);
 		var score = Math.max(0, Math.min(100, 100 - cost));
-		var grade = score >= 85 ? _('Excellent') : score >= 65 ? _('Good') : score >= 40 ? _('Fair') : _('Poor');
+		var grade = score >= 85 ? _('Excellent', 'vantage') : score >= 65 ? _('Good', 'vantage') : score >= 40 ? _('Fair', 'vantage') : _('Poor', 'vantage');
 		var level = score >= 65 ? 'ok' : score >= 40 ? 'warn' : 'err';
 		var worst = factors.slice().sort(function(a, b) { return b.cost - a.cost; })[0];
 		var reason = (worst && worst.cost > 0) ? worst.text

@@ -286,31 +286,31 @@ function enhanceMemory() {
 		const usedPct = pctOf(inuse, total);
 
 		const summary = '%s: %s %s, %s %s (%s), %s %s, %s %s'.format(_('Memory'),
-			_('In use'), fmtBytes(inuse), _('Cache'), fmtBytes(reclaim), _('reclaimable'),
-			_('Free'), fmtBytes(free), _('Total'), fmtBytes(total));
+			_('In use', 'vantage-theme'), fmtBytes(inuse), _('Cache'), fmtBytes(reclaim), _('reclaimable'),
+			_('Free', 'vantage-theme'), fmtBytes(free), _('Total', 'vantage-theme'), fmtBytes(total));
 
 		const children = [
 			E('div', { 'class': 'v-meter-head' }, [
-				E('span', { 'class': 'v-meter-big' }, [ pctOf(available, total) + '%', E('small', {}, [ _('available') ]) ]),
+				E('span', { 'class': 'v-meter-big' }, [ pctOf(available, total) + '%', E('small', {}, [ _('available', 'vantage-theme') ]) ]),
 				E('span', { 'class': 'v-meter-sub' }, [ '%s / %s'.format(fmtBytes(available), fmtBytes(total)) ])
 			]),
 			E('div', { 'class': 'v-meter-bar', 'role': 'img', 'aria-label': summary }, [
-				segment('v-seg-used' + (usedPct >= 90 ? ' is-crit' : usedPct >= 75 ? ' is-warn' : ''), inuse, total, _('In use')),
+				segment('v-seg-used' + (usedPct >= 90 ? ' is-crit' : usedPct >= 75 ? ' is-warn' : ''), inuse, total, _('In use', 'vantage-theme')),
 				segment('v-seg-cache', reclaim, total, _('Cache') + ' (' + _('reclaimable') + ')')
 			]),
 			E('ul', { 'class': 'v-meter-legend', 'aria-hidden': 'true' }, [
-				legendKey('v-seg-used', _('In use'), inuse),
+				legendKey('v-seg-used', _('In use', 'vantage-theme'), inuse),
 				legendKey('v-seg-cache', _('Cache'), reclaim, _('reclaimable')),
-				legendKey('v-seg-free', _('Free'), free)
+				legendKey('v-seg-free', _('Free', 'vantage-theme'), free)
 			])
 		];
 
 		if (swap) {
 			const swapUsed = swap.total - swap.value;
 			children.push(E('div', { 'class': 'v-meter-rows v-meter-swap' }, E('div', { 'class': 'v-meter-row' }, [
-				E('span', { 'class': 'v-meter-label' }, [ _('Swap') ]),
+				E('span', { 'class': 'v-meter-label' }, [ _('Swap', 'vantage-theme') ]),
 				E('div', { 'class': 'v-meter-bar is-thin', 'role': 'img',
-				           'aria-label': '%s: %s / %s'.format(_('Swap'), fmtBytes(swapUsed), fmtBytes(swap.total)) },
+				           'aria-label': '%s: %s / %s'.format(_('Swap', 'vantage-theme'), fmtBytes(swapUsed), fmtBytes(swap.total)) },
 					segment('v-seg-used', swapUsed, swap.total)),
 				E('span', { 'class': 'v-meter-val' }, [ E('b', {}, [ fmtBytes(swapUsed) ]), ' / ' + fmtBytes(swap.total) ])
 			])));
@@ -367,6 +367,19 @@ function decorateRadios() {
 	});
 }
 
+/* Port status: the ▲ / ▼ before each counter in a span of its own, for the
+   dashboard's upload and download colours */
+function decoratePorts() {
+	document.querySelectorAll('#view .ifacebox > .ifacebox-head.cbi-tooltip-container + .ifacebox-body > .cbi-tooltip-container').forEach(stats => {
+		Array.prototype.slice.call(stats.childNodes).forEach(n => {
+			const dir = n.nodeType === 3 && { '▲': 'tx', '▼': 'rx' }[n.data.charAt(0)];
+			if (!dir) return;
+			stats.insertBefore(E('span', { 'class': 'vt-port-dir', 'data-dir': dir }, [ n.data.charAt(0) ]), n);
+			n.data = n.data.slice(1);
+		});
+	});
+}
+
 function setupStockEnhancers() {
 	const view = document.getElementById('view');
 	if (!view || !window.MutationObserver) return;
@@ -375,7 +388,7 @@ function setupStockEnhancers() {
 	const run = () => {
 		if (busy) return;
 		busy = true;
-		try { enhanceMemory(); enhanceStorage(); decorateRadios(); }
+		try { enhanceMemory(); enhanceStorage(); decorateRadios(); decoratePorts(); }
 		catch (e) { if (window.console) console.warn('vantage: status enhancer', e); }
 		busy = false;
 	};
@@ -756,6 +769,24 @@ return baseclass.extend({
 			});
 			sync();
 		}
+
+		/* phones: the bar scrolls sideways, and each page load (or switch to
+		   the bottom bar) starts it at its first entry */
+		this.fitRailActive();
+		if (this.mqMobile.addEventListener) this.mqMobile.addEventListener('change', () => this.fitRailActive());
+	},
+
+	/* a clipped active entry is brought to the middle of the bar, at once,
+	   and only the bar moves: scrollIntoView() would scroll the page too */
+	fitRailActive() {
+		const list = document.getElementById('vt-rail-list');
+		const li = list && list.querySelector('.vt-rail-item.is-active');
+		if (!li || !this.mqMobile.matches || list.scrollWidth <= list.clientWidth) return;
+
+		const l = list.getBoundingClientRect(), r = li.getBoundingClientRect();
+		if (r.left >= l.left - 1 && r.right <= l.right + 1) return;
+
+		list.scrollLeft += (r.left + r.right - l.left - l.right) / 2;
 	},
 
 	handleRailClick(ev, cat, li, link) {
@@ -891,7 +922,7 @@ return baseclass.extend({
 				ul.appendChild(item);
 			}
 			fly.appendChild(ul);
-			fly.appendChild(E('div', { 'class': 'vt-fly-foot' }, [ _('Press'), ' ', E('kbd', {}, [ 'Ctrl K' ]), ' ', _('to search all pages') ]));
+			fly.appendChild(E('div', { 'class': 'vt-fly-foot' }, [ _('Press', 'vantage-theme'), ' ', E('kbd', {}, [ 'Ctrl K' ]), ' ', _('to search all pages') ]));
 			fly.setAttribute('data-cat', cat.name);
 			fly.setAttribute('role', 'region');
 			fly.setAttribute('aria-labelledby', 'vt-fly-title');
@@ -1087,9 +1118,9 @@ return baseclass.extend({
 	actions() {
 		const pref = this.themePref();
 		const list = [];
-		if (pref !== 'dark') list.push({ title: _('Use dark theme'), path: _('Appearance'), icon: 'moon', run: () => this.setTheme('dark') });
-		if (pref !== 'light') list.push({ title: _('Use light theme'), path: _('Appearance'), icon: 'sun', run: () => this.setTheme('light') });
-		if (pref !== 'auto') list.push({ title: _('Follow system theme'), path: _('Appearance'), icon: 'auto', run: () => this.setTheme('auto') });
+		if (pref !== 'dark') list.push({ title: _('Use dark theme'), path: _('Appearance', 'vantage-theme'), icon: 'moon', run: () => this.setTheme('dark') });
+		if (pref !== 'light') list.push({ title: _('Use light theme'), path: _('Appearance', 'vantage-theme'), icon: 'sun', run: () => this.setTheme('light') });
+		if (pref !== 'auto') list.push({ title: _('Follow system theme'), path: _('Appearance', 'vantage-theme'), icon: 'auto', run: () => this.setTheme('auto') });
 		list.push({ title: _('Log out'), path: _('Session'), icon: 'logout', segs: [ 'admin', 'logout' ] });
 		list.forEach(a => { a.hay = a.path + ' › ' + a.title; a.group = _('Actions'); });
 		return list;
@@ -1110,14 +1141,14 @@ return baseclass.extend({
 			'aria-controls': 'vt-pal-list', 'aria-autocomplete': 'list', 'autocomplete': 'off', 'spellcheck': 'false',
 			'placeholder': _('Jump to a page or action…'), 'aria-label': _('Search pages')
 		});
-		const list = E('ul', { 'class': 'vt-pal-list', 'id': 'vt-pal-list', 'role': 'listbox', 'aria-label': _('Results') });
+		const list = E('ul', { 'class': 'vt-pal-list', 'id': 'vt-pal-list', 'role': 'listbox', 'aria-label': _('Results', 'vantage-theme') });
 		const count = E('span', { 'class': 'vt-pal-count' });
 		const box = E('div', { 'class': 'vt-pal', 'role': 'dialog', 'aria-modal': 'true', 'aria-label': _('Command palette') }, [
 			E('div', { 'class': 'vt-pal-field' }, [ svg('search', 18), input, E('kbd', {}, [ 'Esc' ]) ]),
 			list,
 			E('div', { 'class': 'vt-pal-foot' }, [
 				E('span', {}, [ E('kbd', {}, [ '↑' ]), E('kbd', {}, [ '↓' ]), _('navigate') ]),
-				E('span', {}, [ E('kbd', {}, [ '↵' ]), _('open') ]),
+				E('span', {}, [ E('kbd', {}, [ '↵' ]), _('open', 'vantage-theme') ]),
 				E('span', {}, [ E('kbd', {}, [ 'Esc' ]), _('close') ]),
 				count
 			])
@@ -1185,7 +1216,7 @@ return baseclass.extend({
 		if (!results.length)
 			pal.list.appendChild(E('li', { 'class': 'vt-pal-empty', 'role': 'presentation' }, [ _('No matching pages') ]));
 
-		pal.count.textContent = q ? '%d / %d'.format(results.length, pool.length) : '%d %s'.format(pool.length, _('items'));
+		pal.count.textContent = q ? '%d / %d'.format(results.length, pool.length) : '%d %s'.format(pool.length, _('items', 'vantage-theme'));
 		this.setPaletteActive(0, true);
 	},
 
@@ -1270,7 +1301,7 @@ return baseclass.extend({
 
 		const btn = document.getElementById('vt-theme');
 		if (btn) {
-			const names = { auto: _('Auto'), light: _('Light'), dark: _('Dark') };
+			const names = { auto: _('Auto', 'vantage-theme'), light: _('Light', 'vantage-theme'), dark: _('Dark', 'vantage-theme') };
 			const label = '%s: %s'.format(_('Colour theme'), names[pref]) + (pref === 'auto' ? ' (%s)'.format(dark ? names.dark : names.light) : '');
 			btn.textContent = '';
 			btn.appendChild(svg(pref === 'auto' ? 'auto' : (pref === 'dark' ? 'moon' : 'sun'), 18));
@@ -1499,7 +1530,7 @@ return baseclass.extend({
 		const btn = E('button', {
 			'type': 'button', 'class': 'cbi-button cbi-button-neutral vt-acts-more',
 			'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-controls': 'vt-actmenu',
-			'aria-label': _('More actions'), 'title': _('More actions')
+			'aria-label': _('More actions', 'vantage-theme'), 'title': _('More actions', 'vantage-theme')
 		}, [ svg('more', 18) ]);
 		btn.addEventListener('click', ev => {
 			ev.preventDefault();
@@ -1516,7 +1547,7 @@ return baseclass.extend({
 
 	actMenuEl() {
 		if (this.actMenu) return this.actMenu;
-		const menu = E('div', { 'id': 'vt-actmenu', 'class': 'vt-actmenu', 'role': 'menu', 'aria-label': _('More actions'), 'hidden': 'hidden' });
+		const menu = E('div', { 'id': 'vt-actmenu', 'class': 'vt-actmenu', 'role': 'menu', 'aria-label': _('More actions', 'vantage-theme'), 'hidden': 'hidden' });
 		menu.addEventListener('keydown', ev => {
 			const items = Array.prototype.filter.call(menu.querySelectorAll('[role="menuitem"]'), n => !n.disabled);
 			const i = items.indexOf(document.activeElement);

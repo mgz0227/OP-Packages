@@ -785,6 +785,8 @@ a.vt-crumb:hover { color: var(--text); }
     padding: 10px !important;
     border: none !important;
 }
+/* Card padding supplies the space after the final paragraph. */
+.cbi-section > p:last-child { margin-bottom: 0; }
 /* card header row */
 .cbi-section > h3:first-child, .cbi-section > legend:first-child, .cbi-section > .cbi-title:first-child,
 .cbi-section > .cbi-section-remove:first-child + .cbi-title {
@@ -1299,6 +1301,19 @@ input[type="button"], input[type="reset"], input[type="submit"]) {
 :is(.btn, .cbi-button, .cbi-dropdown).cbi-button-save.important:hover {
 	background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
+/* LuCI's emphasis without .important (Bootstrap outlines these, apps mark
+   Open / Restart / Refresh with them): the signal as text and line on the
+   plain fill. In table rows only Edit keeps it: a row of Start / Restart /
+   Reload / Stop on every line (System -> Startup) stays plain */
+:is(.btn, .cbi-button):is(.cbi-button-action, .cbi-button-reload, .cbi-button-find, .cbi-button-link, .cbi-button-download):not(.important, .cbi-dropdown, .td *),
+:is(.btn, .cbi-button).cbi-button-edit:not(.important, .cbi-dropdown) {
+	border-color: var(--accent-line);
+	color: var(--accent-text);
+}
+:is(.btn, .cbi-button):is(.cbi-button-action, .cbi-button-reload, .cbi-button-find, .cbi-button-link, .cbi-button-download):not(.important, .cbi-dropdown, .td *):hover,
+:is(.btn, .cbi-button).cbi-button-edit:not(.important, .cbi-dropdown):hover {
+	background: var(--accent-soft);
+}
 .cbi-value-field :is(.btn, .cbi-button).cbi-button-apply,
 .td :is(.btn, .cbi-button).cbi-button-apply {
 	background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); font-weight: 500;
@@ -1422,6 +1437,9 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
 :is(.cbi-section, .cbi-value) .table .tr > :is(.th, .td):first-child { padding-left: var(--card-px); }
 :is(.cbi-section, .cbi-value) .table .tr > :is(.th, .td):last-child { padding-right: var(--card-px); }
 .cbi-section > .table:last-child, .cbi-section > div:last-child > .table:last-child { margin-bottom: calc(-1 * var(--card-py) + 4px); }
+/* Nested sections have no bottom padding for the table to bleed into. */
+.cbi-section .cbi-section > .table:last-child,
+.cbi-section .cbi-section > div:last-child > .table:last-child { margin-bottom: 0; }
 .table .tr.table-titles > .th, .table .cbi-section-table-titles > .th, thead .th {
 	position: sticky; top: var(--stick-top); z-index: 20;
 }
@@ -1550,7 +1568,9 @@ div.right > .btn, div.right > .cbi-button, div.right > button { margin-left: 0; 
 }
 :is(.cbi-tabmenu > li > a, .vt-pagetabs > .vt-tab):hover { color: var(--text); }
 :is(.cbi-tabmenu > li > a, .vt-pagetabs > .vt-tab):focus-visible { outline-offset: -1px; border-radius: calc(var(--r) + 3px); }
-.cbi-tabmenu > li.cbi-tab > a, .vt-pagetabs > .vt-tab[aria-current] { background-color: var(--seg-on); color: var(--text); font-weight: 600; box-shadow: var(--seg-on-ring); }
+/* the selected segment carries the signal (text and ring): white on the
+   grey track alone was hard to pick out; hover keeps it */
+.cbi-tabmenu > li.cbi-tab > a, .cbi-tabmenu > li.cbi-tab > a:hover, .vt-pagetabs > .vt-tab[aria-current] { background-color: var(--seg-on); color: var(--accent-text); font-weight: 600; box-shadow: inset 0 0 0 1px var(--accent-line); }
 .cbi-tabmenu > li[data-errors] > a::after {
 	content: attr(data-errors);
 	display: inline-flex; align-items: center; justify-content: center;
@@ -1685,6 +1705,45 @@ div:has(> .ifacebox > .ifacebox-head.cbi-tooltip-container) > .ifacebox { width:
 .ifacebox-head.active { background: var(--accent-soft); color: var(--accent-text); }
 .ifacebox-body { padding: 8px 10px; font-size: var(--fs-sm); color: var(--text-2); }
 .ifacebox-body img { width: 18px; height: 18px; }
+/* Status -> Port status, each box: a link dot by the name (as on the
+   upstream and radio cards), the speed as its figure, the zone as a bare
+   bar and the counters' arrows in the dashboard's upload and download
+   colours (menu-vantage.js puts them in spans). LuCI's port picture only
+   repeats the link state: hidden. A port without link is muted throughout */
+.ifacebox:has(> .ifacebox-head.cbi-tooltip-container) > .ifacebox-head:first-child {
+	display: flex; align-items: center; gap: 8px;
+	padding: 10px 10px 2px;
+	background: none; border-bottom: 0;
+	font-family: var(--mono); font-weight: 650 !important; text-align: left;
+}
+.ifacebox:has(> .ifacebox-head.cbi-tooltip-container) > .ifacebox-head:first-child::before {
+	content: ""; flex: none;
+	width: 8px; height: 8px; border-radius: 50%;
+	box-shadow: inset 0 0 0 1.5px var(--text-3);
+}
+.ifacebox:has(> .ifacebox-body > img[src$="_down.svg"]) > .ifacebox-head:first-child { color: var(--text-2); }
+.ifacebox:has(> .ifacebox-body > img[src$="_up.svg"]) > .ifacebox-head:first-child::before { background: var(--v-chart-1); box-shadow: 0 0 0 3px var(--accent-soft); }
+.ifacebox:has(> .ifacebox-head.cbi-tooltip-container) > .ifacebox-head:first-child + .ifacebox-body { padding: 2px 10px 6px; color: var(--text-3); }
+.ifacebox:has(> .ifacebox-body > img[src$="_up.svg"]) > .ifacebox-head:first-child + .ifacebox-body { color: var(--text-2); }
+.ifacebox:has(> .ifacebox-head.cbi-tooltip-container) > .ifacebox-head:first-child + .ifacebox-body > :is(img, br) { display: none; }
+.ifacebox:has(> .ifacebox-head.cbi-tooltip-container) > .ifacebox-head:first-child + .ifacebox-body > span {
+	color: var(--text);
+	font: 600 var(--fs-md)/1.4 var(--font); font-variant-numeric: tabular-nums;
+}
+.ifacebox-head.cbi-tooltip-container:has(> .zonebadge) { gap: 3px; padding: 4px 10px; background: none; border-bottom: 0; }
+.ifacebox-head.cbi-tooltip-container > .zonebadge[style*="--zone-color-rgb"] {
+	height: 3px !important; padding: 0;
+	border: 0; border-radius: 2px; box-shadow: none;
+	background-color: rgb(var(--zone-color-rgb)) !important;
+}
+.ifacebox-head.cbi-tooltip-container > .zonebadge:is([style*="--zone-color-rgb: 238, 238, 238"], [style*="--zone-color-rgb:238, 238, 238"], [style*="--zone-color-rgb:238,238,238"]) { background-color: var(--text-3) !important; }
+.ifacebox-head.cbi-tooltip-container + .ifacebox-body { padding: 4px 10px 10px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+/* the PoE power line comes inline as black: black on the dark card */
+.ifacebox-head.cbi-tooltip-container + .ifacebox-body > .cbi-tooltip-container > span[style*="color:#000"] { color: inherit !important; }
+.ifacebox:has(> .ifacebox-body > img[src$="_down.svg"]) > .ifacebox-head.cbi-tooltip-container + .ifacebox-body { color: var(--text-3); }
+.vt-port-dir[data-dir="tx"] { color: var(--v-chart-5); }
+.vt-port-dir[data-dir="rx"] { color: var(--v-chart-1); }
+.ifacebox:has(> .ifacebox-body > img[src$="_down.svg"]) .vt-port-dir { color: inherit; }
 
 .network-status-table > .ifacebox { display: flex; }
 .network-status-table .ifacebox-head {
@@ -2023,6 +2082,10 @@ body.modal-overlay-active #modal_overlay { display: block; }
    heading first (25.12 wraps it in .cbi-title): it keeps the header row's
    bleed, which the rule above would replace */
 #view > .cbi-section > h3:first-child { margin: calc(-1 * var(--card-py)) calc(-1 * var(--card-px)) var(--card-py); }
+/* Table cells supply the spacing below a card header. */
+#view .cbi-section > .cbi-title:has(+ div > .table:first-child),
+#view > .cbi-section > h3:first-child:has(+ div > .table:first-child),
+#view .cbi-section:not(.cbi-tblsection, .cbi-section .cbi-section) > h3:first-child:has(+ .table) { margin-bottom: 0; }
 #view > h2:not(:first-child), #view > h3:not(:first-child) { margin-top: var(--sp-6); }
 .cbi-section > .table + h3, .cbi-section > .table + .cbi-title, .cbi-section > div + h3 { margin-top: var(--sp-6); }
 .includes { margin-top: var(--sp-4); }
@@ -2904,10 +2967,14 @@ select[id^="widget.cbid.firewall."] > option { color: var(--text); font-weight: 
 	}
 	.vt-rail > .vt-brand, .vt-rail-foot { display: none; }
 	body.vt-auth .vt-shell::before { display: none; }
+	/* a swipe past either end must not swipe the page. The hairline
+	   scrollbar stays: in a narrow desktop window it is the mouse's way to
+	   the entries past the edge */
 	.vt-rail-list {
 		flex-direction: row; justify-content: flex-start;
 		gap: 0; padding: 0 var(--sp-1);
 		overflow-x: auto; overflow-y: hidden;
+		overscroll-behavior-x: contain;
 	}
 	/* the buttons stay a centred group on wider screens. Centred with auto
 	   margins, not justify-content: center, which would push an overflowing

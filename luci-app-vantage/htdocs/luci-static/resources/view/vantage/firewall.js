@@ -97,7 +97,7 @@ function what(item) {
 
 function from(item) {
 	var f = item.from;
-	if (!f.anywhere) return _('from %s').format(f.only.join(', '));
+	if (!f.anywhere) return _('from %s', 'vantage').format(f.only.join(', '));
 	return f.except.length ? _('from anywhere except %s').format(f.except.join(', ')) : _('from anywhere');
 }
 
@@ -109,16 +109,16 @@ function target(i) {
 	return host + (i.hostPort ? ':' + i.hostPort : '');
 }
 
-function zoneName(z) { return z === '*' ? _('any zone') : z; }
+function zoneName(z) { return z === '*' ? _('any zone', 'vantage') : z; }
 
 function named(item) {
 	if (item.name) return item.name;
-	return item.kind === 'redirect' ? _('Unnamed port forward') : _('Unnamed rule');
+	return item.kind === 'redirect' ? _('Unnamed port forward') : _('Unnamed rule', 'vantage');
 }
 
 function polBadge(p, risky) {
 	var cls = risky ? 'is-risk' : p === 'ACCEPT' ? 'is-accept' : 'is-stop';
-	return E('span', { 'class': 'vt-fg-pol ' + cls }, [ p === 'ACCEPT' ? _('accept') : p === 'DROP' ? _('drop') : _('reject') ]);
+	return E('span', { 'class': 'vt-fg-pol ' + cls }, [ p === 'ACCEPT' ? _('accept', 'vantage') : p === 'DROP' ? _('drop', 'vantage') : _('reject', 'vantage') ]);
 }
 
 /* a setup fwglance does not follow (its complex) */
@@ -168,7 +168,7 @@ return view.extend({
 		return E('div', { 'class': 'vt-app vt-fg' }, [
 			E('div', { 'class': 'vt-body' }, [
 				this.renderHead(fw),
-				fw.warnings.length ? E('div', { 'class': 'vt-fg-warns', 'role': 'list', 'aria-label': _('Warnings') }, fw.warnings.map(this.renderWarning)) : '',
+				fw.warnings.length ? E('div', { 'class': 'vt-fg-warns', 'role': 'list', 'aria-label': _('Warnings', 'vantage') }, fw.warnings.map(this.renderWarning)) : '',
 				/* a setup it does not follow: what it would warn about, as
 				   cautions to check */
 				fw.unconfirmed.length ? E('div', { 'class': 'vt-fg-warns', 'role': 'list', 'aria-label': _('Settings to check') }, fw.unconfirmed.map(function(w) {
@@ -251,7 +251,7 @@ return view.extend({
 			reason = _('Option %s in General Settings has a value firewall4 refuses, so it loads no new rules: what is open is unknown.').format(w.option);
 		}
 		else if (w.code === 'rule-into') {
-			title = _('%s lets the internet into %s').format(w.name || _('Unnamed rule'), zoneName(w.dest));
+			title = _('%s lets the internet into %s').format(w.name || _('Unnamed rule', 'vantage'), zoneName(w.dest));
 			reason = _('It accepts every port from any address, like a zone forwarding. Limit it to the ports and addresses you need.');
 			tab = 'rules';
 		}
@@ -333,7 +333,7 @@ return view.extend({
 		   LuCI app, and nftables files the firewall picks up on its own */
 		if (!fw.upnp && !fw.includes.length)
 			body.push(E('p', { 'class': 'vt-hint vt-fg-foot' }, [ _('From the firewall configuration. Ports opened by UPnP or by custom rule files are not shown.') ]));
-		return this.tile('globe', _('Open from the internet'), page('rules'), _('Traffic Rules'), body);
+		return this.tile('globe', _('Open from the internet'), page('rules'), _('Traffic Rules', 'vantage'), body);
 	},
 
 	renderZones: function(fw) {
@@ -350,7 +350,7 @@ return view.extend({
 				E('div', { 'class': 'vt-fg-zone-head' }, [
 					E('span', { 'class': 'vt-fg-zone-name' }, [ name ]),
 					internet ? E('span', { 'class': 'vt-fg-tag' }, [ _('internet') ]) : '',
-					E('span', { 'class': 'vt-fg-zone-in' }, [ _('Input'), ' ', polBadge(input, internet && input === 'ACCEPT') ])
+					E('span', { 'class': 'vt-fg-zone-in' }, [ _('Input', 'vantage'), ' ', polBadge(input, internet && input === 'ACCEPT') ])
 				]),
 				E('div', { 'class': 'vt-fg-zone-to' }, [ icon('arrow'), dests(to, internet) ]),
 				hint ? E('div', { 'class': 'vt-hint vt-fg-nets' }, [ hint ]) : ''
@@ -374,13 +374,13 @@ return view.extend({
 			if (i.kind === 'forwarding')
 				return self.row(page('zones'), _('Forwarding %s to %s').format(i.src || '?', i.dest || '?'), [ _('zone forwarding') ].concat(why));
 			if (i.kind === 'zone')
-				return self.row(page('zones'), _('Zone %s').format(i.name || '?'), [ _('zone') ].concat(why));
+				return self.row(page('zones'), _('Zone %s').format(i.name || '?'), [ _('zone', 'vantage') ].concat(why));
 			if (i.kind === 'include')
 				return self.row(page('custom'), i.path || '?', [ _('custom rule file') ].concat(why));
 			return self.row(page(i.kind === 'redirect' ? 'forwards' : 'rules'), named(i),
-				[ i.kind === 'redirect' ? _('port forward') : _('traffic rule'), ' · ', what(i) ].concat(why));
+				[ i.kind === 'redirect' ? _('port forward', 'vantage') : _('traffic rule'), ' · ', what(i) ].concat(why));
 		});
-		return this.tile('off', fw.ignored.length ? _('Not in effect') : _('Switched off'), page('rules'), _('Traffic Rules'), [
+		return this.tile('off', fw.ignored.length ? _('Not in effect') : _('Switched off'), page('rules'), _('Traffic Rules', 'vantage'), [
 			E('div', { 'class': 'vt-fg-rows' }, rows)
 		]);
 	}

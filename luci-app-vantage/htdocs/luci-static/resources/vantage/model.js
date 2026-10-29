@@ -79,9 +79,9 @@ return baseclass.extend({
 			total: total, available: avail, used: used, cache: cache, free: free,
 			availPct: avail / total * 100, usedPct: used / total * 100,
 			segments: [
-				{ key: 'used', label: _('In use'), bytes: used, pct: used / total * 100 },
+				{ key: 'used', label: _('In use', 'vantage'), bytes: used, pct: used / total * 100 },
 				{ key: 'cache', label: _('Cache (reclaimable)'), bytes: cache, pct: cache / total * 100 },
-				{ key: 'free', label: _('Free'), bytes: free, pct: free / total * 100 }
+				{ key: 'free', label: _('Free', 'vantage'), bytes: free, pct: free / total * 100 }
 			]
 		};
 	},
