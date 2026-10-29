@@ -64,8 +64,8 @@
  	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
  	text-decoration: none !important;
  }
-@@ -716,6 +716,12 @@ html:has(.vt-tabs:not([hidden])) { --stick-top: calc(var(--top-h) + 41px); }
- 	border-radius: 10px;
+@@ -778,6 +778,12 @@ a.vt-crumb:hover { color: var(--text); }
+ 	border-radius: var(--r-lg);
  	box-shadow: var(--v-shadow);
  	min-width: 0;
 +	background-clip: padding-box;
@@ -75,8 +75,8 @@
 +    padding: 10px !important;
 +    border: none !important;
  }
- /* card header row */
- .cbi-section > h3:first-child, .cbi-section > legend:first-child, .cbi-section > .cbi-title:first-child,
+ /* Card padding supplies the space after the final paragraph. */
+ .cbi-section > p:last-child { margin-bottom: 0; }
 @@ -1982,7 +1988,28 @@ html:not([data-darkmode="true"]) .vt-login-page {
  		linear-gradient(90deg, rgba(20, 23, 26, .04) 1px, transparent 1px) 0 0 / 32px 32px,
  		var(--bg);
@@ -167,8 +167,8 @@ index ad0a166..c58c860 100644
  	r.setAttribute('data-theme', p);
 @@ -46,8 +48,15 @@
  {% if (authed): %}
- 	<nav class="vt-rail" id="vt-rail" aria-label="{{ entityencode(_('Main navigation'), true) }}">
- 		<a class="vt-brand" href="{{ dispatcher.build_url('admin') }}" aria-label="{{ entityencode(_('Home'), true) }}">
+ 	<nav class="vt-rail" id="vt-rail" aria-label="{{ entityencode(_('Main navigation', 'vantage-theme'), true) }}">
+ 		<a class="vt-brand" href="{{ dispatcher.build_url('admin') }}" aria-label="{{ entityencode(_('Home', 'vantage-theme'), true) }}">
 -			<svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="7" class="vt-brand-tile"/><path d="M9 10.5 16 22" class="vt-brand-l"/><path d="M16 22 23 10.5" class="vt-brand-r"/><circle cx="23" cy="10.5" r="1.9" class="vt-brand-dot"/></svg>
 -			<span class="vt-brand-word">Vantage</span>
 +			<svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
