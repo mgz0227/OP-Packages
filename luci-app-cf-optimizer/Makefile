@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-cf-optimizer
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=Dante <dante@seckv.com>
 
@@ -17,7 +17,9 @@ endef
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
+	rm -f /tmp/luci-indexcache.* /tmp/luci-modulecache/* 2>/dev/null
 	chmod 755 /etc/init.d/cf-optimizer /usr/sbin/cf-optimizer 2>/dev/null
+	/etc/init.d/cf-optimizer enable 2>/dev/null || true
 	/etc/init.d/rpcd restart
 }
 exit 0
