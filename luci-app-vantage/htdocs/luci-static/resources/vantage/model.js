@@ -382,13 +382,20 @@ return baseclass.extend({
 			var firstIf = ifs.filter(function(i) { return i.ifname && own(iw, i.ifname); })[0];
 			var info0 = firstIf ? obj(iw[firstIf.ifname]) : {};
 			var band = wifi.bandKey(cfg.band, info0.frequency || rIw.frequency);
-			var ht = wifi.htmode(info0.htmode || cfg.htmode);
+			/* a radio read from the config (luci.vantage wireless without
+			   netifd: vendor drivers such as mtkwifi) has no run state, and
+			   its driver may report less than it runs: mtkwifi's iwinfo
+			   stops at HE with EHT configured. Elsewhere iwinfo wins. */
+			var fromCfg = r.source === 'config', cfgHt = wifi.htmode(cfg.htmode);
+			var htmode = fromCfg && cfgHt.std === 'EHT' ? cfg.htmode : (info0.htmode || cfg.htmode || null);
+			var ht = wifi.htmode(htmode);
 			var chan = num(info0.channel || rIw.channel || cfg.channel) || null;
+			var live = ifs.some(function(i) { return typeof i.ifname === 'string' && own(iw, i.ifname) && num(obj(iw[i.ifname]).channel) > 0; });
 			var radio = {
 				id: rname,
 				band: band,
 				bandLabel: wifi.bandLabel(band),
-				up: r.up === true,
+				up: r.up === true || (fromCfg && live),
 				disabled: r.disabled === true || cfg.disabled === true || cfg.disabled === '1',
 				pending: r.pending === true,
 				channel: chan,
@@ -398,7 +405,7 @@ return baseclass.extend({
 				width: ht.width,
 				std: ht.std,
 				gen: wifi.genName(ht.std, band),
-				htmode: info0.htmode || cfg.htmode || null,
+				htmode: htmode,
 				txpower: finite(info0.txpower) ? info0.txpower : (finite(rIw.txpower) ? rIw.txpower : null),
 				txpowerCfg: cfg.txpower != null && isFinite(+cfg.txpower) ? +cfg.txpower : null,
 				noise: wifi.noise(finite(info0.noise) ? info0.noise : rIw.noise),

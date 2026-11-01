@@ -5,7 +5,10 @@
 //
 //   wireless   network.wireless status reduced to the fields the dashboard
 //              reads: no key, sae_password, RADIUS or 802.11r secrets, no
-//              EAP credentials. Read group luci-app-vantage.
+//              EAP credentials. Where netifd has no network.wireless object
+//              (vendor drivers that bypass it, such as MediaTek's mtkwifi),
+//              the same fields from /etc/config/wireless instead. Read group
+//              luci-app-vantage.
 //   thermal    the temperature of each thermal zone in /sys/class/thermal
 //              (millidegrees Celsius) with its type; nothing else is read.
 //              Read group luci-app-vantage.
@@ -25,6 +28,7 @@ import { connect } from 'ubus';
 import { lsdir, readfile } from 'fs';
 
 const CONFIG = 'vantage';
+const WIRELESS = 'wireless';      // read only, by wireless_from_config()
 const NAME_MAX = 48;              // code points, after collapsing spaces
 const NAME_MAX_UNITS = NAME_MAX * 8; // raw input cap, in UTF-16 code units (as names.js)
 const MAX_ALIASES = 512;          // client sections; bounds /etc/config/vantage
@@ -170,6 +174,12 @@ function short_string(v, max) {
 	return (type(v) == 'string' && length(v) <= max) ? v : null;
 }
 
+// a boolean option that is on, read as the init scripts read it
+// (config_get_bool; netifd takes '1' and 'true')
+function uci_true(v) {
+	return v in [ '1', 'on', 'true', 'yes', 'enabled' ];
+}
+
 /* ----------------------------------------------------------- wireless */
 
 // the encryption mode ('sae-mixed+ccmp', 'psk2', 'none', ...): its leading
@@ -227,6 +237,46 @@ function reduce_radio(r) {
 		},
 		interfaces: ifaces
 	};
+}
+
+// The same reply from /etc/config/wireless, for firmware whose driver
+// bypasses netifd. Only enabled interfaces that name their ifname, since
+// the view can look nothing else up; the first section to claim a name
+// wins. Run state stays unknown here: iwinfo is served by rpcd itself, so
+// asking it from a plugin would wait on rpcd. No txpower either: vendor
+// drivers do not configure it in dBm (mtkwifi: per cent).
+function wireless_from_config() {
+	let wl = cursor();
+	let radios = {}, taken = {}, out = {};
+
+	if (!wl.load(WIRELESS))
+		return out;
+
+	wl.foreach(WIRELESS, 'wifi-device', (s) => {
+		if (match(s['.name'], /^[A-Za-z0-9_.-]{1,64}$/))
+			radios[s['.name']] = { disabled: uci_true(s.disabled), config: { ...s, txpower: null }, interfaces: [] };
+	});
+
+	wl.foreach(WIRELESS, 'wifi-iface', (s) => {
+		let r = (type(s.device) == 'string') ? radios[s.device] : null;
+		let ifname = s.ifname;
+
+		if (type(r) != 'object' || uci_true(s.disabled) || type(ifname) != 'string' ||
+		    !match(ifname, /^[A-Za-z0-9_.-]{1,64}$/) || taken[ifname])
+			return;
+
+		taken[ifname] = true;
+		push(r.interfaces, {
+			ifname,
+			section: s['.name'],
+			config: { ...s, network: (type(s.network) == 'string') ? filter(split(s.network, /\s+/), (n) => n != '') : s.network }
+		});
+	});
+
+	for (let name, r in radios)
+		out[name] = { ...reduce_radio(r), source: 'config' };
+
+	return out;
 }
 
 /* ---------------------------------------------------------- set_alias */
@@ -347,7 +397,7 @@ const methods = {
 			let out = {};
 
 			if (type(reply) != 'object')
-				return out;
+				return wireless_from_config();
 
 			for (let name, r in reply)
 				if (type(r) == 'object' && match(name, /^[A-Za-z0-9_.-]{1,64}$/))

@@ -1375,7 +1375,7 @@ msgstr ""
 msgid "Open network"
 msgstr ""
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/model.js:532
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/model.js:539
 msgid "OpenWrt device"
 msgstr ""
 
@@ -1513,7 +1513,7 @@ msgstr ""
 msgid "Reverse DNS of its address"
 msgstr ""
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/model.js:544
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/model.js:551
 msgid "Root (overlay)"
 msgstr ""
 
@@ -1662,7 +1662,7 @@ msgstr ""
 msgid "Temperature %s"
 msgstr ""
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/model.js:544
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/model.js:551
 msgid "Temporary (RAM)"
 msgstr ""
 

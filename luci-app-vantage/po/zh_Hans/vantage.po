@@ -1391,7 +1391,7 @@ msgstr "对互联网开放：%d"
 msgid "Open network"
 msgstr "开放网络"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/model.js:532
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/model.js:539
 msgid "OpenWrt device"
 msgstr "OpenWrt 设备"
 
@@ -1533,7 +1533,7 @@ msgstr "重置"
 msgid "Reverse DNS of its address"
 msgstr "其地址的反向 DNS"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/model.js:544
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/model.js:551
 msgid "Root (overlay)"
 msgstr "Root（overlay）"
 
@@ -1682,7 +1682,7 @@ msgstr "Tbit/s"
 msgid "Temperature %s"
 msgstr "温度 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/model.js:544
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/model.js:551
 msgid "Temporary (RAM)"
 msgstr "临时（RAM）"
 
