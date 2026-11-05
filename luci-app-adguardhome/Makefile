@@ -12,7 +12,8 @@ LUCI_DEPENDS:=+luci-base +adguardhome
 LUCI_PKGARCH:=all
 USERID:=adguardhome=853:adguardhome=853
 
-PKG_UNPACK:=$(CURDIR)/.prepare.sh $(PKG_NAME) $(CURDIR) $(PKG_BUILD_DIR)
+# Upstream's patches are already applied to the checked-in sources.
+PATCH_DIR:=
 
 define Package/luci-app-adguardhome/conffiles
 /etc/adguardhome/adguardhome.yaml

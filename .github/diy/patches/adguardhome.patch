@@ -1,6 +1,6 @@
 --- a/luci-app-adguardhome/Makefile
 +++ b/luci-app-adguardhome/Makefile
-@@ -8,7 +8,7 @@ PKG_LICENSE:=GPL-2.0-only
+@@ -8,11 +8,12 @@ PKG_LICENSE:=GPL-2.0-only
  PKG_CPE_ID:=cpe:/a:Jackie264:luci-app-adguardhome
  
  LUCI_TITLE:=LuCI support for AdGuard Home
@@ -9,3 +9,9 @@
  LUCI_PKGARCH:=all
  USERID:=adguardhome=853:adguardhome=853
 
+-PKG_UNPACK:=$(CURDIR)/.prepare.sh $(PKG_NAME) $(CURDIR) $(PKG_BUILD_DIR)
++# Upstream's patches are already applied to the checked-in sources.
++PATCH_DIR:=
+
+ define Package/luci-app-adguardhome/conffiles
+ /etc/adguardhome/adguardhome.yaml
