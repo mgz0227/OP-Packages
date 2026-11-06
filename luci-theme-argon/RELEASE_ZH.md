@@ -1,5 +1,10 @@
 # Master 分支的更新日志
 
+## v3.1.3 [ 2026.11.06 ]
+
+- GitHub Release: https://github.com/jerrykuku/luci-theme-argon/releases/tag/v3.1.3
+- 详细更新内容请以 Release 页面为准。
+
 ## v3.1.2 [ 2026.11.02 ]
 
 - 修复端口卡片换行和高度不一致，兼容 ImmortalWrt。
