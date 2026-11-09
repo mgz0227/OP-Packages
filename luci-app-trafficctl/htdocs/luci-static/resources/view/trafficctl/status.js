@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 'use strict';
 'require view';
 'require rpc';
@@ -2263,10 +2264,21 @@ return view.extend({
 		}
 		updateInetBtn(false);
 
-		function updateWifiBtn(wifiBlocked, hasMac) {
-			if (!hasMac) { wifiBtn.classList.add('tc-hidden'); return; }
+		// filter is the backend's wifi_filter: "none" on a router without any
+		// wifi-iface (wired-only builds), "temporary" where the optional
+		// hostapd-utils is missing and a block is only a timed hostapd ban,
+		// "full" otherwise. Older backends send nothing, read as "full". An
+		// existing block is always offered for removal, whatever the router
+		// can do now.
+		function updateWifiBtn(wifiBlocked, hasMac, filter) {
+			if (!hasMac || (filter === 'none' && !wifiBlocked)) { wifiBtn.classList.add('tc-hidden'); return; }
 			wifiBtn.classList.remove('tc-hidden');
 			wifiBtn.disabled = false;
+			if (filter === 'temporary') {
+				wifiBtn.setAttribute('data-tip', _('hostapd-utils is not installed: a WiFi block lasts one hour and does not reach the running radio ACL. Install hostapd-utils for permanent blocks.'));
+			} else {
+				wifiBtn.removeAttribute('data-tip');
+			}
 			if (wifiBlocked) {
 				wifiBtn.textContent = _('Unblock WiFi');
 				wifiBtn.className = 'cbi-button cbi-button-positive';
@@ -3151,12 +3163,12 @@ return view.extend({
 						}
 					}
 					if ((data.shape_kbit || 0) > 0) {
-						parts.push(_('Shaped: <b style=\"color:var(--tc-speed)\">🌊 %s</b>').format(fmtCeiling(data.shape_kbit, data.shape_kbit_up)));
+						parts.push(_('Shaped: <b style="color:var(--tc-speed)">🌊 %s</b>').format(fmtCeiling(data.shape_kbit, data.shape_kbit_up)));
 						var sm = self._shapeMap[data.ip || searchSelect.getValue()] || {};
-						if ((sm.backlog||0) > 0) parts.push(_('Queued: <b style=\"color:var(--tc-speed)\">%s</b>').format(fmtBytes(sm.backlog)));
+						if ((sm.backlog||0) > 0) parts.push(_('Queued: <b style="color:var(--tc-speed)">%s</b>').format(fmtBytes(sm.backlog)));
 						if ((sm.bytes||0) > 0) parts.push(_('Passed: <b>%s</b>').format(fmtBytes(sm.bytes)));
 					} else if ((data.rate_limit_kbit || 0) > 0) {
-						parts.push(_('Speed limit: <b style=\"color:var(--tc-warn)\">⚡ %s</b>').format(fmtCeiling(data.rate_limit_kbit, data.rate_limit_kbit_up)));
+						parts.push(_('Speed limit: <b style="color:var(--tc-warn)">⚡ %s</b>').format(fmtCeiling(data.rate_limit_kbit, data.rate_limit_kbit_up)));
 						var dm = self._dropMap[data.ip || searchSelect.getValue()] || {};
 						if ((dm.packets||0) > 0) {
 							parts.push(_('Dropped: <b style="color:var(--tc-err)">🚫 %d pkts / %s</b>').format(Number(dm.packets) || 0, fmtBytes(dm.bytes||0)));
@@ -3181,7 +3193,7 @@ return view.extend({
 				}
 
 				updateInetBtn(data.blocked);
-				updateWifiBtn(data.wifi_blocked, !!data.mac);
+				updateWifiBtn(data.wifi_blocked, !!data.mac, data.wifi_filter);
 
 				var curShapeRate = data.shape_kbit || 0;
 				var curLimitRate = data.rate_limit_kbit || 0;
