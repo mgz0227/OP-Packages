@@ -1,16 +1,31 @@
-## 适用于openwrt 23.05 及以上的分支.
-## 所有插件都为网上收集的开源插件,感谢作者们的付出.
+# luci-app-airconnect
 
-## 本仓库所有插件已编译IPK、apk下载
-### 使用ipk软件源请删除 opkg配置(/etc/opkg.conf) 中的 option check_signature
-### 使用apk软件源请将[公钥文件](https://github.com/mgz0227/meowwrt-keyring/blob/main/files/MeowWrt-Public-key.pem)放入（/etc/apk/keys/）
+[AirConnect](https://github.com/philippe44/AirConnect) enables AirPlay streaming to UPnP/Sonos and Chromecast devices.
+
+## Features
+
+- **airupnp**: Use AirPlay to stream audio to UPnP/Sonos players.
+- **aircast**: Use AirPlay to stream audio to Google Cast / Chromecast players.
+
+--------------
+
+## How to build
+
+- Enter in your openwrt dir
+
+- Openwrt official SnapShots
+
+  ```shell
+  git clone https://github.com/sbwml/luci-app-airconnect package/airconnect
+  make menuconfig # choose LUCI -> Applications -> luci-app-airconnect
+  make package/airconnect/luci-app-airconnect/compile V=s
+  ```
+
+--------------
+
+<img width="1585" height="775" alt="image" src="https://github.com/user-attachments/assets/c50ba044-73ab-453e-a98d-b98f5030852c" />
 
 
-| CPU架构           | 下载地址                                             | 适用设备    | 软件源（ipk包）    | 更新频率    |
-|----------------|-----------------------------------------------------|--------------------------------------|-----------|-----------|
-| X86_64         | [📥](https://op.miaogongzi.cc/24.10/packages/x86_64/miaogongzi)         |          64位PC软路由    | src/gz openwrt_miaogongzi https://https://op.miaogongzi.cc/24.10/packages/x86_64//miaogongzi | 日更  |
+## License
 
-
-| CPU架构           | 下载地址                                             | 适用设备    | 软件源（apk包）    | 更新频率    |
-|----------------|-----------------------------------------------------|--------------------------------------|-----------|-----------|
-| X86_64         | [📥](https://op.miaogongzi.cc/25.12/packages/x86_64/miaogongzi)         |          64位PC软路由    | https://op.miaogongzi.cc/25.12/packages/x86_64/miaogongzi/packages.adb | 日更  |
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
