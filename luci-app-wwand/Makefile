@@ -17,12 +17,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-wwand
-PKG_VERSION:=1.9.0_pre6
-PKG_RELEASE:=51
+PKG_VERSION:=1.10.0_pre1
+PKG_RELEASE:=52
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/luci-app-wwand.git
-PKG_SOURCE_VERSION:=591dd7a6fc3ddc0b51b46161b1c6be3c691e81fa
+PKG_SOURCE_VERSION:=6ca5cee73186de3d8a91343cd17fbe163cccb7c3
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only

@@ -109,28 +109,44 @@ return view.extend({
 		s.anonymous = true;
 		s.render = function() {
 			let box = E('div', { class: 'cbi-section-error' });
-			let wrap = E('div', { id: 'ipsec_vpnd_deps_wrap', style: 'display:none' }, [ box ]);
+			let warn = E('div', { class: 'cbi-section-note' });
+			let wrap = E('div', { id: 'ipsec_vpnd_deps_wrap', style: 'display:none' }, [ box, warn ]);
 
 			let update = function() {
 				return L.resolveDefault(callIpsecDeps(), {}).then(function(res) {
 					let files = (res && Array.isArray(res.files)) ? res.files : [];
-					let missing = files.filter(function(d) { return d.status !== 'ok'; });
-					if (missing.length === 0) {
+					let missing = files.filter(function(d) { return d.status === 'missing'; });
+					let optional = files.filter(function(d) { return d.status === 'optional'; });
+					if (missing.length === 0 && optional.length === 0) {
 						wrap.style.display = 'none';
 						return;
 					}
 					wrap.style.display = '';
 					box.textContent = '';
-					box.appendChild(E('h3', {}, _('Missing dependencies')));
-					missing.forEach(function(d) {
-						box.appendChild(E('p', {}, d.detail || d.key));
-					});
-					box.appendChild(E('p', {}, _('Install the missing packages with:')));
+					warn.textContent = '';
 					let mgr = (res && res.pkg_mgr === 'opkg') ? 'opkg' : 'apk';
-					let cmd = (mgr === 'opkg')
-						? 'opkg update && opkg install strongswan-minimal strongswan-mod-xauth-generic strongswan-mod-kernel-libipsec strongswan-mod-des'
-						: 'apk update && apk add strongswan-minimal strongswan-mod-xauth-generic strongswan-mod-kernel-libipsec strongswan-mod-des';
-					box.appendChild(E('pre', {}, cmd));
+
+					if (missing.length > 0) {
+						box.appendChild(E('h3', {}, _('Missing dependencies')));
+						missing.forEach(function(d) {
+							box.appendChild(E('p', {}, d.detail || d.key));
+						});
+						box.appendChild(E('p', {}, _('Install the missing packages with:')));
+						box.appendChild(E('pre', {}, (mgr === 'opkg')
+							? 'opkg update && opkg install strongswan-minimal strongswan-mod-kernel-libipsec'
+							: 'apk update && apk add strongswan-minimal strongswan-mod-kernel-libipsec'));
+					}
+
+					if (optional.length > 0) {
+						warn.appendChild(E('p', {}, _('IKEv1 is unavailable; IKEv2 still works.')));
+						optional.forEach(function(d) {
+							warn.appendChild(E('p', {}, d.detail || d.key));
+						});
+						warn.appendChild(E('p', {}, _('To enable IKEv1, install:')));
+						warn.appendChild(E('pre', {}, (mgr === 'opkg')
+							? 'opkg update && opkg install strongswan-mod-xauth-generic strongswan-mod-des'
+							: 'apk update && apk add strongswan-mod-xauth-generic strongswan-mod-des'));
+					}
 				});
 			};
 
@@ -165,6 +181,11 @@ return view.extend({
 
 		o = s.option(form.Value, 'secret', _('Secret Pre-Shared Key'));
 		o.password = true;
+		o.rmempty = false;
+
+		o = s.option(form.Flag, 'ikev2', _('Enable IKEv2 (PSK + MOBIKE)'),
+			_('Adds an IKEv2 connection for the native iOS/Android IKEv2 client. It supports MOBIKE, so the phone keeps the tunnel while switching between Wi-Fi and cellular. It authenticates with the PSK only (no username/password), so use a strong PSK; existing IKEv1 clients are unaffected.'));
+		o.default = o.disabled;
 		o.rmempty = false;
 
 		// 在线客户端列表：页面最底部，5s 轮询刷新。数据来自 rpcd 后端

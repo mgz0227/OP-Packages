@@ -79,6 +79,9 @@ uci -q batch <<-EOF >/dev/null
 	set firewall.VPN.forward="ACCEPT"
 	set firewall.VPN.output="ACCEPT"
 	set firewall.VPN.network="VPN"
+	# ipsec0 MTU 1400，PPPoE 1492；不开 mtu_fix 时客户端可能按 1500
+	# 协商 MSS，遇到 PMTU 黑洞就是"小包通、大包卡死"。
+	set firewall.VPN.mtu_fix="1"
 
 	delete firewall.vpn
 	set firewall.vpn=forwarding
@@ -96,6 +99,10 @@ EOF
 # strongswan 的 /etc/config/ipsec 只是占位配置，直接删除，
 # 避免改名后覆盖本包自带配置（默认 enabled=0）
 [ -f "/etc/config/ipsec" ] && rm -f "/etc/config/ipsec"
+
+# strongswan-default 会带 swanctl 服务；本包用 ipsec 服务托管 charon，
+# 两个都自启会抢 UDP 500/4500。
+[ -x /etc/init.d/swanctl ] && { /etc/init.d/swanctl stop >/dev/null 2>&1; /etc/init.d/swanctl disable >/dev/null 2>&1; }
 
 # 记录初始化标记，避免升级时重复执行破坏性操作
 uci -q set ipsec-vpnd.ipsec.initialized='1'
