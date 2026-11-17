@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 PKG_NAME:=linkspace
-PKG_VERSION:=linkspace-runtime-v0.3.1
-PKG_RELEASE:=1
+PKG_VERSION:=kaiplus-runtime-v1.0.16
+PKG_RELEASE:=2
 include ./release.mk
 PKG_SOURCE:=linkspace-$(PKG_VERSION)-$(ARCH).tar.gz
 PKG_SOURCE_URL:=https://github.com/istoreos/istoreos-app-hub/releases/download/linkspace-runtime-v$(PKG_VERSION)/
