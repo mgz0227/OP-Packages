@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 PKG_NAME:=changeguard
-PKG_VERSION:=linkspace-runtime-v0.3.2
-PKG_RELEASE:=3
+PKG_VERSION:=kaiplus-runtime-v1.0.18
+PKG_RELEASE:=4
 include ./release.mk
 PKG_SOURCE:=changeguard-$(PKG_VERSION)-$(ARCH).tar.gz
 PKG_SOURCE_URL:=https://github.com/istoreos/istoreos-app-hub/releases/download/changeguard-runtime-v$(PKG_VERSION)/
