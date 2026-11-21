@@ -30,12 +30,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-ims
-PKG_VERSION:=0.2.0_pre11
-PKG_RELEASE:=6
+PKG_VERSION:=0.2.0_pre19
+PKG_RELEASE:=7
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand-ims.git
-PKG_SOURCE_VERSION:=02ea35619f921ebe6496999e0bc799f375c51e9d
+PKG_SOURCE_VERSION:=034730aa816904726f4b249ba2a961def892d238
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -73,6 +73,9 @@ define Package/wwand-ims
 	+kmod-ipsec +kmod-ipsec4 +kmod-ipsec6 +kmod-vrf +ip-full \
 	+ucode-mod-fs +ucode-mod-uloop +ucode-mod-ubus +ucode-mod-socket \
 	+ucode-mod-uci +ucode-mod-digest +ucode-mod-struct
+  # modem_sms_deliver and the plugins' sms_send hook (SMS over IP),
+  # wwand 4ad3cde = v1.10.0-dev-20
+  EXTRA_DEPENDS:=wwand (>=1.10.0_pre20)
   PKGARCH:=all
 endef
 
@@ -83,6 +86,34 @@ define Package/wwand-ims/description
  RTP to the LAN (sipd, a SIP registrar/B2BUA). A wwand plugin also drives the
  modem's own IMS over QMI, and "wwandctl ims" sets the router up from the
  carrier MBN. Not for upstream.
+endef
+
+# VoWiFi: the router's IMS UE over an IKEv2 tunnel to the operator's ePDG
+# (ims_modem option access 'vowifi'). charon driven over vici only, EAP-AKA
+# by the USIM in the modem through strongSwan's ext-aka plugin (this feed's
+# strongswan). A package of its own for the dependencies: strongSwan and the
+# XFRM interface are not wanted on a VoLTE-only router.
+define Package/wwand-ims-vowifi
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WWAN
+  TITLE:=VoWiFi for wwand-ims (IKEv2/EAP-AKA tunnel to the ePDG)
+  DEPENDS:=+wwand-ims +ip-full +kmod-xfrm-interface +xfrm \
+	+strongswan-charon +strongswan-mod-vici +strongswan-mod-kernel-netlink \
+	+strongswan-mod-socket-default +strongswan-mod-random +strongswan-mod-kdf \
+	+strongswan-mod-aes +strongswan-mod-gcm +strongswan-mod-sha1 +strongswan-mod-sha2 \
+	+strongswan-mod-hmac +strongswan-mod-gmp +strongswan-mod-curve25519 \
+	+strongswan-mod-x509 +strongswan-mod-pubkey +strongswan-mod-pkcs1 +strongswan-mod-pem \
+	+strongswan-mod-constraints +strongswan-mod-eap-identity +strongswan-mod-eap-aka +strongswan-mod-fips-prf \
+	+strongswan-mod-ext-aka +strongswan-mod-p-cscf +strongswan-mod-epdg-idr
+  PKGARCH:=all
+endef
+
+define Package/wwand-ims-vowifi/description
+ VoWiFi for the router's own IMS UE: an IKEv2 tunnel to the operator's ePDG
+ (EAP-AKA through the modem's USIM, the P-CSCF from the ePDG), the IMS
+ traffic on an XFRM interface in a VRF of its own. On with ims_modem option
+ access 'vowifi'; `wwand-ims-vowifi up|down|status` drives the tunnel by hand.
 endef
 
 define Package/luci-app-wwand-ims
@@ -131,6 +162,32 @@ define Package/wwand-ims/install
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/asterisk-pjsip.example $(1)$(IMSLIB)/examples/
 endef
 
+define Package/wwand-ims-vowifi/install
+	# the VoWiFi modules next to sipd's (sipd require()s vowifi_lazy)
+	$(INSTALL_DIR) $(1)$(IMSLIB)
+	$(CP) $(CMAKE_BINARY_DIR)/ucode/wwand-ims-vowifi/* $(1)$(IMSLIB)/
+	# the card program strongSwan's ext-aka plugin runs, and the tunnel by hand
+	$(INSTALL_DIR) $(1)/usr/libexec/strongswan $(1)/usr/sbin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/files/vowifi-ext-aka.sh $(1)/usr/libexec/strongswan/ext-aka
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/files/wwand-ims-vowifi.sh $(1)/usr/sbin/wwand-ims-vowifi
+	# the netifd proto handler that takes the tunnel's IP configuration
+	$(INSTALL_DIR) $(1)/lib/netifd/proto
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/files/vowifi-proto.sh $(1)/lib/netifd/proto/wwandvowifi.sh
+	# the charon settings vici cannot carry, for the tunnel's connection by
+	# name (charon's global settings stay as they are): the P-CSCF request,
+	# and the ePDG's own identity accepted (plugin epdg-idr)
+	$(INSTALL_DIR) $(1)/etc/strongswan.d/charon
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/vowifi-strongswan.conf \
+		$(1)/etc/strongswan.d/charon/wwand-ims-vowifi.conf
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/vowifi-strongswan-ike.conf \
+		$(1)/etc/strongswan.d/wwand-ims-vowifi-ike.conf
+endef
+
+define Package/wwand-ims-vowifi/conffiles
+/etc/strongswan.d/charon/wwand-ims-vowifi.conf
+/etc/strongswan.d/wwand-ims-vowifi-ike.conf
+endef
+
 # named, not globbed (the rule luci-app-wwand follows)
 define Package/luci-app-wwand-ims/install
 	$(INSTALL_DIR) $(1)/www/luci-static/resources/view/wwand $(1)/www/luci-static/resources/wwand
@@ -147,4 +204,5 @@ define Package/luci-app-wwand-ims/install
 endef
 
 $(eval $(call BuildPackage,wwand-ims))
+$(eval $(call BuildPackage,wwand-ims-vowifi))
 $(eval $(call BuildPackage,luci-app-wwand-ims))
