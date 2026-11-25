@@ -5,8 +5,8 @@ include $(TOPDIR)/rules.mk
 LUCI_TITLE:=LuCI shared integration for LinkEase apps
 LUCI_PKGARCH:=all
 
-PKG_VERSION:=1.2.1-r3
-PKG_RELEASE:=10
+PKG_VERSION:=1.2.1-r5
+PKG_RELEASE:=11
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
