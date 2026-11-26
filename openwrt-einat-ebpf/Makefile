@@ -4,27 +4,26 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=einat-ebpf
 PKG_UPSTREAM_VERSION:=0.1.11
 PKG_UPSTREAM_GITHASH:=
+
+PKG_NAME:=einat-ebpf
 PKG_VERSION:=$(PKG_UPSTREAM_VERSION)$(if $(PKG_UPSTREAM_GITHASH),~$(call version_abbrev,$(PKG_UPSTREAM_GITHASH)))
-PKG_RELEASE:=6
+PKG_RELEASE:=7
 
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_UPSTREAM_VERSION)
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_SOURCE_SUBDIR)
 
 ifeq ($(PKG_UPSTREAM_GITHASH),)
-PKG_SOURCE_URL:=https://codeload.github.com/EHfive/einat-ebpf/tar.gz/refs/tags/v$(PKG_UPSTREAM_VERSION)?
-PKG_HASH:=skip
-
-PKG_SOURCE:=$(PKG_SOURCE_SUBDIR).tar.gz
+  PKG_SOURCE_URL:=https://codeload.github.com/EHfive/einat-ebpf/tar.gz/refs/tags/v$(PKG_UPSTREAM_VERSION)?
+  PKG_SOURCE:=$(PKG_SOURCE_SUBDIR).tar.gz
+  PKG_HASH:=skip
 else
-PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/EHfive/einat-ebpf.git
-PKG_SOURCE_VERSION:=$(PKG_UPSTREAM_GITHASH)
-PKG_MIRROR_HASH:=skip
-
-PKG_SOURCE:=$(PKG_SOURCE_SUBDIR)-$(PKG_SOURCE_VERSION).tar.gz
+  PKG_SOURCE_PROTO:=git
+  PKG_SOURCE_URL:=https://github.com/EHfive/einat-ebpf.git
+  PKG_SOURCE_VERSION:=$(PKG_UPSTREAM_GITHASH)
+  PKG_SOURCE:=$(PKG_SOURCE_SUBDIR)-$(PKG_SOURCE_VERSION).tar.gz
+  PKG_MIRROR_HASH:=skip
 endif
 
 PKG_MAINTAINER:=Anya Lin <hukk1996@gmail.com>
@@ -53,7 +52,7 @@ include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/rust/rust-package.mk
 
 CARGO_PKG_VARS+= \
-	BINDGEN_EXTRA_CLANG_ARGS=-I$(shell $(TARGET_CC_NOCACHE) -print-file-name=include)
+    BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(TOOLCHAIN_DIR) -I$(shell $(TARGET_CC_NOCACHE) -print-file-name=include)"
 
 # Don't ignore Cargo.lock
 ifeq ($(shell grep -o 'RUST_PKG_LOCKED' $(TOPDIR)/feeds/packages/lang/rust/rust-package.mk 2>/dev/null),)
