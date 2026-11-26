@@ -8,8 +8,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=sunpanel
-PKG_VERSION:=1.8.1
-PKG_RELEASE:=5
+PKG_VERSION:=2.0.2
+PKG_RELEASE:=6
 
 # v1.8.1 official release assets are per-arch (linux musl static binary)
 ifeq ($(ARCH),x86_64)
